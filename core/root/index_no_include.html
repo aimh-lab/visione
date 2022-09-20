@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>VBS</title>
+<link rel="stylesheet" href="css/jquery-ui.min.css" >
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" >
+<link rel="stylesheet" href="css/bootstrap.css" >
+<link rel="stylesheet" href="css/vbs.css" >
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/jquery-ui.min.js"></script>
+<script src="js/fabric.js"></script>
+<script src="js/vbs.js"></script>
+<script src="js/canvas.js"></script>
+
+</head>
+<body oncontextmenu="return false;">
+	<div align="center" style="padding-top: 8px; padding-bottom: 15px;">
+		<img src="img/visione-side.png" height="96px"
+			style="border-radius: 20px 20px 20px 20px;" alt="">
+	</div>
+	<div id="dialog" title="Tag Name">
+		<label>tag</label> <input id="tag" name="tag" type="text">
+	</div>
+	<div id="content" class="container-fluid" style="padding-top: 10px;">
+	
+		<div class="row" style="padding-left: 5px;">
+		<table>
+									
+			<tr valign="top">
+				<td id='canvasTab'><div id="canvasdiv1"><canvas id='canvas1' width=380 height=213
+						style="border: 1px solid #000000;"></canvas></div>
+						<table>
+						<tr valign="top">
+							<td colspan="13" title="Scene description">Desc<input id='tern0'
+								type="text" size="51" placeholder="E.g.: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Scene tags">Tags<input id='annotations0'
+								type="text" size="51" placeholder="E.g.: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Max obj. number">Max Obj<input id='not0'
+								type="text" size="47" placeholder="E.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>
+						</table>
+						
+						
+						<div class="row">
+			<div class="col-7 top5">
+				<div>
+					<button id="clean0" class="btn btn-outline-info"	title="clean canvas 1">
+						<i class="fa fa-trash"></i> clean	</button>
+					<button id="undo0" class="btn btn-outline-info" title="undo clean canvas 1">
+						<i class="fa fa-reply"></i> un-clean
+					</button>
+				</div>
+			</div>
+		</div>
+		
+				
+				</td>
+				<td align="left">
+					<table>
+						<!--<tr valign="top">
+							<td colspan="13">Scene description 1<input id='tern0'
+								type="text" size="64" placeholder="E.g.: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13">Scene tags 1<input id='annotations0'
+								type="text" size="71" placeholder="E.g.: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13">Max obj. number 1<input id='not0'
+								type="text" size="65" placeholder="E.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13">Scene description 2<input id='tern1'
+								type="text" size="64" placeholder="E.g.: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13">Scene tags 2<input id='annotations1'
+								type="text" size="71" placeholder="E.g.: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13">Max obj. number 2<input id='not1'
+								type="text" size="65" placeholder="E.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>-->
+
+						
+						<tr valign="top">
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="person" title="person"src="img/icons/person.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="humanface" title="humanface"src="img/icons/humanface.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="musician" title="musician"src="img/icons/musician.png"/></td>
+						
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="athlete" title="athlete"src="img/icons/athlete.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="skateboard" title="skateboard"src="img/icons/skateboard.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="clothing" title="clothing"src="img/icons/clothing.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="tie" title="tie"src="img/icons/tie.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="footwear" title="footwear"src="img/icons/footwear.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="glasses" title="glasses"src="img/icons/glasses.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="bicycle" title="bicycle"src="img/icons/bicycle.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="vehicle" title="vehicle"src="img/icons/vehicle.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="motorbike" title="motorbike"src="img/icons/motorcycle.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="car" title="car"src="img/icons/car.png"/></td>
+						
+						
+												
+						</tr><tr valign="top">
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="truck" title="truck"src="img/icons/truck.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="boat" title="boat"src="img/icons/boat.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="parachute" title="parachute"src="img/icons/parachute.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="aeroplane" title="aeroplane"src="img/icons/aeroplane.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="bench" title="bench"src="img/icons/bench.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="chair" title="chair"src="img/icons/chair.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="sofa" title="sofa"src="img/icons/sofa.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="building" title="building"src="img/icons/building.png"/></td>
+												
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="clock" title="clock"src="img/icons/clock.png"/></td>
+
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="bowl" title="bowl"src="img/icons/bowl.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="bottle" title="bottle"src="img/icons/bottle.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="wineglass" title="wineglass"src="img/icons/wineglass.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="cup" title="cup"src="img/icons/cup.png"/></td>
+
+						
+
+						
+						
+						</tr><tr valign="top">
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="dessert" title="dessert"src="img/icons/dessert.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="cellphone" title="cellphone"src="img/icons/cellphone.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="display" title="display"src="img/icons/display.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="keyboard" title="keyboard"src="img/icons/keyboard.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="laptop" title="laptop"src="img/icons/laptop.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="book" title="book"src="img/icons/book.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="cat" title="cat"src="img/icons/cat.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="dog" title="dog"src="img/icons/dog.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="horse" title="horse"src="img/icons/horse.png"/></td>
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="teddy" title="teddy"src="img/icons/teddy.png"/></td>
+						
+						<td align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="plant" title="plant"src="img/icons/plant.png"/></td>
+						<td colspan="2" align="left"><img width="32" draggable="true" ondragstart="drag(event)" id="tree" title="tree"src="img/icons/tree.png"/></td>
+						
+						</tr>
+					</table>
+					<table>
+						<tr valign="top">
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='black' alt="color" title='black'
+								alt="" src="img/palette11/black.png" /></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='blue' alt="color" title='blue'
+								alt="" src="img/palette11/blue.png" /></td>
+								<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='brown' alt="color" title='brown'
+								alt="" src="img/palette11/brown.png" /></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='green' alt="color" title='green'
+								alt="" src="img/palette11/green.png" /></td>								
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='grey' alt="color" title='grey'
+								alt="" src="img/palette11/grey.png" /></td>	
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='orange' alt="color" title='orange'
+								alt="" src="img/palette11/orange.png" /></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='pink' alt="color" title='pink'
+								alt="" src="img/palette11/pink.png" /></td>															
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='purple' alt="color" title='purple'
+								alt="" src="img/palette11/purple.png" /></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='red' alt="color" title='red'
+								alt="" src="img/palette11/red.png" /></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='white' alt="color" title='white'
+								alt="" src="img/palette11/white.png" style=" border: 1px solid #000;"/></td>
+							<td align="left"><img width="32" draggable="true"
+								ondragstart="drag(event)" id='yellow' alt="color" title='yellow'
+								alt="" src="img/palette11/yellow.png" /></td>
+						</tr>
+						</table>
+						<table>
+						<tr valign="top">
+						<td colspan="1">
+						<div style="background-color: mintcream;">
+							<span id="urlText"><b>Paste image URL</b></span>
+				<a href="#" id="urlLink" onclick="changeQueryBySampleMod('url')" style="display: none;">Paste image URL</a>
+				<span id="uploadText" style="display: none;"><b>Upload an image</b></span>
+				<a href="#" id="uploadLink" onclick="changeQueryBySampleMod('upload')">Upload an image</a>		
+				
+				
+				<form id="searchbar" method="POST" enctype="multipart/form-data" name="form1" action="">
+				        <div class='preview'>
+            <img src="" id="qbe" width="120" height="80" style="display: none;">
+        </div>
+				    <table cellspacing="1" cellpadding="1" border="0" style="background-color: mintcream;">                          
+					     <tr>                   
+					    <td valign="top">
+						<input type="hidden" value="" name="" id="objId">
+						<input id="urlToUpload" name="url" type="text" size="44" onclick="" onchange="if (document.getElementById('urlToUpload').value.trim() == '') document.getElementById('qbe').style.display = 'none'; document.getElementById('queryImage').value=''">
+					    <input  style="display: none;" id="imageToUpload" name="imgFile" type="file" size="44" onclick="" onchange="document.getElementById('queryImage').value=''">
+					    </td>                   
+					    <td valign="top">
+						<!-- 
+						<input type="image" src="img/Search.png" value="Search" title="Search" onclick="if (trim(document.getElementById('urlToUpload').value)=='' &&  trim(document.getElementById('imageToUpload').value)=='')return false;">
+					     -->
+					    <input type="image" src="img/Search.png" value="Search" id='queryByExample' title="Search" onclick="document.getElementById('qbe').src=document.getElementById('urlToUpload').value; document.getElementById('qbe').style.display = 'block'; queryByExample(document.getElementById('urlToUpload').value); return false;">
+					    
+					    </td>
+					    
+					    
+					</tr>
+				   </table>
+				   
+				</form>
+				</div>
+				
+				
+
+						</td>
+					</tr>
+						<tr>
+							<td colspan="1" valign="top">
+							<input id='is43' type="checkbox" onchange="set43(this)" >4:3&nbsp;
+						<input id='is169' type="checkbox" onchange="set169(this)">16:9
+							<input id='isGray' type="checkbox"	onchange="setGray(this)">B/W &nbsp; 
+						<input id='isColor' type="checkbox" onchange="setColor(this)">Color&nbsp;
+ 						<input id='simreorder' type="checkbox"	onchange="setSimReorder(this)">Sim Reorder&nbsp; 
+ 						<input id='ssr' type="checkbox"	onchange="setSSR(this)">SSR&nbsp; 
+
+						<input id='group' type="checkbox" onchange="groupResults(this)">Group by video&nbsp; 
+						
+						
+				
+						</td>
+						
+						
+						</tr>
+						<tr>
+												<td colspan="1" valign="baseline">  <span style="vertical-align: bottom; border-style: solid; border-width: 1px; border-radius: 15px;"></div><input type="radio" id="and" name="occur" value="and" checked onchange="setOccur(this)"><label for="and">AND</label>
+  <input type="radio" id="or" name="occur" value="or" onchange="setOccur(this)"><label for="or">OR</label></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+				 <td id='canvasTab'><div id="canvasdiv2"><canvas id='canvas2' width=380 height=213 style="border: 1px solid #000000;"></canvas></div>
+					 <table>
+						<tr valign="top">
+							<td colspan="13" title="Scene description">Desc<input id='tern1'
+								type="text" size="51" placeholder="E.g.: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Scene tags">Tags<input id='annotations1'
+								type="text" size="51" placeholder="E.g.: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Max obj. number">Max Obj<input id='not1'
+								type="text" size="47" placeholder="E.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>
+					</table>
+				 </td>
+				</tr>				
+							
+		</table>
+		</div>
+
+		<hr/>
+		<div class="row">
+			<div id='results' class="col" align="center"></div>
+		</div>
+	</div>
+	<script>
+	$(document).ready(function(){
+	
+		$(function() {
+			$("#dialog").dialog({
+				autoOpen: false
+			});
+		});	
+
+		canvas1 = get_canvas('canvas1', 'annotations0', 'not0');
+		canvas2 = get_canvas('canvas2', 'annotations1', 'not1');
+		canvases = [canvas1, canvas2];
+		
+		
+		$('#content').on('drop', dropImage);
+		
+		
+		$("#clean0").on('click', function(e) {
+			console.log(isClean);
+		//	if (!isClean) {
+			    isClean = true;
+				lastAnnotation = $("#annotations").val();
+				lastNotField = $("#not").val();
+				lastis43 = $("#is43").is(":checked");
+				lastis169 = $("#is169").is(":checked");
+				lastisColor = $("#isColor").is(":checked");
+				lastisGray = $("#isGray").is(":checked");
+				lastGrouped = $("#group").is(":checked");
+				
+				$("#annotations").val('');
+				$("#not").val('');
+				$('#is43').prop('checked', false);
+				$('#is169').prop('checked', false);
+				$('#isColor').prop('checked', false);
+				$('#isGray').prop('checked', false);
+				$('#group').prop('checked', false);
+				
+				canvasObjects = canvas1.getObjects();		
+				
+				canvas1.discardActiveObject().renderAll();
+				canvas1.getObjects().forEach(function(o) {
+					console.log("----> "+o.get('type'));
+					if (o.get('type') != 'line') {
+			        	$("#" + o.get('uuid')).hide();
+			        	canvas1.remove(o);
+					} 
+			    })
+			    
+			    canvasObjects = canvas2.getObjects();		
+				
+				canvas2.discardActiveObject().renderAll();
+				canvas2.getObjects().forEach(function(o) {
+					console.log("----> "+o.get('type'));
+					if (o.get('type') != 'line') {
+			        	$("#" + o.get('uuid')).hide();
+			        	canvas2.remove(o);
+			        	
+					} 
+			    })
+				txt = cell2Text(isClean);
+		//	}
+		});
+		
+		$("#tern0").keyup(function(event) {
+		    if (event.keyCode === 13) {
+		    	queryByTERN(document.getElementById('tern0').value, document.getElementById('tern1').value);
+		    }
+		});
+		$("#tern1").keyup(function(event) {
+		    if (event.keyCode === 13) {
+		    	queryByTERN(document.getElementById('tern0').value, document.getElementById('tern1').value);
+		    }
+		});
+		
+		$("#undo0").on('click', function(e) {
+			console.log(isClean);
+			if (isClean) {
+	        	isClean = false;
+				$("#annotations").val(lastAnnotation);
+				$("#not").val(lastNotField);
+				$('#is43').prop('checked', lastis43);
+				$('#is169').prop('checked', lastis169);
+				$('#isColor').prop('checked', lastisColor);				
+				$('#isGray').prop('checked', lastisGray);
+				$('#group').prop('checked', lastGrouped);
+				canvasObjects.forEach(function(o) {
+					if (o.get('type') != 'line') {
+				        canvas1.add(o);
+			        	$("#" + o.get('uuid')).show();
+					}
+			    })
+				txt = cell2Text();
+			}
+		});
+		
+		canvas1.renderAll();
+		canvas2.renderAll();
+	});
+
+	</script>
+
+</body>
+</html>

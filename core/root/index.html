@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>VISIONE v2.0</title>
+	<link rel="stylesheet" href="css/jquery-ui.min.css" >
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" >
+	<link rel="stylesheet" href="css/bootstrap.css" >
+	<link rel="stylesheet" href="css/vbs.css" >
+	<link rel="stylesheet" href="css/videopopup.css">
+	<script src="js/jquery-3.3.1.min.js"></script>
+	<script src="js/jquery-ui.min.js"></script>
+	<script src="js/fabric.js"></script>
+	<script src="js/vbs.js"></script>
+	<script src="js/canvas.js"></script>
+	<script src="js/videopopup.js"></script>
+</head>
+<body oncontextmenu="return false;">
+	<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
+		<span style="float: left; padding-left: 30px;padding-right: 350px;"><button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session" onclick="startNewSession();">
+						<i class="fa fa-play"> New Session</i></button></span>
+		<a href="visione2.mp4" title="Take A Look At Our VISIONE Video Presentation" target="_blank"><img src="img/logoVISIONE.png" height="28px"
+			style="border-radius: 20px 20px 20px 20px;" alt=""></a>
+		<img src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+			style="border-radius: 20px 20px 20px 20px;" alt="">
+	</div>
+	<div id="dialog" title="Tag Name">
+		<label>tag</label> <input id="tag" name="tag" type="text">
+	</div>
+	<div id="content" class="container-fluid" style="padding-top: 10px;">
+	
+		<div class="row" style="padding-left: 20px;">
+		<table align="left">
+									
+			<tr valign="top">
+				<td id='canvasTab'>
+					<table style="width: 95%;">
+						<tr>
+							<td>
+								<span
+								style="vertical-align: bottom; border-style: solid; border-width: 1px; border-radius: 15px;">
+									<input type="radio" id="canvas0_enabled" name="canvas0" value="enabled" checked
+									onchange="setCanvasState(0, this)"><label for="canvas0_enabled" style="color: green; font-weight: bold;">Enabled</label> <input
+									type="radio" id="canvas0_disabled" name="canvas0" value="disabled"
+									onchange="setCanvasState(0, this)"><label for="canvas0_disabled" style="color: gray; font-weight: bold;">Disabled &nbsp;</label></span>
+							</td>
+							<td align="right">
+								<span style="vertical-align: top;" title="Black & White Keyframe"><input
+							id='isGray0' type="checkbox" onchange="setGray(0)"> B/W
+							&nbsp; <input id='isColor0' type="checkbox" onchange="setColor(0)"></span>
+							<span title="Color Keyframe" style="background: linear-gradient(to right, #FF0000 0%, #00FF00 100%);-webkit-background-clip: text;-webkit-text-fill-color: transparent;">Color&nbsp;</span>
+							</td>
+						</tr>
+				</table>
+				<div style="position: relative;">
+				<div id="overlay0">
+					<div align="center" id="text0" style="color: gray;">Disabled</div>
+				</div>
+				<div id="canvasdiv1"><canvas id='canvas0' width=380 height=213
+						style="border: 1px solid #000000;"></canvas></div>
+						<table>
+						<tr valign="top">
+							<td colspan="13" title="Scene Description"><input id='tern0'
+								type="text" size="68" placeholder="Desc: e.g.: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Scene Tags"><input id='annotations0'
+								type="text" size="68" placeholder="Tags: e.g.: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Max Objects Number"><input id='not0'
+								type="text" size="68" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>
+						</table>
+						
+						
+						<div class="row">
+			<div class="col-7 top5">
+				<div>
+					<button id="clean0" class="btn btn-outline-danger btn-sm"	title="clean canvas 1">
+						<i class="fa fa-trash"> Clean</i></button>
+					<button id="undo0" class="btn btn-outline-success btn-sm" title="undo clean canvas 1">
+						<i class="fa fa-undo"> Un-Clean</i>
+					</button>
+				</div>
+			</div>
+</div>
+				</div>
+				</td>
+				<td align="center" >
+					 <div w3-include-html="palette.html"></div>
+					 <div w3-include-html="filters.html"></div>
+					<div>
+						<button id="reset" class="btn btn-outline-danger btn-lg"	title="reset all fields and canvases">
+							<i class="fa fa-trash"> Clean All</i></button>
+						<button id="undoReset" class="btn btn-outline-success btn-lg" title="undo reset">
+							<i class="fa fa-undo"> Un-Clean All</i>
+						</button>
+					</div>
+				</td>
+				 <td id='canvasTab'>
+				 <table style="width: 95%;">
+						<tr>
+							<td>
+							<span
+				style="vertical-align: bottom; border-style: solid; border-width: 1px; border-radius: 15px;">
+					<input type="radio" id="canvas1_enabled" name="canvas1" value="enabled" checked
+					onchange="setCanvasState(1, this)"><label for="canvas1_enabled" style="color: green; font-weight: bold;">Enabled</label> <input
+					type="radio" id="canvas1_disabled" name="canvas1" value="disabled"
+					onchange="setCanvasState(1, this)"><label for="canvas1_disabled" style="color: gray; font-weight: bold;">Disabled &nbsp;</label></span>
+					</td>
+							<td align="right">
+								<span style="vertical-align: top;" title="Black & White Keyframe"><input
+							id='isGray1' type="checkbox" onchange="setGray(1)"> B/W
+							&nbsp; <input id='isColor1' type="checkbox" onchange="setColor(1)"></span>
+							<span title="Color Keyframe" style="background: linear-gradient(to right, #FF0000 0%, #00FF00 100%);-webkit-background-clip: text;-webkit-text-fill-color: transparent;">Color&nbsp;</span>
+							
+							</td>
+						</tr>
+				</table>
+				<div style="position: relative;">
+				<div id="overlay1">
+				<div align="center" id="text1" style="color: gray;">Disabled</div>
+						</div>
+					<div id="canvasdiv2"><canvas id='canvas1' width=380 height=213 style="border: 1px solid #000000;"></canvas></div>
+					 <table>
+						<tr valign="top">
+							<td colspan="13" title="Scene Description"><input id='tern1'
+								type="text" size="68" placeholder="Desc: A tennis player serving a ball on the court"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Scene Tags"><input id='annotations1'
+								type="text" size="68" placeholder="Tags: wedding park sunset"></td>
+						</tr>
+						<tr valign="top">
+							<td colspan="13" title="Max Objects Number"><input id='not1'
+								type="text" size="68" placeholder="Max Obj: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></td>
+						</tr>
+					</table>
+											<div class="row">
+			<div class="col-7 top5">
+				<div>
+					<button id="clean1" class="btn btn-outline-danger btn-sm"	title="clean canvas 2">
+						<i class="fa fa-trash"> Clean</i></button>
+					<button id="undo1" class="btn btn-outline-success btn-sm" title="undo clean canvas 2">
+						<i class="fa fa-undo"> Un-Clean</i>
+					</button>
+				</div>
+			</div>
+		</div>
+		</div>
+				 </td>
+				</tr>				
+							
+		</table>
+		</div>
+
+		<hr/>
+		<table>
+			<tr>
+				<td width="80%">
+					<div class="row">
+						<div id='results' class="col" align="center"></div>
+					</div>
+
+				</td>
+				<td width="20%" valign="top">
+		
+					 <div id="avsTab" style="height:70%;width:100%;overflow-y: scroll;">
+ 
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	</div>
+	<script>
+	$(document).ready(function(){
+	
+		$(function() {
+			$("#dialog").dialog({
+				autoOpen: false
+			});
+		});	
+		includeHTML();
+		canvas0 = get_canvas('canvas0', 'annotations0', 'not0');
+		canvas1 = get_canvas('canvas1', 'annotations1', 'not1');
+		canvases = [canvas0, canvas1];
+		
+		$('#content').on('drop', dropImage);
+		
+		$("#clean0").on('click', function(e) {
+			if (!isCanvasClean[0]) {
+			    isCanvasClean[0] = true;
+				canvasClean(0);
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		$("#clean1").on('click', function(e) {
+			if (!isCanvasClean[1]) {
+			    isCanvasClean[1] = true;
+				canvasClean(1);
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		$("#reset").on('click', function(e) {
+			if (!isReset) {
+				isReset = true;
+				reset();
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		$("#tern0").keyup(function(event) {
+		    if (event.keyCode === 13) {
+		    	queryByTERN(document.getElementById('tern0').value, document.getElementById('tern1').value);
+		    }
+		});
+		$("#tern1").keyup(function(event) {
+		    if (event.keyCode === 13) {
+		    	queryByTERN(document.getElementById('tern0').value, document.getElementById('tern1').value);
+		    }
+		});
+		
+		$("#undo0").on('click', function(e) {
+			if (isCanvasClean[0]) {
+			    isCanvasClean[0] = false;
+				canvasCleanUndo(0);
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		$("#undo1").on('click', function(e) {
+			if (isCanvasClean[1]) {
+			    isCanvasClean[1] = false;
+				canvasCleanUndo(1);
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		$("#undoReset").on('click', function(e) {
+			if (isReset) {
+				isReset = false;
+				undoReset();
+				performSearch2(cell2Text(0), cell2Text(1));
+			}
+		});
+		
+		canvas0.renderAll();
+	});
+	</script>
+
+</body>
+</html>

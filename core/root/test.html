@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>VBS</title>
+<link rel="stylesheet" href="css/jquery-ui.min.css" >
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" >
+<link rel="stylesheet" href="css/bootstrap.css" >
+<link rel="stylesheet" href="css/vbs.css" >
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/jquery-ui.min.js"></script>
+<script src="js/fabric.js"></script>
+<script src="js/vbs.js"></script>
+<script src="js/canvas.js"></script>
+
+<style type="text/css">
+#videosList {
+ max-width: 600px; 
+  overflow: hidden;
+}
+
+.video {
+  background-image: url('https://img.youtube.com/vi/nZcejtAwxz4/maxresdefault.jpg');
+  height: 330px;
+  width: 600px;
+  margin-bottom: 50px;
+}
+
+/* Hide Play button + controls on iOS */
+video::-webkit-media-controls {
+    display:none !important;
+}
+</style>
+
+</head>
+<body oncontextmenu="return false;">
+	<!--
+Data: https://gfycat.com/cajax/get/VerifiableTerrificHind
+ 
+Source: https://www.youtube.com/watch?v=nZcejtAwxz4
+
+More info on youtube api for thumbnails: http://stackoverflow.com/questions/2068344/how-do-i-get-a-youtube-video-thumbnail-from-the-youtube-api
+-->
+          
+
+<div class="video">
+    <video class="thevideo" loop preload="none">
+      <source src="https://giant.gfycat.com/VerifiableTerrificHind.mp4" type="video/mp4">
+      <source src="https://giant.gfycat.co<div id="videosList"> m/VerifiableTerrificHind.webm" type="video/webm">
+    Your browser does not support the video tag.
+    </video>
+  </div>
+  Hover mouse over video. Desktop only [ Obviously! ;) ]
+</div>
+
+<script type="text/javascript">
+var cip = $(".video").hover( hoverVideo, hideVideo );
+
+function hoverVideo(e) {  
+    $('video', this).get(0).play(); 
+}
+
+function hideVideo(e) {
+    $('video', this).get(0).pause(); 
+}
+
+</script>
+
+</body>
+</html>

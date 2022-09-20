@@ -1,0 +1,72 @@
+/*
+    Created on : 2016-12-16, 13:40:46
+    Author     : Sławomir Netteria.NET https://netteria.net
+*/
+
+#closer_videopopup{
+    position: absolute;
+    display: table-cell;
+    right: 2%;
+    top: 2%;
+    font-size: 32px;
+    text-align: center;
+    vertical-align: middle;
+    padding: auto;
+    cursor: default;
+    background: none;
+    border: none;
+    color: #ffffff;
+
+
+    z-index: 100004;
+}
+#opct{
+    position: fixed;
+    z-index: 100000;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left:0;
+    bottom: 0;
+    right: 0;
+    filter: alpha(opacity=90);
+    -moz-opacity: 0.90;
+    opacity: 0.9;
+}
+#videCont{
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 */
+    padding-top: 25px;
+    height: 0;
+    margin: auto;
+    max-width: 720px;
+    height: 0;
+    height: auto !important;
+}
+#yt_video{
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+}
+iframe{
+   position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 1 !important;
+}
+video{
+    position: absolute;
+    top: 15%;
+    left: 0;
+    width: 100%;
+    opacity: 1 !important;
+
+}
+#video1{
+    cursor: pointer; cursor: hand;
+}
+

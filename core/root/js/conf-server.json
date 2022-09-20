@@ -1,0 +1,6 @@
+{
+  "serviceUrl": "services/VBSService",
+  "thumbnailUrl": "http://localhost:8080/vbsthumbs/thumbs/",
+  "videoUrl":"http://localhost:8080/vbsVideos/",
+  "keyFramesUrl":"http://localhost:8080/vbsmedia/keyframes/"
+}

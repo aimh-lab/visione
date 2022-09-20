@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>VBS</title>
+<link rel="stylesheet" href="css/jquery-ui.min.css" >
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" >
+<link rel="stylesheet" href="css/bootstrap.css" >
+<link rel="stylesheet" href="css/vbs.css" >
+
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/jquery-ui.min.js"></script>
+<script src="js/fabric.js"></script>
+<script src="js/vbs.js"></script>
+
+</head>
+<body oncontextmenu="return false;">
+	<div align="center" style="padding-top: 8px; padding-bottom: 15px;">
+		<img src="img/visione-side.png" height="96px"
+			style="border-radius: 20px 20px 20px 20px;" alt="">
+	</div>
+	<div id="dialog" title="Tag Name">
+		<label>tag</label> <input id="tag" name="tag" type="text">
+	</div>
+	<div id="content" class="container-fluid" style="padding-top: 10px;">
+		<div class="row">
+			<div class="col-4">
+				<div>
+					<button id="clean" class="btn btn-outline-info"
+						title="clean canvas">
+						<i class="fa fa-trash"></i> clean
+					</button>
+					<button id="undo" class="btn btn-outline-info" title="undo clean">
+						<i class="fa fa-reply"></i> undo
+					</button>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-5">
+				<canvas id='canvas' width=569 height=320
+					style="border: 1px solid #000000;" tabindex="1000"></canvas>
+			</div>
+			<div class="col-7">
+				<form>
+					<label>Scene tags</label> <input id='annotations' type="text"
+						size="90" placeholder="E.g.: wedding park sunset"><br />
+					<label>Max obj. number</label> <input id='not' type="text"
+						size="90"
+						placeholder="E.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"><br />
+				</form>
+				<div>
+					<br /> <img width="50" draggable="true" ondragstart="drag(event)"
+						id='laptop' title='laptop' alt="" src="icons/laptop.png" /> <img
+						width="50" draggable="true" ondragstart="drag(event)" id='cup'
+						title='cup' alt="" src="icons/cup.png" /> <img width="50"
+						draggable="true" ondragstart="drag(event)" id='wineglass'
+						title='wineglass' alt="" src="icons/wineglass.png" /> <img
+						width="50" draggable="true" ondragstart="drag(event)" id='bottle'
+						title='bottle' alt="" src="icons/bottle.png" /> <img width="50"
+						draggable="true" ondragstart="drag(event)" id='book' title='book'
+						alt="" src="icons/book.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='dessert' title='dessert' alt=""
+						src="icons/dessert.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='clock' title='clock' alt=""
+						src="icons/clock.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='pot' title='pot' alt=""
+						src="icons/pot.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='display' title='display' alt=""
+						src="icons/display.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='chair' title='chair' alt=""
+						src="icons/chair.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='sofa' title='sofa' alt=""
+						src="icons/sofa.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='bench' title='bench' alt=""
+						src="icons/bench.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='humanface' title='humanface' alt=""
+						src="icons/humanface.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='person' title='person' alt=""
+						src="icons/person.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='athlete' title='athlete' alt=""
+						src="icons/athlete.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='sportkite' title='sportkite' alt=""
+						src="icons/sportkite.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='surfboard' title='surfboard' alt=""
+						src="icons/surfboard.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='horse' title='horse' alt=""
+						src="icons/horse.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='dog' title='dog' alt=""
+						src="icons/dog.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='domesticcat' title='domesticcat'
+						alt="" src="icons/domesticcat.png" /> <img width="50"
+						draggable="true" ondragstart="drag(event)" id='Africanelephant'
+						title='Africanelephant' alt="" src="icons/Africanelephant.png" />
+					<img width="50" draggable="true" ondragstart="drag(event)"
+						id='sheep' title='sheep' alt="" src="icons/sheep.png" /> <img
+						width="50" draggable="true" ondragstart="drag(event)" id='teddy'
+						title='teddy' alt="" src="icons/teddy.png" /> <img width="50"
+						draggable="true" ondragstart="drag(event)" id='bicycle'
+						title='bicycle' alt="" src="icons/bicycle.png" /> <img width="50"
+						draggable="true" ondragstart="drag(event)" id='car' title='car'
+						alt="" src="icons/car.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='truck' title='truck' alt=""
+						src="icons/truck.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='boat' title='boat' alt=""
+						src="icons/boat.png" /> <img width="50" draggable="true"
+						ondragstart="drag(event)" id='motorcycle' title='motorcycle'
+						alt="" src="icons/motorcycle.png" />
+
+				</div>
+			</div>
+		</div>
+		<div class="row">
+		<div class="col-5 top5">
+			<table>
+				<tr valign="top">
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='0.png' alt="color" title='0.png'
+						alt="" src="palette32/0.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='1.png' alt="color" title='1.png'
+						alt="" src="palette32/1.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='2.png' alt="color" title='2.png'
+						alt="" src="palette32/2.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='3.png' alt="color" title='3.png'
+						alt="" src="palette32/3.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='4.png' alt="color" title='4.png'
+						alt="" src="palette32/4.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='5.png' alt="color" title='5.png'
+						alt="" src="palette32/5.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='6.png' alt="color" title='6.png'
+						alt="" src="palette32/6.png" /></td>
+					<td align="left"><img border="1" width="32" draggable="true"
+						ondragstart="drag(event)" id='7.png' alt="color" title='7.png'
+						alt="" src="palette32/7.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='8.png' alt="color" title='8.png'
+						alt="" src="palette32/8.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='9.png' alt="color" title='9.png'
+						alt="" src="palette32/9.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='10.png' alt="color" title='10.png'
+						alt="" src="palette32/10.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='11.png' alt="color" title='11.png'
+						alt="" src="palette32/11.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='12.png' alt="color" title='12.png'
+						alt="" src="palette32/12.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='13.png' alt="color" title='13.png'
+						alt="" src="palette32/13.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='14.png' alt="color" title='14.png'
+						alt="" src="palette32/14.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='15.png' alt="color" title='15.png'
+						alt="" src="palette32/15.png" /></td>
+				</tr>
+				<tr valign="top">
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='16.png' alt="color" title='16.png'
+						alt="" src="palette32/16.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='17.png' alt="color" title='17.png'
+						alt="" src="palette32/17.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='18.png' alt="color" title='18.png'
+						alt="" src="palette32/18.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='19.png' alt="color" title='19.png'
+						alt="" src="palette32/19.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='20.png' alt="color" title='20.png'
+						alt="" src="palette32/20.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='21.png' alt="color" title='21.png'
+						alt="" src="palette32/21.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='22.png' alt="color" title='22.png'
+						alt="" src="palette32/22.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='23.png' alt="color" title='23.png'
+						alt="" src="palette32/23.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='24.png' alt="color" title='24.png'
+						alt="" src="palette32/24.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='25.png' alt="color" title='25.png'
+						alt="" src="palette32/25.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='26.png' alt="color" title='26.png'
+						alt="" src="palette32/26.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='27.png' alt="color" title='27.png'
+						alt="" src="palette32/27.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='28.png' alt="color" title='28.png'
+						alt="" src="palette32/28.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='29.png' alt="color" title='29.png'
+						alt="" src="palette32/29.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='30.png' alt="color" title='30.png'
+						alt="" src="palette32/30.png" /></td>
+					<td align="left"><img width="32" draggable="true"
+						ondragstart="drag(event)" id='31.png' alt="color" title='31.png'
+						alt="" src="palette32/31.png" /></td>
+				</tr>
+			</table>
+			</div>
+			<div class="col-7">
+			<table>
+				<tr>
+				<td>
+				<input id='group' type="checkbox" onchange="groupResults(this)">Group by video&nbsp; 
+				</td>
+				</tr>
+				<tr>
+				<td>
+				<input id='isGray' type="checkbox"	onchange="setGray(this)">B/W &nbsp; 
+				<input id='isColor' type="checkbox" onchange="setColor(this)">Color&nbsp;
+				</td>
+				</tr>
+				<tr>
+				<td>
+				<input id='is43' type="checkbox" onchange="set43(this)" >4:3&nbsp;
+				<input id='is169' type="checkbox" onchange="set169(this)">16:9
+				</td>
+				</tr>
+			</table>
+			</div>
+		</div>
+
+		<div class="row">
+			<div id='results' class="col" align="center" style="padding: 1em;"></div>
+		</div>
+	</div>
+	<script>
+
+	
+	$(document).ready(function(){
+		$(function() {
+			$("#dialog").dialog({
+				autoOpen: false
+			});
+		});	
+
+		canvas = new fabric.Canvas('canvas');
+		canvas.uniScaleTransform = true;
+		canvas.selection = false;
+		isClean = false;
+		
+		draw_grid(cellWidth, cellHeight);
+
+		canvas.on('mouse:down', function(o) {
+			console.log('mouse:down');
+
+			draggedLabel = '';
+			if (!o.target && !canvas.selection) {
+				isDrawing = true;
+			    var pointer = canvas.getPointer(o.e);
+			    origX = pointer.x;
+			    origY = pointer.y;
+			    
+			    var imgElement = document.getElementById(draggedLabel);
+		
+			    rect = new fabric.Image(imgElement, {
+			        left: origX,
+			        top: origY,
+			        width: pointer.x-origX,
+			        height: pointer.y-origY,
+			        fill: '',
+			        //stroke : 'red',
+			        stroke : 'black',
+			        type : 'rect',
+			        uuid : generateUUID(),
+			        //strokeWidth:3,
+					strokeWidth : 1,// FRANCA
+
+			    });
+			   canvas.add(rect);
+			}
+			if (o.target) {
+			 	if (o.target.get('type') == 'rect') {
+					$("#" + o.target.get('uuid')).hide();
+				} else {
+					groupObjects = o.target.getObjects();
+					for (thing in groupObjects) {
+						obj = groupObjects[thing];
+						$("#" + obj.get('uuid')).hide();
+					}
+				}
+			}
+		});
+		
+		canvas.on('mouse:move', function(o) {
+			console.log('mouse:move');
+
+		    if (isDrawing && !canvas.selection && rect != null) {
+			    var pointer = canvas.getPointer(o.e);
+			
+			   	if(origX>pointer.x){
+			        rect.set({ left: Math.abs(pointer.x) });
+			    }
+			    if(origY>pointer.y){
+			        rect.set({ top: Math.abs(pointer.y) });
+			    }
+			    rect.set({ width: Math.abs(origX - pointer.x) });
+			    rect.set({ height: Math.abs(origY - pointer.y) });
+			    canvas.renderAll();
+		   }
+		});
+		
+		canvas.on('mouse:dblclick', function(o) {
+			if (o.target) {
+				if (o.target.get('type') == 'rect') {
+					canvas.sendToBack(o.target);
+					canvas.discardActiveObject().renderAll();
+				}
+			}
+		});
+		
+		canvas.on('mouse:up', function(o) {
+			console.log('mouse:up');
+
+			groupObjects = null;
+		
+			if (isDrawing && !canvas.selection) {
+				isDrawing = false;
+				canvas.remove(rect);
+				if (rect.width >= cellWidth/3 && rect.height >= cellHeight/3) {
+					//$("#dialog").append("<label>tag</label> <input id='tag' name='tag' type='text'>");
+					$("#dialog").dialog("open");
+					$("#tag").autocomplete({
+					      source: null
+					 });
+				} else
+					return;
+		
+			} else if (o.target) {
+				if (o.target.get('type') == 'rect') {
+					label =$("#" + o.target.get('uuid')).attr('title');
+					$("#" + o.target.get('uuid')).remove();
+					addDeleteBtn(label, o.target);
+				} else  if (o.target.get('type') == 'activeSelection') {
+					groupObjects = o.target.getObjects();
+					for (thing in groupObjects) {
+						obj = groupObjects[thing];
+						o.target.removeWithUpdate(obj);
+				    	label =$("#" + obj.get('uuid')).attr('title');
+						$("#" + obj.get('uuid')).remove();
+						addDeleteBtn(label, obj);
+				   }
+				}
+			} else
+				return;
+        	isClean = false;
+			txt = cell2Text();
+			
+			if (groupObjects != null) {
+				for (thing in groupObjects) {
+					obj = groupObjects[thing];
+					o.target.addWithUpdate(obj);
+			    }
+			}
+		
+			//set coordinates for proper mouse interaction
+			var objs = canvas.getObjects();
+			for (var i = 0 ; i < objs.length; i++) {
+				objs[i].setCoords();
+			}
+		});
+		
+		$(document).on('click',".deleteBtn",function(event){
+			canvas.getObjects().forEach(function(o) {
+		        if(o.uuid === event.target.id) {
+		        	canvas.discardActiveObject().renderAll();
+		        	canvas.remove(o);
+		        }
+		    })
+		    $("#" + event.target.id).remove();
+			txt = cell2Text();
+		});
+		
+		$('#content').on('drop', dropImage);
+		
+		$("#annotations").autocomplete({
+		      source: null
+		 });
+		
+		//var canvasWrapper = document.getElementById('canvas');
+		canvas.on("keydown", function(e) {
+			console.log("KEY DOWN");
+		    switch (e.keyCode) {
+		      case 38:  /* Up arrow */
+		          if(canvas.getActiveObject()){
+		            canvas.getActiveObject().top -= 5;
+		            canvas.renderAll();
+		          }
+		        break;
+		      case 40:  /* Down arrow  */
+		          if(canvas.getActiveObject()){
+		            canvas.getActiveObject().top += 5;
+		            canvas.renderAll(); 
+		          }
+		        break;
+		      case 37:  /* Left arrow  */
+		          if(canvas.getActiveObject()){
+		            canvas.getActiveObject().left -= 5; 
+		            canvas.renderAll();
+		          }
+		        break;
+		      case 39:  /* Right arrow  */
+		          if(canvas.getActiveObject()){
+		            canvas.getActiveObject().left += 5; 
+		            canvas.renderAll();
+		          }
+		        break;
+		      case 46:  /* delete */
+		          if(canvas.getActiveObject()){
+		            canvas.getActiveObject().remove(); 
+		          }
+		        break;
+
+		    }});
+		$("#annotations").keyup(function(e) {
+			console.log(e.which);
+			annotations = $("#annotations").val();
+			if (annotations != '') {
+				//terms = jQuery.parseJSON(getTerms(annotations));
+				terms = mifileAnnotations;
+				words =  annotations.split(" ");
+				lastTerm = words[words.length - 1];
+				if (lastTerm.length >= 3) {
+					$("#annotations").autocomplete({
+				        minLength: 3,
+				        source: function( request, response ) {
+				          // delegate back to autocomplete, but extract the last term
+				          response( $.ui.autocomplete.filter(
+				        	mifileAnnotations, extractLast( request.term ) ) );
+				        },
+				        focus: function() {
+				          // prevent value inserted on focus
+				          return false;
+				        },
+				        select: function( event, ui ) {
+				          var terms = split( this.value );
+				          // remove the current input
+				          terms.pop();
+				          // add the selected item
+				          terms.push( ui.item.value.split(',')[0] );
+				          // add placeholder to get the comma-and-space at the end
+				          terms.push( "" );
+				          this.value = terms.join( " " );
+							cell2Text();
+				          return false;
+				        }
+				      });
+				} else {
+					$( "#annotations" ).autocomplete( "option", "source", '' );
+				}
+			}
+			cell2Text();
+		});
+		
+		/*
+		$("#not").keyup(function(e) {
+			notField = $("#not").val();
+			cell2Text();
+		});
+		*/
+		
+		$("#not").keyup(function(e) {
+			console.log(e.which);
+			notField = $("#not").val();
+			if (notField != '') {
+				notField = notField.replace(new RegExp("([0-9])([a-z])", "g"), "$1 $2");
+				console.log('>>>' + notField);
+				$("#not").val(notField);
+				words =  notField.split(" ");
+				lastTerm = words[words.length - 1];
+				if (lastTerm.length >= 3) {
+					$( "#not" ).autocomplete({
+				        minLength: 3,
+				        source: function( request, response ) {
+				          // delegate back to autocomplete, but extract the last term
+				          response( $.ui.autocomplete.filter(
+				        	availableTags, extractLast( request.term ) ) );
+				        },
+				        focus: function() {
+				          // prevent value inserted on focus
+				          return false;
+				        },
+				        select: function( event, ui ) {
+				          var terms = split( this.value );
+				          // remove the current input
+				          terms.pop();
+				          // add the selected item
+				          terms.push( ui.item.value.split(',')[0] );
+				          // add placeholder to get the comma-and-space at the end
+				          terms.push( "" );
+				          this.value = terms.join( " " );
+							cell2Text();
+				          return false;
+				        }
+				      });
+				} else {
+					$( "#not" ).autocomplete( "option", "source", '' );
+				}
+			}
+			cell2Text();
+		});
+		
+		
+		$("#dialog").keyup(function(e) {
+			textVal = $("#tag").val();
+			if (textVal.length >= 3) {
+				//$( "#tag" ).autocomplete( "option", "source", availableTags );
+				$( "#tag" ).autocomplete({
+			        minLength: 3,
+			        source: function( request, response ) {
+			          // delegate back to autocomplete, but extract the last term
+			          response( $.ui.autocomplete.filter(
+			        	availableTags, extractLast( request.term ) ) );
+			        },
+			        focus: function() {
+			          // prevent value inserted on focus
+			          return false;
+			        },
+			        select: function( event, ui ) {
+			          var terms = split( this.value );
+			          // remove the current input
+			          terms.pop();
+			          // add the selected item
+			          terms.push( ui.item.value.split(',')[0] );
+			          // add placeholder to get the comma-and-space at the end
+			          terms.push( "" );
+			          this.value = terms.join( " " );
+			          return false;
+			        }
+			      });
+			} else {
+				$( "#tag" ).autocomplete( "option", "source", '' );
+			}
+			 var key = e.which;
+			 if(key == 13) {
+				if (textVal) {
+					canvas.add(rect);
+					addDeleteBtn(textVal.trim(), rect);
+				    rect = null;
+				}
+		
+				$(this).closest('.ui-dialog-content').dialog('close'); 
+				$("#tag").val('');
+				 
+				txt = cell2Text();
+					
+				//set coordinates for proper mouse interaction
+				var objs = canvas.getObjects();
+			    for (var i = 0 ; i < objs.length; i++) {
+					objs[i].setCoords();
+				}
+			}
+		});
+		
+		 $('#dialog').on('dialogclose', function(event) {
+			 $("#tag").val('');
+		 });
+		
+		$("#clean").on('click', function(e) {
+			console.log(isClean);
+			if (!isClean) {
+			    isClean = true;
+				lastAnnotation = $("#annotations").val();
+				lastNotField = $("#not").val();
+
+				canvasObjects = canvas.getObjects();
+				$("#annotations").val('');
+				$("#not").val('');
+				canvas.discardActiveObject().renderAll();
+				canvas.getObjects().forEach(function(o) {
+					if (o.get('type') != 'line') {
+			        	$("#" + o.get('uuid')).hide();
+			        	canvas.remove(o);
+					} 
+			    })
+				txt = cell2Text(isClean);
+			}
+		});
+		
+		$("#undo").on('click', function(e) {
+			console.log(isClean);
+			if (isClean) {
+	        	isClean = false;
+				$("#annotations").val(lastAnnotation);
+				$("#not").val(lastNotField);
+				canvasObjects.forEach(function(o) {
+					if (o.get('type') != 'line') {
+				        canvas.add(o);
+			        	$("#" + o.get('uuid')).show();
+					}
+			    })
+				txt = cell2Text();
+			}
+		});
+		
+		canvas.renderAll();
+	});
+	</script>
+
+</body>
+</html>
