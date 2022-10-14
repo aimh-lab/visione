@@ -5,14 +5,23 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${TOMCAT_MANAGER_USER}
         - TOMCAT_MANAGER_PASS=${TOMCAT_MANAGER_PASS}
-    container_name: core
+    networks:
+      - frontend
     ports:
-      - 80:8080  # tomcat is 
-    expose:
-      - 80
+      - "80:8080"  # tomcat is exposed externally on port 80
     volumes:
-      # the lucene index needs to be mounted in /data/lucene_index
-      - ./core/lucene_vbs2022_Lucia:/data/lucene_index
+      - core-index:/data/lucene_index
 
-      # this is for develop (no need to rebuild container after modifying code in root/)
+      # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
       - ./core/root:/usr/local/tomcat/webapps/visione
+      - ./core/conf:/conf
+
+volumes:
+  # core lucene index
+  core-index:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./core/lucene_vbs2022_Lucia
+
