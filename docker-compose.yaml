@@ -66,7 +66,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ./core/lucene_vbs2022_Lucia
+      device: ${CORE_INDEX_PATH}
 
   # mongo data
   mongo-data:
@@ -74,4 +74,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /data/vbs/mongo-data
+      device: ${MONGO_DATA_PATH}
