@@ -6,7 +6,10 @@ import gzip
 import itertools
 import json
 from pathlib import Path
+import sys
 
+from pymongo import MongoClient
+from pymongo.errors import BulkWriteError
 from prefetch_generator import BackgroundGenerator
 import numpy as np
 from PIL import Image
@@ -17,6 +20,7 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 tqdm = partial(tqdm, dynamic_ncols=True)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -105,11 +109,11 @@ def grouper(iterable, n):
         yield itertools.chain((first_el,), chunk_it)
 
 
-def process_to_file(args):
+def process_to_file(detector, args):
     if args.output is None:
         args.output = Path('.') / args.image_list.with_suffix('.jsonp.gz').name
 
-    log.info('Opening Image List:', args.image_list)
+    log.info(f'Opening Image List: {args.image_list}')
 
     with open(args.image_list, 'r') as list_file, ResultFile(output) as results:
         # open image list
@@ -118,12 +122,15 @@ def process_to_file(args):
         # process missing only (resume)
         image_list = filter(lambda x: x[0] not in results, image_list)
 
+        # prepare image paths
+        image_list = itertools.starmap(lambda frame_id, path: (frame_id, args.image_root / path), image_list)
+
         # load images
         images = itertools.starmap(lambda frame_id, path: (frame_id, load_image_pil(path)), image_list)
         images = BackgroundGenerator(images, max_prefetch=10)
 
         # apply detector
-        data = itertools.starmap(lambda frame_id, x: (frame_id, _apply_detector(x)), images)
+        data = itertools.starmap(lambda frame_id, x: (frame_id, apply_detector(detector, x)), images)
 
         # add data to gzipped file
         for i, (frame_id, y) in enumerate(tqdm(data)):
@@ -133,28 +140,31 @@ def process_to_file(args):
             if i % 100 == 0:
                 results.flush()
 
-def process_to_mongo(args):
-    log.info('Opening Image List:', args.image_list)
+def process_to_mongo(detector, args):
+    log.info(f'Opening Image List: {args.image_list}')
     with open(args.image_list, 'r') as list_file:
         # open image list
         image_list = csv.reader(list_file, delimiter="\t")
 
         # connect to mongo
-        client = MongoClient(args.host, username=args.user, password=args.pass)
+        client = MongoClient(args.host, port=args.port, username=args.username, password=args.password)
         collection = client[args.db][args.collection]
 
         # process missing only (resume)
         image_list = filter(lambda x: collection.find_one({'_id': x[0]}) is None, image_list)
+
+        # prepare image paths
+        image_list = itertools.starmap(lambda frame_id, path: (frame_id, args.image_root / path), image_list)
 
         # load images
         images = itertools.starmap(lambda frame_id, path: (frame_id, load_image_pil(path)), image_list)
         images = BackgroundGenerator(images, max_prefetch=10)
 
         # apply detector
-        dets = itertools.starmap(lambda frame_id, x: (frame_id, _apply_detector(x)), images)
+        dets = itertools.starmap(lambda frame_id, x: (frame_id, apply_detector(detector, x)), images)
 
         # post-process to records
-        records = itertools.starmap(lambda frame_id, det: (frame_id, {
+        records = itertools.starmap(lambda frame_id, det: {
                 # useful ids
                 '_id': frame_id,  # automatically indexed by Mongo
                 # 'video_id': video_id,
@@ -167,11 +177,13 @@ def process_to_mongo(args):
                 'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
                 'object_scores': det['detection_scores'],
                 'object_boxes_yxyx': det['detection_boxes'],
-            } if det else None), dets)
+            } if det else None, dets)
         
+        records = tqdm(records)
+
         # insert in mongo (in batches)
         batches_of_records = grouper(records, args.batch_size)
-        for batch in tqdm(batches_of_records, unit_scale=batch_size):
+        for batch in tqdm(batches_of_records, unit_scale=args.batch_size):
             try:
                 collection.insert_many(batch, ordered=False)
             except BulkWriteError:
@@ -179,8 +191,10 @@ def process_to_mongo(args):
 
 
 def main(args):
-    log.info('Loading detector ...')
-    detector = hub.KerasLayer('https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1', signature='default', signature_outputs_as_dict=True)
+
+    detector_url = 'https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1'
+    log.info(f'Loading detector: {detector_url}')
+    detector = hub.KerasLayer(detector_url, signature='default', signature_outputs_as_dict=True)
     
     if args.output_type == 'file':
         process_fn = process_to_file
@@ -188,7 +202,7 @@ def main(args):
         process_fn = process_to_mongo
 
     try:
-        process_fn(args)
+        process_fn(detector, args)
     except KeyboardInterrupt:
         pass
 
@@ -197,17 +211,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Detect Objects with TensorFlow Hub models.')
 
     parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
-    subparsers = parser.add_subparsers(dest="output-type")
+    parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
+    subparsers = parser.add_subparsers(dest="output_type")
 
     mongo_parser = subparsers.add_parser('mongo')
     mongo_parser.add_argument('--host', default='mongo')
     mongo_parser.add_argument('--port', type=int, default=27017)
-    mongo_parser.add_argument('--user', default='admin')
-    mongo_parser.add_argument('--pass', default='visione')
+    mongo_parser.add_argument('--username', default='admin')
+    mongo_parser.add_argument('--password', default='visione')
     mongo_parser.add_argument('db')
     mongo_parser.add_argument('--collection', default='objects.frcnn_incep_resnetv2_openimagesv4')
     mongo_parser.add_argument('--batch-size', type=int, default=1000)
-
 
     file_parser = subparsers.add_parser('file')
     file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
