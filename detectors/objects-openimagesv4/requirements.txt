@@ -1,0 +1,5 @@
+Pillow
+prefetch_generator
+pymongo
+tensorflow_hub
+tqdm

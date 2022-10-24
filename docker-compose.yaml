@@ -67,6 +67,11 @@ services:
     profiles:
       - devel
 
+  det-oiv4:
+    build:
+      context: ./detectors/objects-openimagesv4
+    profiles:
+      - index
 
 networks:
   frontend:
