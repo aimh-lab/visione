@@ -7,6 +7,7 @@ services:
         - TOMCAT_MANAGER_PASS=${TOMCAT_MANAGER_PASS}
     networks:
       - frontend
+      - backend
     ports:
       - "80:8080"  # tomcat is exposed externally on port 80
     volumes:
@@ -16,6 +17,15 @@ services:
       # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
       - ./core/root:/usr/local/tomcat/webapps/visione
       - ./core/conf:/conf
+
+  clip:
+    image: mesnico/clip2video_visione_webservice
+    networks:
+      - backend
+    ports:
+      - "5010:5010"
+    expose:
+      - "5010"
 
   mongo:
     image: mongo:5.0.5
