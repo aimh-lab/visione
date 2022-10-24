@@ -25,6 +25,13 @@ services:
     expose:
       - "5010"
 
+  tern:
+    image: mesnico/tern_visione_webservice
+    networks:
+      - backend
+    expose:
+      - "5000"
+
   mongo:
     image: mongo:5.0.5
     command: --wiredTigerCacheSizeGB 1
