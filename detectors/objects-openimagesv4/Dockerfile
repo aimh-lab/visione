@@ -1,6 +1,7 @@
 FROM tensorflow/tensorflow:2.7.0-gpu
 
-COPY requirements.txt .
+COPY . /usr/src/app
+WORKDIR /usr/src/app
 
 RUN pip install -r requirements.txt
 
