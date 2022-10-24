@@ -22,8 +22,6 @@ services:
     image: mesnico/clip2video_visione_webservice
     networks:
       - backend
-    ports:
-      - "5010:5010"
     expose:
       - "5010"
 
