@@ -11,6 +11,7 @@ services:
       - "80:8080"  # tomcat is exposed externally on port 80
     volumes:
       - core-index:/data/lucene_index
+      - core-thumbs:/data/thumbnails
 
       # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
       - ./core/root:/usr/local/tomcat/webapps/visione
@@ -67,6 +68,14 @@ volumes:
       type: none
       o: bind
       device: ${CORE_INDEX_PATH}
+
+  # core thumbnails
+  core-thumbs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CORE_THUMBS_PATH}
 
   # mongo data
   mongo-data:
