@@ -5,11 +5,7 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${TOMCAT_MANAGER_USER}
         - TOMCAT_MANAGER_PASS=${TOMCAT_MANAGER_PASS}
-    networks:
-      - frontend
-      - backend
-    ports:
-      - "80:8080"  # tomcat is exposed externally on port 80
+    ports: ["80:8080"]  # tomcat is exposed externally on port 80
     volumes:
       - core-index:/data/lucene_index
       - core-thumbs:/data/thumbnails
@@ -20,17 +16,13 @@ services:
 
   clip:
     image: mesnico/clip2video_visione_webservice
-    networks:
-      - backend
-    expose:
-      - "5010"
+    expose: ["5010"]
+    profiles: ["deploy"]
 
   tern:
     image: mesnico/tern_visione_webservice
-    networks:
-      - backend
-    expose:
-      - "5000"
+    expose: ["5000"]
+    profiles: ["deploy"]
 
   mongo:
     image: mongo:5.0.5
@@ -38,47 +30,30 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-    networks:
-      - backend
-    ports:
-      - "27017:27017"
-    expose:
-      - "27017"
+    ports: ["27017:27017"]
+    expose: ["27017"]
     volumes:
       - mongo-data:/data/db
-    profiles:
-      - devel
+    profiles: ["index"]
 
   mongo-gui:
     image: mongo-express:0.54.0
     restart: always
-    depends_on:
-      - mongo
+    depends_on: ["mongo"]
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${ME_CONFIG_MONGODB_ADMINUSERNAME}
       - ME_CONFIG_MONGODB_ADMINPASSWORD=${ME_CONFIG_MONGODB_ADMINPASSWORD}
       - ME_CONFIG_BASICAUTH_USERNAME=${ME_CONFIG_BASICAUTH_USERNAME}
       - ME_CONFIG_BASICAUTH_PASSWORD=${ME_CONFIG_BASICAUTH_PASSWORD}
-    networks:
-      - backend
-    ports:
-      - "8081:8081"
-    profiles:
-      - devel
+    ports: ["8081:8081"]
+    profiles: ["index"]
 
   det-oiv4:
     build:
       context: ./detectors/objects-openimagesv4
-    profiles:
-      - index
-
-networks:
-  frontend:
-    driver: bridge
-  backend:
-    driver: bridge
-
+    profiles: ["index"]
+    
 
 volumes:
   # core lucene index
