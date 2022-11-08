@@ -1,0 +1,6 @@
+jupyter
+ipyplot
+natsort
+pymongo
+scikit-learn
+tqdm

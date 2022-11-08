@@ -50,10 +50,11 @@ services:
     profiles: ["index"]
 
   det-oiv4:
-    build:
-      context: ./detectors/objects-openimagesv4
+  frame-cluster:
+    build: ./frame-cluster
+    depends_on: ["mongo"]
     profiles: ["index"]
-    
+
 
 volumes:
   # core lucene index
