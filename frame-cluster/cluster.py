@@ -144,13 +144,16 @@ def main(args):
     clustering_fn = partial(_apply_clustering, features_collection)
     clustered_frames = map(clustering_fn, grouped_frames)
 
-    # for frame_ids, frames_codes in clustered_frames:
-    #     import json
-    #     with open('devel/codes.json', 'w') as f:
-    #         json.dump([{'ids': frame_ids, 'codes': frames_codes}], f)
-    #     break
+    clustered_frames = itertools.islice(clustered_frames, 10)
+    dump = []
+    for frame_ids, frames_codes in clustered_frames:
+        dump.append({'ids': frame_ids, 'codes': frames_codes})
 
-    # exit(0)
+    import json
+    with open('devel/codes.json', 'w') as f:
+        json.dump(dump, f)
+
+    exit(0)
 
 
     write_ops = map(_generate_write_ops, clustered_frames)
