@@ -5,6 +5,7 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${TOMCAT_MANAGER_USER}
         - TOMCAT_MANAGER_PASS=${TOMCAT_MANAGER_PASS}
+    depends_on: ["clip", "tern"]
     ports: ["80:8080"]  # tomcat is exposed externally on port 80
     volumes:
       - core-index:/data/lucene_index
@@ -16,13 +17,13 @@ services:
 
   clip:
     image: mesnico/clip2video_visione_webservice
+    ports: ["5010:5010"]
     expose: ["5010"]
-    profiles: ["deploy"]
 
   tern:
     image: mesnico/tern_visione_webservice
+    ports: ["5000:5000"]
     expose: ["5000"]
-    profiles: ["deploy"]
 
   mongo:
     image: mongo:5.0.5
@@ -49,11 +50,18 @@ services:
     ports: ["8081:8081"]
     profiles: ["index"]
 
+
   det-oiv4:
-    build:
-      context: ./detectors/objects-openimagesv4
+    build: ./detectors/objects-openimagesv4
+    depends_on: ["mongo"]
     profiles: ["index"]
-    
+
+
+  frame-cluster:
+    build: ./frame-cluster
+    depends_on: ["mongo"]
+    profiles: ["index"]
+
 
 volumes:
   # core lucene index
