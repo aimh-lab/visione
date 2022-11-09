@@ -10,6 +10,7 @@ services:
     volumes:
       - core-index:/data/lucene_index
       - core-thumbs:/data/thumbnails
+      - core-logs:/data/logs
 
       # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
       - ./core/root:/usr/local/tomcat/webapps/visione
@@ -79,6 +80,14 @@ volumes:
       type: none
       o: bind
       device: ${CORE_THUMBS_PATH}
+  
+  # core logs
+  core-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CORE_LOGS_PATH}
 
   # mongo data
   mongo-data:
