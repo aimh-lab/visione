@@ -1,0 +1,3 @@
+host: 'myMongoDB'
+username: 'myusername'
+password: 'mypassword'
