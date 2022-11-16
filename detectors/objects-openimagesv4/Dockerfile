@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.7.0-gpu
+FROM docker.io/tensorflow/tensorflow:2.7.0-gpu
 
 COPY . /usr/src/app
 WORKDIR /usr/src/app
