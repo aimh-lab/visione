@@ -20,7 +20,7 @@ RUN sed -i -e 's:allow=":allow="172\\.\\d+\\.\\d+\\.\\d+|:' $CATALINA_HOME/webap
 # COPY are good for deploy, but these should be mounted for develop
 COPY conf/ /conf
 # COPY setenv.sh $CATALINA_HOME/bin
-COPY root/ $CATALINA_HOME/webapps/visione
+COPY root/ $CATALINA_HOME/webapps/ROOT
 # COPY Visione.war $CATALINA_HOME/webapps
 
 ENV VISIONE_HOME_3 /conf
