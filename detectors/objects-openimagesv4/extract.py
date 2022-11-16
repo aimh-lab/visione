@@ -140,6 +140,7 @@ def process_to_file(detector, args):
             if i % 100 == 0:
                 results.flush()
 
+
 def process_to_mongo(detector, args):
     log.info(f'Opening Image List: {args.image_list}')
     with open(args.image_list, 'r') as list_file:
