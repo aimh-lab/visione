@@ -15,41 +15,6 @@ from sklearn.preprocessing import normalize
 from tqdm import tqdm
 
 
-def _hash_leaves(tree, n_leaves):
-    hashes = [None] * n_leaves
-
-    def _recurse(tree, prefix=''):
-        children = tree.get('children', [])
-        if not children:
-            hashes[tree['node_id']] = prefix
-            return
-    
-        for i, child in enumerate(children):
-            _recurse(child, prefix=f'{prefix}{i}')
-    
-    _recurse(tree)
-    return hashes
-
-
-def _cluster_full_tree(X, ndim=None):
-    if ndim:
-        X = PCA(ndim).fit_transform(X)
-
-    clustering = AgglomerativeClustering(linkage='single', affinity='cosine')
-    clustering.fit(X)
-
-    children = clustering.children_
-    n_leaves = clustering.n_leaves_
-
-    lookup = {i: dict(node_id=i) for i in range(n_leaves)}
-    for node_id, (left, right) in enumerate(children, start=n_leaves):
-        lookup[node_id] = dict(node_id=node_id, children=(lookup[left], lookup[right]))
-    
-    root = lookup[n_leaves + children.shape[0] - 1]
-    hashes = _hash_leaves(root, n_leaves)
-
-    return hashes
-
 @np.vectorize
 def _ascii_encode(num, ascii_chars_lim=(33, 126)):
     """ Maps [0 ... 94^2-1] to two printable ASCII chars (codes 33-126). """
@@ -134,7 +99,6 @@ def main(args):
 
     # group frames by video_id and iterate
     grouped_frames = frames_collection.aggregate([
-        # {'$match': {'video_id': '05472'}},
         {'$group': {
             '_id': '$video_id',  # groupby key
             'frames': {'$push': '$_id'}  # set of frames ids
@@ -143,18 +107,6 @@ def main(args):
 
     clustering_fn = partial(_apply_clustering, features_collection)
     clustered_frames = map(clustering_fn, grouped_frames)
-
-    clustered_frames = itertools.islice(clustered_frames, 10)
-    dump = []
-    for frame_ids, frames_codes in clustered_frames:
-        dump.append({'ids': frame_ids, 'codes': frames_codes})
-
-    import json
-    with open('devel/codes.json', 'w') as f:
-        json.dump(dump, f)
-
-    exit(0)
-
 
     write_ops = map(_generate_write_ops, clustered_frames)
     write_ops = itertools.chain.from_iterable(write_ops)
