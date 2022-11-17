@@ -5,3 +5,4 @@ WORKDIR /usr/src/app
 
 RUN pip install -r requirements.txt
 
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/common"

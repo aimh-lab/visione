@@ -62,16 +62,12 @@ services:
 
   det-oiv4:
     build: ./detectors/objects-openimagesv4
-    environment:
-      - PYTHON_PATH="${PYTHONPATH}:/usr/src/common"
     volumes: ["./visione:/usr/src/common"]
     depends_on: ["mongo"]
     profiles: ["index"]
 
   feat-gem:
     build: ./feature-extractors/gem
-    environment:
-      - PYTHON_PATH="${PYTHONPATH}:/usr/src/common"
     volumes: ["./visione:/usr/src/common"]
     depends_on: ["mongo"]
     profiles: ["index"]
