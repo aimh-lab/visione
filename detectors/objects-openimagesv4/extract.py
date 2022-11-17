@@ -119,6 +119,7 @@ def main(args):
                 'object_boxes_yxyx': det['detection_boxes'],
             } if det else None, ids_and_dets)
         
+        records = filter(lambda x: x is not None, records)
         records = tqdm(records)
         saver.add_many(records)
 
