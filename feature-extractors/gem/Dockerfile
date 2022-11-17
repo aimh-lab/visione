@@ -19,4 +19,4 @@ RUN gdown -O Resnet-101-AP-GeM.pt 1UWJGDuHtzaQdFhSMojoYVQjmCXhIwVvy
 
 COPY extract.py .
 
-ENV PYTHONPATH "${PYTHONPATH}:/usr/src/common"
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
