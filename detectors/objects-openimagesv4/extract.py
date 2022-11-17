@@ -129,6 +129,7 @@ if __name__ == "__main__":
     parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
     parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
     parser.add_argument('--save-every', type=int, default=100)
+    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     subparsers = parser.add_subparsers(dest="output_type")
 
     mongo_parser = subparsers.add_parser('mongo')
