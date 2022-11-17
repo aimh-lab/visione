@@ -12,7 +12,7 @@ import dirtorch.nets as nets
 from dirtorch.utils import common as ops
 from dirtorch.test_dir import extract_image_features
 
-from common.savers import MongoCollection
+from visione.savers import MongoCollection, GzipJsonpFile
 
 
 def load_model(path, iscuda):
@@ -35,7 +35,6 @@ def read_lines(file_path):
 def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size=1000):
     with open(image_list_path, 'r') as image_list:
         
-        image_list = more_itertools.take(50, image_list)  # debug
         for batch_list in more_itertools.batched(image_list, batch_size):
             ids_and_paths = map(lambda x: x.rstrip().split('\t'), batch_list)
             ids, paths = zip(*ids_and_paths)
@@ -53,7 +52,7 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
     net.pca = net.pca['Landmarks_clean']
     whiten = {'whitenp': 0.25, 'whitenv': None, 'whitenm': 1.0}
 
-    transforms = "Scale(1050, interpolation=Image.BICUBIC, largest=True), tvf.Grayscale(num_output_channels=3)"
+    transforms = "Scale(1050, interpolation=Image.BICUBIC, largest=True)"
     dataset_signature = f'ImageList("{tmp_list_path}", root="{root}")'
 
     for paths in image_lists:
