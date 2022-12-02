@@ -61,19 +61,19 @@ services:
     profiles: ["index"]
 
   det-oiv4:
-    build: ./detectors/objects-openimagesv4
+    build: ./analysis/objects-openimagesv4
     volumes: ["./visione:/usr/src/visione"]
     depends_on: ["mongo"]
     profiles: ["index"]
 
   feat-gem:
-    build: ./feature-extractors/gem
+    build: ./analysis/gem
     volumes: ["./visione:/usr/src/visione"]
     depends_on: ["mongo"]
     profiles: ["index"]
 
   frame-cluster:
-    build: ./frame-cluster
+    build: ./analysis/frame-cluster
     depends_on: ["mongo"]
     profiles: ["index"]
 
