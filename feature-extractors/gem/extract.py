@@ -106,7 +106,7 @@ def main(args):
     
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Detect Objects with TensorFlow Hub models.')
+    parser = argparse.ArgumentParser(description='Extract GeM features.')
 
     parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
     parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
