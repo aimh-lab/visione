@@ -30,7 +30,13 @@ def _ascii_encode(num, ascii_chars_lim=(33, 126)):
 
 
 def _cluster(X):
-    if X.shape[0] > 94*94:
+    num_samples = X.shape[0]
+
+    # TODO better handling of edge case with only one sample
+    if num_samples == 1:  
+        return ['!!']
+
+    if num_samples > 94*94:
         warnings.warn(f'Exceeded max num clusters representable ({94*94 - 1}), codes might be wrong!')
         
     labels = []
