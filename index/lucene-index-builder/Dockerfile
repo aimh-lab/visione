@@ -1,0 +1,1 @@
+FROM docker.io/maven:3.8.6-openjdk-18
