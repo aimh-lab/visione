@@ -1,0 +1,5 @@
+pandas
+prefetch_generator
+pymongo
+scikit-image
+tqdm
