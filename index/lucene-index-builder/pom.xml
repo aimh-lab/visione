@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>it.cnr.isti.visione</groupId>
-  <artifactId>index</artifactId>
+  <artifactId>lucene-index-builder</artifactId>
   <version>4.0</version>
 
-  <name>index</name>
+  <name>lucene-index-builder</name>
   <description>Creates VISIONE indices.</description>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
