@@ -122,6 +122,9 @@ public class IndexBuilder {
                     doc.add(new StoredField("objectsinfo", entry.get("object_info"     , "")));
 
                     // features
+                    doc.add(new       Field("features"   , entry.get("features_gem_str", ""), surrogateTextFieldType));
+
+                    // features
                     // featuresFields.forEach(field -> doc.add(field));
 
                     // objects
