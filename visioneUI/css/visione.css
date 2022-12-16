@@ -1,0 +1,275 @@
+@charset "UTF-8";
+.ui-autocomplete { position: absolute; cursor: default;z-index:30 !important;}
+
+.vline {
+    border-left: 2px solid grey;
+    height: 450px;
+}
+
+.myalign{
+	text-align:center;
+}
+.with-margin {
+  margin-bottom: 5px;
+}
+.top5 { 
+	margin-top:5px; 
+}
+.top7 { 
+	margin-top:7px; 
+}
+.hline {
+    border-bottom: 2px solid grey;
+    width: 800px;
+}
+
+.myborder {   border-width: 5px;   border-color: red;   border-style: solid; }
+
+.myimg-thumbnail{
+	padding: 0.1rem;
+	background-color: #fff;
+	border: 3px solid #dee2e6;
+	border-radius: 0.25rem;
+	width: 145px;
+}
+
+.thumbnailButtons{
+	background-color: #fff;
+	width: 200px;
+}
+
+.myrow{
+	margin-right:0%;
+	margin-left:0%;
+	padding-bottom: 8px;
+}
+.mycol{
+	padding-right:5px;
+	padding-left:0px;
+}
+.myimg{
+	width: 100%;
+    height: 100%;
+    display: block;
+    margin: 0 auto;
+    border-style: none;
+}
+
+body{
+	font-size: 10px;
+	
+}
+
+
+input::-webkit-input-placeholder {
+    font-size: 10px;
+    line-height: 3;
+}
+
+#overlay0 {
+  position: absolute;
+  display: none;
+  width: 100%;
+  height: 100%;
+  top: 0%;
+  left: 0%;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255,255,255,0.5);
+  z-index: 2;
+  cursor: pointer;
+}
+
+#text0 {
+  position: relative;
+  top: 35%;
+  left: 50%;
+  font-size: 60px;
+  color: white;
+  transform: translate(-50%,-50%);
+  -ms-transform: translate(-50%,-50%);
+}
+
+#overlay1 {
+  position: absolute;
+  display: none;
+  width: 100%;
+  height: 100%;
+  top: 0%;
+  left: 0%;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255,255,255,0.5);
+  z-index: 2;
+  cursor: pointer;
+}
+
+#text1 {
+  position: relative;
+  top: 35%;
+  left: 50%;
+  font-size: 60px;
+  color: white;
+  transform: translate(-50%,-50%);
+  -ms-transform: translate(-50%,-50%);
+}
+
+input.checkboxAvs {
+    width : 16px;
+    height : 16px;
+}
+
+.app_page1 {
+  margin: 0;
+  overflow: hidden;
+  height:100%;
+}
+
+@media (min-width: 768px){
+  #left {
+    position: absolute;
+    top:430px;
+    bottom: 0;
+    left: 0;
+    width: 80%;
+    overflow-y: scroll; 
+  }
+
+  #middle {
+    position: absolute;
+    top: 0px;
+    bottom: 0;
+    left: 0%;
+    width: 0%;
+    overflow-y: scroll; 
+  }
+  
+  #right {
+    position: absolute;
+    top: 0px;
+    bottom: 0;
+    right: 0;
+    width: 10%;
+  }
+}
+
+#left {
+  background-color: #FC6E51;
+  text-align: center;
+  height:100%;
+}
+
+#middle{
+  background-color: lightgreen;
+  text-align: center;
+  height:100%;
+}
+
+#right {
+  height:100%;
+  background-color: #4FC1E9;
+  text-align: center;
+}
+
+h4{
+  padding: 10px 0; 
+}
+
+.zoom {
+  padding: 50px;
+  transition: transform .2s;
+  margin: 0 auto;
+  padding: 0.1rem;
+  packground-color: #fff;
+  width: 140px;
+  height: 80px;
+}
+
+.zoom:hover {
+  -ms-transform: scale(1.5); /* IE 9 */
+  -webkit-transform: scale(1.5); /* Safari 3-8 */
+  transform: scale(1.5); 
+}
+
+.flex-container {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.flex-container > div {
+  background-color: #f1f1f1;
+  width: 100px;
+  margin: 10px;
+  text-align: center;
+  line-height: 75px;
+  font-size: 30px;
+  }
+  
+  
+
+
+
+
+/* Hide Play button + controls on iOS */
+video::-webkit-media-controls {
+    display:none !important;
+}
+
+.hline:after {
+    display: block;
+    border-bottom: 0.5px solid #3383FF;
+    width: 100%;
+}
+
+
+.selection-area {
+    background: rgba(46, 115, 252, 0.11);
+    border: 2px solid rgba(98, 155, 255, 0.81);
+    border-radius: 0.1em;
+}
+
+.container {
+    user-select: none;
+}
+
+.dropdown {
+  display: inline-block;
+  position: relative;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  width: 100%;
+  overflow: auto;
+  box-shadow: 0px 10px 10px 0px rgba(0,0,0,0.4);
+  text-align: right;
+}
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+.dropdown-content a {
+  display: block;
+  background-color: #E0A800;
+  
+  color: #000000;
+  padding: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: larger;
+}
+.dropdown-content a:hover {
+  color: #FFFFFF;
+  background-color: #00A4BD;
+}
+
+.task {
+  font-weight: bold;
+  font-size: x-large;
+    background-image: linear-gradient(to right, #AA262A , #FBAC07);
+  
+  color: navy;
+  vertical-align: bottom;
+  padding: 4px;
+  border-radius: 8px;
+}
+  

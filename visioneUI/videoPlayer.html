@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://vjs.zencdn.net/7.18.1/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/7.18.1/video.min.js"></script>
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script src="js/vbs_visione3.js"></script>
+
+  <!-- If you'd like to support IE8 (for Video.js versions prior to v7) -->
+  <!-- <script src="https://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script> -->
+</head>
+
+<body>
+	<script type="text/javascript">
+		$.urlParam = function(name) {
+			var results = new RegExp('[\?&]' + name + '=([^&#]*)')
+					.exec(window.location.href);
+			return results[1] || 0;
+		}
+		
+	  	function submitAtCurrentPlayTime() {
+	  		myPlayer.pause();
+	  		var whereYouAt = myPlayer.currentTime();
+	  		videoid = $.urlParam('videoid');
+	  		if (confirm('Are you sure you want to submit ' + videoid + ' @ ' + whereYouAt + '?')) {
+	  			
+	  			res = submitAtTime(videoid, whereYouAt);
+				console.log(res);
+				alert('Server response: ' + res);
+	  		}
+	  	}
+	
+	</script>
+	
+	<div id='videoDiv'>
+		<video
+	
+		id="vbsvideo"
+		    class="video-js"
+		    controls
+		    preload="auto"
+		    width="640"
+		    height="480"
+		    poster="MY_VIDEO_POSTER.jpg"
+		    data-setup="{}"
+		  >
+		    <source src="" type="video/mp4" />
+		    <source src="MY_VIDEO.webm" type="video/webm" />
+		    <p class="vjs-no-js">
+		      To view this video please enable JavaScript, and consider upgrading to a
+		      web browser that
+		      <a href="https://videojs.com/html5-video-support/" target="_blank"
+		        >supports HTML5 video</a>
+		    </p>
+		  </video>	
+	</div>
+
+<script type="text/javascript">
+  	
+	url = $.urlParam('url');
+	t = $.urlParam('t');
+	var myPlayer = videojs('vbsvideo'); 
+	myPlayer.src({ type: "video/mp4", src: url});
+	myPlayer.currentTime(t);
+	myPlayer.muted(true);//	myPlayer.autoplay(true);
+	myPlayer.play();
+	
+
+
+</script>
+
+
+
+  <button id="submit" class="btn btn-warning btn-sm"
+					title="Submit result at current play time" onclick="submitAtCurrentPlayTime();">
+					<i class="fa fa-play"> Submit</i></button>
+</body>
+</html>
