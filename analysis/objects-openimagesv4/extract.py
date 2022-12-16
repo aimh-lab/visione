@@ -2,6 +2,7 @@ import argparse
 from functools import partial
 import logging
 import itertools
+import more_itertools
 from pathlib import Path
 import sys
 
@@ -92,7 +93,7 @@ def main(args):
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
 
         # prepare image paths
-        image_ids, image_paths = zip(*ids_and_paths)
+        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
         image_paths = map(lambda path: args.image_root / path, image_paths)
 
         # load images

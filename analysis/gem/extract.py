@@ -94,7 +94,7 @@ def main(args):
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
-        image_ids, image_paths = zip(*ids_and_paths)
+        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
 
         # chunked image feature extraction
         chunked_image_paths = more_itertools.batched(image_paths, args.save_every)
