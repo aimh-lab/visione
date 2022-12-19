@@ -33,7 +33,7 @@ public class Logging {
 		this.destFolder = destFolder;
 	}
 	
-	public synchronized void save(String videoId, int frameNumber, String time, String dresSessionId) throws IOException {
+	public synchronized void save(String videoId, int frameNumber, String time, String dresSessionId, long clientSubmissionTimestamp) throws IOException {
 		
 		new Runnable() {
 			
@@ -46,7 +46,7 @@ public class Logging {
 					log.setSessionId(dresSessionId);
 					
 					//TO CHECK!
-					log.setTimestamp(System.currentTimeMillis());
+					log.setTimestamp(clientSubmissionTimestamp);
 					log.setVideoId(videoId);
 					if (time != null)
 						log.setVideoTime(time);
@@ -57,10 +57,10 @@ public class Logging {
 					log.setResults(results);
 					
 					String json = gson.toJson(log);
-//					System.out.println(json);
+//				
 					
 					if (destFolder != null) {
-						currentTimeFilename = System.currentTimeMillis();
+						currentTimeFilename = clientSubmissionTimestamp;
 						try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, currentTimeFilename + ".json")))) {
 							writer.write(json);
 						} catch (IOException e) {
@@ -87,7 +87,7 @@ public class Logging {
 			public void run() {
 				synchronized (TYPE) {
 					if (destFolder != null) {
-						try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, currentTimeFilename + ".response.txt")))) {
+						try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, currentTimeFilename + ".DRESresponse.txt")))) {
 							writer.write(response);
 						} catch (IOException e) {
 							e.printStackTrace();

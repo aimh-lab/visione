@@ -273,9 +273,9 @@ function getMiddleTimestamp(id) {
 			}).responseText
 }
 
-function submitWithAlert(id) {
+function submitWithAlert(id,videoId,collection) {
 	if (confirm('Are you sure you want to submit?')) {
-		res = submitResult(id);
+		res = submitResult(id, videoId,collection);
 		console.log(res);
 		alert('Server response: ' + res);
 	}
@@ -341,11 +341,11 @@ function startNewMVKKISSession() {
 	}
 }
 
-function submitResult(id) {
+function submitResult(id,videoId,collection) {
 	return $.ajax({
 		type : "GET",
 		async : false,
-		url : urlBSService+"/submitResult?id="+ id,
+		url : urlBSService+"/submitResult?id="+ id+ "&videoid="+ videoId+"&dataset="+ collection,
 	}).responseText;
 }
 
@@ -963,7 +963,7 @@ function showResults(data) {
 				+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
 				//+'<span style="color:blue;" title="' + imgId + '" id="ternSim' + imgId + '">tern </span>'
 				//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
-				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\'); return false;"></i></span>'
+				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\',\''+ collection+ '\'); return false;"></i></span>'
 
 				//backgroundImg = "background-image: url('" + thumbnailUrl+ path + "')";
 				//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + imgId + '" title="'+ imgId+ '" class="myimg-thumbnail" loop preload="none"><source src="' + videoUrlPreview + '" type="video/mp4"></video></div>'
