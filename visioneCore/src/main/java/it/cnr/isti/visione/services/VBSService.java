@@ -66,7 +66,8 @@ public class VBSService {
 	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
 	private LogParserDRES dresLog;
 //	private LogParserDRES dresLogAVS;
-	private Logging log;
+	private Logging visioneLog_saved_at_submission_time;
+	private Logging visioneLog;
 //	private Logging logAVS;
 
 	@Context
@@ -90,7 +91,8 @@ public class VBSService {
 		if (!LOGGING_FOLDER_DRES.exists())
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		log = new Logging(LOGGING_FOLDER);
+		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
+		visioneLog=new Logging(LOGGING_FOLDER);
 //		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
 //		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("started...");
@@ -132,7 +134,7 @@ public class VBSService {
 	@Produces(MediaType.TEXT_PLAIN)
 	public String init() {
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		log = new Logging(LOGGING_FOLDER);
+		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
 //		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
 //		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("New Session Started");
@@ -290,7 +292,8 @@ public class VBSService {
 			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults);
  			client.dresSubmitLog(dresLog.getResultLog()); 
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			log.query2Log(query, simReorder, resLog); 
+			visioneLog_saved_at_submission_time.query2Log(query, simReorder, resLog); 
+			
 //			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
 			// TODO Auto-generated catch block
@@ -473,14 +476,13 @@ public class VBSService {
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder,  @QueryParam("dataset") String dataset) {
 		String response = "";
 		System.out.println("isAVS " + isAVS );
-		String videoId = null;
+		String videoId = videoIdParam;
 		String time = null;
 		int middleFrame = -1;
 		if (keyframeIdParam != null) {
-			videoId = keyframeIdParam.split("/")[0];
 			try {
 				middleFrame = Integer.parseInt(datasetSearcher.get(dataset).get(keyframeIdParam, Fields.MIDDLE_FRAME));
 			} catch (IOException e) {
@@ -497,8 +499,8 @@ public class VBSService {
 //				logAVS.query2Log(query, query2, occur, simreorder, "");
 //				dresLogAVS.query2Log(query, simreorder, "");
 
-				log.save(videoId, middleFrame, null, client.getSessionId());
-				dresLog.save();
+				visioneLog_saved_at_submission_time.save(videoId, middleFrame, null, client.getSessionId());
+			//	dresLog.save();
 			} catch (IOException | NumberFormatException e1) {
 				e1.printStackTrace();
 				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
@@ -541,7 +543,7 @@ public class VBSService {
 					}
 					
 				}
-				log.saveResponse(response);
+				visioneLog_saved_at_submission_time.saveResponse(response);
 //				client.dresSubmitQuery(dresLog.getEventLog());
 				client.dresSubmitLog(dresLog.getResultLog()); //TODO
 				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
@@ -553,8 +555,8 @@ public class VBSService {
 			}
 		} else {
 			try {
-				log.save(videoId, -1, time, client.getSessionId());
-				dresLog.save();
+				visioneLog_saved_at_submission_time.save(videoId, -1, time, client.getSessionId());
+			//	dresLog.save();
 			} catch (IOException | NumberFormatException e1) {
 				e1.printStackTrace();
 				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);

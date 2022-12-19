@@ -26,56 +26,32 @@ import it.cnr.isti.visione.services.VisioneQuery;
 
 public class LogParserDRES {
 	
-	//private static final String TYPE = "submit";
-	
-	//private Gson gson = new Gson();
 	
 	private File destFolder;
-		
-//	private String[] colors = {"black", "blue", "brown", "green", "grey", "orange", "pink", "purple", "red", "white", "yellow"};
-//	private String[] letters = {"a", "b", "c", "d", "e", "f", "g"};
-//	
 	private QueryResultLog resultLog = new QueryResultLog();
 	
 	public QueryResultLog getResultLog() {
 		return this.resultLog;
 	}
 	
-
-//	private boolean checkColor(String value) {
-//		for (String color : colors) {
-//	        if (value.equals("4wc" + color))
-//	            return true;
-//	        for (int i = 0; i< 7; i++) {
-//	        	for (String letter: letters) {
-//	        		if (value.equals(i + letter + color))
-//	    	            return true;
-//	        	}
-//	        }
-//	    }
-//		
-//		return false;
-//	}
-//	
 	public LogParserDRES(File destFolder) {
 		this.destFolder = destFolder;
 	}
 	
-	public synchronized void save() throws IOException {		
-		if (destFolder != null) {
-			long time = System.currentTimeMillis();
-//			try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".log.json")))) {
-//				writer.write(getEventLog().toString());
+//	public synchronized void save() throws IOException {		
+//		if (destFolder != null) {
+//			long time = System.currentTimeMillis();
+//			if (getResultLog() != null) {
+//				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".resultLog.json")))) {
+//					writer.write(getResultLog().toString());
+//				}
 //			}
-			if (getResultLog() != null) {
-				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".resultLog.json")))) {
-					writer.write(getResultLog().toString());
-				}
-			}
-			
-		}
-	}
-	public synchronized void save(long timestamp, String sessionid, String user ) throws IOException {	
+//			
+//		}
+//	}
+	
+	
+	public synchronized void save(long timestamp, String sessionid, String user) throws IOException {	
 		String fn=timestamp+"_"+sessionid+"_"+user;
 		if (destFolder != null) {
 			if (getResultLog() != null) {
