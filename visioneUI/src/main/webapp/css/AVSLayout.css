@@ -1,0 +1,49 @@
+@charset "UTF-8";
+
+body {
+	overflow: hidden;
+}
+
+.containerGrid {
+	height: 100vh;
+	width: 100vw;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: 190px 1fr 30px;
+}
+
+.headerGrid {
+	border-bottom: 0px solid lightgrey;
+}
+
+.sidebarGrid {
+	border-right: 0px solid lightgrey;
+	max-width: 330px;
+	overflow-y: auto;
+	padding: 5px;
+}
+
+.footerGrid {
+	border-top: 0px solid lightgrey;
+}
+
+.bodyGrid {
+	display: grid;
+	grid-template-columns: 1fr 4.2fr .35fr;
+	overflow: hidden;
+}
+
+.contentGrid {
+	overflow-y: auto;
+	padding: 0px;
+	border-left: 0px solid green;
+	
+}
+
+.rightSidebarGrid {
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 0px;
+	border-left: 0px solid green;
+}
+
