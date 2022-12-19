@@ -590,7 +590,7 @@ function searchByForm() {
 
 function setResults(data) {
 	results = data;
-	results = sortByVideo(data);
+	//results = sortByVideo(data);
 	resultsSortedByVideo = results;
 	groupResults(document.getElementById("group"));
 	 // history.pushState(JSON.stringify($(this)),'List',window.location.href);

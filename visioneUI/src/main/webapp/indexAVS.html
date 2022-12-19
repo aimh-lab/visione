@@ -33,18 +33,31 @@
   	
   		  		<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
 			<span style="float: left; padding-left: 5px; padding-right: 5px;">
-			<span class="task">AVS</span>
 			
-			<div class="dropdown">
-		  		<button
-					id="newsession" class="btn btn-warning btn-sm"
-					title="Start a new Session">
-					<i class="fa fa-play">New Session</i>
-				</button>
-		  <div class="dropdown-content">
-		  <a href="" onclick="startNewKISSession(); return false;">KIS</a>
-		  <a href="" onclick="startNewAVSSession(); return false;">AVS</a>
-		  </div>
+<div style="float: left;"><button
+					id="mvk" class="btn btn-outline-info btn-sm"
+					title="Switch to Marine Dataset" onclick="mvkTab();">
+				<i class="fa fa-home"> V3C KIS</i>
+					
+				</button></div>
+				  		<div style="float: left;"><button
+					id="mvk" class="btn btn-outline-info btn-sm"
+					title="Switch to Marine Dataset" onclick="mvkTab();">
+				<i class="fa fa-home"> V3C AVS</i>
+					
+				</button></div>
+				  		<div style="float: left;"><button
+					id="mvk" class="btn btn-outline-info btn-sm"
+					title="Switch to Marine Dataset" onclick="mvkTab();">
+				<i class="fa fa-home"> MVK KIS</i>
+					
+				</button></div>
+				  		<div style="float: left;"><button
+					id="mvk" class="btn btn-outline-info btn-sm"
+					title="Switch to Marine Dataset" onclick="mvkTab();">
+				<i class="fa fa-home"> MVK AVS</i>
+					
+				</button></div>
 		</div>
 			
 			</span> <img src="img/logoVISIONE.png" height="28px"
@@ -62,12 +75,7 @@
   	
   	</td>
   	<td>
-  		<div><button
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="mvkTab();">
-				<i class="fa fa-home"> V3C Dataset</i>
-					
-				</button></div>
+
   		<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
   	</td>
   	</tr>
