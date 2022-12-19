@@ -29,8 +29,8 @@ import org.apache.lucene.search.TopDocs;
 import com.google.gson.Gson;
 
 import dev.dres.ApiException;
-import it.cnr.isti.visione.logging.DRESClient;
-import it.cnr.isti.visione.logging.DRESFakeClient;
+//import it.cnr.isti.visione.logging.DRESClient;
+import it.cnr.isti.visione.logging.fake.DRESClient;
 import it.cnr.isti.visione.logging.LogParserDRES;
 import it.cnr.isti.visione.logging.Logging;
 import it.cnr.isti.visione.logging.Tools;
@@ -49,7 +49,6 @@ public class VBSService {
 
 	private static final int K_MERGE = 200000;
 	private static final int K_Q_TERN = 100;//default value 260
-//	private DRESFakeClient client = new DRESFakeClient();
 	private DRESClient client = new DRESClient();
 	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
 

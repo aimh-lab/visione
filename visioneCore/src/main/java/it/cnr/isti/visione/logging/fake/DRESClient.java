@@ -1,4 +1,4 @@
-package it.cnr.isti.visione.logging;
+package it.cnr.isti.visione.logging.fake;
 
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -9,11 +9,11 @@ import org.openapitools.client.model.SuccessStatus;
 
 import dev.dres.ApiException;
 
-public class DRESFakeClient {
+public class DRESClient {
 	
 	private String sessionId = "nudd";
 	
-	public DRESFakeClient() {
+	public DRESClient() {
 	}
 	
 	public String getSessionId() {
