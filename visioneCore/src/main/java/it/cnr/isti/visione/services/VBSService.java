@@ -471,161 +471,89 @@ public class VBSService {
 		return response;
 	}
 
+
+    	
+    
 	//TODO guarda qui
 	@GET
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder,  @QueryParam("dataset") String dataset) {
+		long clientSubmissionTimestamp = System.currentTimeMillis();
 		String response = "";
 		System.out.println("isAVS " + isAVS );
 		String videoId = videoIdParam;
 		String time = null;
 		int middleFrame = -1;
+		String middleTime =null;
+		String value=null;
 		if (keyframeIdParam != null) {
 			try {
 				middleFrame = Integer.parseInt(datasetSearcher.get(dataset).get(keyframeIdParam, Fields.MIDDLE_FRAME));
+				if(dataset.equals("mvk"))
+					time=Tools.convertTimeToVBSFormat(datasetSearcher.get(dataset).get(keyframeIdParam, Fields.MIDDLE_TIME));
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		} else {
 			videoId = videoIdParam;
 			time = Tools.convertTimeToVBSFormat(videoAtTime);
 		}
-		
-		if (middleFrame != -1) {
-			try {
-//				logAVS.query2Log(query, query2, occur, simreorder, "");
-//				dresLogAVS.query2Log(query, simreorder, "");
-
-				visioneLog_saved_at_submission_time.save(videoId, middleFrame, null, client.getSessionId());
-			//	dresLog.save();
-			} catch (IOException | NumberFormatException e1) {
-				e1.printStackTrace();
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-			}
-			try {
-				if (time == null) {
-					boolean exit = false;
-					int counter = 0;
-					while(!exit) {
-						try {
-							response = client.dresSubmitResultByFrameNumber(videoId, middleFrame);
-							exit = true;
-						} catch (ApiException e) {
-							System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-							if (counter++ <= 3 )
-								client = new DRESClient();
-							else {
-								System.err.println("Error unable to initialize DRES client");
-								exit = true;
-							}
-						}
+			
+				
+		if (time != null) {
+			value=time;
+			boolean exit = false;
+			int counter = 0;
+			while(!exit) {
+				try {
+					response = client.dresSubmitResultByTime(videoId, time);
+					exit = true;
+				} catch (ApiException e) {
+					System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
+					if (counter++ <= 3 )
+						client = new DRESClient();
+					else {
+						System.err.println("Error unable to initialize DRES client");
+						exit = true;
 					}
 				}
-				else {
-					boolean exit = false;
-					int counter = 0;
-					while(!exit) {
-						try {
-							response = client.dresSubmitResultByTime(videoId, time);
-							exit = true;
-						} catch (ApiException e) {
-							System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-							if (counter++ <= 3 )
-								client = new DRESClient();
-							else {
-								System.err.println("Error unable to initialize DRES client");
-								exit = true;
-							}
-						}
-					}
-					
-				}
-				visioneLog_saved_at_submission_time.saveResponse(response);
-//				client.dresSubmitQuery(dresLog.getEventLog());
-				client.dresSubmitLog(dresLog.getResultLog()); //TODO
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-
-			} catch (KeyManagementException | NoSuchAlgorithmException | NumberFormatException e1) {
-//			} catch (IOException  e1) {
-				e1.printStackTrace();
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-			}
-		} else {
-			try {
-				visioneLog_saved_at_submission_time.save(videoId, -1, time, client.getSessionId());
-			//	dresLog.save();
-			} catch (IOException | NumberFormatException e1) {
-				e1.printStackTrace();
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-			}
-			try {
-				if (time == null) {
-					boolean exit = false;
-					int counter = 0;
-					while(!exit) {
-						try {
-							response = client.dresSubmitResultByFrameNumber(videoId, middleFrame);
-							exit = true;
-						} catch (ApiException e) {
-							System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-							if (counter++ <= 3 )
-								client = new DRESClient();
-							else {
-								System.err.println("Error unable to initialize DRES client");
-								exit = true;
-							}
-						}
-					}
-				}
-				else {
-					boolean exit = false;
-					int counter = 0;
-					while(!exit) {
-						try {
-							response = client.dresSubmitResultByTime(videoId, time);
-							exit = true;
-						} catch (ApiException e) {
-							System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-							if (counter++ <= 3 )
-								client = new DRESClient();
-							else {
-								System.err.println("Error unable to initialize DRES client");
-								exit = true;
-							}
-						}
-					}
-				}
-//				client.dresSubmitQuery(dresLog.getEventLog());
-				client.dresSubmitLog(dresLog.getResultLog()); 
-
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-
-			} catch (NumberFormatException e1) {
-				e1.printStackTrace();
-				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-			} catch (KeyManagementException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 			
-//			try {
-//				response = client.dresSubmitResult(videoId, time);
-//				response = client.dresSubmitQuery(dresLog.getEventLog());
-//				response = client.dresSubmitLog(dresLog.getResultLog());
-//				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-//
-//			} catch (KeyManagementException | NoSuchAlgorithmException | NumberFormatException e1) {
-//				e1.printStackTrace();
-//				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
-//			}
+		}else {
+			
+			if (middleFrame != -1) {
+				value=Integer.toString(middleFrame);
+				boolean exit = false;
+				int counter = 0;
+				while(!exit) {
+					try {
+						response = client.dresSubmitResultByFrameNumber(videoId, middleFrame);
+						exit = true;
+					} catch (ApiException e) {
+						System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
+						if (counter++ <= 3 )
+							client = new DRESClient();
+						else {
+							System.err.println("Error unable to initialize DRES client");
+							exit = true;
+						}
+					}
+				}
+			}			
 		}
-
+		visioneLog_saved_at_submission_time.saveResponse(response);
+		System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
+				
+		//saving logs
+		try {
+			visioneLog_saved_at_submission_time.save(videoId, middleFrame, time, client.getSessionId(),clientSubmissionTimestamp);
+			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, value );
+		} catch (IOException | NumberFormatException e1) {
+			e1.printStackTrace();
+			System.out.println(Settings.MEMBER_ID + "," + videoId + "," + time);
+		}
 
 		return response;
 	}

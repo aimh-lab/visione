@@ -63,6 +63,30 @@ public class LogParserDRES {
 		}
 	}
 	
+	public synchronized void save_submission_log(long timestamp, String sessionid, String user, String subvalue) throws IOException {	
+		String fn=timestamp+"_"+sessionid+"_"+user+"_SUBMISSION";
+		this.resultLog = new QueryResultLog();
+		resultLog.setTimestamp(timestamp);
+		resultLog.setResultSetAvailability("Top10000");
+		resultLog.setSortType("rankingModel");
+		
+		QueryEvent queryEvent = new QueryEvent();
+		queryEvent.setTimestamp(timestamp);
+		queryEvent.setCategory(getCategoryEnum("browsing"));
+		queryEvent.setType("Submission");
+		queryEvent.setValue(subvalue);
+		resultLog.addEventsItem(queryEvent);
+		
+		if (destFolder != null) {
+			if (getResultLog() != null) {
+				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, fn + ".json")))) {
+					writer.write(getResultLog().toString()); //TODO json?
+				}
+			}
+			
+		}
+	}
+	
 	
 	/**
 	 * Create a DRES QueryResultLog event given the VISIONE query and results
