@@ -37,6 +37,10 @@ import it.cnr.isti.visione.logging.Tools;
 import it.cnr.isti.visione.lucene.Fields;
 import it.cnr.isti.visione.lucene.LucTextSearch;
 
+/**
+ * @author lucia
+ *
+ */
 @Path("/VBSService")
 @Singleton
 public class VBSService {
@@ -55,6 +59,7 @@ public class VBSService {
 	//private static final File KEYFRAME_NUMBER_FILE = new File(Settings.KEYFRAME_NUMBER);
 	private static final File LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
 	private static final File LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
+	private static final String MEMBER_ID=(Settings.MEMBER_ID);
 	
 //	private HashMap<String, Float> timestamp = new HashMap<>();
 //	private HashMap<String, Integer> keyframeNumber = new HashMap<>();
@@ -254,6 +259,7 @@ public class VBSService {
 			
 			log(hits, query, logQueries, simReorder, dataset);
 			
+			
 			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits));
 			if (response == null)
 				response = "";//new
@@ -269,13 +275,25 @@ public class VBSService {
 		return response	;
 	}
 	
+	
+	/**
+	 * Write Dres QueryResultLog, save it to a file without saving it)
+	 * @param hits
+	 * @param query
+	 * @param queries
+	 * @param simReorder
+	 * @param dataset
+	 */
 	public void log(TopDocs hits, String query, List<VisioneQuery> queries, boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
 		try {
 			ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
-			dresLog.query2Log(queries, simReorder, searchResults);
-			log.query2Log(query, simReorder, resLog);
-		} catch (IOException e1) {
+			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults);
+ 			client.dresSubmitLog(dresLog.getResultLog()); 
+			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
+			log.query2Log(query, simReorder, resLog); 
+//			
+		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
@@ -451,6 +469,7 @@ public class VBSService {
 		return response;
 	}
 
+	//TODO guarda qui
 	@GET
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -524,8 +543,8 @@ public class VBSService {
 					
 				}
 				log.saveResponse(response);
-				client.dresSubmitQuery(dresLog.getEventLog());
-				client.dresSubmitLog(dresLog.getResultLog());
+//				client.dresSubmitQuery(dresLog.getEventLog());
+				client.dresSubmitLog(dresLog.getResultLog()); //TODO
 				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
 
 			} catch (KeyManagementException | NoSuchAlgorithmException | NumberFormatException e1) {
@@ -578,7 +597,8 @@ public class VBSService {
 						}
 					}
 				}
-				client.dresSubmitQuery(dresLog.getEventLog());
+//				client.dresSubmitQuery(dresLog.getEventLog());
+				client.dresSubmitLog(dresLog.getResultLog()); 
 
 				System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
 

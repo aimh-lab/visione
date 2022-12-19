@@ -735,11 +735,11 @@ public class LucTextSearch {
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
 					Integer middleFrame = Integer.parseInt(document.get(Fields.MIDDLE_FRAME));
 
-					String videoId = imgID.split("/")[0];
+				//	String videoId = imgID.split("/")[0];
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
 						
-					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
-					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
+					hm.putIfAbsent(videoID, new ConcurrentHashMap<Integer, SearchResults>());
+					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoID); // video keyframes (one for each quantized time interval)
 					
 					keyframes.putIfAbsent(id_quantized_timestamp, new SearchResults(imgID, videoID, collection, score, middleFrame));
 					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
@@ -747,10 +747,10 @@ public class LucTextSearch {
 						continue; // We keep just one keyframe for each quantized time interval
 					
 					synchronized (sem) {
-						keyframes = hm.get(videoId); 
+						keyframes = hm.get(videoID); 
 						if( keyframes.get(id_quantized_timestamp).score<score) {
 							keyframes.put(id_quantized_timestamp, new SearchResults(imgID, videoID, collection, score, middleFrame));		
-							hm.put(videoId, keyframes);
+							hm.put(videoID, keyframes);
 						}
 					}
 					
@@ -826,7 +826,7 @@ public class LucTextSearch {
 		}
 		List<Entry<String, Float>> videolist = new LinkedList<>(videoScoreHashMap.entrySet());
 		videolist.sort((k1, k2) -> -(k1.getValue()).compareTo(k2.getValue()));
-		int maxNvideo = Math.min(150, videolist.size());
+		int maxNvideo = Math.min(150, videolist.size()); //TODO ricontrolla il  150
 		videolist = videolist.subList(0, maxNvideo);
 		for (Entry<String, Float> entry : videolist) {
 			results.addAll(videoResHashMap.get(entry.getKey()));

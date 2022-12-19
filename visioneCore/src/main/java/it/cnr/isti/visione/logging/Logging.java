@@ -102,12 +102,11 @@ public class Logging {
 	public synchronized void query2Log(String query, boolean simReorder, String resultset) throws IOException {
 		Query queryObj = new Query(System.currentTimeMillis(), query);
 		ResultSet queryResults = new ResultSet(resultset);
-
-
 		queries.add(queryObj);
 		results.add(queryResults);
 	}
 	
+
 	
 	
 	public static final String TXT = "txt";

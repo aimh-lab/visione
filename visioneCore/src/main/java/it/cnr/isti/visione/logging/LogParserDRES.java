@@ -14,6 +14,8 @@ import org.openapitools.client.model.QueryEvent;
 import org.openapitools.client.model.QueryEventLog;
 import org.openapitools.client.model.QueryResult;
 import org.openapitools.client.model.QueryResultLog;
+import org.openapitools.client.model.CurrentTime;
+import dev.dres.client.StatusApi;
 
 import com.google.gson.Gson;
 
@@ -24,42 +26,37 @@ import it.cnr.isti.visione.services.VisioneQuery;
 
 public class LogParserDRES {
 	
-	private static final String TYPE = "submit";
+	//private static final String TYPE = "submit";
 	
-	private Gson gson = new Gson();
+	//private Gson gson = new Gson();
 	
 	private File destFolder;
 		
-	private String[] colors = {"black", "blue", "brown", "green", "grey", "orange", "pink", "purple", "red", "white", "yellow"};
-	private String[] letters = {"a", "b", "c", "d", "e", "f", "g"};
-	
+//	private String[] colors = {"black", "blue", "brown", "green", "grey", "orange", "pink", "purple", "red", "white", "yellow"};
+//	private String[] letters = {"a", "b", "c", "d", "e", "f", "g"};
+//	
 	private QueryResultLog resultLog = new QueryResultLog();
-	private QueryEventLog eventLog = new QueryEventLog();
-	
 	
 	public QueryResultLog getResultLog() {
 		return this.resultLog;
 	}
 	
-	public QueryEventLog getEventLog() {
-		return this.eventLog;
-	}
-	
-	private boolean checkColor(String value) {
-		for (String color : colors) {
-	        if (value.equals("4wc" + color))
-	            return true;
-	        for (int i = 0; i< 7; i++) {
-	        	for (String letter: letters) {
-	        		if (value.equals(i + letter + color))
-	    	            return true;
-	        	}
-	        }
-	    }
-		
-		return false;
-	}
-	
+
+//	private boolean checkColor(String value) {
+//		for (String color : colors) {
+//	        if (value.equals("4wc" + color))
+//	            return true;
+//	        for (int i = 0; i< 7; i++) {
+//	        	for (String letter: letters) {
+//	        		if (value.equals(i + letter + color))
+//	    	            return true;
+//	        	}
+//	        }
+//	    }
+//		
+//		return false;
+//	}
+//	
 	public LogParserDRES(File destFolder) {
 		this.destFolder = destFolder;
 	}
@@ -67,84 +64,83 @@ public class LogParserDRES {
 	public synchronized void save() throws IOException {		
 		if (destFolder != null) {
 			long time = System.currentTimeMillis();
-			try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".log.json")))) {
-				writer.write(getEventLog().toString());
-			}
+//			try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".log.json")))) {
+//				writer.write(getEventLog().toString());
+//			}
 			if (getResultLog() != null) {
-				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".results.json")))) {
+				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, time + ".resultLog.json")))) {
 					writer.write(getResultLog().toString());
 				}
 			}
 			
 		}
 	}
-	
-	public synchronized void query2Log(List<VisioneQuery> queries, boolean simReorder, ArrayList<SearchResults> resultset) throws IOException {
-		int rank = 1;
-		this.eventLog = new QueryEventLog();
-		this.resultLog = new QueryResultLog();
-		resultLog.setTimestamp(System.currentTimeMillis());
-		for (int i = 0; i < resultset.size(); i ++) {
-			String[] resSplit = resultset.get(i).imgId.split("__");
-			for (int splitIdx = 0; splitIdx < resSplit.length; splitIdx++) {
-				QueryResult resultItem = new QueryResult();
-				String[] resValues = resSplit[splitIdx].split("/");
-				String videoID = resValues[0];
-				Integer middleFrame = resultset.get(i).middleFrame;
-				resultItem.setItem(videoID);
-				resultItem.setFrame(middleFrame);
-				resultItem.setRank(rank++);
-				resultItem.setScore((double) resultset.get(i).score);
-				resultLog.addResultsItem(resultItem);
-			}
-		}
-
-//		this.eventLog = new QueryEventLog();
-		
-		eventLog.setTimestamp(System.currentTimeMillis());
-		
-		HashMap<String, Action> actionsHM = new HashMap<>();
-		
-		
-		for (int queryIdx = 0; queryIdx < queries.size(); queryIdx++) {
-			Iterator<Entry<String, String>> queryIterator = queries.get(queryIdx).getQuery().entrySet().iterator();
-			
-			while(queryIterator.hasNext()) {
-				Entry<String, String> entry = queryIterator.next();
-				String type = getType(entry.getKey());
-				type+=queryIdx;
-				if (type.equals("unknownType"))
-					continue;
-				Action act = actionsHM.get(type);
-				if (act == null) {
-					act = new Action();
-					act.setTimestamp(System.currentTimeMillis());
-					act.setCategory(getCategory(entry.getKey()));
-					act.setType(getType(entry.getKey()));
-
-				} else {
-					
+	public synchronized void save(long timestamp, String sessionid, String user ) throws IOException {	
+		String fn=timestamp+"_"+sessionid+"_"+user;
+		if (destFolder != null) {
+			if (getResultLog() != null) {
+				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, fn + ".json")))) {
+					writer.write(getResultLog().toString()); //TODO json?
 				}
-				String value = act.getValue() == null ? "": act.getValue();
-				value += "Canvas"+queryIdx+" "+ entry.getValue() + " ";
-
-				act.setValue(value);
-				actionsHM.put(type, act);
 			}
 			
-		}
-		
-		for (Action action: actionsHM.values()) {
-			QueryEvent queryEvent = new QueryEvent();
-			queryEvent.setTimestamp(action.getTimestamp());
-			queryEvent.setCategory(getCategoryEnum(action.getCategory()));
-			queryEvent.setType(action.getType());
-			queryEvent.setValue(action.getValue());
-			eventLog.addEventsItem(queryEvent);
-
 		}
 	}
 	
+	
+	/**
+	 * Create a DRES QueryResultLog event given the VISIONE query and results
+	 * @param queries Lucene queries used to get the current resultset
+	 * @param simReorder parameter used in Lucene
+	 * @param resultset  ranked SearchResults
+	 * @return clientTimestamp timestamp of the log
+	 * @throws IOException
+	 */
+	public synchronized long query2Log(List<VisioneQuery> queries, boolean simReorder, ArrayList<SearchResults> resultset) throws IOException {
+		int rank = 1;
+		this.resultLog = new QueryResultLog();
+		long clientTimestamp = System.currentTimeMillis();
+		resultLog.setTimestamp(clientTimestamp);
+		resultLog.setResultSetAvailability("Top10000");
+		resultLog.setSortType("rankingModel");
+		//creating result list 
+		for (int i = 0; i < resultset.size(); i ++) {
+			QueryResult resultItem = new QueryResult();
+			SearchResults res=resultset.get(i);
+			resultItem.setItem(res.videoId);
+			resultItem.setFrame(res.middleFrame);
+			resultItem.setRank(rank++);
+			resultItem.setScore((double) res.score);
+			resultLog.addResultsItem(resultItem);
+		}
+
+		//creating event list 
+		for (int queryIdx = 0; queryIdx < queries.size(); queryIdx++) {
+			Iterator<Entry<String, String>> queryIterator = queries.get(queryIdx).getQuery().entrySet().iterator();
+			Iterator<Entry<String, String>> queryParametersIterator=queries.get(queryIdx).getParameters().entrySet().iterator();
+			String queryParam=""; //string containing query parameter
+			while(queryParametersIterator.hasNext()) {
+				Entry<String, String> entry = queryParametersIterator.next();
+				queryParam+=" > "+entry.getKey()+"="+entry.getValue();
+			}			
+			String temporaltTxT="";
+			if(queries.size()>1)
+				temporaltTxT=" > Temporal_query "+(queryIdx+1);
+			while(queryIterator.hasNext()) {
+				Entry<String, String> entry = queryIterator.next();
+				String keyField=entry.getKey();
+				String value=entry.getValue();
+				QueryEvent queryEvent = new QueryEvent();
+				queryEvent.setTimestamp(clientTimestamp);
+				queryEvent.setCategory(getCategoryEnum(getCategory(keyField)));
+				queryEvent.setType(getType(keyField)+","+getSubType(keyField)); //TODO see if in DRES they have added a subtype 
+				queryEvent.setValue(value+temporaltTxT+queryParam); //TODO see if in DRES they have added an additional fieldto store query param and temporal info 
+				resultLog.addEventsItem(queryEvent);
+			}
+		}
+		return clientTimestamp;
+	}
+
 	
 	
 	public static final String TXT = "txt";
@@ -156,7 +152,7 @@ public class LogParserDRES {
 	public static final String VISUAL_FEATURES = "features";
 	
 	
-	private String getCategory(String field) {
+	private String getCategory(String field) { //category dictionary
 		String category;
 		
 		switch (field) {
@@ -168,12 +164,12 @@ public class LogParserDRES {
 			category = "text";
 			break;
 			
-		case "color":
+		case "color": //TODO deprecated?
 			category = "sketch";
 			break;
 			
-		case "colorTXT":
-			category = "sketch";
+		case "colorTXT": //TODO deprecated?
+			category = "sketch"; 
 			break;
 			
 		case "bw":
@@ -187,14 +183,6 @@ public class LogParserDRES {
 		case "mifile":
 			category = "text";
 			break;
-			
-//		case "tern":
-//			category = "text";
-//			break;
-//			
-//		case "clip":
-//			category = "text";
-//			break;
 			
 		case "textual":
 			category = "text";
@@ -274,19 +262,19 @@ public class LogParserDRES {
 		
 		switch (field) {
 		case "objects":
-			type = "localizedObject";
+			type = "LocalizedObjectAndColors";
 			break;
 		
 		case "txt":
-			type = "localizedObject";
+			type = "LocalizedObjectAndColors";
 			break;
 		
 		case "color":
-			type = "color";
+			type = "color"; //TODO deprecated?
 			break;
 			
 		case "colorTXT":
-			type = "color";
+			type = "color"; //TODO deprecated?
 			break;
 			
 		case "bw":
@@ -317,16 +305,8 @@ public class LogParserDRES {
 			type = "globalFeatures";
 			break;
 			
-//		case "tern":
-//			type = "concept";
-//			break;
-//			
-//		case "clip":
-//			type = "concept";
-//			break;
-			
 		case "textual":
-			type = "concept";
+			type = "jointEmbedding";
 			break;
 			
 		case "explicitsort":
@@ -345,31 +325,66 @@ public class LogParserDRES {
 			type = "videoPlayer";
 			break;
 		default:
-			type = "unknownType";
+			type = ""; //unknownType
 		}
 		
 		return type;
 	}
 	
-	class QueryElement {
+	private String getSubType(String field) {
+		String subtype;
 		
-		private String field;
-		private String value;
+		switch (field) {
+		case "objects":
+			subtype = "classes";
+			break;
 		
-		public QueryElement(String field, String value) {
-			super();
-			this.field = field;
-			this.value = value;
-		}
-
-		public String getField() {
-			return field;
-		}
-
-		public String getValue() {
-			return value;
+		case "txt":
+			subtype = "position";
+			break;
+		
+		case "vf":
+			subtype = "image similarity (GEM)";
+			break;
+			
+		case "qbe":
+			subtype = "image similarity from URL of an image (GEM)";
+			break;
+			
+		case "ternSim":
+			subtype = "sematic similarity (ALADIN)";
+			break;
+		
+		case "clipSim":
+			subtype = "sematic video similarity (CLIP)";
+			break;
+			
+		default:
+			subtype = "";
 		}
 		
+		return subtype;
 	}
+	
+//	class QueryElement {
+//		
+//		private String field;
+//		private String value;
+//		
+//		public QueryElement(String field, String value) {
+//			super();
+//			this.field = field;
+//			this.value = value;
+//		}
+//
+//		public String getField() {
+//			return field;
+//		}
+//
+//		public String getValue() {
+//			return value;
+//		}
+//		
+//	}
 
 }

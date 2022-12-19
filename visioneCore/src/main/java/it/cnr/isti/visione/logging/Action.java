@@ -15,6 +15,9 @@ private String category;
 @SerializedName("type")
 @Expose
 private String type;
+@SerializedName("subtype")
+@Expose
+private String subtype;
 @SerializedName("value")
 @Expose
 private String value;
@@ -44,6 +47,14 @@ return type;
 
 public void setType(String type) {
 this.type = type;
+}
+
+public String getSubType() {
+return subtype;
+}
+
+public void setSubType(String subtype) {
+this.subtype = subtype;
 }
 
 public String getValue() {
