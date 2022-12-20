@@ -50,29 +50,26 @@ def load_or_train_encoder(collection):
     encoder_filename = Path(f'str-encoder-{db_name}.{collection_name}.pkl')
 
     if not encoder_filename.exists():
-        # get subsample if necessary for training
-        n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
-        n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
-        _, x = collect_features(collection, limit=n_train_document)
-        n, d = x.shape
-
-        rotation_matrix = True
-        # load rotation matrix instead of generating a random one
-        # (FIXME: this is just to reproduce old stuff; to remove)
-        rotation_matrix = np.load(f'rotation_matrix_d{d}.npy').astype(np.float32)
-
-
-        # we use ThresholdSQ for now
-        encoder = surrogate.ThresholdSQ(
+        # init the encoder
+        d = len(collection.find_one({}, projection=['feature'])['feature'])
+        encoder = surrogate.TopKSQ(
             d,  # input dimensionality
-            subtract_mean=True,
-            rotation_matrix=rotation_matrix,
+            keep=260,  # dimensions to keep
+            rotation_matrix=42,  # seed for random rot
         )
 
-        # train the encoder
-        print('Training the encoder ...')
-        encoder.train(x)
-        del x
+        needs_train = False
+        if needs_train:
+            # get subsample if necessary for training
+            n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
+            n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
+            _, x = collect_features(collection, limit=n_train_document)
+            n, d = x.shape
+        
+            # train the encoder
+            print('Training the encoder ...')
+            encoder.train(x)
+            del x
 
         # save trained encoder
         print('Saving trained encoder:', encoder_filename)
