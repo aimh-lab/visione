@@ -83,7 +83,7 @@ public class VBSService {
 		datasetSearcher.put("v3c2", v3cSearcher);
 		
 		LucTextSearch mvkSearcher = new LucTextSearch();
-		mvkSearcher.openSearcher(Settings.LUCENE_MARINE);
+		mvkSearcher.openSearcher(Settings.LUCENE_MVK);
 		datasetSearcher.put("mvk", mvkSearcher);
 		
 		gson = new Gson();
@@ -189,7 +189,7 @@ public class VBSService {
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
-					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
+					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k, dataset);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
 					log(res, query, logQueries, simReorder, dataset);
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
 				}
@@ -229,7 +229,7 @@ public class VBSService {
 							}
 							String clipQuery=textQuery+objectquery;	
 							long time = -System.currentTimeMillis(); 
-							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
+							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 							time += System.currentTimeMillis();
 							System.out.println("**Search clip:\t"+ time+" ms");	
 						}						

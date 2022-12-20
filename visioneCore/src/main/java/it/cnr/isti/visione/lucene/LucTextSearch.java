@@ -1142,7 +1142,13 @@ public class LucTextSearch {
 		for (int i = 0; i < results.length; i++) {
 			String videoId = results[i].imgId.split("_")[0];
 			String imageId = videoId + "/" + results[i].imgId;
-			;
+			
+			//temporary patch for MVK
+			if (results[i].imgId.split("_").length > 3) {
+				videoId = results[i].imgId.substring(0, results[i].imgId.lastIndexOf("_"));
+				imageId = results[i].imgId;
+			}
+			
 			Query q = new TermQuery(new Term(Fields.IMG_ID, imageId));
 			TopDocs td = s.search(q, 1);
 			if (td.totalHits > 0) {
@@ -1166,20 +1172,20 @@ public class LucTextSearch {
 
 	private LRUCache<Integer, TopDocs> clipCache = new LRUCache<>(10);
 
-	public TopDocs searchByCLIP(String textQuery) throws IOException, org.apache.hc.core5.http.ParseException {
+	public TopDocs searchByCLIP(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
 		if (clipCache.containsKey(textQuery.hashCode()))
 			res = clipCache.get(textQuery.hashCode());
 		else {
-			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery));
+			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection));
 			clipCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
 	}
 
-	public TopDocs searchByCLIPID(String queryId, int k) throws org.apache.hc.core5.http.ParseException, IOException {
-		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId)));
+	public TopDocs searchByCLIPID(String queryId, int k, String collection) throws org.apache.hc.core5.http.ParseException, IOException {
+		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId, collection)));
 	}
 
 	public static void main(String[] args) throws NumberFormatException, IOException {

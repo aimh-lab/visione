@@ -23,7 +23,7 @@ public class Settings {
 	public static int TEAM_ID;
 	public static String MEMBER_ID;
 	public static String LUCENE;
-	public static String LUCENE_MARINE;
+	public static String LUCENE_MVK;
 	public static String LUCENE_RMAC;
 	public static String KEYFRAME_TIMESTAMP;
 	public static String KEYFRAME_NUMBER;
@@ -37,7 +37,9 @@ public class Settings {
 	public static String RMAC_SERVICE;
 	public static String TERN_SERVICE;
 	public static String CLIP_SERVICE;
+	public static String CLIP_SERVICE_MVK;
 	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE;
+	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK;
 	public static String SUBMIT_USER;
 	public static String SUBMIT_PWD;
 	public static String[] RESCORER_PIPELINE;
@@ -72,7 +74,7 @@ public class Settings {
 //			TEAM_ID = Integer.parseInt(props.getProperty("TEAM_ID"));
 			MEMBER_ID = props.getProperty("MEMBER_ID");
 			LUCENE = props.getProperty("LUCENE");
-			LUCENE_MARINE = props.getProperty("LUCENE_MARINE");
+			LUCENE_MVK = props.getProperty("LUCENE_MVK");
 			SEND_LOG_TO_DRES=Boolean.parseBoolean(props.getProperty("SEND_LOG_TO_DRES"));
 //			LUCENE_RMAC = props.getProperty("LUCENE_RMAC");
 //			KEYFRAME_TIMESTAMP = props.getProperty("KEYFRAME_TIMESTAMP");
@@ -89,7 +91,9 @@ public class Settings {
 			RMAC_SERVICE = props.getProperty("RMAC_SERVICE");
 			TERN_SERVICE = props.getProperty("TERN_SERVICE");
 			CLIP_SERVICE = props.getProperty("CLIP_SERVICE");
+			CLIP_SERVICE_MVK = props.getProperty("CLIP_SERVICE_MVK");
 			CLIP_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
+			CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK");
 			
 			OBJECT_PARAMETERS = gson.fromJson(props.getProperty("OBJECTS"), FieldParameters.class);
 			FIELD_MAP.put("OBJECTS", OBJECT_PARAMETERS);

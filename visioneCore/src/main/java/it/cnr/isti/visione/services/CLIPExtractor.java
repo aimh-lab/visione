@@ -9,6 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -35,6 +38,19 @@ public class CLIPExtractor {
 	private static final int V3C1_END = 7475;
 	
 	
+	private static Map<String, String> extractors = Stream.of(new String[][] {
+		  { "v3c", Settings.CLIP_SERVICE }, 
+		  { "v3c1", Settings.CLIP_SERVICE }, 
+		  { "v3c2", Settings.CLIP_SERVICE }, 
+		  { "mvk", Settings.CLIP_SERVICE_MVK }, 
+		}).collect(Collectors.toMap(data -> data[0], data -> data[1]));
+	
+	private static Map<String, String> internalExtractors = Stream.of(new String[][] {
+		  { "v3c", Settings.CLIP_INTERNAL_IMG_SEARCH_SERVICE }, 
+		  { "v3c1", Settings.CLIP_INTERNAL_IMG_SEARCH_SERVICE }, 
+		  { "v3c2", Settings.CLIP_INTERNAL_IMG_SEARCH_SERVICE }, 
+		  { "mvk", Settings.CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK }, 
+		}).collect(Collectors.toMap(data -> data[0], data -> data[1]));
 
 	public static SearchResults[] text2VisioneResults(String textQuery) throws IOException, ParseException {
 		SearchResults[] results = null;
@@ -65,12 +81,12 @@ public class CLIPExtractor {
 
 	}
 	
-	public static SearchResults[] text2CLIPResults(String textQuery) throws IOException, ParseException {
+	public static SearchResults[] text2CLIPResults(String textQuery, String collection) throws IOException, ParseException {
 		SearchResults[] results = null;
 			try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
 				String encodedQuery = URLEncoder.encode(textQuery, StandardCharsets.UTF_8);
 				System.out.println(encodedQuery);
-				final HttpGet httpget = new HttpGet(Settings.CLIP_SERVICE + "?text=" + encodedQuery + "&k=" + Settings.K);
+				final HttpGet httpget = new HttpGet(extractors.get(collection) + "?text=" + encodedQuery + "&k=" + Settings.K);
 
 				try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 					final HttpEntity resEntity = response.getEntity();
@@ -85,13 +101,16 @@ public class CLIPExtractor {
 
 	}
 	
-	public static SearchResults[] id2CLIPResults(String queryID) throws IOException, ParseException {
+	public static SearchResults[] id2CLIPResults(String queryID, String collection) throws IOException, ParseException {
 		SearchResults[] results = null;
 			try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
-				String encodedQuery = URLEncoder.encode(queryID.split("/")[1], StandardCharsets.UTF_8);
+				//temporary for mvk
+				String encodedQuery = URLEncoder.encode(queryID, StandardCharsets.UTF_8);
+				if (queryID.lastIndexOf("/") > 0)
+					encodedQuery = URLEncoder.encode(queryID.split("/")[1], StandardCharsets.UTF_8);
 				System.out.println(encodedQuery);
 				
-				final HttpGet httpget = new HttpGet(Settings.CLIP_INTERNAL_IMG_SEARCH_SERVICE + "?imgId=" + encodedQuery + "&k=1000");
+				final HttpGet httpget = new HttpGet(internalExtractors.get(collection) + "?imgId=" + encodedQuery + "&k=1000");
 
 				try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 					final HttpEntity resEntity = response.getEntity();
