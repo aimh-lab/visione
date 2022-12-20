@@ -205,7 +205,7 @@ function extractprev(term) {
 	return split(term).pop();
 }
 
-$.get('objects_doc_freq.csv', function(data) {
+$.get('v3c_objects_doc_freq.csv', function(data) { //TODO 
 	availableTags = data.split("\n");
 	//availableTags = [];
 });
