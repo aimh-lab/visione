@@ -28,6 +28,7 @@ import com.mongodb.client.MongoDatabase;
 
 import me.tongfei.progressbar.ProgressBar;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.action.StoreTrueArgumentAction;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
 
@@ -56,8 +57,12 @@ public class IndexBuilder {
                 .defaultHelp(true)
                 .description("Create a Lucene index of a collection.");
 
-        parser.addArgument("--mongo-uri").help("mongodb connection string (e.g., \"mongodb://admin:visione@mongo/\")")
+        parser.addArgument("--mongo-uri")
+                .help("mongodb connection string (e.g., \"mongodb://admin:visione@mongo/\")")
                 .setDefault("mongodb://admin:visione@mongo/");
+        parser.addArgument("-a", "--append")
+                .help("appends to an existing index instead of truncating it")
+                .action(new StoreTrueArgumentAction());
         parser.addArgument("database_name").help("db name in mongo containing the collection to be indexed");
         parser.addArgument("index_dir").help("directory in which the index is created");
         Namespace ns = parser.parseArgsOrFail(args);
@@ -65,6 +70,7 @@ public class IndexBuilder {
         String mongoUri = ns.getString("mongo_uri");
         String databaseName = ns.getString("database_name");
         String outputIndexDirectory = ns.getString("index_dir");
+        boolean append = ns.getBoolean("append");
         String indexCollection = "frames";
 
         // open the index dir
@@ -74,7 +80,8 @@ public class IndexBuilder {
 		// configure index writer
 		Analyzer analyzer = new TermFrequencyAnalyzer(); // parses "term1|freq1 term2|freq2 ..."
 		IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-		conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+        OpenMode openMode = (append) ? OpenMode.CREATE_OR_APPEND : OpenMode.CREATE;
+		conf.setOpenMode(openMode);
 
         try (MongoClient mongoClient = MongoClients.create(mongoUri)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -134,7 +141,6 @@ public class IndexBuilder {
                 
                     pb.step();
                 }
-                /* TODO: public static final String COLORS = "colors"; */
             }
         }
     }
