@@ -46,6 +46,12 @@ public class IndexBuilder {
     
     }
 
+    /* FieldType for Stored Searchable Fields */
+    protected static FieldType storedTextFieldType = new FieldType(TextField.TYPE_STORED) {{
+        setIndexOptions(IndexOptions.DOCS);
+        setOmitNorms(true);
+    }};
+
     /* FieldType for Surrogate Text Representation Fields */
     protected static FieldType surrogateTextFieldType = new FieldType(TextField.TYPE_NOT_STORED) {{
         setIndexOptions(IndexOptions.DOCS_AND_FREQS);
@@ -107,7 +113,7 @@ public class IndexBuilder {
                     // System.out.println(entry.toJson());
 
                     // ids
-                    doc.add(new StoredField("imgID"      , entry.getString("_id")));
+                    doc.add(new       Field("imgID"      , entry.getString("_id"), storedTextFieldType));
                     doc.add(new StoredField("visioneid"  , entry.getString("_id")));
                     doc.add(new StoredField("videoID"    , entry.getString("video_id")));
                     doc.add(new StoredField("collection" , databaseName));
