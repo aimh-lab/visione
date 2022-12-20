@@ -136,6 +136,7 @@ public class IndexBuilder {
 
                     // features
                     doc.add(new       Field("features"   , entry.get("features_gem_str", ""), surrogateTextFieldType));
+                    doc.add(new       Field("aladin"     , entry.get("features_aladin_str", ""), surrogateTextFieldType));
 
                     // features
                     // featuresFields.forEach(field -> doc.add(field));
