@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
 <meta name="task" content="AVS">
+<meta name="dataset" content="v3c">
 
 <title>Episode IV-A New Hope in VISIONE</title>
 <link rel="stylesheet" href="css/jquery-ui.min.css">
@@ -30,32 +31,35 @@
 			<table>
   	<tr>
   	<td colspan=1 valign="top">
+  		<input type="radio" id="vbsTask"
+			name="vbsTask" value="enabled" checked
+			onclick="startNewKISSession();">
   	
   		  		<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
 			<span style="float: left; padding-left: 5px; padding-right: 5px;">
 			
 <div style="float: left;"><button
 					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="mvkTab();">
-				<i class="fa fa-home"> V3C KIS</i>
+					title="Switch to Marine Dataset" onclick="startNewKISSession();">
+				<i class="fa fa-home"> V3C</i><span class="task" title="You are running a V3C KIS task"> KIS</span>
 					
 				</button></div>
 				  		<div style="float: left;"><button
 					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="mvkTab();">
-				<i class="fa fa-home"> V3C AVS</i>
+					title="Switch to Marine Dataset" onclick="startNewAVSSession();">
+				<i class="fa fa-home"> V3C</i><span class="task" title="You are running a V3C AVS task"> AVS</span>
 					
 				</button></div>
 				  		<div style="float: left;"><button
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="mvkTab();">
-				<i class="fa fa-home"> MVK KIS</i>
+					id="mvk" class="btn btn-outline-primary btn-sm"
+					title="Switch to Marine Dataset" onclick="startNewMVKKISSession();">
+				<i class="fa fa-home"> MVK</i><span class="task" title="You are running a MVK KIS task"> KIS</span>
 					
 				</button></div>
 				  		<div style="float: left;"><button
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="mvkTab();">
-				<i class="fa fa-home"> MVK AVS</i>
+					id="mvk" class="btn btn-outline-primary btn-sm"
+					title="Switch to Marine Dataset" onclick="startNewMVKAVSSession();">
+				<i class="fa fa-home"> MVK</i><span class="task" title="You are running a MVK AVS task"> AVS</span>
 					
 				</button></div>
 		</div>

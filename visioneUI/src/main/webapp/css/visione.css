@@ -272,4 +272,11 @@ video::-webkit-media-controls {
   padding: 4px;
   border-radius: 8px;
 }
+
+.radioTask {
+	  font-weight: bold;
+	  color: navy;
+	  font-size: large;
+	
+}
   

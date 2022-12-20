@@ -205,11 +205,10 @@ function extractprev(term) {
 	return split(term).pop();
 }
 
-$.get('v3c_objects_doc_freq.csv', function(data) { //TODO 
+$.get($('meta[name=dataset]').attr('content') +'_objects_doc_freq.csv', function(data) {
 	availableTags = data.split("\n");
 	//availableTags = [];
 });
-
 
 draggedLabel = '';
 

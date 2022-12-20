@@ -68,12 +68,75 @@ function selectImg(selectedItem) {
 			+'<br>'
 			+ '<img title="' + selectedItem.imgId + '"style="padding-bottom: 10px;" width="145" height= "90" src="' + selectedItem.thumb + '">'
 		$("#avsTab").append(img);
-	if (document.getElementById(selectedItem.avsTagId) != null)
+		
+			if (document.getElementById(selectedItem.avsTagId) != null)
 		document.getElementById(selectedItem.avsTagId).checked = true;
 	if (document.getElementById(selectedItem.imgId) != null) {
 		document.getElementById(selectedItem.imgId).style.borderWidth = "12px";
 		document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
 	}
+		
+		/*
+		
+		var cip = $('#' + "avsList_" + selectedItem.imgId).hover( hoverVideo, hideVideo );
+		
+		function hoverVideo(e) {
+			id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+			$('#' + id4Regex).contextmenu(function() {
+				imgId = 'img' + id4Regex;
+				langInfo = this.lang.split('|');
+				collection = langInfo[0];
+				videoId = langInfo[1];
+				videourl=langInfo[2];
+				playerId = 'video' + videoId;
+
+				var elementExists = document.getElementById(playerId);
+
+				var startTime = getStartTime(this.id);
+				var endTime = getEndTime(this.id);
+				if (elementExists != null) {
+					console.log(playerId)
+					$('#'+ playerId).get(0).pause();
+				    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
+				    $('#'+ playerId).get(0).load();
+					$('#'+ playerId).get(0).play();
+					return;
+				}
+				backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ this.id + "')";
+			
+				//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+				//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+				//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+				imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+				$('#' + imgId).css("display", "none");
+				$('#' + id4Regex).append(imgtable);
+				//$('#'+ playerId).get(0).currentTime = time-1;
+				//$('#'+ playerId).get(0).play();
+				return false;
+			});
+
+					
+		}
+				
+		function hideVideo(e) {
+			console.log("hide")
+			id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+
+			imgId = 'img' + id4Regex;
+			langInfo = this.lang.split('|');
+			collection = langInfo[0];
+			videoId = langInfo[1];
+			videourl=langInfo[2];
+			playerId = 'video' + videoId;
+			console.log(playerId)
+
+			var elementExists = document.getElementById(playerId);
+			console.log(elementExists)
+				if (elementExists != null) {
+					$('#' + playerId).remove();
+					$('#' + imgId).css("display", "block");
+				}
+		}*/	
 }
 
 function unselectImg(selectedItem) {
