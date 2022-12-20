@@ -337,6 +337,7 @@ cooker;kitchen_utensil,kitchen_appliance, kitchenware;a utensil for cooking
 cookie;baked_goods, food, snack, dessert;any of various small flat sweet cakes (`biscuit' is the british term)
 cooking_spray;food;edible oil delivered as an aerosol
 cooler_(for_food);container;an insulated box for storing food often with ice
+coral;marine_invertebrates;a coral
 corded_phone;telephone;corded telephone
 cork_(bottle_plug);;the plug in the mouth of a bottle (especially a wine bottle)
 corkboard;;a sheet consisting of cork granules
@@ -511,7 +512,7 @@ flash;;a lamp for providing momentary light to take a photograph
 flashlight;tool;a small portable battery-powered electric lamp/portable, hand-held electric light
 fleece;;a soft bulky fabric with deep pile- used chiefly for clothing
 flip_flop_(sandal);sandal_(type_of_shoe), shoe, footwear;a backless sandal held to the foot by a thong between two toes
-flipper_(footwear);shoe, footwear;a shoe to aid a person in swimming
+flipper_(footwear);sports_equipment, footwear;a shoe to aid a person in swimming
 flower;plant;reproductive organ of angiosperm plants especially one having showy or colorful parts
 flower_arrangement;flower;a decorative arrangement of flowers
 flowerpot;container;a container in which plants are cultivated
@@ -563,7 +564,7 @@ girl;person;a young woman
 glass_(drink_container);container,kitchenware,tableware;a container for holding liquids while drinking
 glasses;fashion_accessory;optical instrument consisting of a frame that holds a pair of lenses for correcting defective vision
 globe;;a sphere on which a map (especially of the earth) is represented
-glove;clothing, fashion_accessory;handwear covering the hand
+glove;clothing, fashion_accessory, wet_suit;handwear covering the hand
 goat;mammal, animal;a common goat
 goggles;glasses, fashion_accessory;tight-fitting spectacles worn to protect the eyes- forms of protective eyewear
 goldfish;fish, animal;small golden or orange-red freshwater fishes used as pond or aquarium pets
