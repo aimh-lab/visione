@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import com.google.gson.Gson;
+
 
 import org.openapitools.client.model.QueryEvent;
 import org.openapitools.client.model.QueryEventLog;
@@ -52,18 +54,21 @@ public class LogParserDRES {
 	
 	
 	public synchronized void save(long timestamp, String sessionid, String user) throws IOException {	
+		Gson gson= new Gson();
 		String fn=timestamp+"_"+sessionid+"_"+user;
 		if (destFolder != null) {
 			if (getResultLog() != null) {
 				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, fn + ".json")))) {
-					writer.write(getResultLog().toString()); //TODO json?
+				//	writer.write(getResultLog().toString()); 
+					writer.write(gson.toJson(getResultLog()));
 				}
 			}
 			
 		}
 	}
 	
-	public synchronized void save_submission_log(long timestamp, String sessionid, String user, String subvalue) throws IOException {	
+	public synchronized void save_submission_log(long timestamp, String sessionid, String user, String value) throws IOException {	
+		Gson gson= new Gson();
 		String fn=timestamp+"_"+sessionid+"_"+user+"_SUBMISSION";
 		this.resultLog = new QueryResultLog();
 		resultLog.setTimestamp(timestamp);
@@ -74,13 +79,14 @@ public class LogParserDRES {
 		queryEvent.setTimestamp(timestamp);
 		queryEvent.setCategory(getCategoryEnum("browsing"));
 		queryEvent.setType("Submission");
-		queryEvent.setValue(subvalue);
+		queryEvent.setValue(value);
 		resultLog.addEventsItem(queryEvent);
 		
 		if (destFolder != null) {
 			if (getResultLog() != null) {
 				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, fn + ".json")))) {
-					writer.write(getResultLog().toString()); //TODO json?
+//					writer.write(getResultLog().toString()); 
+					writer.write(gson.toJson(getResultLog()));
 				}
 			}
 			
@@ -133,7 +139,7 @@ public class LogParserDRES {
 				QueryEvent queryEvent = new QueryEvent();
 				queryEvent.setTimestamp(clientTimestamp);
 				queryEvent.setCategory(getCategoryEnum(getCategory(keyField)));
-				queryEvent.setType(getType(keyField)+","+getSubType(keyField)); //TODO see if in DRES they have added a subtype 
+				queryEvent.setType(getType(keyField)+" > "+getSubType(keyField)); //TODO see if in DRES they have added a subtype 
 				queryEvent.setValue(value+temporaltTxT+queryParam); //TODO see if in DRES they have added an additional fieldto store query param and temporal info 
 				resultLog.addEventsItem(queryEvent);
 			}

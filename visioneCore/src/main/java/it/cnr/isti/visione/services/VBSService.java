@@ -29,8 +29,8 @@ import org.apache.lucene.search.TopDocs;
 import com.google.gson.Gson;
 
 import dev.dres.ApiException;
-//import it.cnr.isti.visione.logging.DRESClient;
-import it.cnr.isti.visione.logging.fake.DRESClient;
+import it.cnr.isti.visione.logging.DRESClient;
+//import it.cnr.isti.visione.logging.fake.DRESClient;
 import it.cnr.isti.visione.logging.LogParserDRES;
 import it.cnr.isti.visione.logging.Logging;
 import it.cnr.isti.visione.logging.Tools;
@@ -59,6 +59,8 @@ public class VBSService {
 	private static final File LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
 	private static final File LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 	private static final String MEMBER_ID=(Settings.MEMBER_ID);
+	private static final Boolean SEND_LOG_TO_DRES=(Settings.SEND_LOG_TO_DRES);
+
 	
 //	private HashMap<String, Float> timestamp = new HashMap<>();
 //	private HashMap<String, Integer> keyframeNumber = new HashMap<>();
@@ -67,7 +69,6 @@ public class VBSService {
 	private LogParserDRES dresLog;
 //	private LogParserDRES dresLogAVS;
 	private Logging visioneLog_saved_at_submission_time;
-	private Logging visioneLog;
 //	private Logging logAVS;
 
 	@Context
@@ -92,7 +93,6 @@ public class VBSService {
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
 		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
-		visioneLog=new Logging(LOGGING_FOLDER);
 //		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
 //		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("started...");
@@ -290,7 +290,8 @@ public class VBSService {
 			ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
 			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults);
- 			client.dresSubmitLog(dresLog.getResultLog()); 
+			if(SEND_LOG_TO_DRES)
+				client.dresSubmitLog(dresLog.getResultLog()); 
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
 			visioneLog_saved_at_submission_time.query2Log(query, simReorder, resLog); 
 			
@@ -549,7 +550,7 @@ public class VBSService {
 		//saving logs
 		try {
 			visioneLog_saved_at_submission_time.save(videoId, middleFrame, time, client.getSessionId(),clientSubmissionTimestamp);
-			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, value );
+			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+value );
 		} catch (IOException | NumberFormatException e1) {
 			e1.printStackTrace();
 			System.out.println(Settings.MEMBER_ID + "," + videoId + "," + time);

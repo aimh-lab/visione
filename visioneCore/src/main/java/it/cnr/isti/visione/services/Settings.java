@@ -18,7 +18,8 @@ public class Settings {
 	private static final String VISIONE_HOME = System.getenv("VISIONE_HOME_4") == null ? ".": System.getenv("VISIONE_HOME_4");
 	
 	private static final Properties props;
-	
+
+	public static Boolean SEND_LOG_TO_DRES;	
 	public static int TEAM_ID;
 	public static String MEMBER_ID;
 	public static String LUCENE;
@@ -72,6 +73,7 @@ public class Settings {
 			MEMBER_ID = props.getProperty("MEMBER_ID");
 			LUCENE = props.getProperty("LUCENE");
 			LUCENE_MARINE = props.getProperty("LUCENE_MARINE");
+			SEND_LOG_TO_DRES=Boolean.parseBoolean(props.getProperty("SEND_LOG_TO_DRES"));
 //			LUCENE_RMAC = props.getProperty("LUCENE_RMAC");
 //			KEYFRAME_TIMESTAMP = props.getProperty("KEYFRAME_TIMESTAMP");
 //			KEYFRAME_NUMBER = props.getProperty("KEYFRAME_NUMBER");
