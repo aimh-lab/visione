@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,7 +56,26 @@ public class ObjectQueryPreprocessing {
 		}
 
 	}
+	
+	public ObjectQueryPreprocessing(InputStream hyperset) {
+		hypersetHM = new HashMap<>();
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(hyperset))) {
+			String line = null;
+			while ((line = reader.readLine()) != null) {
+				ObjectHyperset data = new ObjectHyperset(line);
+				hypersetHM.put(data.getClassname(), data);
+			}
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
+	//older version getting hypersets from a file
+	/*
 	public ObjectQueryPreprocessing(File hypersetFile) {
 		hypersetHM = new HashMap<>();
 		try (BufferedReader reader = new BufferedReader(new FileReader(hypersetFile))) {
@@ -71,7 +92,7 @@ public class ObjectQueryPreprocessing {
 			e.printStackTrace();
 		}
 	}
-	
+	*/
 	public String processingLucene(String objectTxt, String field, String occur) {
 		String prefix = " " + occur + field + ":4wc";
 		String prefixMinus = " -" + field + ":4wc";
@@ -169,7 +190,7 @@ public class ObjectQueryPreprocessing {
 		res.append(" ").append(notObj);
 		return res.toString().trim();
 	}
-
+/*
 	public static void main(String[] args) {
 		File hypersetFile = new File("/media/ssd2/data/vbs2022/classname_hyperset_definition.csv");
 		ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(hypersetFile);
@@ -177,4 +198,5 @@ public class ObjectQueryPreprocessing {
 		System.out.println(objectPrerocessing.processing(test, false));
 		System.out.println(objectPrerocessing.processing(test, true));
 	}
+	*/
 }

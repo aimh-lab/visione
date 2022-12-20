@@ -2,6 +2,7 @@ package it.cnr.isti.visione.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -50,7 +51,10 @@ public class VBSService {
 	private static final int K_MERGE = 200000;
 	private static final int K_Q_TERN = 100;//default value 260
 	private DRESClient client = new DRESClient();
-	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
+//	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
+	private static 	ObjectQueryPreprocessing objectPreprocessing;
+	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
+
 
 	
 
@@ -75,6 +79,10 @@ public class VBSService {
 
 	@Context
 	public void setServletContext(ServletContext context) throws Exception {
+		try (InputStream is = context.getResourceAsStream(HYPERSETS)) {
+			objectPreprocessing = new ObjectQueryPreprocessing(is);
+		}
+		LucTextSearch.setPreprocessing(objectPreprocessing);
 		LucTextSearch v3cSearcher = new LucTextSearch();
 		v3cSearcher.openSearcher(Settings.LUCENE);
 		datasetSearcher.put("v3c", v3cSearcher);
@@ -92,6 +100,7 @@ public class VBSService {
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
 		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
+		
 		System.out.println("started...");
 	}
 
@@ -209,7 +218,7 @@ public class VBSService {
 							//Inoltre, sempre per stabilità, se ci sono oggetti nel canvas facciamo cmq il riordino con TERN prima di combinare i risultati di Lucene con CLIP
 							//questo significa che se l'utente nell'interfaccia chiede di usare solo CLIP ma ha messo anche oggetti nel canvas si ignorerà la scelta dell'utente e si userà una query combinata
 							if(queryObj.getQuery().containsKey(Fields.OBJECTS)) {
-								String preprocessed = objectPrerocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
+								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
 								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
 								System.out.println("USING TERN and CLIP with same TXT");
 								String features = TERNExtractor.text2Features(textQuery, K_Q_TERN).trim();

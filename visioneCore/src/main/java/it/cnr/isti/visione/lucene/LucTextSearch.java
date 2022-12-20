@@ -73,8 +73,8 @@ public class LucTextSearch {
 	private double rescorerWeight = 1;
 	private double similarityRescorerWeight = 10000;
 	private HashMap<String, Similarity> fieldSimilaties = new HashMap<>();
-	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
-
+//	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
+	private static 	ObjectQueryPreprocessing objectPreprocessing;
 
 	public void openSearcher(String lucenePath) throws IOException {
 		synchronized (semaphore) {
@@ -110,6 +110,10 @@ public class LucTextSearch {
 		BooleanQuery.setMaxClauseCount(30000);
 
 		parser = new QueryParser(Fields.TXT, new WhitespaceAnalyzer());
+	}
+	
+	public static void setPreprocessing(ObjectQueryPreprocessing preprocessing) {
+		objectPreprocessing = preprocessing;
 	}
 
 	private LRUCache<Integer, TopDocs> luceneCache = new LRUCache<>(10);
@@ -159,7 +163,7 @@ public class LucTextSearch {
 				Query luceneQuery = null;
 				
 				if (fieldName.equals(Fields.OBJECTS)) {
-					booleanQuery = objectPrerocessing.processingLucene(value.trim(), Fields.OBJECTS, occur);
+					booleanQuery = objectPreprocessing.processingLucene(value.trim(), Fields.OBJECTS, occur);
 				} else {
 					booleanQuery = value.trim();
 					booleanQuery = booleanQuery.replaceAll(" ", " " + occur + fieldName + ":");
