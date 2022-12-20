@@ -119,6 +119,7 @@ def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
     tokens = map(_encode_one, objects)
     tokens = itertools.chain.from_iterable(tokens)
     tokens = list(tokens)
+    tokens.sort()  # this helps when debugging
 
     surrogate = ' '.join(tokens)
     return surrogate
@@ -154,6 +155,7 @@ def _str_count_encode(objects, gray, thresholds):
     gray_token = f'4wc{gray_token}'
     tokens.append(gray_token)
 
+    tokens.sort()  # this helps when debugging
     surrogate = ' '.join(tokens)
     return surrogate
 
@@ -161,6 +163,11 @@ def _str_count_encode(objects, gray, thresholds):
 def _object_info(objects):
     # do not report hyperset & colors objects
     objects = filter(lambda x: x['detector'] not in ('colors', 'hyperset'), objects)
+    detector_nicknames = {
+        'mask_rcnn_lvis': 'MASK',
+        'vfnet_X-101-64x4d': 'VFN64',
+        'frcnn_incep_resnetv2_openimagesv4': 'FRCNN',
+    }
 
     label_counts = collections.defaultdict(int)  # missing keys defaults to 0
     tokens = []
@@ -168,13 +175,15 @@ def _object_info(objects):
         label    = object_record['label'   ]
         score    = object_record['score'   ]
         detector = object_record['detector']
+        detector = detector_nicknames.get(detector, detector)
 
         label_counts[label] += 1
         label_count = label_counts[label]
 
         token = f'{label}{label_count}({detector}:{score:.2f})'
         tokens.append(token)
-    
+
+    tokens.sort()  # this helps when debugging
     text = ' '.join(tokens)
     return text
 
