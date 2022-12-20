@@ -124,7 +124,7 @@ def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
     return surrogate
 
 
-def _str_count_encode(objects, thresholds={}):
+def _str_count_encode(objects, gray, thresholds):
     label_counts = collections.defaultdict(int)  # missing keys defaults to 0
 
     tokens = []
@@ -137,21 +137,30 @@ def _str_count_encode(objects, thresholds={}):
         label_count = label_counts[label]
 
         frequency = ''
-        if detector != 'hyperset':
-            confidence = score - thresholds.get(detector, 0.3)
+        if detector == 'colors':
+            if label_count > 1:  # add colors only once and skip repetitions
+                continue
+            label_count = ''
+        elif detector != 'hyperset':
+            confidence = score - thresholds.get(detector, 0)
             frequency = int(10 * confidence / 2 + 2)  # TODO: why so? ask Lucia about this formula ..
             frequency = f'|{frequency}'
         
         token = f'4wc{label}{label_count}{frequency}'
         tokens.append(token)
     
+    # is gray
+    gray_token = 'colorkeyframe' if gray > thresholds.get('gray', 0.01) else 'graykeyframe'
+    gray_token = f'4wc{gray_token}'
+    tokens.append(gray_token)
+
     surrogate = ' '.join(tokens)
     return surrogate
 
 
 def _object_info(objects):
-    # do not report hyperset objects
-    objects = filter(lambda x: x['detector'] != 'hyperset', objects)
+    # do not report hyperset & colors objects
+    objects = filter(lambda x: x['detector'] not in ('colors', 'hyperset'), objects)
 
     label_counts = collections.defaultdict(int)  # missing keys defaults to 0
     tokens = []
@@ -170,14 +179,14 @@ def _object_info(objects):
     return text
 
 
-def str_encode(record):
+def str_encode(record, thresholds={}):
     objects = record.get('objects', [])
-    object_info = []  # TODO: build object info field for debugging/inspection
+    gray = record.get('gray', 1)  # color frame by default
 
     return {
         '_id': record['_id'],
         'object_box_str': _str_positional_box_encode(objects),
-        'object_count_str': _str_count_encode(objects),
+        'object_count_str': _str_count_encode(objects, gray, thresholds),
         'object_info': _object_info(objects),
     }
 
