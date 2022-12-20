@@ -102,7 +102,7 @@ def main(args):
 
     # separate ids and features
     ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
-    ids, features = zip(*ids_and_features)
+    ids, features = more_itertools.unzip(ids_and_features)
 
     # create batches of features as numpy arrays
     batches_of_features = more_itertools.batched(features, args.batch_size)
