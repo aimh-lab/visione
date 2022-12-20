@@ -1,4 +1,5 @@
 import argparse
+import more_itertools
 from pathlib import Path
 
 from PIL import Image
@@ -38,7 +39,7 @@ def main(args):
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
-        image_ids, image_paths = zip(*ids_and_paths)
+        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
 
         image_paths = map(lambda path: args.image_root / path, image_paths)
         images_pil = map(Image.open, image_paths)

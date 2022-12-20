@@ -286,7 +286,6 @@ cigarette;;finely ground tobacco wrapped in paper- for smoking
 cigarette_case;container;a small flat case for holding cigarettes
 cincture;;a band of material around the waist that strengthens a skirt or trousers
 cistern;tank_(storage_vessel), container;a tank that holds the water used to flush a toilet
-clavier_(musical_instrument);musical_instrument;a clavier with strings that are plucked by plectra mounted on pivots (plucked-string keyboard instrument)
 clarinet_(musical_instrument);musical_instrument;a single-reed instrument with a straight tube
 clasp;;a fastener (as a buckle or hook) that is used to hold two things together
 cleansing_agent;;a preparation used in cleaning something
@@ -338,6 +337,7 @@ cooker;kitchen_utensil,kitchen_appliance, kitchenware;a utensil for cooking
 cookie;baked_goods, food, snack, dessert;any of various small flat sweet cakes (`biscuit' is the british term)
 cooking_spray;food;edible oil delivered as an aerosol
 cooler_(for_food);container;an insulated box for storing food often with ice
+coral;marine_invertebrates;a coral
 corded_phone;telephone;corded telephone
 cork_(bottle_plug);;the plug in the mouth of a bottle (especially a wine bottle)
 corkboard;;a sheet consisting of cork granules
@@ -512,7 +512,7 @@ flash;;a lamp for providing momentary light to take a photograph
 flashlight;tool;a small portable battery-powered electric lamp/portable, hand-held electric light
 fleece;;a soft bulky fabric with deep pile- used chiefly for clothing
 flip_flop_(sandal);sandal_(type_of_shoe), shoe, footwear;a backless sandal held to the foot by a thong between two toes
-flipper_(footwear);shoe, footwear;a shoe to aid a person in swimming
+flipper_(footwear);sports_equipment, footwear;a shoe to aid a person in swimming
 flower;plant;reproductive organ of angiosperm plants especially one having showy or colorful parts
 flower_arrangement;flower;a decorative arrangement of flowers
 flowerpot;container;a container in which plants are cultivated
@@ -619,6 +619,7 @@ harbor_seal;marine_mammal, mammal, animal;small spotted seal of coastal waters o
 hardback_book;book;a book with cardboard or cloth or leather covers
 harmonica_(musical_instrument);musical_instrument;a small rectangular free-reed instrument having a row of free reeds set back in air holes and played by blowing into the desired hole
 harp_(musical_instrument);musical_instrument;a chordophone that has a triangular frame consisting of a sounding board and a pillar and a curved neck- the strings stretched between the neck and the soundbox are plucked with the fingers
+harpsichord;musical_instrument;a clavier with strings that are plucked by plectra mounted on pivots (plucked-string keyboard instrument)
 hat;clothing, fashion_accessory;headwear that protects the head from bad weather, sun, or worn for fashion
 hatbox;container;a round piece of luggage for carrying hats
 headband;fashion_accessory;a band worn around or over the head

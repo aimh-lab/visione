@@ -28,6 +28,7 @@ import com.mongodb.client.MongoDatabase;
 
 import me.tongfei.progressbar.ProgressBar;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.action.StoreTrueArgumentAction;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
 
@@ -45,6 +46,12 @@ public class IndexBuilder {
     
     }
 
+    /* FieldType for Stored Searchable Fields */
+    protected static FieldType storedTextFieldType = new FieldType(TextField.TYPE_STORED) {{
+        setIndexOptions(IndexOptions.DOCS);
+        setOmitNorms(true);
+    }};
+
     /* FieldType for Surrogate Text Representation Fields */
     protected static FieldType surrogateTextFieldType = new FieldType(TextField.TYPE_NOT_STORED) {{
         setIndexOptions(IndexOptions.DOCS_AND_FREQS);
@@ -56,8 +63,12 @@ public class IndexBuilder {
                 .defaultHelp(true)
                 .description("Create a Lucene index of a collection.");
 
-        parser.addArgument("--mongo-uri").help("mongodb connection string (e.g., \"mongodb://admin:visione@mongo/\")")
+        parser.addArgument("--mongo-uri")
+                .help("mongodb connection string (e.g., \"mongodb://admin:visione@mongo/\")")
                 .setDefault("mongodb://admin:visione@mongo/");
+        parser.addArgument("-a", "--append")
+                .help("appends to an existing index instead of truncating it")
+                .action(new StoreTrueArgumentAction());
         parser.addArgument("database_name").help("db name in mongo containing the collection to be indexed");
         parser.addArgument("index_dir").help("directory in which the index is created");
         Namespace ns = parser.parseArgsOrFail(args);
@@ -65,6 +76,7 @@ public class IndexBuilder {
         String mongoUri = ns.getString("mongo_uri");
         String databaseName = ns.getString("database_name");
         String outputIndexDirectory = ns.getString("index_dir");
+        boolean append = ns.getBoolean("append");
         String indexCollection = "frames";
 
         // open the index dir
@@ -74,7 +86,8 @@ public class IndexBuilder {
 		// configure index writer
 		Analyzer analyzer = new TermFrequencyAnalyzer(); // parses "term1|freq1 term2|freq2 ..."
 		IndexWriterConfig conf = new IndexWriterConfig(analyzer);
-		conf.setOpenMode(OpenMode.CREATE_OR_APPEND);
+        OpenMode openMode = (append) ? OpenMode.CREATE_OR_APPEND : OpenMode.CREATE;
+		conf.setOpenMode(openMode);
 
         try (MongoClient mongoClient = MongoClients.create(mongoUri)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -100,7 +113,7 @@ public class IndexBuilder {
                     // System.out.println(entry.toJson());
 
                     // ids
-                    doc.add(new StoredField("imgID"      , entry.getString("_id")));
+                    doc.add(new       Field("imgID"      , entry.getString("_id"), storedTextFieldType));
                     doc.add(new StoredField("visioneid"  , entry.getString("_id")));
                     doc.add(new StoredField("videoID"    , entry.getString("video_id")));
                     doc.add(new StoredField("collection" , databaseName));
@@ -123,6 +136,7 @@ public class IndexBuilder {
 
                     // features
                     doc.add(new       Field("features"   , entry.get("features_gem_str", ""), surrogateTextFieldType));
+                    doc.add(new       Field("aladin"     , entry.get("features_aladin_str", ""), surrogateTextFieldType));
 
                     // features
                     // featuresFields.forEach(field -> doc.add(field));
@@ -134,7 +148,6 @@ public class IndexBuilder {
                 
                     pb.step();
                 }
-                /* TODO: public static final String COLORS = "colors"; */
             }
         }
     }

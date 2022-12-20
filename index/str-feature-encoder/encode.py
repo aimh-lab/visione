@@ -50,29 +50,26 @@ def load_or_train_encoder(collection):
     encoder_filename = Path(f'str-encoder-{db_name}.{collection_name}.pkl')
 
     if not encoder_filename.exists():
-        # get subsample if necessary for training
-        n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
-        n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
-        _, x = collect_features(collection, limit=n_train_document)
-        n, d = x.shape
-
-        rotation_matrix = True
-        # load rotation matrix instead of generating a random one
-        # (FIXME: this is just to reproduce old stuff; to remove)
-        rotation_matrix = np.load(f'rotation_matrix_d{d}.npy').astype(np.float32)
-
-
-        # we use ThresholdSQ for now
-        encoder = surrogate.ThresholdSQ(
+        # init the encoder
+        d = len(collection.find_one({}, projection=['feature'])['feature'])
+        encoder = surrogate.TopKSQ(
             d,  # input dimensionality
-            subtract_mean=True,
-            rotation_matrix=rotation_matrix,
+            keep=260,  # dimensions to keep
+            rotation_matrix=42,  # seed for random rot
         )
 
-        # train the encoder
-        print('Training the encoder ...')
-        encoder.train(x)
-        del x
+        needs_train = False
+        if needs_train:
+            # get subsample if necessary for training
+            n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
+            n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
+            _, x = collect_features(collection, limit=n_train_document)
+            n, d = x.shape
+        
+            # train the encoder
+            print('Training the encoder ...')
+            encoder.train(x)
+            del x
 
         # save trained encoder
         print('Saving trained encoder:', encoder_filename)
@@ -94,12 +91,18 @@ def main(args):
 
     feature_docs = features_collection.find({}, projection=['feature'])
 
-    # TODO filter if already present and not args.force
-    # feature_docs = filter(already in frames and has output_field, feature_docs)
+    # filter only non-processed
+    if not args.force:
+        def needs_processing(x):
+            return output_collection.find_one({'_id': x['_id'], output_field: { '$exists': False }}, {'_id': True}) is None
+
+        feature_docs = filter(needs_processing, feature_docs)
+    
+    feature_docs = tqdm(feature_docs)
 
     # separate ids and features
     ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
-    ids, features = zip(*ids_and_features)
+    ids, features = more_itertools.unzip(ids_and_features)
 
     # create batches of features as numpy arrays
     batches_of_features = more_itertools.batched(features, args.batch_size)
@@ -144,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('features_collection')
     parser.add_argument('--output-field', default=None)
     parser.add_argument('--batch-size', type=int, default=5000)
+    parser.add_argument('--force', default=False, action='store_true')
 
     args = parser.parse_args()
     main(args)

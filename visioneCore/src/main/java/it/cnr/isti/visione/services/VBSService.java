@@ -67,9 +67,8 @@ public class VBSService {
 
 	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
 	private LogParserDRES dresLog;
-//	private LogParserDRES dresLogAVS;
 	private Logging visioneLog_saved_at_submission_time;
-//	private Logging logAVS;
+
 
 	@Context
 	private HttpServletRequest httpServletRequest;
@@ -93,8 +92,6 @@ public class VBSService {
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
 		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
-//		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
-//		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("started...");
 	}
 
