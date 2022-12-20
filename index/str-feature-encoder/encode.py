@@ -91,8 +91,14 @@ def main(args):
 
     feature_docs = features_collection.find({}, projection=['feature'])
 
-    # TODO filter if already present and not args.force
-    # feature_docs = filter(already in frames and has output_field, feature_docs)
+    # filter only non-processed
+    if not args.force:
+        def needs_processing(x):
+            return output_collection.find_one({'_id': x['_id'], output_field: { '$exists': False }}, {'_id': True}) is None
+
+        feature_docs = filter(needs_processing, feature_docs)
+    
+    feature_docs = tqdm(feature_docs)
 
     # separate ids and features
     ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
@@ -141,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('features_collection')
     parser.add_argument('--output-field', default=None)
     parser.add_argument('--batch-size', type=int, default=5000)
+    parser.add_argument('--force', default=False, action='store_true')
 
     args = parser.parse_args()
     main(args)
