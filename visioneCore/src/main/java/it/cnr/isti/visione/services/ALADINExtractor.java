@@ -56,7 +56,7 @@ public class ALADINExtractor {
 				try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
 					String encodedQuery = URLEncoder.encode(textQuery, StandardCharsets.UTF_8);
 					System.out.println(encodedQuery);
-					final HttpGet httpget = new HttpGet(Settings.ALADIN_SERVICE + "?surrogate=true&nprobe=1&k=" + k + "&text=" + encodedQuery);
+					final HttpGet httpget = new HttpGet(Settings.ALADIN_SERVICE + "?nprobe=1&k=" + k + "&text=" + encodedQuery);
 
 					try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 						final HttpEntity resEntity = response.getEntity();

@@ -49,7 +49,7 @@ public class VBSService {
 	private Gson gson;
 
 	private static final int K_MERGE = 200000;
-	private static final int K_Q_ALADIN = 100;//default value 260
+	private static final int K_Q_ALADIN = 260;//default value 260
 	private DRESClient client = new DRESClient();
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
