@@ -49,26 +49,14 @@ public class VBSService {
 	private Gson gson;
 
 	private static final int K_MERGE = 200000;
-	private static final int K_Q_TERN = 100;//default value 260
+	private static final int K_Q_ALADIN = 100;//default value 260
 	private DRESClient client = new DRESClient();
-//	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
-
-
-	
-
-	//private static final File KYFRAME_TIMESTAMP_FILE = new File(Settings.KEYFRAME_TIMESTAMP);
-	//private static final File KEYFRAME_NUMBER_FILE = new File(Settings.KEYFRAME_NUMBER);
 	private static final File LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
 	private static final File LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 	private static final String MEMBER_ID=(Settings.MEMBER_ID);
 	private static final Boolean SEND_LOG_TO_DRES=(Settings.SEND_LOG_TO_DRES);
-
-	
-//	private HashMap<String, Float> timestamp = new HashMap<>();
-//	private HashMap<String, Integer> keyframeNumber = new HashMap<>();
-
 	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
 	private LogParserDRES dresLog; //saved at each query
 	private Logging visioneLog; //saved at submission time and at each new session (if not empty)
@@ -144,10 +132,6 @@ public class VBSService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-//		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-//		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
-//		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
-//		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("New Session Started");
 		return "New Session Started";
 	}
@@ -194,8 +178,8 @@ public class VBSService {
 					log(res, query, logQueries, simReorder, dataset);
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
 				}
-				else if (queryObj.getQuery().containsKey("ternSim")) {
-					TopDocs res =datasetSearcher.get(dataset).searchByTERNID(queryObj.getQuery().get("ternSim"), k, hitsToReorder);
+				else if (queryObj.getQuery().containsKey("aladinSim")) {
+					TopDocs res =datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
 				}
@@ -206,35 +190,33 @@ public class VBSService {
 				}
 				else {
 					ArrayList<TopDocs> hits_tmp=new ArrayList<TopDocs>();
-
-					//LUCIA:I assume that the text is only in the TERN text box	//TODO remove FOLS fols the interface	
 					
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
 						
-						if(queryObj.getParameters().get("textualMode").equals(Fields.TERN)) {//using only tern to aswer the text query
-							System.out.println("USING only TERN");
-							String features = TERNExtractor.text2Features(textQuery, K_Q_TERN).trim();
-							queryObj.getQuery().put(Fields.TERN, features);
+						if(queryObj.getParameters().get("textualMode").equals(Fields.ALADIN)) {//using only our cross-modal feature to answer the text query
+							System.out.println("USING only ALDIN");
+							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
+							queryObj.getQuery().put(Fields.ALADIN, features);
 						}else { 
 							String objectquery="";
 							//Per stabilità se ci sono oggetti nel canvas aggiungiamo alla query testuale da dare a clip anche un testo relativo agli oggetti e memorizzato in "objectquery"
-							//Inoltre, sempre per stabilità, se ci sono oggetti nel canvas facciamo cmq il riordino con TERN prima di combinare i risultati di Lucene con CLIP
+							//Inoltre, sempre per stabilità, se ci sono oggetti nel canvas facciamo cmq il riordino con ALADIN prima di combinare i risultati di Lucene con CLIP
 							//questo significa che se l'utente nell'interfaccia chiede di usare solo CLIP ma ha messo anche oggetti nel canvas si ignorerà la scelta dell'utente e si userà una query combinata
 							if(queryObj.getQuery().containsKey(Fields.OBJECTS)) {
 								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
 								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
-								System.out.println("USING TERN and CLIP with same TXT");
-								String features = TERNExtractor.text2Features(textQuery, K_Q_TERN).trim();
-								queryObj.getQuery().put(Fields.TERN, features);
+								System.out.println("USING ALADIN and CLIP with same TXT");
+								String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
+								queryObj.getQuery().put(Fields.ALADIN, features);
 							}else {// case with no object in the canvas
 								if(queryObj.getParameters().get("textualMode").equals("combo")) {
-									System.out.println("USING TERN and CLIP with same TXT");
-									String features = TERNExtractor.text2Features(textQuery, K_Q_TERN).trim();
-									queryObj.getQuery().put(Fields.TERN, features);
+									System.out.println("USING ALADIN and CLIP with same TXT");
+									String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
+									queryObj.getQuery().put(Fields.ALADIN, features);
 								}else {
-									queryObj.getQuery().remove(Fields.TERN);
+									queryObj.getQuery().remove(Fields.ALADIN);
 									System.out.println("USING only CLIP");
 								}
 							}
@@ -250,7 +232,7 @@ public class VBSService {
 					if(objectClassesTxt!=null)
 						queryObj.addQuery(Fields.OBJECTS, objectPrerocessing.processing(objectClassesTxt, true));*/
 					
-					hits_tmp.add(datasetSearcher.get(dataset).search(queryObj, k));//adding OBJECT and TERN (if applicable)
+					hits_tmp.add(datasetSearcher.get(dataset).search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
 					
 					tabHits.add(datasetSearcher.get(dataset).mergeResults(hits_tmp,k,false));//merging lucene res with clip res and adding it to tabHits	
 

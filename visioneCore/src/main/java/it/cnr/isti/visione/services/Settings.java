@@ -35,7 +35,7 @@ public class Settings {
 	public static String SUBMIT_SERVER;
 	public static String LOG_SERVICE;
 	public static String RMAC_SERVICE;
-	public static String TERN_SERVICE;
+	public static String ALADIN_SERVICE;
 	public static String CLIP_SERVICE;
 	public static String CLIP_SERVICE_MVK;
 	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE;
@@ -48,16 +48,16 @@ public class Settings {
 	public static float[] RESCORER_PIPELINE_WEIGHTS;
 	public static String OBJECTS_WEIGHT;
 	public static String BB_WEIGHT;
-	public static String TERN_WEIGHT;	
+	public static String ALADIN_WEIGHT;	
 	public static String IMG_SIM_WEIGHT;	
 	public static String OBJECTS_SIMILARITY;
 	public static String BB_SIMILARITY;
-	public static String TERN_SIMILARITY;
+	public static String ALADIN_SIMILARITY;
 	public static String IMG_SIM_SIMILARITY;
 	
 	public static FieldParameters OBJECT_PARAMETERS;
 	public static FieldParameters BB_PARAMETERS;
-	public static FieldParameters TERN_PARAMETERS;
+	public static FieldParameters ALADIN_PARAMETERS;
 	public static FieldParameters IMG_SIM_PARAMETERS;
 	
 	private static HashMap<String, FieldParameters> FIELD_MAP;
@@ -89,7 +89,7 @@ public class Settings {
 			SUBMIT_PWD = props.getProperty("SUBMIT_PWD");
 			LOG_SERVICE = props.getProperty("LOG_SERVICE");
 			RMAC_SERVICE = props.getProperty("RMAC_SERVICE");
-			TERN_SERVICE = props.getProperty("TERN_SERVICE");
+			ALADIN_SERVICE = props.getProperty("ALADIN_SERVICE");
 			CLIP_SERVICE = props.getProperty("CLIP_SERVICE");
 			CLIP_SERVICE_MVK = props.getProperty("CLIP_SERVICE_MVK");
 			CLIP_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
@@ -101,8 +101,8 @@ public class Settings {
 			BB_PARAMETERS = gson.fromJson(props.getProperty("BB"), FieldParameters.class);
 			FIELD_MAP.put("BB", BB_PARAMETERS);
 
-			TERN_PARAMETERS = gson.fromJson(props.getProperty("TERN"), FieldParameters.class);
-			FIELD_MAP.put("TERN", TERN_PARAMETERS);
+			ALADIN_PARAMETERS = gson.fromJson(props.getProperty("ALADIN"), FieldParameters.class);
+			FIELD_MAP.put("ALADIN", ALADIN_PARAMETERS);
 
 			IMG_SIM_PARAMETERS = gson.fromJson(props.getProperty("IMG_SIM"), FieldParameters.class);
 			FIELD_MAP.put("IMG_SIM", IMG_SIM_PARAMETERS);

@@ -150,7 +150,7 @@ public class LucTextSearch {
 			
 				s.setSimilarity(fieldSimilaties.get(field.getSimilarity()));
 
-				if (fieldName.equals("tern"))
+				if (fieldName.equals("aladin"))
 					occur = "";
 				else {
 //					occur = query.get("occur");
@@ -215,7 +215,7 @@ public class LucTextSearch {
 	//						System.out.println(luceneQuery.toString() + ": " + field.getWeight() + " k: " + kQuery);
 							time = -System.currentTimeMillis();
 							float firstPassScore = 1.0f;
-							if (fieldName.equals("tern")) {
+							if (fieldName.equals("aladin")) {
 								firstPassScore /= hits.getMaxScore();
 								// kQuery = k;
 							}
@@ -302,13 +302,13 @@ public class LucTextSearch {
 		return res;
 	}
 
-	public TopDocs searchByTERNID(String query, int k, TopDocs hits) throws ParseException, IOException {
+	public TopDocs searchByALADINid(String query, int k, TopDocs hits) throws ParseException, IOException {
 //		String[] queries = query.toLowerCase().split(Settings.QUERY_SPLIT);
-		System.out.println("ternID: " + query);
+		System.out.println("aladinID: " + query);
 		if (query == null)
 			return null;
-		String visualFeatures = getTerms(query, Fields.TERN, true).trim();
-		TopDocs res = searchByTERN(visualFeatures, k, hits);
+		String visualFeatures = getTerms(query, Fields.ALADIN, true).trim();
+		TopDocs res = searchByALADIN(visualFeatures, k, hits);
 //		System.out.println(visualFeatures);
 		return res;
 	}
@@ -344,15 +344,15 @@ public class LucTextSearch {
 		return simHits;
 	}
 
-	public TopDocs searchByTERN(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
+	public TopDocs searchByALADIN(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
 		Similarity sim = fieldSimilaties.get(Settings.IMG_SIM_PARAMETERS.getSimilarity());
 		s.setSimilarity(sim);
 
 		String occur = "";
 
 		TopDocs simHits = null;
-		String booleanQuery = occur + Fields.TERN + ":"
-				+ visualFeatures.replaceAll(" ", " " + occur + Fields.TERN + ":");
+		String booleanQuery = occur + Fields.ALADIN + ":"
+				+ visualFeatures.replaceAll(" ", " " + occur + Fields.ALADIN + ":");
 		System.out.println(booleanQuery);
 		Query luceneQuery = parser.parse(booleanQuery);
 		if (hits == null) {
@@ -376,34 +376,6 @@ public class LucTextSearch {
 		return simHits;
 	}
 
-//	private void setSimilarityRescorerWeight(String field) {
-//		System.out.println(field);
-//		s.setSimilarity(fieldSimilaties.get(field));
-//
-//		switch (field) {
-//
-//		case Fields.TXT:
-//			rescorerWeight = 1.0;
-//			break;
-//
-//		case Fields.MI_FILE_ANNOTATIONS:
-//			rescorerWeight = 0.5;
-//			break;
-//
-//		case Fields.OBJECTS:
-//			rescorerWeight = 1.0;
-//			break;
-//
-//		case Fields.TERN:
-//			rescorerWeight = 0.005;
-//			break;
-//
-//		default:
-//			rescorerWeight = 1;
-//			break;
-//		}
-//		System.out.println(rescorerWeight);
-//	}
 
 	public String getTerms(String id, String field, boolean boosting) throws IOException {
 //		System.out.println(id + ", " + field);
@@ -956,7 +928,7 @@ public class LucTextSearch {
 					res = combineResults_temporal(topDocsList, topK, 7, 21);
 				else {
 					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
-						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), TERN is																	// topDocsList.get(1)
+						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
 					else
 						res = combineResults_temporal(topDocsList, topK, 1, 0);// qui in teoria per ora non dovrebbe mai entrare																// arrivarci mai ma da controllare!
 					}
@@ -1140,18 +1112,16 @@ public class LucTextSearch {
 
 	}
 
-	public TopDocs searchResults2TopDocs(SearchResults[] results) throws IOException {
+	public TopDocs searchResults2TopDocs(SearchResults[] results, String collection) throws IOException {
 		ArrayList<ScoreDoc> scoredocs = new ArrayList<>();
 		float maxScore = -1;
 		for (int i = 0; i < results.length; i++) {
 			String videoId = results[i].imgId.split("_")[0];
-			String imageId = videoId + "/" + results[i].imgId;
-			
-			//temporary patch for MVK
-			if (results[i].imgId.split("_").length > 3) {
+			String imageId = results[i].imgId;
+			if(collection.equals("mvk")) {
 				videoId = results[i].imgId.substring(0, results[i].imgId.lastIndexOf("_"));
-				imageId = results[i].imgId;
 			}
+			
 			
 			Query q = new TermQuery(new Term(Fields.IMG_ID, imageId));
 			TopDocs td = s.search(q, 1);
@@ -1181,7 +1151,7 @@ public class LucTextSearch {
 		if (clipCache.containsKey(textQuery.hashCode()))
 			res = clipCache.get(textQuery.hashCode());
 		else {
-			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection));
+			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection),collection);
 			clipCache.put(textQuery.hashCode(), res);
 		}
 
@@ -1189,7 +1159,7 @@ public class LucTextSearch {
 	}
 
 	public TopDocs searchByCLIPID(String queryId, int k, String collection) throws org.apache.hc.core5.http.ParseException, IOException {
-		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId, collection)));
+		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId, collection), collection));
 	}
 
 	public static void main(String[] args) throws NumberFormatException, IOException {

@@ -8,7 +8,8 @@ public class Fields {
 		
 	public static final String OBJECTS = "objects";
 	
-	public static final String TERN = "tern";
+	public static final String ALADIN = "aladin";
+	
 			
 	public static final String VISUAL_FEATURES = "features";
 	

@@ -37,46 +37,44 @@ import it.cnr.isti.visione.lucene.LRUCache;
 import java.util.Base64;
 
 
-public class TERNExtractor {
+public class ALADINExtractor {
 	
 	private static final int THRESHOLD = 100;
 	
-	private static LRUCache<Integer, String> ternCache = new LRUCache<>(10);
+	private static LRUCache<Integer, String> aladinCache = new LRUCache<>(10);
 
 	public static String text2Features(String textQuery, int k) throws IOException, ParseException {
 		long time = -System.currentTimeMillis();
-		String tern = null;
+		String aladin = null;
 
-		synchronized (ternCache) {
-			if (ternCache.containsKey(textQuery.hashCode())) {
-				tern = ternCache.get(textQuery.hashCode());
-				System.out.println("getting tern from cache");
+		synchronized (aladinCache) {
+			if (aladinCache.containsKey(textQuery.hashCode())) {
+				aladin = aladinCache.get(textQuery.hashCode());
+				System.out.println("getting aladin from cache");
 			}
 			else {
 				try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
 					String encodedQuery = URLEncoder.encode(textQuery, StandardCharsets.UTF_8);
 					System.out.println(encodedQuery);
-					final HttpGet httpget = new HttpGet(Settings.TERN_SERVICE + "?surrogate=true&nprobe=1&k=" + k + "&text=" + encodedQuery);
+					final HttpGet httpget = new HttpGet(Settings.ALADIN_SERVICE + "?surrogate=true&nprobe=1&k=" + k + "&text=" + encodedQuery);
 
 					try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 						final HttpEntity resEntity = response.getEntity();
 						if (resEntity != null) {
-							tern = EntityUtils.toString(resEntity);
-//							System.out.println(tern);
-							if (tern != null)
-								tern = tern.replaceAll("\\|", "\\^");
-//							features = tern.substring(1, tern.length()-2);
-//							features = features2Txt(features);
+							aladin = EntityUtils.toString(resEntity);
+							if (aladin != null)
+								aladin = aladin.replaceAll("\\|", "\\^");
+
 						}
 					}
 				}
-				ternCache.put(textQuery.hashCode(), tern);
+				aladinCache.put(textQuery.hashCode(), aladin);
 			}	
 		}
 		
 		time += System.currentTimeMillis();
-		System.out.println("TERN extraction: " + time + "ms");
-		return tern;
+		System.out.println("ALADIN extraction: " + time + "ms");
+		return aladin;
 
 	}
 

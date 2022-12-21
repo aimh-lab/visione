@@ -201,7 +201,7 @@ public class LogParserDRES {
 			category = "image";
 			break;
 			
-		case "ternSim":
+		case "aladinSim":
 			category = "image";
 			break;
 			
@@ -302,7 +302,7 @@ public class LogParserDRES {
 			type = "globalFeatures";
 			break;
 			
-		case "ternSim":
+		case "aladinSim":
 			type = "globalFeatures";
 			break;
 		
@@ -356,7 +356,7 @@ public class LogParserDRES {
 			subtype = "image similarity from URL of an image (GEM)";
 			break;
 			
-		case "ternSim":
+		case "aladinSim":
 			subtype = "sematic similarity (ALADIN)";
 			break;
 		
