@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from prefetch_generator import BackgroundGenerator
-from skimage import io, measure
+from skimage import io, measure, transform
 from tqdm import tqdm
 
 from visione.savers import MongoCollection, GzipJsonpFile
@@ -78,9 +78,10 @@ def extract_colors(
             ]
 
             # find areas per color index
+            tile = tile + 1  # shift color indexes, as 0 is a reserved label (ignore) for regionprops
             props = measure.regionprops_table(tile, properties=('label', 'area'))
             color_areas = props['area'] / tile.size
-            color_labels = props['label']
+            color_labels = props['label'] - 1  # shift color indexes back
 
             dominant_idx = color_areas.argmax()
             dominant_color = color_labels[dominant_idx]
@@ -199,6 +200,24 @@ def table2record(color_table, label_map, nrows, ncols):
     }
 
 
+def compute_monochromaticity(image_np):
+    """ Based on https://stackoverflow.com/a/59218331/3175629 """
+
+    image_np = transform.resize(image_np, (128,128))  # downsample
+    pixels = image_np.reshape(-1,3)  # list of RGB pixels
+    pixels -= pixels.mean(axis=0)  # center on mean pixel
+
+    dd = np.linalg.svd(pixels, compute_uv=False)  # get variance in the 3 PCA directions
+    var1 = dd[0] / dd.sum()  # explained variance in first direction
+
+    # if most variance is in a single direction,
+    # pixels are mostly collinear in the RGB cube
+    # => monochrome image
+    return {
+        'monochrome': var1
+    }
+
+
 def main(args):
 
     if args.output_type == 'mongo':
@@ -231,8 +250,10 @@ def main(args):
         images = map(io.imread, image_paths)
         images = BackgroundGenerator(images, max_prefetch=10)
 
+        images1, images2 = itertools.tee(images, 2)
+
         color_tables = process_images(
-            images,
+            images1,
             nrows=args.nrows,
             ncols=args.ncols,
             dominant_threshold=args.dominant_threshold,
@@ -243,8 +264,10 @@ def main(args):
         )
 
         label_map = list(COLORS.keys())
-        records = map(lambda x: table2record(x, label_map, args.nrows, args.ncols), color_tables)
-        records = itertools.starmap(lambda _id, r: {'_id': _id, **r}, zip(image_ids, records))
+        color_records = map(lambda x: table2record(x, label_map, args.nrows, args.ncols), color_tables)
+        monochrome_records = map(compute_monochromaticity, images2)
+
+        records = itertools.starmap(lambda _id, cr, mr: {'_id': _id, **cr, **mr}, zip(image_ids, color_records, monochrome_records))
         records = tqdm(records)
         saver.add_many(records)
 
@@ -276,7 +299,7 @@ if __name__ == "__main__":
     mongo_parser.add_argument('--username', default='admin')
     mongo_parser.add_argument('--password', default='visione')
     mongo_parser.add_argument('db')
-    mongo_parser.add_argument('--collection', default='features.gem')
+    mongo_parser.add_argument('--collection', default='objects.colors')
 
     file_parser = subparsers.add_parser('file')
     file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
