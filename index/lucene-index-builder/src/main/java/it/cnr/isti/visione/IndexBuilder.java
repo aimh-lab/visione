@@ -127,7 +127,8 @@ public class IndexBuilder {
                     doc.add(new StoredField("endtime"    , entry. getDouble("end_time"  )));
                     doc.add(new StoredField("middletime" , entry. getDouble("key_time"  )));
 
-                    doc.add(new StoredField("isgray", entry.get("is_gray", "false")));
+                    // static analyses
+                    doc.add(new StoredField("cluster_code", entry.get("cluster_code", "")));
 
                     // object fields
                     doc.add(new       Field("txt"        , entry.get("object_box_str"  , ""), surrogateTextFieldType));
