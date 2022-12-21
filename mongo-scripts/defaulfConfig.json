@@ -184,5 +184,12 @@
             "mask_rcnn_lvis": 0.5,
             "vfnet_X-101-64x4d": 0.5
         }
+    },
+    "str-feature-encoder": {
+        "index_type": "topk-sq",
+        "index_params": {
+            "keep": 0.25,
+            "rotation_matrix": 42
+        }
     }
 }
