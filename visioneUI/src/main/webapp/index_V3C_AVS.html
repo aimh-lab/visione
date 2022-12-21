@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
 <meta name="task" content="AVS">
-<meta name="dataset" content="mvk">
+<meta name="dataset" content="v3c">
 
 <title>Episode IV-A New VISIONE</title>
 <link rel="stylesheet" href="css/jquery-ui.min.css">
@@ -31,43 +31,53 @@
 			<table>
   	<tr>
   	<td colspan=1 valign="top">
-			<img src="img/logoVISIONE.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
-				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt="">
-				
+			<div align="left" style="padding: 4px;padding-bottom: 20px;" onclick="startNewKISSession();">
+						<div style="float: left; padding-right: 4px;">
+							<button class="btn btn-outline-info btn-sm"
+								title="Switch to V3C KIS Dataset">
+								<i class="fa fa-home"> V3C KIS</i>
+
+							</button>
+						</div>
+						<div style="float: left; padding-right: 16px;">
+							<button  disabled="disabled" 
+								class="btn btn-info btn-sm"
+								title="You are running a V3C AVS task">
+								<i class="fa fa-home"> V3C AVS</i>
+
+							</button>
+						</div>
+						<div style="float: left; padding-left: 4px;"
+							onclick="startNewMVKKISSession();">
+							<button class="btn btn-outline-primary btn-sm"
+								title="Switch to MVK Dataset">
+								<i class="fa fa-fish"> MVK</i>
+
+							</button>
+						</div>
+						
+			</div>
 		<div id="dialog" title="Tag Name">
 			<label>tag</label> <input id="tag" name="tag" type="text">
 		</div>
 			<br>
-			<div w3-include-html="paletteMVK.html" style="padding-left: 5px;"></div>
+			<div w3-include-html="palette.html" style="padding-left: 5px;"></div>
 		
   	
   	</td>
-  	<td>
-  	<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
-			<span style="float: left; padding-left: 5px; padding-right: 5px;">
-			<input type="radio" id="vbsTask"
-			name="vbsTask" value="enabled"
-			onclick="startNewMVKKISSession();"><span class="radioTask">KIS<span>
-			<input type="radio" id="vbsTask"
-			name="vbsTask" value="enabled" checked
-			onclick="startNewMVKAVSSession();"><span class="radioTask">AVS<span>
-			
-		<div style="float: left;"><button  
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to V3C Dataset" onclick="startNewAVSSession();">
-				<i class="fa fa-home"> V3C</i>
-					
+<td>
+<div style="float: left;padding-left:30px; padding-top:5px  "><b style="font-size: 140%;"><input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder</b></div>
+<div align="center" style="float: left; padding-left: 30%;">
+<img src="img/logoVISIONE.png" height="28px"
+				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
+				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+				style="border-radius: 20px 20px 20px 20px;" alt="">
+</div>
+<div style="float: right; padding-right: 4%;"><button
+					id="newsession" class="btn btn-warning btn-sm"
+					title="Start a new Session">
+					<i class="fa fa-play"> New Session</i>
 				</button></div>
-				  		<div style="float: left;"><button disabled="disabled" 
-					id="mvk" class="btn btn-primary btn-sm"
-					title="You are running a MVK AVS task" onclick="startNewMVKAVSSession();">
-				<i class="fa fa-fish"> MVK</i>
-					
-				</button></div>
-
-		</div>
   		<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
   	</td>
   	</tr>
@@ -103,8 +113,7 @@
 								});
 							});
 							includeHTML();
-							setCollection("mvk")
-
+							setCollection("v3c")
 							$("#searchTab").append(searchForm(0));
 							//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 							//$("#searchTab").append(addButton);

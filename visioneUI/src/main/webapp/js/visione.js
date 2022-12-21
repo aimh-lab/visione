@@ -152,7 +152,7 @@ client.send();
 function mvkTab() {
 	//if (confirm('Switching to Marine Dataset?')) {
 		dataset = "mvk";
-		window.location.href = 'indexMVK.html';
+		window.location.href = 'index_MVK.html';
 		setCollection("mvk")
 
 	//}
@@ -161,7 +161,7 @@ function mvkTab() {
 function v3cTab() {
 	//if (confirm('Switching to V3C Dataset?')) {
 		dataset = "v3c";
-		window.location.href = 'index.html';
+		window.location.href = 'index_V3C.html';
 		setCollection("v3c")
 	//}
 }
@@ -294,7 +294,7 @@ function startNewSession() {
 
 function startNewKISSession() {
 	//if (confirm('Starting a new KIS session?')) {
-		  location.href = "index.html";
+		  location.href = "index_V3C.html";
 		$.ajax({
 			type : "GET",
 			async : false,
@@ -306,7 +306,7 @@ function startNewKISSession() {
 
 function startNewAVSSession() {
 	//if (confirm('Starting a new AVS session?')) {
-		location.href = "indexAVS.html";
+		location.href = "index_V3C_AVS.html";
 		$.ajax({
 			type : "GET",
 			async : false,
@@ -318,7 +318,7 @@ function startNewAVSSession() {
 
 function startNewMVKAVSSession() {
 	//if (confirm('Starting a new AVS session?')) {
-		location.href = "indexMVKAVS.html";
+		location.href = "index_MVK_AVS.html";
 		$.ajax({
 			type : "GET",
 			async : false,
@@ -330,7 +330,7 @@ function startNewMVKAVSSession() {
 
 function startNewMVKKISSession() {
 	//if (confirm('Starting a new KIS session?')) {
-		  location.href = "indexMVK.html";
+		  location.href = "index_MVK.html";
 		$.ajax({
 			type : "GET",
 			async : false,
