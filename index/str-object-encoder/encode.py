@@ -94,7 +94,17 @@ def _nms(objects, iou_threshold):
 
 
 def non_maximum_suppression(record, iou_threshold=0.55):
-    record['objects'] = _nms(record['objects'], iou_threshold=iou_threshold)
+    colors  = [o for o in record['objects'] if o['detector'] == 'colors']
+    objects = [o for o in record['objects'] if o['detector'] != 'colors']
+
+    objects.sort(key=lambda x: x['label'])
+    objects = itertools.chain.from_iterable(
+        _nms(group, iou_threshold=iou_threshold)
+        for _, group in itertools.groupby(objects, key=lambda x: x['label'])
+    )
+    objects = list(objects)
+    record['objects'] = objects + colors
+
     return record
 
 
@@ -164,7 +174,7 @@ def _str_count_encode(objects, gray, thresholds):
     return surrogate
 
 
-def _object_info(objects):
+def build_object_info(objects):
     # do not report hyperset & colors objects
     objects = filter(lambda x: x['detector'] not in ('colors', 'hyperset'), objects)
     detector_nicknames = {
@@ -179,6 +189,11 @@ def _object_info(objects):
         label    = object_record['label'   ]
         score    = object_record['score'   ]
         detector = object_record['detector']
+
+        # do not include colors in the object info string
+        if detector == 'colors':
+            continue
+
         detector = detector_nicknames.get(detector, detector)
 
         label_counts[label] += 1
@@ -200,7 +215,6 @@ def str_encode(record, thresholds={}):
         '_id': record['_id'],
         'object_box_str': _str_positional_box_encode(objects),
         'object_count_str': _str_count_encode(objects, gray, thresholds),
-        'object_info': _object_info(objects),
     }
 
 
@@ -210,10 +224,14 @@ def generate_write_op(record):
 
 
 def process_record(record, hypersets, object_thresholds):
+    object_info = build_object_info(record.get('objects', []))
+
     record = non_maximum_suppression(record)
     object_counts = count_objects(record)
     record = add_hypersets(record, hypersets)
     record = str_encode(record, thresholds=object_thresholds)
+    record['object_info'] = object_info
+
     write_op = generate_write_op(record)
     return object_counts, write_op
 
