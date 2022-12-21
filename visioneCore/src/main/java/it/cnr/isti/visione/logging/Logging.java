@@ -31,6 +31,13 @@ public class Logging {
 	
 	public Logging(File destFolder) {
 		this.destFolder = destFolder;
+		
+	}
+	
+	public synchronized void savePreviousSessionLogs(String dresSessionId, long clientSubmissionTimestamp) throws IOException {
+		if(queries.size()>0) {
+			save("", -1, "", dresSessionId, clientSubmissionTimestamp);
+		}
 	}
 	
 	public synchronized void save(String videoId, int frameNumber, String time, String dresSessionId, long clientSubmissionTimestamp) throws IOException {

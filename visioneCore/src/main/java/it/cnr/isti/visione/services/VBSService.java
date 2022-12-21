@@ -70,8 +70,8 @@ public class VBSService {
 //	private HashMap<String, Integer> keyframeNumber = new HashMap<>();
 
 	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
-	private LogParserDRES dresLog;
-	private Logging visioneLog_saved_at_submission_time;
+	private LogParserDRES dresLog; //saved at each query
+	private Logging visioneLog; //saved at submission time and at each new session (if not empty)
 
 
 	@Context
@@ -99,7 +99,7 @@ public class VBSService {
 		if (!LOGGING_FOLDER_DRES.exists())
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
+		visioneLog = new Logging(LOGGING_FOLDER);
 		
 		System.out.println("started...");
 	}
@@ -139,8 +139,13 @@ public class VBSService {
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String init() {
-		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
+		try {
+			visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log 
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+//		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
+//		visioneLog_saved_at_submission_time = new Logging(LOGGING_FOLDER);
 //		dresLogAVS = new LogParserDRES(LOGGING_FOLDER_DRES);
 //		logAVS = new Logging(LOGGING_FOLDER);
 		System.out.println("New Session Started");
@@ -295,11 +300,11 @@ public class VBSService {
 		try {
 			ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
-			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults);
+			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults); 
 			if(SEND_LOG_TO_DRES)
 				client.dresSubmitLog(dresLog.getResultLog()); 
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			visioneLog_saved_at_submission_time.query2Log(query, simReorder, resLog); 
+			visioneLog.query2Log(query, simReorder, resLog); 
 			
 //			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
@@ -481,7 +486,6 @@ public class VBSService {
 
     	
     
-	//TODO guarda qui
 	@GET
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -493,7 +497,6 @@ public class VBSService {
 		String videoId = videoIdParam;
 		String time = null;
 		int middleFrame = -1;
-		String middleTime =null;
 		String value=null;
 		if (keyframeIdParam != null) {
 			try {
@@ -550,12 +553,12 @@ public class VBSService {
 				}
 			}			
 		}
-		visioneLog_saved_at_submission_time.saveResponse(response);
+		visioneLog.saveResponse(response);
 		System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
 				
 		//saving logs
 		try {
-			visioneLog_saved_at_submission_time.save(videoId, middleFrame, time, client.getSessionId(),clientSubmissionTimestamp);
+			visioneLog.save(videoId, middleFrame, time, client.getSessionId(),clientSubmissionTimestamp);
 			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+value );
 		} catch (IOException | NumberFormatException e1) {
 			e1.printStackTrace();

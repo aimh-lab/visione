@@ -1,8 +1,0 @@
-{
-  "serviceUrl": "https://bilioso.isti.cnr.it:4053/Visione4/services/VBSService",
-  "speech2Text": "https://pc-vairo.isti.cnr.it:8443/whisper",
-  "thumbnailUrl": "https://bilioso.isti.cnr.it/vbsthumbs2022/",
-  "videoUrl":"https://bilioso.isti.cnr.it/vbsVideos2022/",
-  "videoshrinkUrl":"https://bilioso.isti.cnr.it/vbsVideos2022shrink/",
-  "keyFramesUrl":"https://bilioso.isti.cnr.it/vbsKeyframes2022/"
-}

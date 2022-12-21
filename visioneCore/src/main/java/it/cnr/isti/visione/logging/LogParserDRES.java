@@ -85,7 +85,6 @@ public class LogParserDRES {
 		if (destFolder != null) {
 			if (getResultLog() != null) {
 				try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(destFolder, fn + ".json")))) {
-//					writer.write(getResultLog().toString()); 
 					writer.write(gson.toJson(getResultLog()));
 				}
 			}
