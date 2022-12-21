@@ -42,24 +42,33 @@ def collect_features(collection, limit=None):
     return ids, features
 
 
-def load_or_train_encoder(collection):
+def load_or_train_encoder(collection, force):
     db_name = collection.database.name
     collection_name = collection.name
 
     # instantiate STR encoder
     encoder_filename = Path(f'str-encoder-{db_name}.{collection_name}.pkl')
 
-    if not encoder_filename.exists():
-        # init the encoder
-        d = len(collection.find_one({}, projection=['feature'])['feature'])
-        encoder = surrogate.TopKSQ(
-            d,  # input dimensionality
-            keep=260,  # dimensions to keep
-            rotation_matrix=42,  # seed for random rot
-        )
+    if not encoder_filename.exists() or force:
+        # get encoder params
+        config = collection.database['config'].find_one({'_id': 'config'})
+        config = config.get('str-feature-encoder', {})
 
-        needs_train = False
-        if needs_train:
+        default_index_type = 'topk-sq'
+        default_index_params = dict(keep=0.25, rotation_matrix=42)
+
+        index_type = config.get('index_type', default_index_type)
+        index_params = config.get('index_params', default_index_params)
+
+        # init the encoder
+        index_string = ', '.join(f'{k}={v}' for k, v in index_params.items())
+        index_string = f'{index_type}({index_string})'
+        print('Building encoder:', index_string)
+
+        d = len(collection.find_one({}, projection=['feature'])['feature'])
+        encoder = surrogate.index_factory(d, index_type, index_params)
+
+        if not encoder.is_trained:
             # get subsample if necessary for training
             n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
             n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
@@ -87,7 +96,7 @@ def main(args):
     output_collection = client[args.db]['frames']
     output_field = args.output_field or f"{args.features_collection.replace('.','_')}_str"
 
-    encoder = load_or_train_encoder(features_collection)
+    encoder = load_or_train_encoder(features_collection, args.force_encoder)
 
     feature_docs = features_collection.find({}, projection=['feature'])
 
@@ -97,8 +106,6 @@ def main(args):
             return output_collection.find_one({'_id': x['_id'], output_field: { '$exists': False }}, {'_id': True}) is None
 
         feature_docs = filter(needs_processing, feature_docs)
-    
-    feature_docs = tqdm(feature_docs)
 
     # separate ids and features
     ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
@@ -148,6 +155,7 @@ if __name__ == "__main__":
     parser.add_argument('--output-field', default=None)
     parser.add_argument('--batch-size', type=int, default=5000)
     parser.add_argument('--force', default=False, action='store_true')
+    parser.add_argument('--force-encoder', default=False, action='store_true')
 
     args = parser.parse_args()
     main(args)
