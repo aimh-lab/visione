@@ -618,7 +618,7 @@ function search2(query) {
 	}
 }
 
-function searchByTERNSimilarity(query) {
+function searchByALADINSimilarity(query) {
 	$.ajax({
 		type : "POST",
 		data: {query: query},
@@ -726,15 +726,20 @@ function setOccur(radioButton, canvasId) {
 	searchByForm();
 }
 
+function setTextualMode(checkboxId, mode) {
+	textualMode[checkboxId] = mode;
+	searchByForm();
+}
+/*
 function setTextualMode(checkboxId) {
 	if(checkBox = document.getElementById("textualMode" + checkboxId).checked) {
-		textualMode[checkboxId] = "tern";
+		textualMode[checkboxId] = "aladin";
 	}
 	else
 		textualMode[checkboxId] = "clip";
 	searchByForm();
 }
-
+*/
 function enableCanvas(canvasId, storePrev) {
 	 document.getElementById("overlay" + canvasId).style.display = "none";
 	$('input:radio[name=canvas' + canvasId +']')[0].checked = true;
@@ -958,9 +963,9 @@ function showResults(data) {
 				+'<a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId	+ '#'+ frameName +	'" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 				+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+videoId+'\', \''+imgId+'\'); return false;"></i>'
 				+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				+'<img style="padding: 2px;" src="img/tern_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="ternSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.ternSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
 				+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				//+'<span style="color:blue;" title="' + imgId + '" id="ternSim' + imgId + '">tern </span>'
+				//+'<span style="color:blue;" title="' + imgId + '" id="aladinSim' + imgId + '">aladin </span>'
 				//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
 				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\',\''+ collection+ '\'); return false;"></i></span>'
 
@@ -1272,7 +1277,7 @@ function canvasClean(idx) {
 	$("#textual"+ idx).val('');
 	
 	if ($('#textualMode'+idx).is(':checked')) {
-		prevTextualMode[idx] = "tern";
+		prevTextualMode[idx] = "aladin";
 	}
 	else
 		prevTextualMode[idx] = "clip";
@@ -1331,7 +1336,7 @@ function canvasCleanUndo(idx) {
 		$('input:radio[name=occur' + idx +']')[1].checked = true;
 	$("#textual" + idx).val(prevTextual[idx]);
 	
-	if (prevTextualMode[idx] == "tern")
+	if (prevTextualMode[idx] == "aladin")
 		$('#textualMode'+idx).prop('checked', true);
 	
 	if (prevIsColor[idx] == true)

@@ -233,7 +233,7 @@ function avsSubmittedTab(selectedItem) {
 			+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="gemSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<img style="padding: 2px;" src="img/tern_icon.svg" width=20 title="semantic similarity" alt="' + selectedItem.imgId + '" id="ternSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.ternSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+			+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + selectedItem.imgId + '" id="aladinSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
 			+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + selectedItem.imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
 			+'<br>'
 	

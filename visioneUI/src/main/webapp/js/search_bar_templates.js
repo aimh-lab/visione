@@ -104,10 +104,15 @@ const searchForm = (canvasID = 0, bar = 'hey') => {
 								style="vertical-align: top; background: linear-gradient(to right, #FF0000 0%, #00FF00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Color&nbsp;</span>
 						</div></td>
 						<td valign="right">
-							<input
-								id='textualMode${canvasID}' type="checkbox"
-								onchange="setTextualMode(${canvasID})"></span> <span
-							style="vertical-align: top;" title="Use only TERN">Use only TERN</span>
+						<span onclick="setTextualMode(${canvasID}, 'clip')">
+							<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">CLIP</label>
+						</span>
+						<span onclick="setTextualMode(${canvasID}, 'aladin')">
+							<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">ALADIN</label>
+						</span>
+					</span>
 						</td>
 				</tr>
 			</table>
