@@ -6,7 +6,7 @@
 <meta name="task" content="AVS">
 <meta name="dataset" content="mvk">
 
-<title>Episode IV-A New Hope in VISIONE</title>
+<title>Episode IV-A New VISIONE</title>
 <link rel="stylesheet" href="css/jquery-ui.min.css">
 <link rel="stylesheet"
 	href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
@@ -31,29 +31,11 @@
 			<table>
   	<tr>
   	<td colspan=1 valign="top">
-  	
-  		  		<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
-			<span style="float: left; padding-left: 5px; padding-right: 5px;">
-			<span class="task">AVS</span>
-			
-			<div class="dropdown">
-		  		<button
-					id="newsession" class="btn btn-warning btn-sm"
-					title="Start a new Session">
-					<i class="fa fa-play">New Session</i>
-				</button>
-		  <div class="dropdown-content">
-		  <a href="" onclick="startNewMVKKISSession(); return false;">KIS</a>
-		  <a href="" onclick="startNewMVKAVSSession(); return false;">AVS</a>
-		  </div>
-		</div>
-			
-			</span> <img src="img/logoVISIONE.png" height="28px"
+			<img src="img/logoVISIONE.png" height="28px"
 				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
 				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
 				style="border-radius: 20px 20px 20px 20px;" alt="">
 				
-		</div>
 		<div id="dialog" title="Tag Name">
 			<label>tag</label> <input id="tag" name="tag" type="text">
 		</div>
@@ -63,11 +45,29 @@
   	
   	</td>
   	<td>
-  		<div><button
-					id="v3c" class="btn btn-outline-primary btn-sm"
-					title="Switch to V3C dataset" onclick="v3cTab();">
-					<i class="fa fa-fish"> Marine Dataset</i>
+  	<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
+			<span style="float: left; padding-left: 5px; padding-right: 5px;">
+			<input type="radio" id="vbsTask"
+			name="vbsTask" value="enabled"
+			onclick="startNewMVKKISSession();"><span class="radioTask">KIS<span>
+			<input type="radio" id="vbsTask"
+			name="vbsTask" value="enabled" checked
+			onclick="startNewMVKAVSSession();"><span class="radioTask">AVS<span>
+			
+		<div style="float: left;"><button  
+					id="mvk" class="btn btn-outline-info btn-sm"
+					title="Switch to V3C Dataset" onclick="startNewAVSSession();">
+				<i class="fa fa-home"> V3C</i>
+					
 				</button></div>
+				  		<div style="float: left;"><button disabled="disabled" 
+					id="mvk" class="btn btn-primary btn-sm"
+					title="You are running a MVK AVS task" onclick="startNewMVKAVSSession();">
+				<i class="fa fa-fish"> MVK</i>
+					
+				</button></div>
+
+		</div>
   		<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
   	</td>
   	</tr>

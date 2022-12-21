@@ -150,20 +150,20 @@ client.open("GET", "js/conf.json", false);
 client.send(); 
 
 function mvkTab() {
-	if (confirm('Switching to Marine Dataset?')) {
+	//if (confirm('Switching to Marine Dataset?')) {
 		dataset = "mvk";
 		window.location.href = 'indexMVK.html';
 		setCollection("mvk")
 
-	}
+	//}
 }
 
 function v3cTab() {
-	if (confirm('Switching to V3C Dataset?')) {
+	//if (confirm('Switching to V3C Dataset?')) {
 		dataset = "v3c";
 		window.location.href = 'index.html';
 		setCollection("v3c")
-	}
+	//}
 }
 
 messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
@@ -293,7 +293,7 @@ function startNewSession() {
 }
 
 function startNewKISSession() {
-	if (confirm('Starting a new KIS session?')) {
+	//if (confirm('Starting a new KIS session?')) {
 		  location.href = "index.html";
 		$.ajax({
 			type : "GET",
@@ -301,11 +301,11 @@ function startNewKISSession() {
 			url : urlBSService+"/init"
 		}).responseText
 		setCollection("v3c")
-	}
+	//}
 }
 
 function startNewAVSSession() {
-	if (confirm('Starting a new AVS session?')) {
+	//if (confirm('Starting a new AVS session?')) {
 		location.href = "indexAVS.html";
 		$.ajax({
 			type : "GET",
@@ -313,11 +313,11 @@ function startNewAVSSession() {
 			url : urlBSService+"/init"
 		}).responseText
 		setCollection("v3c")
-	}
+	//}
 }
 
 function startNewMVKAVSSession() {
-	if (confirm('Starting a new AVS session?')) {
+	//if (confirm('Starting a new AVS session?')) {
 		location.href = "indexMVKAVS.html";
 		$.ajax({
 			type : "GET",
@@ -325,11 +325,11 @@ function startNewMVKAVSSession() {
 			url : urlBSService+"/init"
 		}).responseText
 		setCollection("mvk")
-	}
+	//}
 }
 
 function startNewMVKKISSession() {
-	if (confirm('Starting a new KIS session?')) {
+	//if (confirm('Starting a new KIS session?')) {
 		  location.href = "indexMVK.html";
 		$.ajax({
 			type : "GET",
@@ -337,7 +337,7 @@ function startNewMVKKISSession() {
 			url : urlBSService+"/init"
 		}).responseText
 		setCollection("mvk")
-	}
+	//}
 }
 
 function submitResult(id,videoId,collection) {

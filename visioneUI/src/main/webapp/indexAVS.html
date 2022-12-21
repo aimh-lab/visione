@@ -6,7 +6,7 @@
 <meta name="task" content="AVS">
 <meta name="dataset" content="v3c">
 
-<title>Episode IV-A New Hope in VISIONE</title>
+<title>Episode IV-A New VISIONE</title>
 <link rel="stylesheet" href="css/jquery-ui.min.css">
 <link rel="stylesheet"
 	href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
@@ -31,44 +31,27 @@
 			<table>
   	<tr>
   	<td colspan=1 valign="top">
-  		<input type="radio" id="vbsTask"
+  		  		<div align="left" style="padding: 4px;">
+			<input type="radio" id="vbsTask"
+			name="vbsTask" value="enabled"
+			onclick="startNewKISSession();"><span class="radioTask" style="padding-right: 10px;">KIS</span>
+			<input type="radio" id="vbsTask"
 			name="vbsTask" value="enabled" checked
-			onclick="startNewKISSession();">
-  	
-  		  		<div align="left" style="padding-top: 8px; padding-bottom: 5px;">
-			<span style="float: left; padding-left: 5px; padding-right: 5px;">
+			onclick="startNewAVSSession();"><span class="radioTask">AVS<span>
 			
-<div style="float: left;"><button
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="startNewKISSession();">
-				<i class="fa fa-home"> V3C</i><span class="task" title="You are running a V3C KIS task"> KIS</span>
+		<div style="float: left; padding: 4px;"><button disabled="disabled" 
+					id="mvk" class="btn btn-info btn-sm"
+					title="You are running a V3C KIS task" onclick="startNewAVSSession();">
+				<i class="fa fa-home"> V3C</i>
 					
 				</button></div>
-				  		<div style="float: left;"><button
-					id="mvk" class="btn btn-outline-info btn-sm"
-					title="Switch to Marine Dataset" onclick="startNewAVSSession();">
-				<i class="fa fa-home"> V3C</i><span class="task" title="You are running a V3C AVS task"> AVS</span>
-					
-				</button></div>
-				  		<div style="float: left;"><button
-					id="mvk" class="btn btn-outline-primary btn-sm"
-					title="Switch to Marine Dataset" onclick="startNewMVKKISSession();">
-				<i class="fa fa-home"> MVK</i><span class="task" title="You are running a MVK KIS task"> KIS</span>
-					
-				</button></div>
-				  		<div style="float: left;"><button
+				  		<div style="float: left; padding: 4px; padding-right: 15px;"><button
 					id="mvk" class="btn btn-outline-primary btn-sm"
 					title="Switch to Marine Dataset" onclick="startNewMVKAVSSession();">
-				<i class="fa fa-home"> MVK</i><span class="task" title="You are running a MVK AVS task"> AVS</span>
+				<i class="fa fa-fish"> MVK</i>
 					
 				</button></div>
-		</div>
-			
-			</span> <img src="img/logoVISIONE.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
-				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt="">
-				
+
 		</div>
 		<div id="dialog" title="Tag Name">
 			<label>tag</label> <input id="tag" name="tag" type="text">
@@ -78,8 +61,19 @@
 		
   	
   	</td>
-  	<td>
-
+<td>
+<div style="float: left; "><b style="font-size: larger;"><input id='simreorder' type="checkbox" onchange="setSimReorder(this)">Sim Reorder&nbsp; </b></div>
+<div align="center" style="float: left; padding-left: 30%;">
+<img src="img/logoVISIONE.png" height="28px"
+				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
+				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+				style="border-radius: 20px 20px 20px 20px;" alt="">
+</div>
+<div style="float: right; padding-right: 4%;"><button
+					id="newsession" class="btn btn-warning btn-sm"
+					title="Start a new Session">
+					<i class="fa fa-play"> New Session</i>
+				</button></div>
   		<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
   	</td>
   	</tr>
