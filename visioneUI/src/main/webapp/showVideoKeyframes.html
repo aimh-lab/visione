@@ -62,11 +62,6 @@ var keyframes = JSON.parse(res);
 		table = ""
 		for (i = 0; i < keyframes.length; i++) {
 			frameName = keyframes[i]
-
-			imgIdTokens = keyframes[i].split("/");
-			//videoId = imgIdTokens[0];
-			if (imgIdTokens.length > 0)
-				frameName = imgIdTokens[1];
 			path = collection + "/" + videoId + "/"+ frameName;
 			
 			if (i % 6 == 0) {
