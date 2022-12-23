@@ -59,6 +59,8 @@ def build_faiss_index(args, features_collection):
 
     feats_file = index_path / f'clippone_features_{args.db}.h5'
 
+    must_be_trained = args.index_type != 'Flat'
+
     # prepare the index and add items to it in batches
     dim = 1024
     metric = faiss.METRIC_INNER_PRODUCT
@@ -69,46 +71,55 @@ def build_faiss_index(args, features_collection):
 
         # prepare reading features from MongoDB
         feature_docs = features_collection.find({}, projection=['feature'])
+        length = features_collection.count_documents({})
 
-        # separate ids and features
+        # get ids and features
         ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
-        ids, features = more_itertools.unzip(ids_and_features)
 
-        # create batches of features as numpy arrays
-        batches_of_features = more_itertools.batched(features, args.batch_size)
-        to_numpy = functools.partial(np.array, dtype=np.float32)
-        batches_of_features = map(to_numpy, batches_of_features)
-        squeeze = functools.partial(np.squeeze, axis=1)
-        batches_of_features = map(squeeze, batches_of_features)
+        # create batches
+        batches_of_ids_and_features = more_itertools.batched(ids_and_features, args.batch_size)
 
         # write features on h5 files on disk and add items to the index
-        if not args.disable_cache:
-            with h5py.File(feats_file, 'w') as f:
-                ids = list(ids)
-                ofeatures = f.create_dataset("features", (len(ids), dim), dtype=np.float32)
-                dt = h5py.string_dtype(encoding='utf-8')
-                oids = f.create_dataset('image_names', (len(ids), ), dtype=dt)
+        with h5py.File(feats_file, 'w') as f:
+            ofeatures = f.create_dataset("features", (length, dim), dtype=np.float32)
+            dt = h5py.string_dtype(encoding='utf-8')
+            oids = f.create_dataset('image_names', (length, ), dtype=dt)
 
-                for idx, image_name in enumerate(ids):
-                   oids[idx] = np.array(image_name.encode("utf-8"), dtype=dt)
+            batches_of_ids_and_features = zip(range(0, length + args.batch_size, args.batch_size), batches_of_ids_and_features)
 
-                for feats, i in tqdm.tqdm(zip(batches_of_features, range(0, len(ids) + args.batch_size, args.batch_size))):
-                    ofeatures[i:i+args.batch_size, :] = feats
-                    index.add(feats)
+            # TODO: is there the possibility to do the same thing but with generators?
+            for i, idfe in tqdm.tqdm(batches_of_ids_and_features, total=length // args.batch_size + 1):
+                ids, feats = zip(*idfe)
 
+                ids = [id.encode("utf-8") for id in ids]
+                ids = np.array(ids, dtype=dt)
+                oids[i:i+args.batch_size] = ids
+
+                feats = np.array(feats)
+                feats = np.squeeze(feats, axis=1)
+                ofeatures[i:i+args.batch_size, :] = feats
+                if i == 0 and must_be_trained:
+                    # train the index
+                    logging.info('Training the index...')
+                    index.train(feats)
+                index.add(feats)
     else:
         # load the features
-        image_data = h5py.File(feats_file, 'r')
-        ids = image_data['image_names'][:]
-        ids = [s.decode() for s in ids]
-        features = image_data['features']
-        batches_of_features = more_itertools.batched(features, args.batch_size)
-        to_numpy = functools.partial(np.array, dtype=np.float32)
-        batches_of_features = map(to_numpy, batches_of_features)
+        with h5py.File(feats_file, 'r') as image_data:
+            ids = image_data['image_names'][:]
+            ids = [s.decode() for s in ids]
+            features = image_data['features']
+            batches_of_ids_and_features = more_itertools.batched(features, args.batch_size)
+            to_numpy = functools.partial(np.array, dtype=np.float32)
+            batches_of_ids_and_features = map(to_numpy, batches_of_ids_and_features)
 
-        # add to faiss index
-        for feats in tqdm.tqdm(batches_of_features, desc="Adding to Index"):
-            index.add(feats)
+            # add to faiss index
+            for i, feats in tqdm.tqdm(enumerate(batches_of_ids_and_features), desc="Adding to Index"):
+                if i == 0 and must_be_trained:
+                    # train the index
+                    logging.info('Training the index...')
+                    index.train(feats)
+                index.add(feats)
 
     index = FaissWrapper(index, ids)
 
