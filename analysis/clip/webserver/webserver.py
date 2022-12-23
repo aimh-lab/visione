@@ -103,6 +103,7 @@ def build_faiss_index(args, features_collection):
                     logging.info('Training the index...')
                     index.train(feats)
                 index.add(feats)
+            ids = [s.decode() for s in oids[:]]
     else:
         # load the features
         with h5py.File(feats_file, 'r') as image_data:
