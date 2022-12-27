@@ -727,9 +727,17 @@ function setOccur(radioButton, canvasId) {
 }
 
 function setTextualMode(checkboxId, mode) {
-	textualMode[checkboxId] = mode;
+	if (textualMode[checkboxId].includes(mode))
+		textualMode[checkboxId] = textualMode[checkboxId].replace(mode, "")
+	else 
+		textualMode[checkboxId] += mode;
 	searchByForm();
 }
+/*
+function setTextualMode(checkboxId, mode) {
+	textualMode[checkboxId] = mode;
+	searchByForm();
+}*/
 /*
 function setTextualMode(checkboxId) {
 	if(checkBox = document.getElementById("textualMode" + checkboxId).checked) {

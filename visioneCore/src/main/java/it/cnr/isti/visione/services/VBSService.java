@@ -195,6 +195,16 @@ public class VBSService {
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
 						
+						if (queryObj.getParameters().get("textualMode").indexOf("clip") >= 0)  {
+							System.out.println("Clip to video");
+						}
+						if (queryObj.getParameters().get("textualMode").indexOf("c1") >= 0)  {
+							System.out.println("Cclippone");
+						}
+						if (queryObj.getParameters().get("textualMode").indexOf("aladin") >= 0)  {
+							System.out.println("ALADIN");
+						}
+						
 						if(queryObj.getParameters().get("textualMode").equals(Fields.ALADIN)) {//using only our cross-modal feature to answer the text query
 							System.out.println("USING only ALDIN");
 							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();

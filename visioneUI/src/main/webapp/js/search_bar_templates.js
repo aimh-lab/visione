@@ -105,12 +105,16 @@ const searchForm = (canvasID = 0, bar = 'hey') => {
 						</div></td>
 						<td valign="right">
 						<span onclick="setTextualMode(${canvasID}, 'clip')">
-							<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
-							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">CLIP</label>
+							<input type="checkbox" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">CV</label>
+						</span>
+						<span onclick="setTextualMode(${canvasID}, 'c1')">
+							<input type="checkbox" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">C1</label>
 						</span>
 						<span onclick="setTextualMode(${canvasID}, 'aladin')">
-							<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">ALADIN</label>
+							<input type="checkbox" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">AL</label>
 						</span>
 					</span>
 						</td>

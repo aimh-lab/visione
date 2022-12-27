@@ -62,7 +62,8 @@ function selectImg(selectedItem) {
 
 	img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
-	img += '<div style="float: left; padding: 2px;"><a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
+	img += '<div style="float: left; padding: 2px;">'
+			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
 			+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
@@ -89,7 +90,6 @@ function selectImg(selectedItem) {
 			id4Regex = this.id.replaceAll(".", "\\.")
 			avsdiv = id4Regex.replaceAll("selected_avs_", "avsdiv_")
 			$('#' + id4Regex).contextmenu(function() {
-				imgId = id4Regex;
 				langInfo = this.lang.split('|');
 				collection = langInfo[0];
 				videoId = langInfo[1];

@@ -40,6 +40,10 @@ public class Settings {
 	public static String CLIP_SERVICE_MVK;
 	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE;
 	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK;
+	public static String CLIP_ONE_SERVICE;
+	public static String CLIP_ONE_SERVICE_MVK;
+	public static String CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE;
+	public static String CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE_MVK;
 	public static String SUBMIT_USER;
 	public static String SUBMIT_PWD;
 	public static String[] RESCORER_PIPELINE;
@@ -94,6 +98,11 @@ public class Settings {
 			CLIP_SERVICE_MVK = props.getProperty("CLIP_SERVICE_MVK");
 			CLIP_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
 			CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE_MVK");
+			
+			CLIP_ONE_SERVICE = props.getProperty("CLIP_ONE_SERVICE");
+			CLIP_ONE_SERVICE_MVK = props.getProperty("CLIP_ONE_SERVICE_MVK");
+			CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE");
+			CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE_MVK = props.getProperty("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE_MVK");
 			
 			OBJECT_PARAMETERS = gson.fromJson(props.getProperty("OBJECTS"), FieldParameters.class);
 			FIELD_MAP.put("OBJECTS", OBJECT_PARAMETERS);

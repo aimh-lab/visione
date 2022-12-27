@@ -50,6 +50,7 @@ import org.apache.lucene.util.BytesRef;
 
 import it.cnr.isti.visione.logging.Tools;
 import it.cnr.isti.visione.services.CLIPExtractor;
+import it.cnr.isti.visione.services.CLIPOneExtractor;
 import it.cnr.isti.visione.services.FieldParameters;
 import it.cnr.isti.visione.services.ObjectQueryPreprocessing;
 import it.cnr.isti.visione.services.SearchResults;
@@ -1152,6 +1153,18 @@ public class LucTextSearch {
 			res = clipCache.get(textQuery.hashCode());
 		else {
 			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection),collection);
+			clipCache.put(textQuery.hashCode(), res);
+		}
+
+		return res;
+	}
+	
+	public TopDocs searchByCLIPOne(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
+		TopDocs res = null;
+		if (clipCache.containsKey(textQuery.hashCode()))
+			res = clipCache.get(textQuery.hashCode());
+		else {
+			res = searchResults2TopDocs(CLIPOneExtractor.text2CLIPResults(textQuery, collection),collection);
 			clipCache.put(textQuery.hashCode(), res);
 		}
 
