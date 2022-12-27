@@ -194,9 +194,10 @@ public class VBSService {
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
-						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("aladin") >= 0;
-						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("c1") >= 0;
-						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("clip") >= 0;
+						String textualMode=queryObj.getParameters().get("textualMode");
+						Boolean doALADIN=textualMode.indexOf("aladin") >= 0;
+						Boolean doCLIPPONE=textualMode.indexOf("c1") >= 0;
+						Boolean doCLIP=textualMode.indexOf("clip") >= 0;
 						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
 						String objectquery="";
 						if (doALADIN || doOBJECTS)  { 
@@ -228,7 +229,7 @@ public class VBSService {
 							System.out.println("**Search CLIPPONE:\t"+ time+" ms");	
 						}
 
-						//TODO qui neò caso ci va un merge tra clip e clippone da fare!
+						//TODO qui nel caso ci va un merge tra clip e clippone da fare!
 					
 					}
 					
