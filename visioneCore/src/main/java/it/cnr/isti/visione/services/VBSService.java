@@ -194,48 +194,42 @@ public class VBSService {
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
-						
-						if (queryObj.getParameters().get("textualMode").indexOf("clip") >= 0)  {
-							System.out.println("Clip to video");
-						}
-						if (queryObj.getParameters().get("textualMode").indexOf("c1") >= 0)  {
-							System.out.println("Cclippone");
-						}
-						if (queryObj.getParameters().get("textualMode").indexOf("aladin") >= 0)  {
+						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("aladin") >= 0;
+						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("c1") >= 0;
+						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("clip") >= 0;
+						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
+						String objectquery="";
+						if (doALADIN || doOBJECTS)  { 
 							System.out.println("ALADIN");
-						}
-						
-						if(queryObj.getParameters().get("textualMode").equals(Fields.ALADIN)) {//using only our cross-modal feature to answer the text query
-							System.out.println("USING only ALDIN");
 							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
 							queryObj.getQuery().put(Fields.ALADIN, features);
-						}else { 
-							String objectquery="";
-							//Per stabilità se ci sono oggetti nel canvas aggiungiamo alla query testuale da dare a clip anche un testo relativo agli oggetti e memorizzato in "objectquery"
-							//Inoltre, sempre per stabilità, se ci sono oggetti nel canvas facciamo cmq il riordino con ALADIN prima di combinare i risultati di Lucene con CLIP
-							//questo significa che se l'utente nell'interfaccia chiede di usare solo CLIP ma ha messo anche oggetti nel canvas si ignorerà la scelta dell'utente e si userà una query combinata
-							if(queryObj.getQuery().containsKey(Fields.OBJECTS)) {
+							if(doOBJECTS) {
 								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
 								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
-								System.out.println("USING ALADIN and CLIP with same TXT");
-								String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
-								queryObj.getQuery().put(Fields.ALADIN, features);
-							}else {// case with no object in the canvas
-								if(queryObj.getParameters().get("textualMode").equals("combo")) {
-									System.out.println("USING ALADIN and CLIP with same TXT");
-									String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
-									queryObj.getQuery().put(Fields.ALADIN, features);
-								}else {
-									queryObj.getQuery().remove(Fields.ALADIN);
-									System.out.println("USING only CLIP");
-								}
 							}
-							String clipQuery=textQuery+objectquery;	
+						}else {
+							queryObj.getQuery().remove(Fields.ALADIN);
+						}
+						
+						// CLip and Clippone query changes is objects are in the canvas. In such cases Aladin is used as well
+						String clipQuery=textQuery+objectquery;							
+						if (doCLIP)  {
+							System.out.println("Clip to video");
 							long time = -System.currentTimeMillis(); 
 							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 							time += System.currentTimeMillis();
 							System.out.println("**Search clip:\t"+ time+" ms");	
-						}						
+						}
+						if (doCLIPPONE)  {
+							System.out.println("Clippone");
+							long time = -System.currentTimeMillis(); 
+							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
+							time += System.currentTimeMillis();
+							System.out.println("**Search CLIPPONE:\t"+ time+" ms");	
+						}
+
+						//TODO qui neò caso ci va un merge tra clip e clippone da fare!
+					
 					}
 					
 					/*String objectClassesTxt=queryObj.getQuery().get(Fields.OBJECTS);
