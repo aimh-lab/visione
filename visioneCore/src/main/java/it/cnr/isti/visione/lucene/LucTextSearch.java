@@ -750,7 +750,7 @@ public class LucTextSearch {
 		}
 	}
 
-	public ArrayList<SearchResults> sortByVideo(TopDocs hits) {
+	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int n_rows) {
 		if (hits == null)
 			return null;
 		TopDocs hitsClone = topDocsClone(hits);
@@ -796,17 +796,18 @@ public class LucTextSearch {
 			ConcurrentHashMap<Integer, SearchResults> videoHM = hm.get(videoID);
 			List<SearchResults> videoRes = new ArrayList<SearchResults>(videoHM.values());
 			videoRes.sort(new SearchResultsComparator());
-			videoRes = videoRes.subList(0, Math.min(20, videoRes.size()));
+			videoRes = videoRes.subList(0, Math.min(n_frames_per_row, videoRes.size()));
 			float maxscore = videoRes.get(0).score;
 			videoScoreHashMap.put(videoID, maxscore);
 			videoResHashMap.put(videoID, videoRes);
 		}
 		List<Entry<String, Float>> videolist = new LinkedList<>(videoScoreHashMap.entrySet());
 		videolist.sort((k1, k2) -> -(k1.getValue()).compareTo(k2.getValue()));
-		int maxNvideo = Math.min(150, videolist.size()); //TODO ricontrolla il  150
+		int maxNvideo = Math.min(n_rows, videolist.size()); 
 		videolist = videolist.subList(0, maxNvideo);
 		for (Entry<String, Float> entry : videolist) {
 			results.addAll(videoResHashMap.get(entry.getKey()));
+			
 		}
 
 		total_time += System.currentTimeMillis();
@@ -965,7 +966,10 @@ public class LucTextSearch {
 			TopDocs hits_i = topDocsList.get(i);
 			shmap[i] = getVideoHashMap_th(hits_i, time_quantizer, videoIds); // hashing  hits_i
 			//TODO add a cache for the hashing?
-			videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
+			if(i==0)
+				videoIds=shmap[i].keySet();
+			else
+				videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
 			//videoIds.addAll(shmap[i].keySet()); //video ids is the union 
 			max_scores[i] = hits_i.getMaxScore();
 		}
@@ -1072,9 +1076,11 @@ public class LucTextSearch {
 
 	private TopDocs combineResults(List<TopDocs> topDocsList, int k)
 			throws NumberFormatException, IOException {
-		int time_quantizer=4;
+		long total_time = -System.currentTimeMillis();	
+		int time_quantizer=3;
 		int nHitsToMerge = topDocsList.size();
-		long total_time = -System.currentTimeMillis();
+		
+		
 	
 
 		long time = -System.currentTimeMillis();
@@ -1088,21 +1094,24 @@ public class LucTextSearch {
 
 		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
 		Set<String> videoIds = new HashSet<String> ();
-		float lambda= 1.0f/nHitsToMerge;
+		float lambda= 10.0f/nHitsToMerge; //I used 10 to avoid  too small number (e.g. 10^-6)
+		
 		
 		for (int i = 0; i < nHitsToMerge; i++) {
 			TopDocs hits_i = topDocsList.get(i);
 			if(hits_i==null)
 				continue;
-			ScoreDoc[] scoreDocs=hits_i.scoreDocs.clone();
+			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits);
 			float max_score= hits_i.getMaxScore();			
-			float min_score= scoreDocs[scoreDocs.length - 1].score;
-			
-			//boost first 10 results and normalize the others
-			for (int r=0; r< scoreDocs.length; r++) {
-				scoreDocs[r].score=nomalize_score(scoreDocs[r].score, min_score, max_score, lambda);
+			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
+			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
+			//boost first 10 results and normalize the others (up to max_res_each_hits)
+			for (int r=0; r< max_res_each_hits; r++) {
+				ScoreDoc sd=hits_i.scoreDocs[r];
+				float score=nomalize_score(sd.score, min_score, max_score, lambda);
 				if(r<10)
-					scoreDocs[r].score *= nHitsToMerge;
+					score *= nHitsToMerge;
+				scoreDocs[r]=new ScoreDoc(sd.doc, score);
 			}
 			TopDocs modified_hits_i=new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
 			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i

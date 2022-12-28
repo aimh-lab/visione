@@ -146,6 +146,9 @@ public class VBSService {
 	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		
+		int n_frames_per_row=15;
+		int n_rows=800;
+		
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
@@ -170,23 +173,23 @@ public class VBSService {
 				if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = datasetSearcher.get(dataset).searchByExample(features, k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs res =datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k, dataset);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else {
 					ArrayList<TopDocs> hits_tmp=new ArrayList<TopDocs>();
@@ -215,7 +218,7 @@ public class VBSService {
 						// CLip and Clippone query changes is objects are in the canvas. In such cases Aladin is used as well
 						String clipQuery=textQuery+objectquery;							
 						if (doCLIP)  {
-							System.out.println("Clip to video");
+							System.out.println("Clip2video");
 							long time = -System.currentTimeMillis(); 
 							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 							time += System.currentTimeMillis();
@@ -259,7 +262,7 @@ public class VBSService {
 			log(hits, query, logQueries, simReorder, dataset);
 			
 			
-			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits));
+			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits,n_frames_per_row,n_rows));
 			if (response == null)
 				response = "";//new
 //				response = gson.toJson(datasetSearcher.get(dataset).topDocs2SearchResults(hits));
@@ -285,13 +288,15 @@ public class VBSService {
 	 */
 	public void log(TopDocs hits, String query, List<VisioneQuery> queries, boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
 		try {
-			ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
-			String resLog = gson.toJson(searchResults);
-			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults); 
-			if(SEND_LOG_TO_DRES)
-				client.dresSubmitLog(dresLog.getResultLog()); 
-			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			visioneLog.query2Log(query, simReorder, resLog); 
+			if(hits!=null) {
+				ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
+				String resLog = gson.toJson(searchResults);
+				Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults); 
+				if(SEND_LOG_TO_DRES)
+					client.dresSubmitLog(dresLog.getResultLog()); 
+				dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
+				visioneLog.query2Log(query, simReorder, resLog); 
+			}
 			
 //			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
