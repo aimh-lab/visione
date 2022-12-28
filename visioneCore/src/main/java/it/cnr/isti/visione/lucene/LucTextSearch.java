@@ -197,7 +197,7 @@ public class LucTextSearch {
 				query4Cache += booleanQuery;
 				if (luceneCache.containsKey(query4Cache.hashCode())) {
 					hits = luceneCache.get(query4Cache.hashCode());
-					System.out.println("lucene query from cache");
+					System.out.println("\t [lucene query from cache]");
 				} else {
 					luceneQuery = parser.parse(booleanQuery);
 					// System.out.println(luceneQuery);
@@ -208,7 +208,7 @@ public class LucTextSearch {
 						hits = s.search(luceneQuery, kQuery);
 						hits.totalHits = hits.scoreDocs.length;
 						time += System.currentTimeMillis();
-						System.out.println("**Search " + fieldName + " (k: " + kQuery + ")" + ":\t" + time + " ms"
+						System.out.println("\t **Search " + fieldName + " (k: " + kQuery + ")" + ":\t" + time + " ms"
 								+ "\t\t(nHits " + hits.totalHits + "---maxScore " + hits.getMaxScore() + ")");
 					} else {
 	
@@ -216,7 +216,7 @@ public class LucTextSearch {
 	//						System.out.println(luceneQuery.toString() + ": " + field.getWeight() + " k: " + kQuery);
 							time = -System.currentTimeMillis();
 							float firstPassScore = 1.0f;
-							if (fieldName.equals("aladin")) {
+							if (fieldName.equals(Fields.ALADIN)) {
 								firstPassScore /= hits.getMaxScore();
 								// kQuery = k;
 							}
@@ -224,7 +224,7 @@ public class LucTextSearch {
 							// QueryRescorer.rescore(s, hits, luceneQuery, field.getWeight(), kQuery);//
 							hits.totalHits = hits.scoreDocs.length;
 							time += System.currentTimeMillis();
-							System.out.println("**Rescore " + fieldName + " (" + "weight:" + field.getWeight() + " k: "
+							System.out.println("\t \t**Rescore " + fieldName + " (" + "weight:" + field.getWeight() + " k: "
 									+ kQuery + "):\t" + time + " ms" + "\t\t(nHits " + hits.totalHits + "---maxScore "
 									+ hits.getMaxScore() + ")");
 	
@@ -360,7 +360,7 @@ public class LucTextSearch {
 			long time = -System.currentTimeMillis();
 			simHits = s.search(luceneQuery, k);
 			time += System.currentTimeMillis();
-			System.out.println("Search time: " + time + " ms");
+			System.out.println("\t ***Search time: " + time + " ms");
 		} else {
 			ScoreDoc[] scoredocs = new ScoreDoc[hits.scoreDocs.length];
 			for (int i = 0; i < hits.scoreDocs.length; i++) {
@@ -974,7 +974,7 @@ public class LucTextSearch {
 			max_scores[i] = hits_i.getMaxScore();
 		}
 		time += System.currentTimeMillis();
-		System.out.println("hashing:" + time + "ms");
+		System.out.print("*[hashing:" + time + "ms]\t");
 
 		// matching
 		time = -System.currentTimeMillis();
@@ -1050,17 +1050,17 @@ public class LucTextSearch {
 		}
 
 		time += System.currentTimeMillis();
-		System.out.println("matching time:" + time + "ms");
+		System.out.print("[matching time:" + time + "ms]\t");
 
 		time = -System.currentTimeMillis();
 		Collections.sort(resultsSD, new ScoreDocsComparator());
 		time += System.currentTimeMillis();
-		System.out.println("sorting time:" + time + "ms");
+		System.out.print("[sorting time:" + time + "ms]\t");
 
 		total_time += System.currentTimeMillis();
-		System.out.println("total TEMPORAL MERGE time:" + total_time + "ms");
+		System.out.print("total TEMPORAL MERGE time:" + total_time + "ms\t\t");
 
-		System.out.print("[result size before truncation " + resultsSD.size() + "]");
+		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
 
 		int nHits = Math.min(k, resultsSD.size());
 		if (nHits < 1)
@@ -1119,7 +1119,7 @@ public class LucTextSearch {
 
 		}
 		time += System.currentTimeMillis();
-		System.out.println("hashing:" + time + "ms");
+		System.out.print("[hashing:" + time + "ms]\t");
 
 		// matching
 		time = -System.currentTimeMillis();
@@ -1163,17 +1163,17 @@ public class LucTextSearch {
 		}
 
 		time += System.currentTimeMillis();
-		System.out.println("matching time:" + time + "ms");
+		System.out.print("[matching time:" + time + "ms]\t");
 
 		time = -System.currentTimeMillis();
 		Collections.sort(resultsSD, new ScoreDocsComparator());
 		time += System.currentTimeMillis();
-		System.out.println("sorting time:" + time + "ms");
+		System.out.print("[sorting time:" + time + "ms]\t");
 
 		total_time += System.currentTimeMillis();
-		System.out.println("total HITS MERGE time:" + total_time + "ms");
+		System.out.print("total HITS COMBINE time:" + total_time + "ms\t");
 
-		System.out.print("[result size before truncation " + resultsSD.size() + "]");
+		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
 
 		int nHits = Math.min(k, resultsSD.size());
 		if (nHits < 1)

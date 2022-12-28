@@ -204,7 +204,7 @@ public class VBSService {
 						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
 						String objectquery="";
 						if (doALADIN || doOBJECTS)  { 
-							System.out.println("ALADIN");
+							System.out.print("ALADIN: \t"+textQuery+"\t");
 							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
 							queryObj.getQuery().put(Fields.ALADIN, features);
 							if(doOBJECTS) {
@@ -218,18 +218,18 @@ public class VBSService {
 						// CLip and Clippone query changes is objects are in the canvas. In such cases Aladin is used as well
 						String clipQuery=textQuery+objectquery;							
 						if (doCLIP)  {
-							System.out.println("Clip2video");
+							System.out.print("Clip2video: \t"+clipQuery+"\t");
 							long time = -System.currentTimeMillis(); 
 							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 							time += System.currentTimeMillis();
-							System.out.println("**Search clip:\t"+ time+" ms");	
+							System.out.println("\t**Search clip:\t"+ time+" ms");	
 						}
 						if (doCLIPPONE)  {
-							System.out.println("Clippone");
+							System.out.print("CLIPPONE \t"+clipQuery+"\t");
 							long time = -System.currentTimeMillis(); 
 							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 							time += System.currentTimeMillis();
-							System.out.println("**Search CLIPPONE:\t"+ time+" ms");	
+							System.out.println("\t**Search CLIPPONE:\t"+ time+" ms");	
 						}
 
 						//TODO qui nel caso ci va un merge tra clip e clippone da fare!
