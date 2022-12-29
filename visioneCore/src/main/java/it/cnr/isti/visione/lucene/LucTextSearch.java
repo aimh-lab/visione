@@ -197,7 +197,7 @@ public class LucTextSearch {
 				query4Cache += booleanQuery;
 				if (luceneCache.containsKey(query4Cache.hashCode())) {
 					hits = luceneCache.get(query4Cache.hashCode());
-					System.out.println("lucene query from cache");
+					System.out.println("\t [lucene query from cache]");
 				} else {
 					luceneQuery = parser.parse(booleanQuery);
 					// System.out.println(luceneQuery);
@@ -208,7 +208,7 @@ public class LucTextSearch {
 						hits = s.search(luceneQuery, kQuery);
 						hits.totalHits = hits.scoreDocs.length;
 						time += System.currentTimeMillis();
-						System.out.println("**Search " + fieldName + " (k: " + kQuery + ")" + ":\t" + time + " ms"
+						System.out.println("\t **Search " + fieldName + " (k: " + kQuery + ")" + ":\t" + time + " ms"
 								+ "\t\t(nHits " + hits.totalHits + "---maxScore " + hits.getMaxScore() + ")");
 					} else {
 	
@@ -216,7 +216,7 @@ public class LucTextSearch {
 	//						System.out.println(luceneQuery.toString() + ": " + field.getWeight() + " k: " + kQuery);
 							time = -System.currentTimeMillis();
 							float firstPassScore = 1.0f;
-							if (fieldName.equals("aladin")) {
+							if (fieldName.equals(Fields.ALADIN)) {
 								firstPassScore /= hits.getMaxScore();
 								// kQuery = k;
 							}
@@ -224,7 +224,7 @@ public class LucTextSearch {
 							// QueryRescorer.rescore(s, hits, luceneQuery, field.getWeight(), kQuery);//
 							hits.totalHits = hits.scoreDocs.length;
 							time += System.currentTimeMillis();
-							System.out.println("**Rescore " + fieldName + " (" + "weight:" + field.getWeight() + " k: "
+							System.out.println("\t \t**Rescore " + fieldName + " (" + "weight:" + field.getWeight() + " k: "
 									+ kQuery + "):\t" + time + " ms" + "\t\t(nHits " + hits.totalHits + "---maxScore "
 									+ hits.getMaxScore() + ")");
 	
@@ -360,7 +360,7 @@ public class LucTextSearch {
 			long time = -System.currentTimeMillis();
 			simHits = s.search(luceneQuery, k);
 			time += System.currentTimeMillis();
-			System.out.println("Search time: " + time + " ms");
+			System.out.println("\t ***Search time: " + time + " ms");
 		} else {
 			ScoreDoc[] scoredocs = new ScoreDoc[hits.scoreDocs.length];
 			for (int i = 0; i < hits.scoreDocs.length; i++) {
@@ -586,7 +586,7 @@ public class LucTextSearch {
 					Document document = s.doc(scoredoc.doc);
 					String imgID = document.get(Fields.IMG_ID);
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
-					String videoId = imgID.split("/")[0];
+					String videoId = document.get(Fields.VIDEO_ID);
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
 					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, ScoreDoc>());
 					ConcurrentHashMap<Integer, ScoreDoc> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
@@ -642,7 +642,7 @@ public class LucTextSearch {
 
 					Document document = s.doc(scoredoc.doc);
 					String imgID = document.get(Fields.IMG_ID);
-					String videoId = imgID.split("/")[0];
+					String videoId = document.get(Fields.VIDEO_ID);
 					if (!video_keys.contains(videoId))
 						continue;
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
@@ -712,7 +712,7 @@ public class LucTextSearch {
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
 					Integer middleFrame = Integer.parseInt(document.get(Fields.MIDDLE_FRAME));
 
-				//	String videoId = imgID.split("/")[0];
+
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
 						
 					hm.putIfAbsent(videoID, new ConcurrentHashMap<Integer, SearchResults>());
@@ -750,7 +750,7 @@ public class LucTextSearch {
 		}
 	}
 
-	public ArrayList<SearchResults> sortByVideo(TopDocs hits) {
+	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int n_rows) {
 		if (hits == null)
 			return null;
 		TopDocs hitsClone = topDocsClone(hits);
@@ -796,17 +796,18 @@ public class LucTextSearch {
 			ConcurrentHashMap<Integer, SearchResults> videoHM = hm.get(videoID);
 			List<SearchResults> videoRes = new ArrayList<SearchResults>(videoHM.values());
 			videoRes.sort(new SearchResultsComparator());
-			videoRes = videoRes.subList(0, Math.min(20, videoRes.size()));
+			videoRes = videoRes.subList(0, Math.min(n_frames_per_row, videoRes.size()));
 			float maxscore = videoRes.get(0).score;
 			videoScoreHashMap.put(videoID, maxscore);
 			videoResHashMap.put(videoID, videoRes);
 		}
 		List<Entry<String, Float>> videolist = new LinkedList<>(videoScoreHashMap.entrySet());
 		videolist.sort((k1, k2) -> -(k1.getValue()).compareTo(k2.getValue()));
-		int maxNvideo = Math.min(150, videolist.size()); //TODO ricontrolla il  150
+		int maxNvideo = Math.min(n_rows, videolist.size()); 
 		videolist = videolist.subList(0, maxNvideo);
 		for (Entry<String, Float> entry : videolist) {
 			results.addAll(videoResHashMap.get(entry.getKey()));
+			
 		}
 
 		total_time += System.currentTimeMillis();
@@ -922,17 +923,19 @@ public class LucTextSearch {
 					td.scoreDocs = Arrays.copyOf(td.scoreDocs, topK);
 				}
 				res = td;
-			}
-	
-			else { 
+			}	
+			else { //two or more topDocs
 				if (temporalquery)
 					res = combineResults_temporal(topDocsList, topK, 7, 21);
 				else {
-					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
-						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
-					else
-						res = combineResults_temporal(topDocsList, topK, 1, 0);// qui in teoria per ora non dovrebbe mai entrare																// arrivarci mai ma da controllare!
-					}
+					res =combineResults(topDocsList, topK);
+//					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
+//						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
+//					else
+//						res = combineResults_temporal(topDocsList, topK, 2, 4);// qui entra se ci sono >=3 topDocs																// arrivarci mai ma da controllare!
+//					
+				
+				}
 				}
 		}
 		return res; //case nHitsToMerge <1, i.e. res=null
@@ -956,32 +959,22 @@ public class LucTextSearch {
 			}
 		});
 
-		// hashing first hits
+		
 		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
 		Set<String> videoIds = null;
 		for (int i = 0; i < nHitsToMerge; i++) {
 			TopDocs hits_i = topDocsList.get(i);
-			Integer hashCode = hits_i.hashCode();
-			shmap[i] = getVideoHashMap_th(hits_i, time_quantizer, videoIds);
-
-//			if (mergeCache.containsKey(hashCode)) {
-//				shmap[i] = mergeCache.get(hashCode);
-//				System.out.println(i + " Using VideoHashMap cache");
-//			}
-//			else {
-//				shmap[i] = getVideoHashMap_th(hits_i, time_quantizer, videoIds);
-//				System.out.println(i + " Evaluating VideoHashMap");
-//
-//				mergeCache.put(hashCode, shmap[i]);
-//			}
-			videoIds = shmap[i].keySet();
+			shmap[i] = getVideoHashMap_th(hits_i, time_quantizer, videoIds); // hashing  hits_i
+			//TODO add a cache for the hashing?
+			if(i==0)
+				videoIds=shmap[i].keySet();
+			else
+				videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
+			//videoIds.addAll(shmap[i].keySet()); //video ids is the union 
 			max_scores[i] = hits_i.getMaxScore();
 		}
-
-		// videoIds is already the intersection of the videos
-
 		time += System.currentTimeMillis();
-		System.out.println("hashing:" + time + "ms");
+		System.out.print("*[hashing:" + time + "ms]\t");
 
 		// matching
 		time = -System.currentTimeMillis();
@@ -1057,17 +1050,17 @@ public class LucTextSearch {
 		}
 
 		time += System.currentTimeMillis();
-		System.out.println("matching time:" + time + "ms");
+		System.out.print("[matching time:" + time + "ms]\t");
 
 		time = -System.currentTimeMillis();
 		Collections.sort(resultsSD, new ScoreDocsComparator());
 		time += System.currentTimeMillis();
-		System.out.println("sorting time:" + time + "ms");
+		System.out.print("[sorting time:" + time + "ms]\t");
 
 		total_time += System.currentTimeMillis();
-		System.out.println("total TEMPORAL MERGE time:" + total_time + "ms");
+		System.out.print("total TEMPORAL MERGE time:" + total_time + "ms\t\t");
 
-		System.out.print("[result size before truncation " + resultsSD.size() + "]");
+		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
 
 		int nHits = Math.min(k, resultsSD.size());
 		if (nHits < 1)
@@ -1081,6 +1074,123 @@ public class LucTextSearch {
 
 	}
 
+	private TopDocs combineResults(List<TopDocs> topDocsList, int k)
+			throws NumberFormatException, IOException {
+		long total_time = -System.currentTimeMillis();	
+		int time_quantizer=3;
+		int nHitsToMerge = topDocsList.size();
+		
+		
+	
+
+		long time = -System.currentTimeMillis();
+		Collections.sort(topDocsList, new Comparator<TopDocs>() {
+			@Override
+			public int compare(TopDocs o1, TopDocs o2) {
+				return Long.compare(o1.totalHits, o2.totalHits);
+			}
+		});
+
+
+		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
+		Set<String> videoIds = new HashSet<String> ();
+		float lambda= 10.0f/nHitsToMerge; //I used 10 to avoid  too small number (e.g. 10^-6)
+		
+		
+		for (int i = 0; i < nHitsToMerge; i++) {
+			TopDocs hits_i = topDocsList.get(i);
+			if(hits_i==null)
+				continue;
+			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits);
+			float max_score= hits_i.getMaxScore();			
+			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
+			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
+			//boost first 10 results and normalize the others (up to max_res_each_hits)
+			for (int r=0; r< max_res_each_hits; r++) {
+				ScoreDoc sd=hits_i.scoreDocs[r];
+				float score=nomalize_score(sd.score, min_score, max_score, lambda);
+				if(r<10)
+					score *= nHitsToMerge;
+				scoreDocs[r]=new ScoreDoc(sd.doc, score);
+			}
+			TopDocs modified_hits_i=new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
+			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i
+			videoIds.addAll(shmap[i].keySet()); //videoIds is the union of all the videos in the topDocsList 
+
+		}
+		time += System.currentTimeMillis();
+		System.out.print("[hashing:" + time + "ms]\t");
+
+		// matching
+		time = -System.currentTimeMillis();
+		ArrayList<ScoreDoc> resultsSD = new ArrayList<>();
+
+		for (String videoId : videoIds) {
+			ConcurrentHashMap<Integer, HashSet<Integer>> hm_docs = new ConcurrentHashMap<Integer, HashSet<Integer>>();
+			ConcurrentHashMap<Integer, Float> hm_score = new ConcurrentHashMap<Integer, Float>();
+			for (int i = 0; i < nHitsToMerge; i++) {
+				ConcurrentHashMap<Integer, ScoreDoc> hm_i=shmap[i].get(videoId);
+				if(hm_i==null)
+					continue;
+				//List<Entry<Integer, ScoreDoc>> listOfEntries = new ArrayList(hm_i.entrySet());
+				for (Entry<Integer, ScoreDoc> entry : hm_i.entrySet()) {
+					Integer id_t = entry.getKey();
+					ScoreDoc sd=entry.getValue();
+					float aggregated_score=sd.score;
+					HashSet docSet=hm_docs.getOrDefault(id_t,new HashSet<Integer>());
+					aggregated_score+=hm_score.getOrDefault(id_t, 0.0f);
+					docSet.add(sd.doc);
+					hm_docs.put(id_t, docSet);
+					hm_score.put(id_t, aggregated_score);
+
+				}
+			}
+			//save merged results of the considered video
+			
+			for(Entry<Integer, HashSet<Integer>> entry_docs:hm_docs.entrySet()) {
+				Integer id_t = entry_docs.getKey();
+				HashSet<Integer> docSet=entry_docs.getValue();
+				float agg_score=hm_score.get(id_t);
+				for( int doc: docSet) {
+
+					ScoreDoc ssi = new ScoreDoc(doc, agg_score);
+					resultsSD.add(ssi);
+
+				}
+
+			}
+
+		}
+
+		time += System.currentTimeMillis();
+		System.out.print("[matching time:" + time + "ms]\t");
+
+		time = -System.currentTimeMillis();
+		Collections.sort(resultsSD, new ScoreDocsComparator());
+		time += System.currentTimeMillis();
+		System.out.print("[sorting time:" + time + "ms]\t");
+
+		total_time += System.currentTimeMillis();
+		System.out.print("total HITS COMBINE time:" + total_time + "ms\t");
+
+		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
+
+		int nHits = Math.min(k, resultsSD.size());
+		if (nHits < 1)
+			return null;
+
+		ScoreDoc[] firstKscoreDocs = resultsSD.stream().limit(nHits).collect(Collectors.toList())
+				.toArray(new ScoreDoc[nHits]);
+		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
+
+		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
+
+	}
+	
+	
+	
+	
+	
 	class MaxValue {
 		public int row;
 		private int col;
@@ -1117,7 +1227,8 @@ public class LucTextSearch {
 		ArrayList<ScoreDoc> scoredocs = new ArrayList<>();
 		float maxScore = -1;
 		for (int i = 0; i < results.length; i++) {
-			String videoId = results[i].imgId.split("_")[0];
+			
+			String videoId = results[i].imgId.split("_")[0]; //TODO  video ID 
 			String imageId = results[i].imgId;
 			if(collection.equals("mvk")) {
 				videoId = results[i].imgId.substring(0, results[i].imgId.lastIndexOf("_"));
@@ -1145,16 +1256,16 @@ public class LucTextSearch {
 //	private TopDocs prevClipRes;
 //	private String prevClipQuery;
 
-	private LRUCache<Integer, TopDocs> cvCache = new LRUCache<>(10);
-	private LRUCache<Integer, TopDocs> clCache = new LRUCache<>(10);
+	private LRUCache<Integer, TopDocs> clipCache = new LRUCache<>(10);
+	private LRUCache<Integer, TopDocs> clipponeCache = new LRUCache<>(10);
 
 	public TopDocs searchByCLIP(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
-		if (cvCache.containsKey(textQuery.hashCode()))
-			res = cvCache.get(textQuery.hashCode());
+		if (clipCache.containsKey(textQuery.hashCode()))
+			res = clipCache.get(textQuery.hashCode());
 		else {
 			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection),collection);
-			cvCache.put(textQuery.hashCode(), res);
+			clipCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
@@ -1162,11 +1273,11 @@ public class LucTextSearch {
 	
 	public TopDocs searchByCLIPOne(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
-		if (clCache.containsKey(textQuery.hashCode()))
-			res = clCache.get(textQuery.hashCode());
+		if (clipponeCache.containsKey(textQuery.hashCode()))
+			res = clipponeCache.get(textQuery.hashCode());
 		else {
 			res = searchResults2TopDocs(CLIPOneExtractor.text2CLIPResults(textQuery, collection),collection);
-			clCache.put(textQuery.hashCode(), res);
+			clipponeCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;

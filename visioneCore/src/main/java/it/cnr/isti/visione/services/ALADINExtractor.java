@@ -46,11 +46,13 @@ public class ALADINExtractor {
 	public static String text2Features(String textQuery, int k) throws IOException, ParseException {
 		long time = -System.currentTimeMillis();
 		String aladin = null;
-
+		
+		
 		synchronized (aladinCache) {
 			if (aladinCache.containsKey(textQuery.hashCode())) {
 				aladin = aladinCache.get(textQuery.hashCode());
-				System.out.println("getting aladin from cache");
+				
+				System.out.print(" \t [getting aladin from cache]");
 			}
 			else {
 				try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
@@ -73,7 +75,7 @@ public class ALADINExtractor {
 		}
 		
 		time += System.currentTimeMillis();
-		System.out.println("ALADIN extraction: " + time + "ms");
+		System.out.println("\t[ALADIN extraction: " + time + "ms]");
 		return aladin;
 
 	}
