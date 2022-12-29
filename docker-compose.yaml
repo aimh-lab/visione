@@ -4,21 +4,19 @@ services:
     ports: ["80:80"]
     volumes:
       - ./router.conf:/etc/nginx/templates/default.conf.template
-      - core-thumbs:/data/thumbnails:ro
+      - ${VISIONE_ROOT}:/data:ro
     depends_on: ["core", "mongo-gui"]
 
   core:
     build:
       context: ./core
       args:
-        - TOMCAT_MANAGER_USER=${TOMCAT_MANAGER_USER}
-        - TOMCAT_MANAGER_PASS=${TOMCAT_MANAGER_PASS}
+        - TOMCAT_MANAGER_USER=${USERNAME}
+        - TOMCAT_MANAGER_PASS=${PASSWORD}
     depends_on: ["clip", "tern"]
     expose: ["8080"]
     volumes:
-      - core-index:/data/lucene_index
-      - core-thumbs:/data/thumbnails
-      - core-logs:/data/logs
+      - ${VISIONE_ROOT}:/data
 
       # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
       - ./core/root:/usr/local/tomcat/webapps/ROOT
@@ -38,12 +36,13 @@ services:
     image: mongo:5.0.5
     command: --wiredTigerCacheSizeGB 1
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=${USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${PASSWORD}
     ports: ["27017:27017"]
     expose: ["27017"]
-    volumes:
-      - mongo-data:/data/db
+    volumes: 
+      - "${VISIONE_ROOT}/mongo-data:/data/db"
+      - ./mongo-scripts/init.js:/docker-entrypoint-initdb.d/init.js
     profiles: ["index"]
 
   mongo-gui:
@@ -52,23 +51,27 @@ services:
     depends_on: ["mongo"]
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${ME_CONFIG_MONGODB_ADMINUSERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${ME_CONFIG_MONGODB_ADMINPASSWORD}
-      - ME_CONFIG_BASICAUTH_USERNAME=${ME_CONFIG_BASICAUTH_USERNAME}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_CONFIG_BASICAUTH_PASSWORD}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${PASSWORD}
+      - ME_CONFIG_BASICAUTH_USERNAME=${USERNAME}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${PASSWORD}
       - ME_CONFIG_SITE_BASEURL=/mongo
     ports: ["8081:8081"]
     profiles: ["index"]
 
-  det-oiv4:
+  objects-openimagesv4:
     build: ./analysis/objects-openimagesv4
-    volumes: ["./visione:/usr/src/visione"]
+    volumes:
+      - ${VISIONE_ROOT}:/data:ro
+      - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
     profiles: ["index"]
 
-  feat-gem:
+  features-gem:
     build: ./analysis/gem
-    volumes: ["./visione:/usr/src/visione"]
+    volumes:
+      - ${VISIONE_ROOT}:/data:ro
+      - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
     profiles: ["index"]
 
@@ -76,37 +79,3 @@ services:
     build: ./analysis/frame-cluster
     depends_on: ["mongo"]
     profiles: ["index"]
-
-
-volumes:
-  # core lucene index
-  core-index:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${CORE_INDEX_PATH}
-
-  # core thumbnails
-  core-thumbs:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${CORE_THUMBS_PATH}
-  
-  # core logs
-  core-logs:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${CORE_LOGS_PATH}
-
-  # mongo data
-  mongo-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${MONGO_DATA_PATH}

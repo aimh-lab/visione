@@ -190,8 +190,8 @@
     "str-feature-encoder": {
         "index_type": "topk-sq",
         "index_params": {
-            "keep": 0.25,
-            "rotation_matrix": 42
+            "keep": 0.50,
+            "dim_multiplier": 50
         }
     }
 }
