@@ -146,6 +146,8 @@ public class VBSService {
 	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		
+		int n_frames_per_row=15;
+		int n_rows=800;
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
@@ -170,23 +172,23 @@ public class VBSService {
 				if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = datasetSearcher.get(dataset).searchByExample(features, k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs res =datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k, dataset);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
 				}
 				else {
 					ArrayList<TopDocs> hits_tmp=new ArrayList<TopDocs>();
@@ -264,7 +266,7 @@ public class VBSService {
 			log(hits, query, logQueries, simReorder, dataset);
 			
 			
-			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits));
+			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits,n_frames_per_row,n_rows));
 			if (response == null)
 				response = "";//new
 //				response = gson.toJson(datasetSearcher.get(dataset).topDocs2SearchResults(hits));
