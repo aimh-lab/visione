@@ -1263,16 +1263,16 @@ public class LucTextSearch {
 //	private TopDocs prevClipRes;
 //	private String prevClipQuery;
 
-	private LRUCache<Integer, TopDocs> clipCache = new LRUCache<>(10);
-	private LRUCache<Integer, TopDocs> clipponeCache = new LRUCache<>(10);
+	private LRUCache<Integer, TopDocs> cvCache = new LRUCache<>(10);
+	private LRUCache<Integer, TopDocs> clCache = new LRUCache<>(10);
 
 	public TopDocs searchByCLIP(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
-		if (clipCache.containsKey(textQuery.hashCode()))
-			res = clipCache.get(textQuery.hashCode());
+		if (cvCache.containsKey(textQuery.hashCode()))
+			res = cvCache.get(textQuery.hashCode());
 		else {
 			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection),collection);
-			clipCache.put(textQuery.hashCode(), res);
+			cvCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
@@ -1280,11 +1280,11 @@ public class LucTextSearch {
 	
 	public TopDocs searchByCLIPOne(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
-		if (clipponeCache.containsKey(textQuery.hashCode()))
-			res = clipponeCache.get(textQuery.hashCode());
+		if (clCache.containsKey(textQuery.hashCode()))
+			res = clCache.get(textQuery.hashCode());
 		else {
 			res = searchResults2TopDocs(CLIPOneExtractor.text2CLIPResults(textQuery, collection),collection);
-			clipponeCache.put(textQuery.hashCode(), res);
+			clCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
