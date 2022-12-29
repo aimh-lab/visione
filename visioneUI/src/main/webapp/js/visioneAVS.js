@@ -3,7 +3,7 @@ const avsManual = new Map();
 const avsSubmitted = new Map();
 
 avsAutoSelected = []
-maxAutoSelected = 3
+maxAutoSelected = 20
 
 
 function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {

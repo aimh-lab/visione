@@ -194,9 +194,15 @@ public class VBSService {
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
-						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("aladin") >= 0;
-						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("c1") >= 0;
-						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("clip") >= 0;
+						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("al") >= 0;
+						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("cl") >= 0;
+						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("cv") >= 0;
+						Boolean doAll=queryObj.getParameters().get("textualMode").indexOf("all") >= 0;
+						if (doAll) {
+							doALADIN = true;
+							doCLIPPONE = true;
+							doCLIP = true;
+						}
 						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
 						String objectquery="";
 						if (doALADIN || doOBJECTS)  { 

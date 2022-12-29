@@ -77,7 +77,7 @@ const searchForm = (canvasID = 0, bar = 'hey') => {
 				</tr>-->
 			</table>
 
-			<table style="width: 95%;">
+			<table style="width: 98%;">
 				<tr>
 
 					<td align="left">
@@ -104,17 +104,21 @@ const searchForm = (canvasID = 0, bar = 'hey') => {
 								style="vertical-align: top; background: linear-gradient(to right, #FF0000 0%, #00FF00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Color&nbsp;</span>
 						</div></td>
 						<td valign="right">
-						<span onclick="setTextualMode(${canvasID}, 'clip')">
-							<input type="checkbox" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
-							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">CV</label>
+						<span onclick="setTextualMode(${canvasID}, 'cv')">
+							<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}">CV</label>
 						</span>
-						<span onclick="setTextualMode(${canvasID}, 'c1')">
-							<input type="checkbox" name="textualMode${canvasID}" id="textualMode${canvasID}">
-							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">C1</label>
+						<span onclick="setTextualMode(${canvasID}, 'cl')">
+							<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}">CL</label>
 						</span>
 						<span onclick="setTextualMode(${canvasID}, 'aladin')">
-							<input type="checkbox" name="textualMode${canvasID}" id="textualMode${canvasID}">
-							<label for="textualMode${canvasID}" style="color: green; font-weight: bold;">AL</label>
+							<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}">AL</label>
+						</span>
+						<span onclick="setTextualMode(${canvasID}, 'all')">
+							<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
+							<label for="textualMode${canvasID}">all</label>
 						</span>
 					</span>
 						</td>

@@ -91,7 +91,7 @@ var resultsSortedByVideo = null;
 var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
-var textualMode =  ["clip", "clip"];
+var textualMode =  ["all", "all"];
 var simreorder = false;
 
 //var qbeUrl = ''
@@ -725,19 +725,19 @@ function setOccur(radioButton, canvasId) {
 
 	searchByForm();
 }
-
+/*
 function setTextualMode(checkboxId, mode) {
 	if (textualMode[checkboxId].includes(mode))
 		textualMode[checkboxId] = textualMode[checkboxId].replace(mode, "")
 	else 
 		textualMode[checkboxId] += mode;
 	searchByForm();
-}
-/*
+}*/
+
 function setTextualMode(checkboxId, mode) {
 	textualMode[checkboxId] = mode;
 	searchByForm();
-}*/
+}
 /*
 function setTextualMode(checkboxId) {
 	if(checkBox = document.getElementById("textualMode" + checkboxId).checked) {
