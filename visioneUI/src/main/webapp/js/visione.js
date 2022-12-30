@@ -461,7 +461,6 @@ function cell2Text(idx) {
 				}
 			}
 		})
-	console.log(colors);
 	for (cIdx = 0; cIdx < colors.length; cIdx++) {
 		objects += colors[cIdx] + " ";
 	}
@@ -501,10 +500,8 @@ function cell2Text(idx) {
 
 	if (objects != '') {
 		groups = '';
-		console.log(objects.match('\\((.*?)\\)'));
 		if ((group = objects.match('\\((.*?)\\)'))) {
 			objects = objects.replace("\\(" + group[1] + "\\)", '');
-			console.log("objects: " + objects);
 			groups += group;
 		}
 
@@ -970,9 +967,9 @@ function showResults(data) {
 				+'<a style="font-size:12px;" title="' + frameName + ' Score: '+ score + '" href="indexedData.html?collection=' + collection + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+ frameNumber+'</a>'
 				+'<a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId	+ '#'+ frameName +	'" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 				+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+videoId+'\', \''+imgId+'\'); return false;"></i>'
-				+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
 				//+'<span style="color:blue;" title="' + imgId + '" id="aladinSim' + imgId + '">aladin </span>'
 				//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
 				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\',\''+ collection+ '\'); return false;"></i></span>'
@@ -983,7 +980,7 @@ function showResults(data) {
 				//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ imgId + '|' + videoUrlPreview  + '" onclick="avsByImg(\'' + imgId +  '\'); updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">'
 				imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ collection + '|' + videoId + '|' + videoUrlPreview  + '" onclick=\'avsToggle(' + avsObj + ')\'>'
 				//+'<img title="Search similar. score: '+ score + '" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
-				+'<img id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
+				+'<img loading="lazy" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
 				+'</div></div></td>'
 	
 					
@@ -996,10 +993,8 @@ function showResults(data) {
 			imgId = res[i].imgId;
 			score = res[i].score;
 			collection = res[i].collection;
-				console.log(imgId)
 
 				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				console.log(imgId4Regex)
 				var cip = $('#' + imgId4Regex).hover( hoverVideo, hideVideo );
 				
 				function hoverVideo(e) {
@@ -1017,7 +1012,192 @@ function showResults(data) {
 						var startTime = getStartTime(this.id);
 						var endTime = getEndTime(this.id);
 						if (elementExists != null) {
-							console.log(playerId)
+							$('#'+ playerId).get(0).pause();
+						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
+						    $('#'+ playerId).get(0).load();
+							$('#'+ playerId).get(0).play();
+							return;
+						}
+						backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ this.id + "')";
+					
+						//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+						imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+						$('#' + imgId).css("display", "none");
+						$('#' + id4Regex).append(imgtable);
+						//$('#'+ playerId).get(0).currentTime = time-1;
+						//$('#'+ playerId).get(0).play();
+						return false;
+					});
+
+					
+				}
+				
+				function hideVideo(e) {
+					console.log("hide")
+					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+
+					imgId = 'img' + id4Regex;
+					langInfo = this.lang.split('|');
+					collection = langInfo[0];
+					videoId = langInfo[1];
+					videourl=langInfo[2];
+					playerId = 'video' + videoId;
+					console.log(playerId)
+
+					var elementExists = document.getElementById(playerId);
+					console.log(elementExists)
+						if (elementExists != null) {
+							$('#' + playerId).remove();
+							$('#' + imgId).css("display", "block");
+						}
+				}
+			}	
+		}
+	}
+	if($('meta[name=task]').attr('content') == "AVS") {
+		avsHideSubmittedVideos();
+		avsReloadManualSelected();
+		avsAddAutoselected();
+	}
+}
+
+function showResults2(data) {
+	imgtable = ""
+	if($('meta[name=task]').attr('content') == "AVS") {
+		avsCleanManualSelected();
+		avsRemoveAutoselected();
+	}
+	//empty avsFirstCol
+	avsAutoSelected.length = 0
+	$('html,body').scrollTop(0);
+	$("#imgtable").remove();
+	//$('#results').scrollTop(0);
+	$('#content').scrollTop(0);
+	if(data == null || data == "") {
+		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+		$("#results").append(imgtable);
+	}
+	else {
+		var res = JSON.parse(data);
+		//patch temporanea 20/07/20 per il merge
+		//if (res.length > 1200)
+		//	res = res.slice(0, 1200);
+		if(res.length == 0 ) {
+			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+		} 
+		else {
+		borderColorsIdx = 0;
+		numberborderColors = borderColors.length;
+		imgtable += '<div><table id="imgtable" style="text-align: left; width: 1050px;">';
+		imgtable += '</table></div>';
+		$("#results").append(imgtable);
+		imgtable = ""
+		prevID = '';
+		
+		firstVideoID = res[0].imgId.split("/")[0];
+			
+		imgtable += ' <tr id="video_' + firstVideoID + '">';
+
+		itemPerRow = 0;
+		for (i = 0; i < res.length; i++) {
+			imgId = res[i].imgId;
+			videoId = res[i].videoId;
+
+			score = res[i].score;
+			collection = res[i].collection;
+	
+			imgIdTokens = imgId.split("/");
+			//videoId = imgIdTokens[0];
+			if (imgIdTokens.length > 1)
+				frameName = imgIdTokens[1];
+			else
+				frameName = imgId
+			path = collection + "/" + videoId + "/"+ frameName;
+
+			frameNameNoExt = frameName.split('\.')[0]
+			frameNumber = frameNameNoExt.split('_').pop();
+			if(i==0)
+				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a>';//LUcia
+			if (videoId == prevID && itemPerRow++ > 50)
+				continue;
+			if (itemPerRow >0 && itemPerRow%10==0) {
+				imgtable += '</tr>';
+				imgtable += '<tr id="video_' + videoId + '">';
+				imgtable += '<td></td>';//LUcia
+			}
+			if (prevID != "" && videoId != prevID) {
+				imgtable += '</tr>'
+				$("#imgtable").append(imgtable);
+				imgtable = '<tr id="video_' + prevID + '"><td class="hline" colspan=11></td><tr id="video_' + videoId + '">';
+				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a></td>';//LUcia
+				itemPerRow = 0;
+			}
+			borderColorsIdx = fromIDtoColor(videoId,numberborderColors ); // FRANCA
+			prevID = videoId;
+			videoUrl = videoUrlPrefix + videoId+".mp4";
+			videoUrlPreview = videoshrinkUrl + videoId+".mp4";
+			//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
+			avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl+ path)
+
+			if (itemPerRow == 0)
+				if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
+					addToAutoSelected(avsObj)
+			
+			imgtable += '<td>'
+				//+'<div class="thumbnailButtons">'
+				+' <input style="display: none" class="checkboxAvs" id="avs_' + imgId + '" type="checkbox" title="select for AVS Task" onchange="updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">&nbsp;'
+				+'<a style="font-size:12px;" title="' + frameName + ' Score: '+ score + '" href="indexedData.html?collection=' + collection + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+ frameNumber+'</a>'
+				+'<a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId	+ '#'+ frameName +	'" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+				+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+videoId+'\', \''+imgId+'\'); return false;"></i>'
+				+'<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				+'<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
+				//+'<span style="color:blue;" title="' + imgId + '" id="aladinSim' + imgId + '">aladin </span>'
+				//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
+				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\',\''+ collection+ '\'); return false;"></i></span>'
+
+				//backgroundImg = "background-image: url('" + thumbnailUrl+ path + "')";
+				//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + imgId + '" title="'+ imgId+ '" class="myimg-thumbnail" loop preload="none"><source src="' + videoUrlPreview + '" type="video/mp4"></video></div>'
+				//imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" title="Search similar. score: '+ score + '" lang="'+ imgId + '|' + videoUrlPreview  + '">'
+				//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ imgId + '|' + videoUrlPreview  + '" onclick="avsByImg(\'' + imgId +  '\'); updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">'
+				imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ collection + '|' + videoId + '|' + videoUrlPreview  + '" onclick=\'avsToggle(' + avsObj + ')\'>'
+				//+'<img title="Search similar. score: '+ score + '" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
+				+'<img loading="lazy" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
+				+'</div></div></td>'
+
+					
+		}
+			}
+		//imgtable += '</table></div>';
+		//$("#results").append(imgtable);
+		$("#imgtable").append(imgtable);
+
+		if (res.length > 1) {
+		for (i = 0; i < res.length; i++) {
+			imgId = res[i].imgId;
+			score = res[i].score;
+			collection = res[i].collection;
+
+				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
+				var cip = $('#' + imgId4Regex).hover( hoverVideo, hideVideo );
+				
+				function hoverVideo(e) {
+					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+					$('#' + id4Regex).contextmenu(function() {
+						imgId = 'img' + id4Regex;
+						langInfo = this.lang.split('|');
+						collection = langInfo[0];
+						videoId = langInfo[1];
+						videourl=langInfo[2];
+						playerId = 'video' + videoId;
+
+						var elementExists = document.getElementById(playerId);
+
+						var startTime = getStartTime(this.id);
+						var endTime = getEndTime(this.id);
+						if (elementExists != null) {
 							$('#'+ playerId).get(0).pause();
 						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
 						    $('#'+ playerId).get(0).load();
