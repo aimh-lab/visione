@@ -147,7 +147,7 @@ public class VBSService {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		
 		int n_frames_per_row=15;
-		int n_rows=800;
+		int n_rows=150;
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
