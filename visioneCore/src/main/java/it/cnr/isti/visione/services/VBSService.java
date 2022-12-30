@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import javax.inject.Singleton;
 import javax.servlet.ServletContext;
@@ -49,7 +51,6 @@ public class VBSService {
 	private Gson gson;
 
 	private static final int K_MERGE = 200000;
-	private static final int K_Q_ALADIN = 260;//default value 260
 	private DRESClient client = new DRESClient();
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
@@ -148,6 +149,7 @@ public class VBSService {
 		
 		int n_frames_per_row=15;
 		int n_rows=150;
+		int maxRes=1000;
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
@@ -172,26 +174,26 @@ public class VBSService {
 				if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row,n_rows));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row,n_rows, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = datasetSearcher.get(dataset).searchByExample(features, k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs res =datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k, dataset);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
 					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows));
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows, maxRes));
 				}
 				else {
-					ArrayList<TopDocs> hits_tmp=new ArrayList<TopDocs>();
+					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
 					
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
 						String textQuery = queryObj.getQuery().get("textual");
@@ -207,49 +209,58 @@ public class VBSService {
 						}
 						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
 						String objectquery="";
-						if (doALADIN || doOBJECTS)  { 
-							System.out.println("ALADIN");
-							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
-							queryObj.getQuery().put(Fields.ALADIN, features);
+						
+						List<Thread> threadedCombo = new ArrayList<>();
+						
+						if (doALADIN || doOBJECTS)  {
 							if(doOBJECTS) {
 								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
 								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
 							}
+							/*System.out.println("ALADIN");
+							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
+							queryObj.getQuery().put(Fields.ALADIN, features);
+
 						}else {
 							queryObj.getQuery().remove(Fields.ALADIN);
 						}
 						
-						// CLip and Clippone query changes is objects are in the canvas. In such cases Aladin is used as well
+						hits_tmp.add(datasetSearcher.get(dataset).search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
+						*/
+							Thread aladinThread = new Thread(new AladinSearchThreaded(hits_tmp, datasetSearcher.get(dataset), textQuery, queryObj, k));
+							aladinThread.start();
+							threadedCombo.add(aladinThread);
+						}
+						// CLip and Clippone query changes if objects are in the canvas. In such cases Aladin is used as well
 						String clipQuery=textQuery+objectquery;							
 						if (doCLIP)  {
-							System.out.println("Clip to video");
-							long time = -System.currentTimeMillis(); 
-							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
-							time += System.currentTimeMillis();
-							System.out.println("**Search clip:\t"+ time+" ms");	
+							Thread clipThread = new Thread(new CLIPSearchThreaded(hits_tmp, datasetSearcher.get(dataset), clipQuery, dataset));
+							clipThread.start();
+							threadedCombo.add(clipThread);
+							//hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 						}
 						if (doCLIPPONE)  {
-							System.out.println("Clippone");
-							long time = -System.currentTimeMillis(); 
-							hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
-							time += System.currentTimeMillis();
-							System.out.println("**Search CLIPPONE:\t"+ time+" ms");	
+							Thread clipponeThread = new Thread(new CLIPOneSearchThreaded(hits_tmp, datasetSearcher.get(dataset), clipQuery, dataset));
+							clipponeThread.start();
+							threadedCombo.add(clipponeThread);
+
+							//hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 						}
 
 						//TODO qui neò caso ci va un merge tra clip e clippone da fare!
-					
+						for (Thread t: threadedCombo)
+							t.join();
+						tabHits.add(datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
+
 					}
 					
 					/*String objectClassesTxt=queryObj.getQuery().get(Fields.OBJECTS);
 					if(objectClassesTxt!=null)
 						queryObj.addQuery(Fields.OBJECTS, objectPrerocessing.processing(objectClassesTxt, true));*/
 					
-					hits_tmp.add(datasetSearcher.get(dataset).search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
-					
-					tabHits.add(datasetSearcher.get(dataset).mergeResults(hits_tmp,k,false));//merging lucene res with clip res and adding it to tabHits	
 
 				}
-			} catch (IOException | ParseException | org.apache.hc.core5.http.ParseException e) {
+			} catch (IOException | ParseException | org.apache.hc.core5.http.ParseException | InterruptedException e) {
 				e.printStackTrace();
 			}
 			
@@ -266,7 +277,7 @@ public class VBSService {
 			log(hits, query, logQueries, simReorder, dataset);
 			
 			
-			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits,n_frames_per_row,n_rows));
+			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits,n_frames_per_row,n_rows, maxRes));
 			if (response == null)
 				response = "";//new
 //				response = gson.toJson(datasetSearcher.get(dataset).topDocs2SearchResults(hits));

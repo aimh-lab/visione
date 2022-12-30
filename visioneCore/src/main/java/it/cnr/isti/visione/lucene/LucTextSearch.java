@@ -243,16 +243,18 @@ public class LucTextSearch {
 		return hits;
 	}
 
-	private TopDocs topDocsClone(TopDocs topdocs) {
+	private TopDocs topDocsClone(TopDocs topdocs, int maxRes) {
 		ScoreDoc[] scoreDocs = topdocs.scoreDocs;
-		ScoreDoc[] scoreDocsClone = new ScoreDoc[topdocs.scoreDocs.length];
+		ScoreDoc[] scoreDocsClone = new ScoreDoc[Math.min(scoreDocs.length, maxRes)];
 		
-		for (int i = 0; i < scoreDocs.length; i++) {
+		int totalHits = 0;
+		for (int i = 0; i < scoreDocs.length && i < maxRes; i++) {
 			scoreDocsClone[i] = new ScoreDoc(scoreDocs[i].doc, scoreDocs[i].score);
+			totalHits++;
 		}
 		//ScoreDoc[] scoreDocClone = Arrays.asList(topdocs.scoreDocs).stream().collect(Collectors.toList()).toArray(new ScoreDoc[topdocs.scoreDocs.length]);
 
-		TopDocs clone = new TopDocs(topdocs.totalHits, scoreDocsClone, topdocs.getMaxScore());
+		TopDocs clone = new TopDocs(totalHits, scoreDocsClone, topdocs.getMaxScore());
 
 		return clone;
 	}
@@ -750,10 +752,10 @@ public class LucTextSearch {
 		}
 	}
 
-	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int n_rows) {
+	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int n_rows, int maxRes) {
 		if (hits == null)
 			return null;
-		TopDocs hitsClone = topDocsClone(hits);
+		TopDocs hitsClone = topDocsClone(hits, maxRes);
 		long total_time = -System.currentTimeMillis();
 		ArrayList<SearchResults> results = new ArrayList<>();
 		if (hitsClone == null)
