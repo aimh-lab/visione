@@ -193,9 +193,10 @@ public class VBSService {
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row,n_rows, maxRes));
 				}
 				else {
-					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
+					
 					
 					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
+						BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
 						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("al") >= 0;
@@ -217,6 +218,7 @@ public class VBSService {
 								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
 								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
 							}
+							
 							/*System.out.println("ALADIN");
 							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
 							queryObj.getQuery().put(Fields.ALADIN, features);
@@ -247,12 +249,14 @@ public class VBSService {
 							//hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 						}
 
-						//TODO qui neò caso ci va un merge tra clip e clippone da fare!
 						for (Thread t: threadedCombo)
 							t.join();
 						tabHits.add(datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
 
+					}else {//here we need to call Lucene without text 
+						tabHits.add(datasetSearcher.get(dataset).search(queryObj, k));
 					}
+											
 					
 					/*String objectClassesTxt=queryObj.getQuery().get(Fields.OBJECTS);
 					if(objectClassesTxt!=null)
