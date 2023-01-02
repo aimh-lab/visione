@@ -56,11 +56,11 @@ function submitToServer(imgId) {
 }
 
 function selectImg(selectedItem) {
-	videoUrl = videoUrlPrefix +selectedItem.videoId+".mp4";
-	videoUrlPreview = videoshrinkUrl + videoId+".mp4";
+	let videoUrl = videoUrlPrefix +selectedItem.videoId+".mp4";
+	let videoUrlPreview = videoshrinkUrl + selectedItem.videoId+".mp4";
 
 
-	img = '<span id="avsList_' + selectedItem.imgId + '">'
+	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
 			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
@@ -69,53 +69,59 @@ function selectImg(selectedItem) {
 			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
 
 			+'<br>'
-			+'<div id="avsdiv_' + selectedItem.imgId + '">'
-			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '"lang="' + selectedItem.collection + '|' + videoId + '|' + videoUrlPreview  + '" style="padding-bottom: 10px;" width="145" height= "90" src="' + selectedItem.thumb + '">'
+			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '">'
+			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px;" width="145" height= "90" src="' + selectedItem.thumb + '">'
 			+'</div></div></span>'
 			
-		$("#avsTab").append(img);
+	$("#avsTab").append(img);
 		
-			if (document.getElementById(selectedItem.avsTagId) != null)
+	if (document.getElementById(selectedItem.avsTagId) != null)
 		document.getElementById(selectedItem.avsTagId).checked = true;
 	if (document.getElementById(selectedItem.imgId) != null) {
 		document.getElementById(selectedItem.imgId).style.borderWidth = "12px";
 		document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
 	}
 		
-		imgId4Regex = selectedItem.imgId.replaceAll(".", "\\.")
+		let imgId4Regex = selectedItem.imgId.replaceAll(".", "\\.")
 				
-		var cip = $("#selected_avs_" + imgId4Regex).hover( hoverVideo, hideVideo );
+		var cip = $("#avsdiv_" + imgId4Regex).hover( hoverVideoAVS, hideVideoAVS );
 		
-		function hoverVideo(e) {
-			id4Regex = this.id.replaceAll(".", "\\.")
-			avsdiv = id4Regex.replaceAll("selected_avs_", "avsdiv_")
-			$('#' + id4Regex).contextmenu(function() {
-				langInfo = this.lang.split('|');
-				collection = langInfo[0];
-				videoId = langInfo[1];
-				videourl=langInfo[2];
-				playerId = 'video' + videoId;
+		function hoverVideoAVS(e) {
+			let avsdivNoRegex = this.id
+			let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
+			let imgIdNoRegex = avsdivNoRegex.replaceAll("avsdiv_", "selected_avs_")
+			let imgId = imgIdNoRegex.replaceAll(".", "\\.")
+			//imgId = this.id.replaceAll("selected_avs_", "")
+
+			$('#' + imgId).contextmenu(function() {
+				//langInfo = this.lang.split('|');
+				let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
+
+				let collection = langInfo[0];
+				let videoId = langInfo[1];
+				let videourl = langInfo[2];
+				let playerId = 'video' + videoId;
 
 				var elementExists = document.getElementById(playerId);
 
-				var startTime = getStartTime(this.id);
-				var endTime = getEndTime(this.id);
+				var startTime = getStartTime(imgIdNoRegex);
+				var endTime = getEndTime(imgIdNoRegex);
 				if (elementExists != null) {
-					console.log(playerId)
-					$('#'+ playerId).get(0).pause();
+ 					$('#'+ playerId).get(0).pause();
 				    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
 				    $('#'+ playerId).get(0).load();
 					$('#'+ playerId).get(0).play();
 					return;
 				}
-				backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ this.id + "')";
+				let backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ imgIdNoRegex + "')";
 			
 				//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
 				//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
 				//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-				imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
-				$('#' + id4Regex).css("display", "none");
+				let imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
 				$('#' + avsdiv).append(imgtable);
+				$('#' + imgId).css("display", "none");
+
 				//$('#'+ playerId).get(0).currentTime = time-1;
 				//$('#'+ playerId).get(0).play();
 				return false;
@@ -124,23 +130,20 @@ function selectImg(selectedItem) {
 					
 		}
 				
-		function hideVideo(e) {
-			console.log("hide")
-			id4Regex = this.id.replaceAll(".", "\\.")
-			avsdiv = id4Regex.replaceAll("selected_avs_", "avsdiv_")
-			imgId = id4Regex;
-			langInfo = this.lang.split('|');
-			collection = langInfo[0];
-			videoId = langInfo[1];
-			videourl=langInfo[2];
-			playerId = 'video' + videoId;
-			console.log(playerId)
-
+		function hideVideoAVS(e) {
+ 			let avsdivNoRegex = this.id
+			let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
+			let imgId = avsdiv.replaceAll("avsdiv_", "selected_avs_")
+			let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
+			let collection = langInfo[0];
+			let videoId = langInfo[1];
+			let videourl=langInfo[2];
+			let playerId = 'video' + videoId;
+ 
 			var elementExists = document.getElementById(playerId);
-			console.log(elementExists)
-				if (elementExists != null) {
+ 				if (elementExists != null) {
 					$('#' + playerId).remove();
-					$('#' + id4Regex).css("display", "block");
+					$('#' + imgId).css("display", "block");
 				}
 		}
 }

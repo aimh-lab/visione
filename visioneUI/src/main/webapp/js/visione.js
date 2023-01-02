@@ -249,7 +249,7 @@ function getStartTime(id) {
 	return $
 			.ajax({
 				type : "GET",
-				url :  urlBSService+"/getStartTime?id="+ id + "&dataset=" + collection,
+				url :  urlBSService+"/getStartTime?id="+ id + "&dataset=" + dataset,
 				async : false
 			}).responseText
 }
@@ -258,7 +258,7 @@ function getEndTime(id) {
 	return $
 			.ajax({
 				type : "GET",
-				url :  urlBSService+"/getEndTime?id="+ id + "&dataset=" + collection,
+				url :  urlBSService+"/getEndTime?id="+ id + "&dataset=" + dataset,
 				async : false
 			}).responseText
 }
@@ -1035,7 +1035,6 @@ function showResults(data) {
 				}
 				
 				function hideVideo(e) {
-					console.log("hide")
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
 
 					imgId = 'img' + id4Regex;
@@ -1044,10 +1043,8 @@ function showResults(data) {
 					videoId = langInfo[1];
 					videourl=langInfo[2];
 					playerId = 'video' + videoId;
-					console.log(playerId)
 
 					var elementExists = document.getElementById(playerId);
-					console.log(elementExists)
 						if (elementExists != null) {
 							$('#' + playerId).remove();
 							$('#' + imgId).css("display", "block");
@@ -1221,7 +1218,6 @@ function showResults2(data) {
 				}
 				
 				function hideVideo(e) {
-					console.log("hide")
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
 
 					imgId = 'img' + id4Regex;
@@ -1230,10 +1226,8 @@ function showResults2(data) {
 					videoId = langInfo[1];
 					videourl=langInfo[2];
 					playerId = 'video' + videoId;
-					console.log(playerId)
 
 					var elementExists = document.getElementById(playerId);
-					console.log(elementExists)
 						if (elementExists != null) {
 							$('#' + playerId).remove();
 							$('#' + imgId).css("display", "block");
