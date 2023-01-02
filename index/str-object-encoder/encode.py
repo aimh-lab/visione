@@ -111,6 +111,8 @@ def non_maximum_suppression(record, iou_threshold=0.55):
 def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
 
     def _encode_one(object_record):
+        # TODO aggiungere un controllo: se l'oggetto proviede da object_record['detector']=hyperset
+        #  non va aggiunta la bbox nel filed txt
         y0, x0, y1, x1 = object_record['box_yxyx']
         label = object_record['label']
 
@@ -148,15 +150,23 @@ def _str_count_encode(objects, gray, thresholds):
         score    = object_record['score'   ]
         detector = object_record['detector']
 
-        label_counts[label] += 1
-        label_count = label_counts[label]
+        # TODO qui il conteggio lo farei separando le reti, quindi usando come key una cosa tipo
+        #   label+"_"+detector
+        #  in realtà ci sarebbe un problema quando detector='hyperset'
+        # la mia proposta potrebbe essere lasciare il nome detector originale nel field detector e
+        # aggiungere da qualche parte un field boolean object_record['isHyperset'] che è true solo
+        # se il record è stato generato come hyperset
+        label_counts[label] += 1 #TODO usare una key che permetta di distinguere il conteggio per le varie reti
+        label_count = label_counts[label] #TODO usare una key che permetta di distinguere il conteggio per lee varie r
+
+
 
         frequency = ''
         if detector == 'colors':
             if label_count > 1:  # add colors only once and skip repetitions
                 continue
             label_count = ''
-        elif detector != 'hyperset':
+        elif detector != 'hyperset': #TODO da modificare in base a come si gestistono gli hyperset
             confidence = score - thresholds.get(detector, 0)
             frequency = int(10 * confidence / 2 + 2)  # TODO: why so? ask Lucia about this formula ..
             frequency = f'|{frequency}'
@@ -196,8 +206,12 @@ def build_object_info(objects):
 
         detector = detector_nicknames.get(detector, detector)
 
-        label_counts[label] += 1
-        label_count = label_counts[label]
+        # TODO usare anche il detector nella key usata in label count per distinguere le varie reti (esempio nei commenti)
+        #label_detector=label+"_"+detector
+        #label_counts[label_detector] += 1
+        #label_count = label_counts[label_detector]
+        label_counts[label] += 1 #TODO
+        label_count = label_counts[label] #TODO
 
         token = f'{label}{label_count}({detector}:{score:.2f})'
         tokens.append(token)
@@ -224,12 +238,33 @@ def generate_write_op(record):
 
 
 def process_record(record, hypersets, object_thresholds):
-    object_info = build_object_info(record.get('objects', []))
+    # TODO qui prima di fare object info, nms o qualsiasi altra cosa farei un filtraggio che facevamo lo scorso anno:
+    # TODO step  1) eliminare tutti i record per cui (confidence < object_threshold )
+    # TODO step  2) eliminare tutti i record per cui l'area della bounding box sia molto piccola,
+    # lo scorso anno controllavamo se (normalizedAreaBB<0.0001),
+    # dove normalizedAreaBB=max(0,(y1 - y0)) * max(0,(x1 - x0))
+    # nota che mettevamo il max (cosa che non ho visto nella tua area) perchè qualche rete ci aveva
+    # dato dei valori anomali fuori range, non mi ricordo quale rete, non ho fatto un controllo
+    # se abbiamo problemi simili quest'anno
 
-    record = non_maximum_suppression(record)
-    object_counts = count_objects(record)
-    record = add_hypersets(record, hypersets)
-    record = str_encode(record, thresholds=object_thresholds)
+    object_info = build_object_info(record.get('objects', [])) #step 3
+
+    #TODO step 4: metterei  qui gli hyperset (record = add_hypersets(record, hypersets)) prima di fare la nms
+    # però dopo per poter fare un conteggio degli oggetti potrebbe essere necessario aggiungere
+    # la info da quale rete proviene ciascun hyperset
+
+    record = non_maximum_suppression(record) # step 5
+
+    #TODO step 5: creare il field txt (prima di hyperset o altro)
+    #Secondo me una soluzione potrebbe essere  mettere la funzione add_hypersets solo dentro la funzione
+    # _str_count_encode richiamata in str_encode. Però bisogna fare attenzione a come i creano i contatori
+    # degli oggetti  che secondo me vanno divisi per rete se possiamo ritrovarci con un conteggio sbagliato
+    object_counts = count_objects(record) #step 6 #TODO non ho ancora chiaro dove verrà usato da controllare
+
+    record = add_hypersets(record, hypersets) #TODO questo lo toglierei da qui come scritto prima
+
+    record = str_encode(record, thresholds=object_thresholds) #step 6 (commenti nella funzione)
+
     record['object_info'] = object_info
 
     write_op = generate_write_op(record)
