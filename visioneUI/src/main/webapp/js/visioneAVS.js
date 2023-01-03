@@ -1,9 +1,11 @@
 const avsAuto = new Map();
+const avsAutoByVideoID = new Map();
 const avsManual = new Map();
+const avsManualByVideoID = new Map();
 const avsSubmitted = new Map();
 
 avsAutoSelected = []
-maxAutoSelected = 20
+maxAutoSelected = 5
 
 
 function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
@@ -125,9 +127,7 @@ function selectImg(selectedItem) {
 				//$('#'+ playerId).get(0).currentTime = time-1;
 				//$('#'+ playerId).get(0).play();
 				return false;
-			});
-
-					
+			});		
 		}
 				
 		function hideVideoAVS(e) {
@@ -141,10 +141,10 @@ function selectImg(selectedItem) {
 			let playerId = 'video' + videoId;
  
 			var elementExists = document.getElementById(playerId);
- 				if (elementExists != null) {
-					$('#' + playerId).remove();
-					$('#' + imgId).css("display", "block");
-				}
+			if (elementExists != null) {
+				$('#' + playerId).remove();
+				$('#' + imgId).css("display", "block");
+			}
 		}
 }
 
@@ -189,25 +189,47 @@ function updateAVSTab(selectedItem) {
 
 function avsToggle(selectedItem) {
 	//selectedItem = JSON.parse(avsJSON);
-	isChecked = document.getElementById(selectedItem.avsTagId).checked;
-	if (!isChecked)
+	let isChecked = document.getElementById(selectedItem.avsTagId).checked;
+	if (!isChecked) {
+		if (avsAutoByVideoID.has(selectedItem.videoId)) {
+			let autoSelectedToRemove = avsAutoByVideoID.get(selectedItem.videoId);
+			avsAuto.delete(autoSelectedToRemove.imgId);
+			avsAutoByVideoID.delete(selectedItem.videoId);
+			updateAVSTab(autoSelectedToRemove);
+		} 
+		else if (avsManualByVideoID.has(selectedItem.videoId)) {
+			let manualSelectedToRemove = avsManualByVideoID.get(selectedItem.videoId);
+			avsManual.delete(manualSelectedToRemove.imgId);
+			avsManualByVideoID.delete(selectedItem.videoId);
+			updateAVSTab(manualSelectedToRemove);
+		}
 		avsManual.set(selectedItem.imgId, selectedItem);
+		avsManualByVideoID.set(selectedItem.videoId, selectedItem);
+	}
 	else {
-		if (avsManual.has(selectedItem.imgId))
+		if (avsManual.has(selectedItem.imgId)) {
 			avsManual.delete(selectedItem.imgId);
+			avsManualByVideoID.delete(selectedItem.videoId);
+		}
 		else 
-			if (avsAuto.has(selectedItem.imgId))
+			if (avsAuto.has(selectedItem.imgId)) {
 				avsAuto.delete(selectedItem.imgId);
+				avsAutoByVideoID.delete(selectedItem.videoId);
+			}
 	}
 	updateAVSTab(selectedItem);
 }
 
 function avsRemoveSelected(selectedItem) {
 	if (!avsSubmitted.has(selectedItem.videoId)) {
-		if (avsManual.has(selectedItem.imgId))
+		if (avsManual.has(selectedItem.imgId)) {
 			avsManual.delete(selectedItem.imgId);
-		else if (avsAuto.has(selectedItem.imgId))
+			avsManualByVideoID.delete(selectedItem.videoId);
+		}
+		else if (avsAuto.has(selectedItem.imgId)) {
 			avsAuto.delete(selectedItem.imgId);
+			avsManualByVideoID.delete(selectedItem.videoId);
+		}
 	}
 }
 
@@ -217,6 +239,7 @@ function avsAddAutoselected() {
 		if (avsManual.has(avsAutoSelected[avsIDX].imgId || avsSubmitted.has(avsAutoSelected[avsIDX].videoId)))
 			continue;
 		avsAuto.set(avsAutoSelected[avsIDX].imgId, avsAutoSelected[avsIDX]);
+		avsAutoByVideoID.set(avsAutoSelected[avsIDX].videoId, avsAutoSelected[avsIDX]);
 		updateAVSTab(avsAutoSelected[avsIDX])
 		selectedCounter++;
 	}
@@ -228,6 +251,7 @@ function avsRemoveAutoselected() {
 		if (avsManual.has(selectedItem.imgId))
 			continue;
 		avsAuto.delete(selectedItem.imgId);
+		avsAutoByVideoID.delete(selectedItem.videoId);
 		updateAVSTab(selectedItem)
 	}
 }
