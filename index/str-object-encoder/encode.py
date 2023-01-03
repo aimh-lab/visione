@@ -41,6 +41,9 @@ def add_hypersets(record, hypersets):
         for record in object_list:
             yield record
 
+            if record['detector'] == 'colors':
+                continue
+
             label_hypersets = hypersets.get(record['label'], [])
             for hyperset in label_hypersets:
                 hyper_record = copy.deepcopy(record)
@@ -111,8 +114,6 @@ def non_maximum_suppression(record, iou_threshold=0.55):
 def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
 
     def _encode_one(object_record):
-        # TODO aggiungere un controllo: se l'oggetto proviede da object_record['detector']=hyperset
-        #  non va aggiunta la bbox nel filed txt
         y0, x0, y1, x1 = object_record['box_yxyx']
         label = object_record['label']
 
@@ -132,6 +133,8 @@ def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
 
         return surrogate_text
 
+    # ignore hypersets in box encoding tokens
+    objects = filter(lambda x: not x.get('is_hyperset', False), objects)
     tokens = map(_encode_one, objects)
     tokens = itertools.chain.from_iterable(tokens)
     tokens = list(tokens)
