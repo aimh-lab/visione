@@ -145,7 +145,7 @@ def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
 
 
 def _str_count_encode(objects, gray, thresholds):
-    label_counts = collections.defaultdict(int)  # missing keys defaults to 0
+    label_counts = collections.Counter()
 
     tokens = []
     for object_record in objects:
@@ -155,7 +155,10 @@ def _str_count_encode(objects, gray, thresholds):
 
         is_hyperset = object_record.get('is_hyperset', False)
 
-
+        # count objects separately for each detector
+        count_key = (label, detector)
+        label_counts[count_key] += 1
+        label_count = label_counts[count_key]
 
         frequency = ''
         if detector == 'colors':
@@ -191,25 +194,17 @@ def build_object_info(objects):
         'frcnn_incep_resnetv2_openimagesv4': 'FRCNN',
     }
 
-    label_counts = collections.defaultdict(int)  # missing keys defaults to 0
+    label_counts = collections.Counter()
     tokens = []
     for object_record in objects:
         label    = object_record['label'   ]
         score    = object_record['score'   ]
         detector = object_record['detector']
-
-        # do not include colors in the object info string
-        if detector == 'colors':
-            continue
-
         detector = detector_nicknames.get(detector, detector)
 
-        # TODO usare anche il detector nella key usata in label count per distinguere le varie reti (esempio nei commenti)
-        #label_detector=label+"_"+detector
-        #label_counts[label_detector] += 1
-        #label_count = label_counts[label_detector]
-        label_counts[label] += 1 #TODO
-        label_count = label_counts[label] #TODO
+        count_key = (label, detector)
+        label_counts[count_key] += 1
+        label_count = label_counts[count_key]
 
         token = f'{label}{label_count}({detector}:{score:.2f})'
         tokens.append(token)
