@@ -45,7 +45,7 @@ def add_hypersets(record, hypersets):
             for hyperset in label_hypersets:
                 hyper_record = copy.deepcopy(record)
                 hyper_record['label'] = hyperset
-                hyper_record['detector'] = 'hyperset'
+                hyper_record['is_hyperset'] = True
                 yield hyper_record
 
     # substitute 'objects' field of each document with the augmented object list
@@ -150,14 +150,7 @@ def _str_count_encode(objects, gray, thresholds):
         score    = object_record['score'   ]
         detector = object_record['detector']
 
-        # TODO qui il conteggio lo farei separando le reti, quindi usando come key una cosa tipo
-        #   label+"_"+detector
-        #  in realtà ci sarebbe un problema quando detector='hyperset'
-        # la mia proposta potrebbe essere lasciare il nome detector originale nel field detector e
-        # aggiungere da qualche parte un field boolean object_record['isHyperset'] che è true solo
-        # se il record è stato generato come hyperset
-        label_counts[label] += 1 #TODO usare una key che permetta di distinguere il conteggio per le varie reti
-        label_count = label_counts[label] #TODO usare una key che permetta di distinguere il conteggio per lee varie r
+        is_hyperset = object_record.get('is_hyperset', False)
 
 
 
@@ -166,9 +159,9 @@ def _str_count_encode(objects, gray, thresholds):
             if label_count > 1:  # add colors only once and skip repetitions
                 continue
             label_count = ''
-        elif detector != 'hyperset': #TODO da modificare in base a come si gestistono gli hyperset
+        elif not is_hyperset:
             confidence = score - thresholds.get(detector, 0)
-            frequency = int(10 * confidence / 2 + 2)  # TODO: why so? ask Lucia about this formula ..
+            frequency = int(10 * confidence / 2 + 2)  # heuristic to boost non-hyperset records
             frequency = f'|{frequency}'
 
         token = f'4wc{label}{label_count}{frequency}'
@@ -186,7 +179,9 @@ def _str_count_encode(objects, gray, thresholds):
 
 def build_object_info(objects):
     # do not report hyperset & colors objects
-    objects = filter(lambda x: x['detector'] not in ('colors', 'hyperset'), objects)
+    objects = filter(lambda x: not x.get('is_hyperset', False), objects)
+    objects = filter(lambda x: x['detector'] != 'colors', objects)
+
     detector_nicknames = {
         'mask_rcnn_lvis': 'MASK',
         'vfnet_X-101-64x4d': 'VFN64',
