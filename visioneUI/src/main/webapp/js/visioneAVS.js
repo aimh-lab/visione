@@ -5,7 +5,7 @@ const avsManualByVideoID = new Map();
 const avsSubmitted = new Map();
 
 avsAutoSelected = []
-maxAutoSelected = 5
+maxAutoSelected = 20
 
 
 function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
