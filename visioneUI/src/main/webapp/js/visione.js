@@ -113,7 +113,7 @@ var prevQBE="";
 
 var tempSearchForms = 2
 var dataset = "v3c";
-
+var latestQuery = "";
 
 function handler() {
 	  if (this.readyState == 4 && this.status == 200) {
@@ -552,7 +552,7 @@ function searchByLink(queryID) {
 	if(queryID != null) {
 		jsonString = JSON.stringify(queryID);
 		jsonString = '{"query":[' + jsonString + '], "parameters":[{"simReorder":"' + simreorder.toString() + '"}]}';
-		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
+//		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
 		//queryID = '{"query":[' + queryID + ']}';
 		search2(jsonString);
 
@@ -593,6 +593,7 @@ function setResults(data) {
 }
 
 function search2(query) {
+	latestQuery = query
 	if (query == "") {
 		setResults(query)
 	} else {
@@ -897,11 +898,11 @@ function showResults(data) {
 	$("#imgtable").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
-	if(data == null || data == "") {
+	if((data == null || data == "") && latestQuery != "") {
 		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 		$("#results").append(imgtable);
 	}
-	else {
+	else if(data != null && data != "") {
 		var res = JSON.parse(data);
 		//patch temporanea 20/07/20 per il merge
 		//if (res.length > 1200)

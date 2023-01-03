@@ -91,7 +91,8 @@ public class FeatureExtractor {
 				try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 					final HttpEntity resEntity = response.getEntity();
 					if (resEntity != null) {
-						String rmac = EntityUtils.toString(resEntity).replaceAll("\"", "");
+						String rmac = EntityUtils.toString(resEntity);
+						//String rmac = EntityUtils.toString(resEntity).replaceAll("\"", "");
 //						System.out.println(rmac);
 
 //						rmac = rmac.substring(1, rmac.length()-2);
@@ -108,7 +109,7 @@ public class FeatureExtractor {
 	}
 	
 	public static String rmac2Txt(String row) {
-		return row.trim().replaceAll("\\|", "\\^");
+		return row.trim().replaceAll("\\|", "\\^").replaceAll("\"", "");
 	}
 
 	public static void main(String[] args) throws IOException, ParseException {
