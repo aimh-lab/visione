@@ -231,32 +231,18 @@ def generate_write_op(record):
 
 
 def process_record(record, hypersets, object_thresholds):
-    # TODO qui prima di fare object info, nms o qualsiasi altra cosa farei un filtraggio che facevamo lo scorso anno:
-    # TODO step  1) eliminare tutti i record per cui (confidence < object_threshold )
-    # TODO step  2) eliminare tutti i record per cui l'area della bounding box sia molto piccola,
-    # lo scorso anno controllavamo se (normalizedAreaBB<0.0001),
-    # dove normalizedAreaBB=max(0,(y1 - y0)) * max(0,(x1 - x0))
-    # nota che mettevamo il max (cosa che non ho visto nella tua area) perchè qualche rete ci aveva
-    # dato dei valori anomali fuori range, non mi ricordo quale rete, non ho fatto un controllo
-    # se abbiamo problemi simili quest'anno
 
-    object_info = build_object_info(record.get('objects', [])) #step 3
+    # Step 1:
+    # Filtering by confidence and bounding box area are performed dynamically by an aggregation pipeline in MongoDB.
+    # These steps could be inserted here for easy maintainance and changes.
+    # TODO Implement them also here and test performance differences.
 
-    #TODO step 4: metterei  qui gli hyperset (record = add_hypersets(record, hypersets)) prima di fare la nms
-    # però dopo per poter fare un conteggio degli oggetti potrebbe essere necessario aggiungere
-    # la info da quale rete proviene ciascun hyperset
+    object_info = build_object_info(record.get('objects', []))  # Step 2: build debugging info for objects
 
-    record = non_maximum_suppression(record) # step 5
-
-    #TODO step 5: creare il field txt (prima di hyperset o altro)
-    #Secondo me una soluzione potrebbe essere  mettere la funzione add_hypersets solo dentro la funzione
-    # _str_count_encode richiamata in str_encode. Però bisogna fare attenzione a come i creano i contatori
-    # degli oggetti  che secondo me vanno divisi per rete se possiamo ritrovarci con un conteggio sbagliato
-    object_counts = count_objects(record) #step 6 #TODO non ho ancora chiaro dove verrà usato da controllare
-
-    record = add_hypersets(record, hypersets) #TODO questo lo toglierei da qui come scritto prima
-
-    record = str_encode(record, thresholds=object_thresholds) #step 6 (commenti nella funzione)
+    record = add_hypersets(record, hypersets)  # Step 3: Add hypersets
+    record = non_maximum_suppression(record)  # Step 4: Perform NMS on boxes
+    object_counts = count_objects(record)  # Step 5: Compute object count stats for tuning/inspection
+    record = str_encode(record, thresholds=object_thresholds)  # Step 6: Build STR encodings
 
     record['object_info'] = object_info
 
