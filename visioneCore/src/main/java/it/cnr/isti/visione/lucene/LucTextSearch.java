@@ -752,7 +752,7 @@ public class LucTextSearch {
 		}
 	}
 
-	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int n_rows, int maxRes) {
+	public ArrayList<SearchResults> sortByVideo(TopDocs hits, int n_frames_per_row, int maxRes) {
 		if (hits == null)
 			return null;
 		TopDocs hitsClone = topDocsClone(hits, maxRes);
@@ -805,8 +805,6 @@ public class LucTextSearch {
 		}
 		List<Entry<String, Float>> videolist = new LinkedList<>(videoScoreHashMap.entrySet());
 		videolist.sort((k1, k2) -> -(k1.getValue()).compareTo(k2.getValue()));
-		int maxNvideo = Math.min(n_rows, videolist.size()); 
-		videolist = videolist.subList(0, maxNvideo);
 		for (Entry<String, Float> entry : videolist) {
 			results.addAll(videoResHashMap.get(entry.getKey()));
 			
