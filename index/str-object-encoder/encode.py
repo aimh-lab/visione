@@ -61,7 +61,7 @@ def add_hypersets(record, hypersets):
 def _nms(objects, iou_threshold):
     def _area(box):
         y0, x0, y1, x1 = box
-        return (y1 - y0) * (x1 - x0)
+        return max(0, y1 - y0) * max(0, x1 - x0)
 
     def _iou(boxA, boxB):
         y0a, x0a, y1a, x1a = boxA
