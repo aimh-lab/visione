@@ -96,7 +96,7 @@ def _nms(objects, iou_threshold):
     return kept
 
 
-def non_maximum_suppression(record, iou_threshold=0.55):
+def non_maximum_suppression(record, iou_threshold=0.50):
     colors  = [o for o in record['objects'] if o['detector'] == 'colors']
     objects = [o for o in record['objects'] if o['detector'] != 'colors']
 
@@ -241,10 +241,14 @@ def process_record(record, hypersets, object_thresholds):
 
     record = add_hypersets(record, hypersets)  # Step 3: Add hypersets
     record = non_maximum_suppression(record)  # Step 4: Perform NMS on boxes
+
+    object_info_after_nms = build_object_info(record.get('objects', []))  # Step 4¼: build debugging info for objects (again)
+
     object_counts = count_objects(record)  # Step 5: Compute object count stats for tuning/inspection
     record = str_encode(record, thresholds=object_thresholds)  # Step 6: Build STR encodings
 
-    record['object_info'] = object_info
+    record['object_info_before_nms'] = object_info
+    record['object_info'] = object_info_after_nms
 
     write_op = generate_write_op(record)
     return object_counts, write_op
