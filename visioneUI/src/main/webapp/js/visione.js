@@ -981,7 +981,11 @@ function showResults(data) {
 				//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + imgId + '" title="'+ imgId+ '" class="myimg-thumbnail" loop preload="none"><source src="' + videoUrlPreview + '" type="video/mp4"></video></div>'
 				//imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" title="Search similar. score: '+ score + '" lang="'+ imgId + '|' + videoUrlPreview  + '">'
 				//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ imgId + '|' + videoUrlPreview  + '" onclick="avsByImg(\'' + imgId +  '\'); updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">'
-				imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ collection + '|' + videoId + '|' + videoUrlPreview  + '" onclick=\'avsToggle(' + avsObj + ')\'>'
+				imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ collection + '|' + videoId + '|' + videoUrlPreview  + '"'
+				if($('meta[name=task]').attr('content') == "AVS")
+					imgtable += '" onclick=\'avsToggle(' + avsObj + ')\''
+				imgtable += '>'
+
 				//+'<img title="Search similar. score: '+ score + '" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
 				+'<img loading="lazy" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
 				+'</div></div></td>'
