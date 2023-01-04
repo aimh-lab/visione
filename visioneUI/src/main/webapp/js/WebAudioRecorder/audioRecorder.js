@@ -67,7 +67,7 @@ function startRecording(idx) {
 		});
 
 		recorder.onComplete = function(recorder, blob) { 
-			speech2Txt(blob, idx);
+			speech2TxtBase64(blob, idx);
 		}
 
 		recorder.setOptions({
@@ -97,14 +97,14 @@ function stopRecording() {
 	__log('Recording stopped');
 }
 
-function speech2TxtBase64(blob) {
+function speech2TxtBase64(blob, idx) {
 	var url = URL.createObjectURL(blob)
 	console.log('blob:' + url)	
 	var reader = new FileReader();
     reader.readAsDataURL(blob);
     reader.onloadend = function () {
-		base64 = reader.result;
-		remainder = base64.lenght % 4
+		base64 = reader.result.split(',')[1];
+		remainder = base64.length % 4
 		if (remainder  != 0)
     		base64 += '=' * (4 - remainder) 
 		$.ajax({
@@ -113,12 +113,12 @@ function speech2TxtBase64(blob) {
 			crossDomain: true,
 			data: {speech: base64},
 			dataType : "text",
-			url : speech2TextService+"/speech",
+			url : speech2TextService+"/speechb64",
 			success : function(data) {
-				setSpeech(data);
+				setSpeech(data, idx);
 			},
 			error : function(data) {
-				setSpeech(null);
+				setSpeech(null, idx);
 			}
 		});
 	}

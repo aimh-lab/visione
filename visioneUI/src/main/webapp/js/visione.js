@@ -177,10 +177,12 @@ function setSpeech(speechRes, idx) {
 
 	else {
 		console.log(speechRes);
-		$("#textual" + idx).val(speechRes.translation);
+		let jsonSpeech = JSON.parse(speechRes)
+
+		$("#textual" + idx).val(jsonSpeech.translation);
 			searchByForm();
 			idx = Math.floor(Math.random() * 3);
-		if (speechRes.translation.length > 50) {
+		if (jsonSpeech.translation.length > 50) {
 			prevTextual[idx] = $("#textual" + idx).val();
 			//jsonRes = JSON.parse(speechRes);
 			alert(messages[idx]);
