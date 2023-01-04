@@ -1,7 +1,9 @@
 {
     "_id": "config",
     "objects": {
-        "excludeLabels": [],
+        "excludeLabels": {
+            "all": []
+        },
         "labelMap": {
             "frcnn_incep_resnetv2_openimagesv4": {
                 "accordion": "accordion_(musical_instrument)",

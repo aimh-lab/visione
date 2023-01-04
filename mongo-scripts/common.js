@@ -208,11 +208,8 @@ MongoPipelines.objects.getField = (fieldName, inputObject) => ({
                 {$project: {_id: false, objects: true}},
                 {$replaceRoot: {newRoot: '$objects'}},
                 {$set:{
-                    excludeLabels: {$ifNull: [
-                        `$excludeLabels.${detectorName}`,  // FIXME: if the field is missing, $ifNull doesn't parse it as null
-                        '$excludeLabels',
-                        []
-                    ]},
+                    preExcludeLabels: {$ifNull: [`$excludeLabels.${detectorName}`, []]},  // labels to exclude per-detector before label mapping
+                    postExcludeLabels: {$ifNull: ['$excludeLabels.all', []]},  // labels to exclude after label mapping
                     labelMap: {$ifNull: [`$labelMap.${detectorName}`, '$labelMap', {}]},
                     threshold: {$ifNull: [`$threshold.${detectorName}`, '$threshold', 0]},
                     minArea: {$ifNull: [`$minArea.${detectorName}`, '$minArea', 0]},
@@ -250,6 +247,18 @@ MongoPipelines.objects.getField = (fieldName, inputObject) => ({
                             '$config.minArea'
                         ]
                     }
+                }
+            }
+        }
+    },
+    // 3½. filter by preExcludeLabels
+    {
+        $set: {
+            objects: {
+                $filter: {
+                    input: '$objects',
+                    as: 'object',
+                    cond: {$not: [{$in: ['$$object.label', '$config.preExcludeLabels']}]}
                 }
             }
         }
@@ -313,12 +322,7 @@ MongoPipelines.objects.getField = (fieldName, inputObject) => ({
                                 $ifNull: [
                                     // $getField doesn't work with variable fieldnames... had to rewrite our own sub-pipeline
                                     MongoPipelines.objects.getField('$$object.label', '$config.labelMap'),
-                                    /*{
-                                        $getField: {
-                                            field: '$$object.label',
-                                            input: '$config.labelMap'
-                                        }
-                                    },*/
+                                    // {$getField: {field: '$$object.label', input: '$config.labelMap'}},
                                     '$$object.label'
                                 ]
                             }
@@ -328,14 +332,14 @@ MongoPipelines.objects.getField = (fieldName, inputObject) => ({
             }
         }
     },
-    // 6. filter by excludeLabels
+    // 6. filter by postExcludeLabels
     {
         $set: {
             objects: {
                 $filter: {
                     input: '$objects',
                     as: 'object',
-                    cond: {$not: [{$in: ['$$object.label', '$config.excludeLabels']}]}
+                    cond: {$not: [{$in: ['$$object.label', '$config.postExcludeLabels']}]}
                 }
             }
         }
