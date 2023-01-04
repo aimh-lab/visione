@@ -666,7 +666,7 @@ human_beard;;facial hair on the chin, upper lip, cheeks and neck
 human_body;;alternative names for the body of a human being
 human_ear;;organ that detects sound- organ of hearing and balanc
 human_eye;;organ that detects light and converts it into electro-chemical impulses in neurons
-human_face;person;the front of the human head from the forehead to the chin and ear to ear
+human_face;;the front of the human head from the forehead to the chin and ear to ear
 human_foot;;the part of the leg of a human being below the ankle joint
 human_hair;;protein filament that grows from follicles found in the dermis, or skin
 human_hand;;extremity at the end of an arm or forelimb
