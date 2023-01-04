@@ -166,7 +166,7 @@ function v3cTab() {
 	//}
 }
 
-messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
+//messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
 	
 function setSpeech(speechRes, idx) {
 	if (speechRes == null) {
@@ -185,7 +185,7 @@ function setSpeech(speechRes, idx) {
 		if (jsonSpeech.translation.length > 50) {
 			prevTextual[idx] = $("#textual" + idx).val();
 			//jsonRes = JSON.parse(speechRes);
-			alert(messages[idx]);
+			//alert(messages[idx]);
 		}
 	}
 }
