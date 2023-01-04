@@ -100,10 +100,11 @@ def non_maximum_suppression(record, iou_threshold=0.50):
     colors  = [o for o in record['objects'] if o['detector'] == 'colors']
     objects = [o for o in record['objects'] if o['detector'] != 'colors']
 
-    objects.sort(key=lambda x: x['label'])
+    key = lambda x: (x['detector'], x['label'])
+    objects.sort(key=key)
     objects = itertools.chain.from_iterable(
         _nms(group, iou_threshold=iou_threshold)
-        for _, group in itertools.groupby(objects, key=lambda x: x['label'])
+        for _, group in itertools.groupby(objects, key=key)
     )
     objects = list(objects)
     record['objects'] = objects + colors
