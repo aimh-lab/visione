@@ -75,10 +75,10 @@ var keyframes = JSON.parse(res);
 			+ "onclick=\"submitWithAlert('"+ imgId + "', '" + videoId + "', '" +collection + "'); return false;\"></i></span></div>";
 			
 			if (imgId == keyframes[i] ) {
-				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + thumbnailUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
+				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
 						+ keyframes[i].split("\\.")[0] + "'/></div>";
 			} else {
-				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + thumbnailUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
+				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
 			}
 			if (i % 6 == 5) {
 				table += "</div>";
