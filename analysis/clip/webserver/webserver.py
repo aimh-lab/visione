@@ -21,7 +21,7 @@ app = Flask(__name__)
 def get_text_features():
     text = request.args.get("text")
     logging.info('Received text: {}'.format(text))
-    text_feature = qe.get_text_embedding(text)
+    text_feature = qe.get_text_embedding(text, normalized=normalized)
     out = jsonify(text_feature.tolist())
     return out
 
@@ -30,7 +30,7 @@ def text_to_image_search():
     text = request.args.get("text")
     k = request.args.get("k", type=int, default=10000)
     logging.info('Received text: {}'.format(text))
-    text_feature = qe.get_text_embedding(text)
+    text_feature = qe.get_text_embedding(text, normalized=normalized)
     img_ids, similarities = index.search(text_feature, k=k)
     result_list = [{'imgId': img_id, 'score': round(float(score), 6)} for img_id, score in zip(img_ids, similarities)]
     logging.debug(result_list[:10])
@@ -44,7 +44,9 @@ def internal_image_search():
 
     # connect to mongo and get feature corresponding to img_id
     item = features_collection.find_one({'_id': img_id}, {'feature': True})
-    feat = np.asarray(item['feature'])
+    feat = np.asarray(item['feature'], dtype=np.float32)
+    if normalized:
+        faiss.normalize_L2(feat)
 
     img_ids, similarities = index.search(feat, k=k)
     result_list = [{'imgId': img_id, 'score': round(float(score), 6)} for img_id, score in
@@ -53,7 +55,7 @@ def internal_image_search():
     out = jsonify(result_list)
     return out
 
-def build_faiss_index(args, features_collection):
+def build_faiss_index(args, features_collection, normalized):
     index_path = Path('build')
     index_path.mkdir(parents=True, exist_ok=True)
 
@@ -116,6 +118,9 @@ def build_faiss_index(args, features_collection):
 
             # add to faiss index
             for i, feats in tqdm.tqdm(enumerate(batches_of_ids_and_features), desc="Adding to Index"):
+                if normalized:
+                    faiss.normalize_L2(feats)
+                    
                 if i == 0 and must_be_trained:
                     # train the index
                     logging.info('Training the index...')
@@ -132,6 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
     parser.add_argument('--port', default='5030', help="Port to use for binding")
     parser.add_argument('--model-handle', default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K', help='hugging face handle of the CLIP model')
+    parser.add_argument('--no-normalized', action='store_true', help='Wether to normalize features or not')
 
     parser.add_argument('--mongo-host', default='mongo')
     parser.add_argument('--mongo-port', type=int, default=27017)
@@ -145,13 +151,14 @@ if __name__ == '__main__':
     parser.add_argument('--disable-cache', action='store_true', help='Disable index caching. Every time it is rebuilt from scratch')
 
     args = parser.parse_args()
+    normalized = not args.no_normalized
 
     # connect to mongo and open the collection
     client = MongoClient(args.mongo_host, port=args.mongo_port, username=args.mongo_username, password=args.mongo_password)
     features_collection = client[args.db][args.features_collection]
 
     # build the index
-    index = build_faiss_index(args, features_collection)
+    index = build_faiss_index(args, features_collection, normalized)
 
     # init the query encoder
     qe = CLIPTextEncoder(args.model_handle)

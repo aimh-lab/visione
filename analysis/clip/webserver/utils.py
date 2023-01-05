@@ -1,5 +1,6 @@
 import faiss
 import torch
+from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 
 class FaissWrapper():
@@ -21,9 +22,11 @@ class CLIPTextEncoder():
         self.model = AutoModel.from_pretrained(model_handle).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_handle)
 
-    def get_text_embedding(self, text):
+    def get_text_embedding(self, text, normalized=False):
         with torch.no_grad():
             inputs = self.tokenizer(text, padding=True, return_tensors="pt")
             text_features = self.model.get_text_features(**inputs)
+            if normalized:
+                text_features = F.normalize(text_features, dim=-1)
             text_features = text_features.numpy()
         return text_features
