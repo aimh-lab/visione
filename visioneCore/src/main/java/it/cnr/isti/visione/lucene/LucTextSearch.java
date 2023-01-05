@@ -413,16 +413,23 @@ public class LucTextSearch {
 		// System.out.println(luceneQuery);
 
 		TopDocs hits = s.search(luceneQuery, 10000);
-		List<String> keyframes = new ArrayList<>();
+		List<String> response = new ArrayList<>();
+		List<String[]> keyframes = new ArrayList<>();
 		for (int i = 0; i <= hits.scoreDocs.length-1; i++) {
 			Document document = s.doc(hits.scoreDocs[i].doc);
 			String imgID = document.get(Fields.IMG_ID);
-			keyframes.add(imgID);
+			String middleTime = document.get(Fields.MIDDLE_TIME);
+			String[] res = {imgID, middleTime};
+			keyframes.add(res);
 		}
 		
+		//Collections.sort(keyframes, new Tools().new Comp());
 		Collections.sort(keyframes, new Tools().new Comp());
 		
-		return keyframes;
+		for (String[] kf: keyframes)
+			response.add(kf[0]);
+		
+		return response;
 	}
 
 	public String get(int docID, String field) throws IOException {
