@@ -43,7 +43,7 @@ public class IndexBuilder {
             TokenStream result = new DelimitedTermFrequencyTokenFilter(source);
             return new TokenStreamComponents(source, result);
         }
-    
+
     }
 
     /* FieldType for Stored Searchable Fields */
@@ -80,14 +80,14 @@ public class IndexBuilder {
         String indexCollection = "frames";
 
         // open the index dir
-		Path absolutePath = Paths.get(outputIndexDirectory, "");
-		FSDirectory index = FSDirectory.open(absolutePath);
+        Path absolutePath = Paths.get(outputIndexDirectory, "");
+        FSDirectory index = FSDirectory.open(absolutePath);
 
-		// configure index writer
-		Analyzer analyzer = new TermFrequencyAnalyzer(); // parses "term1|freq1 term2|freq2 ..."
-		IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+        // configure index writer
+        Analyzer analyzer = new TermFrequencyAnalyzer(); // parses "term1|freq1 term2|freq2 ..."
+        IndexWriterConfig conf = new IndexWriterConfig(analyzer);
         OpenMode openMode = (append) ? OpenMode.CREATE_OR_APPEND : OpenMode.CREATE;
-		conf.setOpenMode(openMode);
+        conf.setOpenMode(openMode);
 
         try (MongoClient mongoClient = MongoClients.create(mongoUri)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -101,16 +101,7 @@ public class IndexBuilder {
             ) {
                 while (cursor.hasNext()) {
                     Document entry = cursor.next();
-                    // Document objects  = (Document) entry.remove("objects" );
-                    // Document colors   = (Document) entry.remove("colors"  );
-                    // Document features = (Document) entry.remove("features");
-
-                    // Iterable<Field> featuresFields = features.entrySet().stream().map(IndexBuilder::parseFeature).collect(Collectors.toList());
-                    // Iterable<Field>   objectFields =  objects.entrySet().stream().map(IndexBuilder::parseObjects).collect(Collectors.toList());
-
                     org.apache.lucene.document.Document doc = new org.apache.lucene.document.Document();
-
-                    // System.out.println(entry.toJson());
 
                     // ids
                     doc.add(new       Field("imgID"      , entry.getString("_id"), storedTextFieldType));
@@ -139,36 +130,10 @@ public class IndexBuilder {
                     doc.add(new       Field("features"   , entry.get("features_gem_str", ""), surrogateTextFieldType));
                     doc.add(new       Field("aladin"     , entry.get("features_aladin_str", ""), surrogateTextFieldType));
 
-                    // features
-                    // featuresFields.forEach(field -> doc.add(field));
-
-                    // objects
-                    // objectFields.forEach(field -> doc.add(field));
-
                     writer.addDocument(doc);
-                
                     pb.step();
                 }
             }
         }
     }
-
-    /*
-    protected static Field parseFeature(Map.Entry<String, String> entry) {
-        String featureName = entry.getKey();
-        // String featureSurrogateText = entry.getValue();
-        String featureSurrogateText = "a|2 b|3 c|6 a|2";  // FIXME: testing code, to remove
-
-        if (featureName.equals("gem")) featureName = "features";  // FIXME: remove and rename field
-
-        return new Field(featureName, featureSurrogateText, strFieldType);
-    }
-
-    protected static Field parseObjects(Map.Entry<String, List<Document>> entry) {
-        String extractorName = entry.getKey();
-        List<Document> detectedObjects = entry.getValue();
-
-        return null;
-    }
-    */
 }
