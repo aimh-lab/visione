@@ -3,6 +3,7 @@ const avsAutoByVideoID = new Map();
 const avsManual = new Map();
 const avsManualByVideoID = new Map();
 const avsSubmitted = new Map();
+const avsManualRemoved = new Map();
 
 avsAutoSelected = []
 maxAutoSelected = 9
@@ -47,6 +48,7 @@ function submitAVS() {
 	$( "#submitted_num" ).text(avsSubmitted.size)
 	updateAVSInfo();
 	avsHideSubmittedVideos();
+	avsAddAutoselected();
 }
 
 function submitToServer(imgId) {
@@ -211,6 +213,8 @@ function avsToggle(selectedItem) {
 		}
 		avsManual.set(selectedItem.imgId, selectedItem);
 		avsManualByVideoID.set(selectedItem.videoId, selectedItem);
+		avsManualRemoved.delete(selectedItem.imgId)
+
 	}
 	else {
 		if (avsManual.has(selectedItem.imgId)) {
@@ -222,6 +226,7 @@ function avsToggle(selectedItem) {
 				avsAuto.delete(selectedItem.imgId);
 				avsAutoByVideoID.delete(selectedItem.videoId);
 			}
+		avsManualRemoved.set(selectedItem.imgId, selectedItem)
 	}
 	updateAVSTab(selectedItem);
 }
@@ -242,7 +247,7 @@ function avsRemoveSelected(selectedItem) {
 function avsAddAutoselected() {
 	selectedCounter = 0;
 	for (avsIDX = 0; avsIDX < avsAutoSelected.length && selectedCounter < maxAutoSelected; avsIDX++) {
-		if (avsManual.has(avsAutoSelected[avsIDX].imgId || avsSubmitted.has(avsAutoSelected[avsIDX].videoId)))
+		if (avsManual.has(avsAutoSelected[avsIDX].imgId) || avsSubmitted.has(avsAutoSelected[avsIDX].videoId) || avsManualRemoved.has(avsAutoSelected[avsIDX].imgId))
 			continue;
 		avsAuto.set(avsAutoSelected[avsIDX].imgId, avsAutoSelected[avsIDX]);
 		avsAutoByVideoID.set(avsAutoSelected[avsIDX].videoId, avsAutoSelected[avsIDX]);
