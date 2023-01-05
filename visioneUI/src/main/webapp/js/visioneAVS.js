@@ -5,7 +5,7 @@ const avsManualByVideoID = new Map();
 const avsSubmitted = new Map();
 
 avsAutoSelected = []
-maxAutoSelected = 20
+maxAutoSelected = 9
 
 
 function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
@@ -53,7 +53,7 @@ function submitToServer(imgId) {
 	return $.ajax({
 		type: "GET",
 		async: true,
-		url: urlBSService + "/submitResult?id=" + imgId + "&isAVS=true&simreorder=" + simreorder,
+		url: urlBSService + "/submitResult?id=" + imgId + "&videoid=" + videoId + "&dataset=" + dataset + "&isAVS=true&simreorder=" + simreorder,
 	}).responseText;
 }
 
@@ -93,6 +93,8 @@ function selectImg(selectedItem) {
 			let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
 			let imgIdNoRegex = avsdivNoRegex.replaceAll("avsdiv_", "selected_avs_")
 			let imgId = imgIdNoRegex.replaceAll(".", "\\.")
+			let imgIdAVS = avsdivNoRegex.replaceAll("avsdiv_", "")
+
 			//imgId = this.id.replaceAll("selected_avs_", "")
 
 			$('#' + imgId).contextmenu(function() {
@@ -106,8 +108,11 @@ function selectImg(selectedItem) {
 
 				var elementExists = document.getElementById(playerId);
 
-				var startTime = getStartTime(imgIdNoRegex);
-				var endTime = getEndTime(imgIdNoRegex);
+				//var startTime = getStartTime(imgIdNoRegex);
+				//var endTime = getEndTime(imgIdNoRegex);
+				var middleTime = getMiddleTimestamp(imgIdAVS);
+				var startTime = middleTime -2;
+				var endTime = middleTime+2;
 				if (elementExists != null) {
  					$('#'+ playerId).get(0).pause();
 				    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
@@ -166,9 +171,10 @@ function updateAVSInfo() {
 	avsText = "";
 	selectedSize = avsAuto.size + avsManual.size
 	if (avsAuto.size > 0 || avsSubmitted.size > 0 || avsManual.size > 0) {
-		avsText = '<div title="Selected images for AVS Tasks" id="avsInfo"><span style="color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span><span style="color:green; font-size: larger;"> Submitted: <b style="color: red; font-size:large;">' + avsSubmitted.size + '</b></span>';
+		avsText = '<div title="Selected images for AVS Tasks" id="avsInfo"><span style="float: right;color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span>';
 		if (avsAuto.size > 0 || avsManual.size > 0) {
-			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: left; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span></div>';
+			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: left; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span>';
+			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: right; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span></div>';
 		}
 		$("#avsTab").prepend(avsText);
 	}

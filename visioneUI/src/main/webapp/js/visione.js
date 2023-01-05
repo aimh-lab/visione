@@ -1016,8 +1016,11 @@ function showResults(data) {
 
 						var elementExists = document.getElementById(playerId);
 
-						var startTime = getStartTime(this.id);
-						var endTime = getEndTime(this.id);
+						//var startTime = getStartTime(this.id);
+						//var endTime = getEndTime(this.id);
+						var middleTime = getMiddleTimestamp(this.id);
+						var startTime = middleTime -2;
+						var endTime = middleTime+2;
 						if (elementExists != null) {
 							$('#'+ playerId).get(0).pause();
 						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
