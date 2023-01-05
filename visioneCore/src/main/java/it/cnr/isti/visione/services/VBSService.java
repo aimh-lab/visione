@@ -147,8 +147,8 @@ public class VBSService {
 	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		
-		int n_frames_per_row=15;
-		int maxRes=2000;//
+		int n_frames_per_row=dataset.equals("mvk")? 20:10;
+		int maxRes=1500;//
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
