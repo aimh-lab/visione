@@ -11,7 +11,7 @@ from pprint import pprint
 import warnings
 
 import pandas as pd
-from pymongo import MongoClient
+from pymongo import MongoClient, WriteConcern
 from pymongo.errors import BulkWriteError
 from pymongo.operations import UpdateOne
 from tqdm import tqdm
@@ -268,7 +268,7 @@ class PicklableFunc:
 def main(args):
     client = MongoClient(args.host, port=args.port, username=args.username, password=args.password)
     objects_collection = client[args.db][args.objects_collection]
-    output_collection = client[args.db][args.output_collection]
+    output_collection = client[args.db].get_collection(args.output_collection, write_concern=WriteConcern(w=0))
 
     n_frames = client[args.db].command('collstats', 'frames')['count']
     config = client[args.db]['config'].find_one({'_id': 'config'})
