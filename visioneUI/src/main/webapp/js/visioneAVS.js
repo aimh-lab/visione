@@ -28,7 +28,7 @@ function submitAVS() {
 	$('#submitted_bar').css("display", "block");
 	for (let [key, selectedItem] of avsAuto) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
-		res = submitToServer(selectedItem.imgId);
+		res = submitToServer(selectedItem);
 		avsRemoveSelected(selectedItem)
 		updateAVSTab(selectedItem)
 		avsSubmitted.set(selectedItem.videoId,selectedItem);
@@ -38,7 +38,7 @@ function submitAVS() {
 
 	for (let [key, selectedItem] of avsManual) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
-		res = submitToServer(selectedItem.imgId);
+		res = submitToServer(selectedItem);
 		avsRemoveSelected(selectedItem)
 		updateAVSTab(selectedItem)
 		avsSubmitted.set(selectedItem.videoId, selectedItem);
@@ -51,11 +51,11 @@ function submitAVS() {
 	avsAddAutoselected();
 }
 
-function submitToServer(imgId) {
+function submitToServer(selectedItem) {
 	return $.ajax({
 		type: "GET",
 		async: true,
-		url: urlBSService + "/submitResult?id=" + imgId + "&videoid=" + videoId + "&dataset=" + dataset + "&isAVS=true&simreorder=" + simreorder,
+		url: urlBSService + "/submitResult?id=" + selectedItem.imgId + "&videoid=" + selectedItem.videoId + "&dataset=" + selectedItem.collection + "&isAVS=true&simreorder=" + simreorder,
 	}).responseText;
 }
 
