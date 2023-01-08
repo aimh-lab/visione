@@ -933,7 +933,7 @@ public class LucTextSearch {
 			}	
 			else { //two or more topDocs
 				if (temporalquery)
-					res = combineResults_temporal(topDocsList, topK, 7, 21);
+					res = combineResults_temporal(topDocsList, topK, 3, 12);
 				else {
 					res =combineResults(topDocsList, topK);
 //					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)

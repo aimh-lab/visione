@@ -197,8 +197,8 @@ function updateAVSTab(selectedItem) {
 
 function avsToggle(selectedItem) {
 	//selectedItem = JSON.parse(avsJSON);
-	let isChecked = document.getElementById(selectedItem.avsTagId).checked;
-	if (!isChecked) {
+	let avsItem = document.getElementById(selectedItem.avsTagId);
+	if (avsItem == null || !avsItem.checked) {
 		if (avsAutoByVideoID.has(selectedItem.videoId)) {
 			let autoSelectedToRemove = avsAutoByVideoID.get(selectedItem.videoId);
 			avsAuto.delete(autoSelectedToRemove.imgId);
@@ -211,9 +211,12 @@ function avsToggle(selectedItem) {
 			avsManualByVideoID.delete(selectedItem.videoId);
 			updateAVSTab(manualSelectedToRemove);
 		}
-		avsManual.set(selectedItem.imgId, selectedItem);
-		avsManualByVideoID.set(selectedItem.videoId, selectedItem);
-		avsManualRemoved.delete(selectedItem.imgId)
+		if (avsItem != null) {
+			avsManual.set(selectedItem.imgId, selectedItem);
+			avsManualByVideoID.set(selectedItem.videoId, selectedItem);
+			avsManualRemoved.delete(selectedItem.imgId)
+		}
+
 
 	}
 	else {
@@ -247,7 +250,7 @@ function avsRemoveSelected(selectedItem) {
 function avsAddAutoselected() {
 	selectedCounter = 0;
 	for (avsIDX = 0; avsIDX < avsAutoSelected.length && selectedCounter < maxAutoSelected; avsIDX++) {
-		if (avsManual.has(avsAutoSelected[avsIDX].imgId) || avsSubmitted.has(avsAutoSelected[avsIDX].videoId) || avsManualRemoved.has(avsAutoSelected[avsIDX].imgId))
+		if (avsManual.has(avsAutoSelected[avsIDX].imgId) || avsManualByVideoID.has(avsAutoSelected[avsIDX].videoId) || avsSubmitted.has(avsAutoSelected[avsIDX].videoId) || avsManualRemoved.has(avsAutoSelected[avsIDX].imgId))
 			continue;
 		avsAuto.set(avsAutoSelected[avsIDX].imgId, avsAutoSelected[avsIDX]);
 		avsAutoByVideoID.set(avsAutoSelected[avsIDX].videoId, avsAutoSelected[avsIDX]);
