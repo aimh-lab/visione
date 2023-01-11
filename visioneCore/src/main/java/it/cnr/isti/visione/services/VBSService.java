@@ -51,13 +51,14 @@ public class VBSService {
 	private Gson gson;
 
 	private static final int K_MERGE = 200000;
-	private DRESClient client = new DRESClient();
+	private DRESClient client;
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
-	private static final File LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
-	private static final File LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
-	private static final String MEMBER_ID=(Settings.MEMBER_ID);
-	private static final Boolean SEND_LOG_TO_DRES=(Settings.SEND_LOG_TO_DRES);
+	private static final String VISIONE_CONF = "/WEB-INF/conf.properties";
+	private static File LOGGING_FOLDER;
+	private static File LOGGING_FOLDER_DRES;
+	private static String MEMBER_ID;
+	private static Boolean SEND_LOG_TO_DRES;
 	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
 	private LogParserDRES dresLog; //saved at each query
 	private Logging visioneLog; //saved at submission time and at each new session (if not empty)
@@ -71,6 +72,15 @@ public class VBSService {
 		try (InputStream is = context.getResourceAsStream(HYPERSETS)) {
 			objectPreprocessing = new ObjectQueryPreprocessing(is);
 		}
+		
+		try (InputStream is = context.getResourceAsStream(VISIONE_CONF)) {
+			Settings.init(is);
+			LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
+			LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
+			MEMBER_ID=Settings.MEMBER_ID;
+			SEND_LOG_TO_DRES=Settings.SEND_LOG_TO_DRES;
+		}
+		
 		LucTextSearch.setPreprocessing(objectPreprocessing);
 		LucTextSearch v3cSearcher = new LucTextSearch();
 		v3cSearcher.openSearcher(Settings.LUCENE);
@@ -89,6 +99,7 @@ public class VBSService {
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
 		visioneLog = new Logging(LOGGING_FOLDER);
+		client = new DRESClient();
 		
 		System.out.println("started...");
 	}
@@ -98,7 +109,7 @@ public class VBSService {
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.TEXT_PLAIN)
 	public String test() {
-		return "it works";
+		return "Strunz!!!!";
 	}
 
 	@POST

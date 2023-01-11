@@ -35,7 +35,7 @@ public class DRESClient {
 	private LogApi logApi;
 	private String sessionId;
 	private Gson gson = new Gson();
-	private static final File LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
+	private File LOGGING_FOLDER_DRES;
 
 	
 	public static void main(String[] args) {
@@ -58,6 +58,8 @@ public class DRESClient {
 	}
 	
 	public DRESClient() {
+		
+		LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 
 		ApiClient client = new ApiClient().setBasePath(Settings.SUBMIT_SERVER);
 

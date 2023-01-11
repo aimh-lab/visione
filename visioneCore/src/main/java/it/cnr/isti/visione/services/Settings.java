@@ -3,6 +3,7 @@ package it.cnr.isti.visione.services;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -15,9 +16,9 @@ import com.google.gson.Gson;
 
 public class Settings {
 	
-	private static final String VISIONE_HOME = System.getenv("VISIONE_HOME_4") == null ? ".": System.getenv("VISIONE_HOME_4");
+//	private static final String VISIONE_HOME = System.getenv("VISIONE_HOME_4") == null ? ".": System.getenv("VISIONE_HOME_4");
 	
-	private static final Properties props;
+	private static Properties props;
 
 	public static Boolean SEND_LOG_TO_DRES;	
 	public static int TEAM_ID;
@@ -66,15 +67,15 @@ public class Settings {
 	
 	private static HashMap<String, FieldParameters> FIELD_MAP;
 	public static File HYPERSET_FILE;
-
-
-
-	static {
+	
+	public static void init(InputStream is) {
 		props = new Properties();
 		FIELD_MAP = new HashMap<String, FieldParameters>();
-		try {
 			Gson gson = new Gson();
-			props.load(new FileInputStream(new File(VISIONE_HOME + "/conf.properties")));
+//			props.load(new FileInputStream(new File(VISIONE_HOME + "/conf.properties")));
+			try {
+			props.load(is);
+
 //			TEAM_ID = Integer.parseInt(props.getProperty("TEAM_ID"));
 			MEMBER_ID = props.getProperty("MEMBER_ID");
 			LUCENE = props.getProperty("LUCENE");
