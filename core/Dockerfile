@@ -17,10 +17,14 @@ RUN tac ${CATALINA_HOME}/conf/tomcat-users.xml | \
 # (the host appear as 172.x.x.x for containerized tomcat)
 RUN sed -i -e 's:allow=":allow="172\\.\\d+\\.\\d+\\.\\d+|:' $CATALINA_HOME/webapps/manager/META-INF/context.xml
 
-# COPY are good for deploy, but these should be mounted for develop
-COPY conf/ /conf
-# COPY setenv.sh $CATALINA_HOME/bin
-COPY root/ $CATALINA_HOME/webapps/ROOT
-# COPY Visione.war $CATALINA_HOME/webapps
+# debug: enable tomcat listings
+# RUN sed -i '/\s<param-name>listings<\/param-name>/{n;s/false/true/}' $CATALINA_HOME/conf/web.xml
 
-ENV VISIONE_HOME_3 /conf
+# build tomcat webapp
+COPY src/main/webapp ${CATALINA_HOME}/webapps/ROOT
+COPY src/ /usr/local/src
+
+RUN cd /usr/local/src && \
+    find main/java -iname "*.java" > files.txt && \
+    javac -target 1.8 -source 1.8 -cp "main/webapp/WEB-INF/lib/*" -d "$CATALINA_HOME/webapps/ROOT/WEB-INF/classes/" @files.txt && \
+    rm files.txt

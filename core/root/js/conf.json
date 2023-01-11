@@ -1,7 +1,0 @@
-{
-  "serviceUrl": "http://pc-fabiovalerio.isti.cnr.it/services/VBSService",
-  "thumbnailUrl": "thumbs/",
-  "videoUrl":"http://visione.isti.cnr.it/vbsVideos2022/",
-  "videoshrinkUrl":"http://visione.isti.cnr.it/vbsVideos2022shrink/",
-  "keyFramesUrl":"http://visione.isti.cnr.it/vbsKeyframes2022/"
-}

@@ -1,6 +1,0 @@
-{
-  "serviceUrl": "http://bilioso.isti.cnr.it:8050/Visione2/services/VBSService",
-  "thumbnailUrl": "http://bilioso.isti.cnr.it:8030/vbsmedia/thumbs/",
-  "videoUrl":"http://bilioso.isti.cnr.it:8030/vbsVideos/",
-  "keyFramesUrl":"http://bilioso.isti.cnr.it:8030/vbsmedia/keyframes/"
-}
