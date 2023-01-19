@@ -1,0 +1,7 @@
+{
+    "serviceUrl": "services/",
+    "thumbnailUrl": "frames/tiny/",
+    "videoUrl":"videos/",
+    "videoshrinkUrl":"videos/tiny/",
+    "keyFramesUrl":"frames/"
+  }

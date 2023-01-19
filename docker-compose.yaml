@@ -2,48 +2,50 @@ services:
   router:
     image: nginx:1.23.2
     ports: ["80:80"]
+    env_file: [".env"]
     volumes:
       - ./router.conf:/etc/nginx/templates/default.conf.template
       - ${VISIONE_ROOT}:/data:ro
+      - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
     depends_on: ["core", "mongo-gui"]
+    profiles: ["debug"]
 
   core:
     build:
       context: ./core
       args:
-        - TOMCAT_MANAGER_USER=${USERNAME}
-        - TOMCAT_MANAGER_PASS=${PASSWORD}
+        - TOMCAT_MANAGER_USER=${VISIONE_USERNAME}
+        - TOMCAT_MANAGER_PASS=${VISIONE_PASSWORD}
     depends_on: ["clip", "tern"]
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
-
-      # (optional) those are for easy development (no need to rebuild container after modifying code or conf)
-      - ./core/root:/usr/local/tomcat/webapps/ROOT
-      - ./core/conf:/conf
+    profiles: ["debug"]
 
   clip:
     image: mesnico/clip2video_visione_webservice
     ports: ["5010:5010"]
     expose: ["5010"]
+    profiles: ["query"]
 
   tern:
     image: mesnico/tern_visione_webservice
     ports: ["5000:5000"]
     expose: ["5000"]
+    profiles: ["query"]
 
   mongo:
     image: mongo:5.0.5
     command: --wiredTigerCacheSizeGB 1
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=${VISIONE_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${VISIONE_PASSWORD}
     ports: ["27017:27017"]
     expose: ["27017"]
     volumes: 
-      - "${VISIONE_ROOT}/mongo-data:/data/db"
+      - ${VISIONE_ROOT}/mongo-data:/data/db
       - ./mongo-scripts/init.js:/docker-entrypoint-initdb.d/init.js
-    profiles: ["index"]
+    profiles: ["mongo", "analysis", "debug"]
 
   mongo-gui:
     image: mongo-express:0.54.0
@@ -51,13 +53,13 @@ services:
     depends_on: ["mongo"]
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${PASSWORD}
-      - ME_CONFIG_BASICAUTH_USERNAME=${USERNAME}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${PASSWORD}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${VISIONE_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${VISIONE_PASSWORD}
+      - ME_CONFIG_BASICAUTH_USERNAME=${VISIONE_USERNAME}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${VISIONE_PASSWORD}
       - ME_CONFIG_SITE_BASEURL=/mongo
     ports: ["8081:8081"]
-    profiles: ["index"]
+    profiles: ["mongo", "debug"]
 
   objects-openimagesv4:
     build: ./analysis/objects-openimagesv4
@@ -65,7 +67,7 @@ services:
       - ${VISIONE_ROOT}:/data:ro
       - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
-    profiles: ["index"]
+    profiles: ["analysis"]
 
   features-gem:
     build: ./analysis/gem
@@ -73,9 +75,9 @@ services:
       - ${VISIONE_ROOT}:/data:ro
       - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
-    profiles: ["index"]
+    profiles: ["analysis"]
 
   frame-cluster:
     build: ./analysis/frame-cluster
     depends_on: ["mongo"]
-    profiles: ["index"]
+    profiles: ["analysis"]
