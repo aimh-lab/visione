@@ -1,11 +1,11 @@
 services:
   router:
     image: nginx:1.23.2
-    ports: ["80:80"]
+    ports: ["80:80", "443:443"]
     env_file: [".env"]
     volumes:
-      - ./router.conf:/etc/nginx/templates/default.conf.template
-      - ${VISIONE_ROOT}:/data:ro
+      - ./router:/etc/nginx/templates/
+      - /etc/letsencrypt:/etc/letsencrypt
       - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
     depends_on: ["core", "mongo-gui"]
     profiles: ["debug"]

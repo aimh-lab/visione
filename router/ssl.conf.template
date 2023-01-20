@@ -1,0 +1,2 @@
+ssl_certificate     /etc/letsencrypt/live/${VISIONE_SERVER_NAME}/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/${VISIONE_SERVER_NAME}/privkey.pem;
