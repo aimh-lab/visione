@@ -7,6 +7,10 @@ services:
       - ./router:/etc/nginx/templates/
       - /etc/letsencrypt:/etc/letsencrypt
       - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
+      # - ${VISIONE_ROOT}:/data:ro
+      - /data/vbs/:/data:ro
+      # temp mount for rai data
+      - /data/rai:/rai:ro
     depends_on: ["core", "mongo-gui"]
     profiles: ["debug"]
 
@@ -16,7 +20,7 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${VISIONE_USERNAME}
         - TOMCAT_MANAGER_PASS=${VISIONE_PASSWORD}
-    depends_on: ["clip", "tern"]
+    # depends_on: ["clip", "tern"]
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
@@ -44,7 +48,7 @@ services:
     expose: ["27017"]
     volumes: 
       - ${VISIONE_ROOT}/mongo-data:/data/db
-      - ./mongo-scripts/init.js:/docker-entrypoint-initdb.d/init.js
+      # - ./mongo-scripts/init.js:/docker-entrypoint-initdb.d/init.js
     profiles: ["mongo", "analysis", "debug"]
 
   mongo-gui:

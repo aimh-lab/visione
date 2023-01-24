@@ -13,20 +13,30 @@ server {
 	
 	server_name ${VISIONE_SERVER_NAME};
 
+	### Static File Routing
+
 	location ^~ /videos      { proxy_pass ${VISIONE_VIDEOS_URL}; }
 	location ^~ /videos/tiny { proxy_pass ${VISIONE_RESIZED_VIDEOS_URL}; }
 	location ^~ /frames      { proxy_pass ${VISIONE_FRAMES_URL}; }
 	location ^~ /frames/tiny { proxy_pass ${VISIONE_RESIZED_FRAMES_URL}; }
 
-	location ^~ /mongo {
-		proxy_pass http://mongo-gui:8081;
-		proxy_set_header Host $host;
-		proxy_set_header X-Real_IP $remote_addr;
-	}
-	
-	location ^~ /services {
-		proxy_pass http://core:8080/services/VBSService;
-	}
+	# XXX TO REMOVE when collection are splitted
+	location ^~ /videos/mvk { alias /data/mvk/videos/; }
+	location ^~ /videos/tiny/mvk { alias /data/mvk/videos/; }
+	# location ^~ /frames/v3c { alias /data/v3c/thumbnails/; }
+	location ^~ /frames/mvk { alias /data/mvk/selected-frames/; }
+	# location ^~ /frames/tiny/v3c { alias /data/v3c/thumbnails/; }
+	# location ^~ /frames/tiny/mvk { alias /data/mvk/thumbnails/tiny/; }
+
+	### Services Routing
+
+	# location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
+	# location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
+	# location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
+	# location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
+	# location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
+	location ^~ /mongo                      { proxy_pass http://mongo-gui:8081; }
+	location ^~ /services                   { proxy_pass http://core:8080/services/VBSService; }
 
 	location / {
 		root /usr/share/nginx/html;
@@ -41,12 +51,21 @@ server {
 
 	server_name router;
 
+	# XXX TO REMOVE when collection are splitted
+	location ^~ /videos/tiny { alias /data/v3c/videoshrink/; }
+	location ^~ /frames/tiny/v3c { alias /data/v3c/thumbnails/; }
+	location ^~ /frames/tiny/mvk { alias /data/mvk/thumbnails/tiny/; }
 
 	location ^~ /videos       { alias /data/videos/; }
-	location ^~ /videos/tiny  { alias /data/resized-videos/tiny/; }
+	# location ^~ /videos/tiny  { alias /data/resized-videos/tiny/; }
 	location ^~ /frames       { alias /data/selected-frames/; }
 	location ^~ /frames/tiny  { alias /data/thumbnails/tiny/; }
 
+	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
+	location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
+	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
+	location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
+	location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
 
 	location / {
 		root /usr/share/nginx/html;
