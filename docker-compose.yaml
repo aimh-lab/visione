@@ -7,10 +7,7 @@ services:
       - ./router:/etc/nginx/templates/
       - /etc/letsencrypt:/etc/letsencrypt
       - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
-      # - ${VISIONE_ROOT}:/data:ro
-      - /data/vbs/:/data:ro
-      # temp mount for rai data
-      - /data/rai:/rai:ro
+      - ${VISIONE_ROOT}:/data:ro
     depends_on: ["core", "mongo-gui"]
     profiles: ["debug"]
 
