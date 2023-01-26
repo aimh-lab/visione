@@ -1,7 +1,7 @@
 from pathlib import Path
 import shutil
 
-from .base_command import BaseCommand
+from .command import BaseCommand
 
 
 class InitCommand(BaseCommand):

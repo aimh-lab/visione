@@ -8,7 +8,7 @@ import urllib.request
 
 from tqdm import tqdm
 
-from .base_command import BaseCommand
+from .command import BaseCommand
 
 
 class ImportCommand(BaseCommand):

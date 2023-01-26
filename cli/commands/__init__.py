@@ -1,2 +1,2 @@
-from .init_command import InitCommand
-from .import_command import ImportCommand
+from .init import InitCommand
+from .import_ import ImportCommand
