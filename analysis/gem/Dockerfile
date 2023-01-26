@@ -2,6 +2,7 @@ FROM docker.io/pytorch/pytorch:1.4-cuda10.1-cudnn7-runtime
 
 RUN pip install \
         flask-restful \
+        h5py \
         matplotlib \
         more-itertools \
         numpy \

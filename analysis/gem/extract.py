@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import logging
 import more_itertools
 import os
 from pathlib import Path
@@ -12,7 +13,12 @@ import dirtorch.nets as nets
 from dirtorch.utils import common as ops
 from dirtorch.test_dir import extract_image_features
 
-from visione.savers import MongoCollection, GzipJsonpFile
+from visione.savers import MongoCollection, GzipJsonpFile, HDF5File
+
+
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
 
 
 def load_model(path, iscuda):
@@ -28,10 +34,6 @@ def load_model(path, iscuda):
 
     return net
 
-def read_lines(file_path):
-    with open(file_path, 'r') as f:
-        yield from f
-
 def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size=1000):
     with open(image_list_path, 'r') as image_list:
         
@@ -45,9 +47,10 @@ def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size
             yield ids, tmp_list_path
 
 
-def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt'):
+def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt', gpu=False):
 
-    iscuda = ops.torch_set_gpu([0])
+    gpus = [0] if gpu else [-1]
+    iscuda = ops.torch_set_gpu(gpus)
     net = load_model('./Resnet-101-AP-GeM.pt', iscuda)
     net.pca = net.pca['Landmarks_clean']
     whiten = {'whitenp': 0.25, 'whitenv': None, 'whitenm': 1.0}
@@ -76,6 +79,9 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
 
 def main(args):
 
+    image_list = sorted(args.image_dir.glob('*.png'))
+    n_images = len(image_list)
+
     if args.output_type == 'mongo':
         saver = MongoCollection(
             args.db,
@@ -88,17 +94,23 @@ def main(args):
         )
     elif args.output_type == 'file':
         saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+    elif args.output_type == 'hdf5':
+        saver = HDF5File(args.output, shape=(n_images, 2048), flush_every=args.save_every)
 
     with saver:
-        image_list = read_lines(args.image_list)
+        image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
+
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
-        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
+
+        unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
+        head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
+        image_ids, image_paths = unzipped_ids_and_paths if head else ((),())
 
         # chunked image feature extraction
         chunked_image_paths = more_itertools.batched(image_paths, args.save_every)
-        chunked_features = extract_from_image_lists(chunked_image_paths, root=args.image_root)
+        chunked_features = extract_from_image_lists(chunked_image_paths, root=args.image_dir, gpu=args.gpu)
         image_features = itertools.chain.from_iterable(chunked_features)
 
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
@@ -108,10 +120,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract GeM features.')
 
-    parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
-    parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
+    parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
+    parser.add_argument('--gpu', default=False, action='store_true', help='use a GPU')
     subparsers = parser.add_subparsers(dest="output_type")
 
     mongo_parser = subparsers.add_parser('mongo')
@@ -124,6 +136,9 @@ if __name__ == "__main__":
 
     file_parser = subparsers.add_parser('file')
     file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
+
+    hdf5_parser = subparsers.add_parser('hdf5')
+    hdf5_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (hdf5 file)')
 
     args = parser.parse_args()
     main(args)
