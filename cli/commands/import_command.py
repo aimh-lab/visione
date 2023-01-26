@@ -37,6 +37,9 @@ class ImportCommand(BaseCommand):
         # detect scenes and extract frames
         self.detect_scenes_and_extract_frames(video_path, video_id, replace)
 
+        # create frames thumbnails
+        self.create_frames_thumbnails(video_id, replace)
+
     def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
@@ -211,4 +214,41 @@ class ImportCommand(BaseCommand):
 
         ret = subprocess.run(command, check=True, env={'VISIONE_ROOT': Path.cwd(), **os.environ})
         return ret
+
+    def create_frames_thumbnails(self, video_id, force=False):
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+        thumbnail_dir = self.collection_dir / 'thumbnails' / video_id
+
+        thumbnail_dir.mkdir(parents=True, exist_ok=True)
+
+        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+        thumbnails_list = sorted(thumbnail_dir.glob('*.png'))
+
+        if not force and [i.name for i in selected_frames_list] == [i.name for i in thumbnails_list]:
+            print('Skipping thumbnail generation, using existing files ...')
+            return 0
+        
+        n_frames = len(selected_frames_list)
+        n_digits = len(selected_frames_list[0].stem.split('-')[-1])
+
+        command = [
+            'docker', 'run', '--rm',
+            '-v', f'{selected_frames_dir.resolve()}:/input_dir:ro',
+            '-v', f'{thumbnail_dir.resolve()}:/output_dir',
+            'linuxserver/ffmpeg:5.1.2',
+            '-y', '-hide_banner', '-loglevel', 'warning', # '-threads ${THREADS}'
+            '-progress', '-', '-nostats',
+            '-i', f'/input_dir/{video_id}-%0{n_digits}d.png',
+            '-vf', 'scale=192:-1',
+            f'/output_dir/{video_id}-%0{n_digits}d.png',
+        ]
+
+        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
+            tqdm(desc='Generating thumbs', total=n_frames, unit='s') as progress:
+            
+            # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
+            for line in ffmpeg.stdout:
+                if line.startswith('frame'):
+                    current_frame = int(line.rstrip().split('=')[1])
+                    progress.update(current_frame - progress.n)
 
