@@ -82,3 +82,9 @@ services:
     build: ./analysis/frame-cluster
     depends_on: ["mongo"]
     profiles: ["analysis"]
+  
+  scene-detection:
+    build: ./analysis/scene-detection
+    profiles: ["analysis"]
+    volumes: 
+      - ${VISIONE_ROOT}:/data

@@ -34,6 +34,9 @@ class ImportCommand(BaseCommand):
         # TODO run this in background
         self.create_resized_videos(video_path, video_id, replace)
 
+        # detect scenes and extract frames
+        self.detect_scenes_and_extract_frames(video_path, video_id, replace)
+
     def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
@@ -160,3 +163,52 @@ class ImportCommand(BaseCommand):
                     progress.update(current_time_ms - progress.n)
 
         return ret
+
+    def detect_scenes_and_extract_frames(self, video_path, video_id, force=False):
+        """ Detect scenes from a video file and extract the middle frame of every scene.
+
+        Args:
+            video_path (pathlib.Path): Path to input video.
+            video_id (str): Input Video ID.
+            force (bool, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            # TODO
+        """
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+
+        scene_file = selected_frames_dir / f'{video_id}-scenes.csv'
+        if not force and scene_file.exists():
+            print('Skipping scene detection and frame generation, using existing files:', scene_file.name)
+            return 0
+
+        input_file = video_path.relative_to(self.collection_dir)
+        output_dir = selected_frames_dir.relative_to(self.collection_dir)
+
+        command = [
+            'docker-compose',
+            '--project-directory', str(self.install_dir),
+            '--env-file', str(self.collection_dir / 'config.env'),
+            'run',
+            '--rm',
+            '-w', '/data',
+            'scene-detection',
+            '--verbosity', 'error',
+            '--input', str(input_file),
+            '--output', str(output_dir),
+            # '--min-scene-len', '0.6s'
+            'detect-adaptive',
+            'detect-threshold',
+            'list-scenes', # '--quiet',
+            '--skip-cuts',
+            '--filename', f"{video_id}-scenes",
+            'save-images',
+            '--filename', f"{video_id}-$SCENE_NUMBER",
+            '--num-images', '1',
+            '--png', '--compression', '9',
+        ]
+
+        ret = subprocess.run(command, check=True, env={'VISIONE_ROOT': Path.cwd(), **os.environ})
+        return ret
+
