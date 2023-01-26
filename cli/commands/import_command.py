@@ -40,6 +40,9 @@ class ImportCommand(BaseCommand):
         # create frames thumbnails
         self.create_frames_thumbnails(video_id, replace)
 
+        # do analyses
+        self.extract_gem_features(video_id, force=replace)
+
     def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
@@ -252,3 +255,36 @@ class ImportCommand(BaseCommand):
                     current_frame = int(line.rstrip().split('=')[1])
                     progress.update(current_frame - progress.n)
 
+    def extract_gem_features(self, video_id, force=False):
+
+        gem_dir = self.collection_dir / 'gem' / video_id
+        gem_dir.mkdir(parents=True, exist_ok=True)
+
+        gem_features_file = gem_dir / f'{video_id}-gem.hdf5'
+        if not force and gem_features_file.exists():
+            print('Skipping GeM extraction, using existing file:', gem_features_file.name)
+            return 0
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+
+        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        output_file = '/data' / gem_features_file.relative_to(self.collection_dir)
+
+        command = [
+            'docker-compose',
+            '--project-directory', str(self.install_dir),
+            '--env-file', str(self.collection_dir / 'config.env'),
+            'run',
+            '--rm',
+            '--no-deps',
+            'features-gem',
+            'python', 'extract.py',
+            str(input_dir),
+            '--save-every', '200',
+            'hdf5',
+            '--output', str(output_file),
+        ]
+
+        ret = subprocess.run(command, check=True, env={'VISIONE_ROOT': Path.cwd(), **os.environ})
+        return ret

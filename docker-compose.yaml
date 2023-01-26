@@ -72,8 +72,9 @@ services:
 
   features-gem:
     build: ./analysis/gem
+    shm_size: 2GB
     volumes:
-      - ${VISIONE_ROOT}:/data:ro
+      - ${VISIONE_ROOT}:/data
       - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
     profiles: ["analysis"]
