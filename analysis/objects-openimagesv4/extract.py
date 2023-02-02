@@ -15,7 +15,12 @@ from tqdm import tqdm
 
 from visione.savers import MongoCollection, GzipJsonpFile
 
+
 tqdm = partial(tqdm, dynamic_ncols=True)
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
+
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
