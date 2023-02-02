@@ -35,7 +35,7 @@ class GzipJsonpFile(Saver):
 
         if self.path.exists():
             with gzip.open(str(self.path), 'r') as f:
-                self._ids = {json.loads(line)['id'] for line in f.read().splitlines()}
+                self._ids = {json.loads(line)['_id'] for line in f.read().splitlines()}
             log.info(f'Found {len(self._ids)} results')
     
     def __enter__(self):
