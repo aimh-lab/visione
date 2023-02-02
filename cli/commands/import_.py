@@ -48,6 +48,8 @@ class ImportCommand(BaseCommand):
 
         # do analyses
         self.extract_gem_features(video_id, force=replace)
+        self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
+        self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
 
     def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
@@ -312,4 +314,50 @@ class ImportCommand(BaseCommand):
 
         ret = subprocess.run(command, check=True, env=self.visione_env)
         return ret
+
+    def detect_objects_mmdet(self, video_id, detector, force=False):
+        """ Detect objects form the selected keyframes of a video using pretrained models from mmdetection.
+
+        Args:
+            video_id (str): Input Video ID.
+            detector (str): Specifies the detector to use. It must be one of 'vfnet_X-101-32x4d', 'vfnet_X-101-64x4d', or 'mask_rcnn_lvis'.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            # TODO
+        """
+
+        objects_dir = self.collection_dir / f'objects-{detector}' / video_id
+        objects_dir.mkdir(parents=True, exist_ok=True)
+
+        objects_file = objects_dir / f'{video_id}-objects-{detector}.json.gz'
+        if not force and objects_file.exists():
+            print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
+            return 0
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+
+        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        output_file = '/data' / objects_file.relative_to(self.collection_dir)
+
+        command = [
+            'docker-compose',
+            '--project-directory', str(self.install_dir),
+            '--env-file', str(self.collection_dir / 'config.env'),
+            'run',
+            '--rm',
+            '--no-deps',
+            'objects-mmdet',
+            'python', 'extract.py',
+            str(input_dir),
+            detector,
+        ] + (['--force'] if force else []) + [   
+            '--gpu',
+            '--save-every', '200',
+            'file',
+            '--output', str(output_file),
+        ]
+
+        ret = subprocess.run(command, check=True, env=self.visione_env)
         return ret

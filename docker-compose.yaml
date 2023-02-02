@@ -62,6 +62,20 @@ services:
     ports: ["8081:8081"]
     profiles: ["mongo", "debug"]
 
+  objects-mmdet:
+    build: ./analysis/objects-mmdet
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ./common:/usr/src/visione:ro
+    profiles: ["analysis"]
+    deploy: &needs_gpu
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   objects-openimagesv4:
     build: ./analysis/objects-openimagesv4
     volumes:
