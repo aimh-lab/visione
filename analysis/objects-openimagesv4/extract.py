@@ -59,12 +59,10 @@ def apply_detector(detector, x):
     return y
 
 
-def read_lines(file_path):
-    with open(file_path, 'r') as f:
-        yield from f
-
-
 def main(args):
+    image_list = sorted(args.image_dir.glob('*.png'))
+    n_images = len(image_list)
+    initial = 0
 
     if args.output_type == 'mongo':
         saver = MongoCollection(
@@ -85,23 +83,26 @@ def main(args):
     
     with saver:
         # read image ids and paths
-        image_list = read_lines(args.image_list)
+        image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
 
         # process missing only (resume)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
+            ids_and_paths = list(ids_and_paths)
+            initial = n_images - len(ids_and_paths)
 
         # prepare image paths
-        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
-        image_paths = map(lambda path: args.image_root / path, image_paths)
+        unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
+        head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
+        image_ids, image_paths = unzipped_ids_and_paths if head else ((),())
 
         # load images
         images = map(load_image_pil, image_paths)
-        images = BackgroundGenerator(images, max_prefetch=10)
+        # images = BackgroundGenerator(images, max_prefetch=10)
 
         # apply detector
-        dets = itertools.starmap(lambda x: apply_detector(detector, x), images)
+        dets = map(lambda x: apply_detector(detector, x), images)
         ids_and_dets = zip(image_ids, dets)
 
         # post-process to records
@@ -121,15 +122,14 @@ def main(args):
             } if det else None, ids_and_dets)
         
         records = filter(lambda x: x is not None, records)
-        records = tqdm(records)
+        records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Detect Objects with TensorFlow Hub models.')
 
-    parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
-    parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
+    parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     subparsers = parser.add_subparsers(dest="output_type")
