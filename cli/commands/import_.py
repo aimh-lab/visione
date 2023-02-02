@@ -309,6 +309,7 @@ class ImportCommand(BaseCommand):
             'python', 'extract.py',
             str(input_dir),
             '--save-every', '200',
+            '--gpu',
             'hdf5',
             '--output', str(output_file),
         ]

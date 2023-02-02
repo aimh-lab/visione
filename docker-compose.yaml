@@ -94,6 +94,7 @@ services:
       - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
     profiles: ["analysis"]
+    deploy: *needs_gpu
 
   frame-cluster:
     build: ./analysis/frame-cluster
