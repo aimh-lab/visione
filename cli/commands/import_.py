@@ -219,6 +219,16 @@ class ImportCommand(BaseCommand):
         return ret
 
     def create_frames_thumbnails(self, video_id, force=False):
+        """ Creates thumbnails for the selected frames of a video.
+            This implementation uses a dockerized version of ffmpeg.
+
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            # TODO
+        """
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
         thumbnail_dir = self.collection_dir / 'thumbnails' / video_id
 
@@ -256,7 +266,15 @@ class ImportCommand(BaseCommand):
                     progress.update(current_frame - progress.n)
 
     def extract_gem_features(self, video_id, force=False):
+        """ Extracts GeM features from selected keyframes of a video for instance retrieval.
 
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
         gem_dir = self.collection_dir / 'gem' / video_id
         gem_dir.mkdir(parents=True, exist_ok=True)
 
