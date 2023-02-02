@@ -1,6 +1,0 @@
-requires the following checkpoints from mmdet:
-
-faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth
-mask_rcnn_x101_64x4d_fpn_sample1e-3_mstrain_1x_lvis_v1-43d9edfe.pth
-vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_20201027pth-d300a6fc.pth
-vfnet_x101_64x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_20201027pth-b5f6da5e.pth
