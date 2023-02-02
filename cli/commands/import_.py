@@ -17,6 +17,12 @@ class ImportCommand(BaseCommand):
     def __init__(self, *args, **kwargs):
         super(ImportCommand, self).__init__(*args, **kwargs)
 
+        self.visione_env = {
+            'VISIONE_ROOT': self.collection_dir,
+            'VISIONE_CACHE': self.cache_dir,
+            **os.environ
+        }
+
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('import', help='Import videos to the collection')
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
@@ -215,7 +221,7 @@ class ImportCommand(BaseCommand):
             '--png', '--compression', '9',
         ]
 
-        ret = subprocess.run(command, check=True, env={'VISIONE_ROOT': Path.cwd(), **os.environ})
+        ret = subprocess.run(command, check=True, env=self.visione_env)
         return ret
 
     def create_frames_thumbnails(self, video_id, force=False):
@@ -304,5 +310,6 @@ class ImportCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        ret = subprocess.run(command, check=True, env={'VISIONE_ROOT': Path.cwd(), **os.environ})
+        ret = subprocess.run(command, check=True, env=self.visione_env)
+        return ret
         return ret
