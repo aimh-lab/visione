@@ -34,6 +34,7 @@ def load_model(path, iscuda):
 
     return net
 
+
 def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size=1000):
     with open(image_list_path, 'r') as image_list:
         
@@ -48,7 +49,6 @@ def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size
 
 
 def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt', gpu=False):
-
     gpus = [0] if gpu else [-1]
     iscuda = ops.torch_set_gpu(gpus)
     net = load_model('./Resnet-101-AP-GeM.pt', iscuda)
@@ -78,9 +78,9 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
 
 
 def main(args):
-
     image_list = sorted(args.image_dir.glob('*.png'))
     n_images = len(image_list)
+    initial = 0
 
     if args.output_type == 'mongo':
         saver = MongoCollection(
@@ -95,7 +95,7 @@ def main(args):
     elif args.output_type == 'file':
         saver = GzipJsonpFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
-        saver = HDF5File(args.output, shape=(n_images, 2048), flush_every=args.save_every)
+        saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
 
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
@@ -103,6 +103,8 @@ def main(args):
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
+            ids_and_paths = list(ids_and_paths)
+            initial = n_images - len(ids_and_paths)
 
         unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
         head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
@@ -114,6 +116,7 @@ def main(args):
         image_features = itertools.chain.from_iterable(chunked_features)
 
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
+        records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)
     
 
@@ -139,6 +142,7 @@ if __name__ == "__main__":
 
     hdf5_parser = subparsers.add_parser('hdf5')
     hdf5_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (hdf5 file)')
+    hdf5_parser.add_argument('-d', '--dimensionality', type=int, default=2048, help='number of dimensions of features')
 
     args = parser.parse_args()
     main(args)
