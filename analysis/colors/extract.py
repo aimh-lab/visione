@@ -198,6 +198,7 @@ def table2record(color_table, label_map, nrows, ncols):
         'object_scores': scores,
         'object_boxes_yxyx': boxes,
         'object_class_names': labels,
+        'detector': 'colors',
     }
 
 

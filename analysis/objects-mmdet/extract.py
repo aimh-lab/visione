@@ -51,6 +51,7 @@ def detection2record(detection, detector, classes, image_hw):
         'object_scores': scores.tolist(),
         'object_boxes_yxyx': boxes.tolist(),
         'object_class_names': labels,
+        'detector': detector,
     }
 
 
