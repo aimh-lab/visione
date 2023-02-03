@@ -23,12 +23,6 @@ services:
       - ${VISIONE_ROOT}:/data
     profiles: ["debug"]
 
-  clip:
-    image: mesnico/clip2video_visione_webservice
-    ports: ["5010:5010"]
-    expose: ["5010"]
-    profiles: ["query"]
-
   tern:
     image: mesnico/tern_visione_webservice
     ports: ["5000:5000"]
@@ -94,6 +88,14 @@ services:
       - ./common:/usr/src/visione:ro
     depends_on: ["mongo"]
     profiles: ["analysis"]
+  features-clip:
+    build: ./analysis/clip
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ${VISIONE_CACHE}:/cache
+      - ./common:/usr/src/visione:ro
+      - ./analysis/clip:/usr/src/app/  # for development
+    profiles: ["analysis", "query"]
     deploy: *needs_gpu
 
   frame-cluster:
