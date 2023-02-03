@@ -13,7 +13,7 @@ import dirtorch.nets as nets
 from dirtorch.utils import common as ops
 from dirtorch.test_dir import extract_image_features
 
-from visione.savers import MongoCollection, GzipJsonpFile, HDF5File
+from visione.savers import MongoCollection, GzipJsonlFile, HDF5File
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -93,7 +93,7 @@ def main(args):
             batch_size=args.save_every,
         )
     elif args.output_type == 'file':
-        saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
         saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
 

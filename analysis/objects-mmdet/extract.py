@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonpFile
+from visione.savers import MongoCollection, GzipJsonlFile
 
 
 CONFIG_DIR = Path('/usr/src/mmdetection/configs')
@@ -86,7 +86,7 @@ def main(args):
             batch_size=args.save_every,
         )
     elif args.output_type == 'file':
-        saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)

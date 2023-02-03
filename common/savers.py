@@ -26,8 +26,8 @@ class Saver(abc.ABC):
 
 
 
-class GzipJsonpFile(Saver):
-    """ Save / Load / Append results in a GZipped JSONP file. """
+class GzipJsonlFile(Saver):
+    """ Save / Load / Append results in a GZipped JSONL file. """
     def __init__(self, path, flush_every=100):
         self.path = Path(path)
         self._ids = set()

@@ -9,7 +9,7 @@ import torch
 from transformers import CLIPProcessor, CLIPModel
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonpFile, HDF5File
+from visione.savers import MongoCollection, GzipJsonlFile, HDF5File
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -33,7 +33,7 @@ def main(args):
             batch_size=args.save_every,
         )
     elif args.output_type == 'file':
-        saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
         saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
 

@@ -11,7 +11,7 @@ from prefetch_generator import BackgroundGenerator
 from skimage import io, measure, transform
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonpFile
+from visione.savers import MongoCollection, GzipJsonlFile
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -235,7 +235,7 @@ def main(args):
             batch_size=args.save_every,
         )
     elif args.output_type == 'file':
-        saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
 
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)

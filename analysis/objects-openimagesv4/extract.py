@@ -13,7 +13,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonpFile
+from visione.savers import MongoCollection, GzipJsonlFile
 
 
 tqdm = partial(tqdm, dynamic_ncols=True)
@@ -80,7 +80,7 @@ def main(args):
             batch_size=args.save_every,
         )
     elif args.output_type == 'file':
-        saver = GzipJsonpFile(args.output, flush_every=args.save_every)
+        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
 
     detector_url = 'https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1'
     log.info(f'Loading detector: {detector_url}')
