@@ -1,6 +1,7 @@
 import argparse
 import collections
 import itertools
+import logging
 import more_itertools
 from pathlib import Path
 
@@ -11,6 +12,11 @@ from skimage import io, measure, transform
 from tqdm import tqdm
 
 from visione.savers import MongoCollection, GzipJsonpFile
+
+
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
 
 
 COLORS = {
@@ -26,11 +32,6 @@ COLORS = {
     'white' : [1.00, 1.00, 1.00],
     'yellow': [1.00, 1.00, 0.00],
 }
-
-
-def read_lines(file_path):
-    with open(file_path, 'r') as f:
-        yield from f
 
 
 def load_image(image_path):
@@ -219,6 +220,9 @@ def compute_monochromaticity(image_np):
 
 
 def main(args):
+    image_list = sorted(args.image_dir.glob('*.png'))
+    n_images = len(image_list)
+    initial = 0
 
     if args.output_type == 'mongo':
         saver = MongoCollection(
@@ -234,21 +238,22 @@ def main(args):
         saver = GzipJsonpFile(args.output, flush_every=args.save_every)
 
     with saver:
-        # read image ids and paths
-        image_list = read_lines(args.image_list)
+        image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
 
         # process missing only (resume)
         if not args.force:
             ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
+            ids_and_paths = list(ids_and_paths)
+            initial = n_images - len(ids_and_paths)
 
-        # prepare image paths
-        image_ids, image_paths = more_itertools.unzip(ids_and_paths)
-        image_paths = map(lambda path: args.image_root / path, image_paths)
+        unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
+        head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
+        image_ids, image_paths = unzipped_ids_and_paths if head else ((),())
 
         # load images
         images = map(io.imread, image_paths)
-        images = BackgroundGenerator(images, max_prefetch=10)
+        # images = BackgroundGenerator(images, max_prefetch=10)
 
         images1, images2 = itertools.tee(images, 2)
 
@@ -268,7 +273,7 @@ def main(args):
         monochrome_records = map(compute_monochromaticity, images2)
 
         records = itertools.starmap(lambda _id, cr, mr: {'_id': _id, **cr, **mr}, zip(image_ids, color_records, monochrome_records))
-        records = tqdm(records)
+        records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 
@@ -276,8 +281,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract color annotations.')
 
     # input params
-    parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
-    parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
+    parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
 
