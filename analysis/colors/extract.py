@@ -205,8 +205,8 @@ def table2record(color_table, label_map, nrows, ncols):
 def compute_monochromaticity(image_np):
     """ Based on https://stackoverflow.com/a/59218331/3175629 """
 
-    image_np = transform.resize(image_np, (128,128))  # downsample
-    pixels = image_np.reshape(-1,3)  # list of RGB pixels
+    image_np = transform.resize(image_np, (128, 128))  # downsample
+    pixels = image_np.reshape(-1, 3)  # list of RGB pixels
     pixels -= pixels.mean(axis=0)  # center on mean pixel
 
     dd = np.linalg.svd(pixels, compute_uv=False)  # get variance in the 3 PCA directions
