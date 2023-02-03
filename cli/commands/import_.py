@@ -371,7 +371,7 @@ class ImportCommand(BaseCommand):
         colors_dir = self.collection_dir / 'colors' / video_id
         colors_dir.mkdir(parents=True, exist_ok=True)
 
-        colors_file = colors_dir / f'{video_id}-colors.json.gz'
+        colors_file = colors_dir / f'{video_id}-colors.jsonl.gz'
         if not force and colors_file.exists():
             print(f'Skipping color extraction, using existing file:', colors_file.name)
             return 0
@@ -415,7 +415,7 @@ class ImportCommand(BaseCommand):
         objects_dir = self.collection_dir / f'objects-{detector}' / video_id
         objects_dir.mkdir(parents=True, exist_ok=True)
 
-        objects_file = objects_dir / f'{video_id}-objects-{detector}.json.gz'
+        objects_file = objects_dir / f'{video_id}-objects-{detector}.jsonl.gz'
         if not force and objects_file.exists():
             print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
             return 0
@@ -464,7 +464,7 @@ class ImportCommand(BaseCommand):
         objects_dir = self.collection_dir / f'objects-{detector}' / video_id
         objects_dir.mkdir(parents=True, exist_ok=True)
 
-        objects_file = objects_dir / f'{video_id}-objects-{detector}.json.gz'
+        objects_file = objects_dir / f'{video_id}-objects-{detector}.jsonl.gz'
         if not force and objects_file.exists():
             print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
             return 0
