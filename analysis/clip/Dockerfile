@@ -6,3 +6,6 @@ WORKDIR /usr/src/app
 RUN pip install --no-cache-dir -r requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
+ENV TRANSFORMERS_CACHE /cache/huggingface
+
+CMD ["python", "-u", "webserver.py"]

@@ -3,6 +3,7 @@ import torch
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 
+
 class FaissWrapper():
     def __init__(self, index, ids) -> None:
         self.index = index
