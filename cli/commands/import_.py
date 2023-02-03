@@ -50,6 +50,7 @@ class ImportCommand(BaseCommand):
         self.extract_gem_features(video_id, force=replace)
         self.extract_clip_features(video_id, 'laion/CLIP-ViT-H-14-laion2B-s32B-b79K', dimensions=1024, force=replace)
         self.extract_clip_features(video_id, 'openai/clip-vit-large-patch14', dimensions=768, force=replace)
+        self.extract_color_map(video_id, force=True)
         self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
         self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
         self.detect_objects_oiv4(video_id, force=replace)
@@ -361,6 +362,39 @@ class ImportCommand(BaseCommand):
             'hdf5',
             '--output', str(output_file),
             '--dimensionality', str(dimensions)
+        ]
+
+        ret = subprocess.run(command, check=True, env=self.visione_env)
+        return ret
+
+    def extract_color_map(self, video_id, force=False):
+        colors_dir = self.collection_dir / 'colors' / video_id
+        colors_dir.mkdir(parents=True, exist_ok=True)
+
+        colors_file = colors_dir / f'{video_id}-colors.json.gz'
+        if not force and colors_file.exists():
+            print(f'Skipping color extraction, using existing file:', colors_file.name)
+            return 0
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+
+        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        output_file = '/data' / colors_file.relative_to(self.collection_dir)
+
+        command = [
+            'docker-compose',
+            '--project-directory', str(self.install_dir),
+            '--env-file', str(self.collection_dir / 'config.env'),
+            'run',
+            '--rm',
+            '--no-deps',
+            'color-extraction',
+            'python', 'extract.py',
+            str(input_dir),
+            '--save-every', '200',
+            'file',
+            '--output', str(output_file),
         ]
 
         ret = subprocess.run(command, check=True, env=self.visione_env)

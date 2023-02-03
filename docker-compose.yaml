@@ -56,6 +56,13 @@ services:
     ports: ["8081:8081"]
     profiles: ["mongo", "debug"]
 
+  color-extraction:
+    build: ./analysis/colors
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ./common:/usr/src/visione:ro
+    profiles: ["analysis"]
+
   objects-mmdet:
     build: ./analysis/objects-mmdet
     volumes:
