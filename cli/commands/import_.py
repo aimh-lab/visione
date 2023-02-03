@@ -52,7 +52,7 @@ class ImportCommand(BaseCommand):
         self.extract_clip_features(video_id, 'openai/clip-vit-large-patch14', dimensions=768, force=replace)
         self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
         self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
-        self.detect_objects_oiv4(video_id, force=True)
+        self.detect_objects_oiv4(video_id, force=replace)
 
     def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
@@ -432,7 +432,7 @@ class ImportCommand(BaseCommand):
 
         objects_file = objects_dir / f'{video_id}-objects-{detector}.json.gz'
         if not force and objects_file.exists():
-            print(f'Skipping object detection ({detector}) , using existing file:', objects_file.name)
+            print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
             return 0
 
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
