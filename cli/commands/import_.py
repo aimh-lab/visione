@@ -362,10 +362,10 @@ class ImportCommand(BaseCommand):
         return ret
 
     def extract_color_map(self, video_id, force=False):
-        colors_dir = self.collection_dir / 'colors' / video_id
+        colors_dir = self.collection_dir / 'objects-colors' / video_id
         colors_dir.mkdir(parents=True, exist_ok=True)
 
-        colors_file = colors_dir / f'{video_id}-colors.jsonl.gz'
+        colors_file = colors_dir / f'{video_id}-objects-colors.jsonl.gz'
         if not force and colors_file.exists():
             print(f'Skipping color extraction, using existing file:', colors_file.name)
             return 0
