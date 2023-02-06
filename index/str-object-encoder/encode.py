@@ -1,24 +1,27 @@
 import argparse
 import collections
 import copy
-import functools
+from functools import reduce
+import gzip
 import itertools
+import json
 import math
-import more_itertools
-import multiprocessing
 import operator
-from pprint import pprint
-import warnings
+from pathlib import Path
 
 import pandas as pd
-from pymongo import MongoClient, WriteConcern
-from pymongo.errors import BulkWriteError
-from pymongo.operations import UpdateOne
 from tqdm import tqdm
+
+from visione.savers import GzipJsonlFile
 
 
 def count_objects(record):
     return collections.Counter(o['label'] for o in record['objects'])
+
+
+def load_config_file(config_file_path):
+    with open(config_file_path, 'r') as f:
+        return json.load(f)
 
 
 def load_hypersets(hyperset_file):
@@ -32,6 +35,70 @@ def load_hypersets(hyperset_file):
         .map(lambda x: list(map(str.strip, x)))
 
     return hypersets
+
+
+def process_single_detector_record(record, config):
+    detector = record['detector']
+
+    labels = record['object_class_names']
+    scores = record['object_scores']
+    boxes  = record['object_boxes_yxyx']
+
+    # parallel arrays to list of object records
+    objects = ({'label': l, 'score': s, 'box_yxyx': b} for l, s, b in zip(labels, scores, boxes))
+
+    # filter by score
+    threshold = config['str-object-encoder']['threshold'][detector]
+    objects = filter(lambda x: x['score'] >= threshold, objects)
+
+    # filter by normalized area
+    def _get_area(y0, x0, y1, x1):
+        return (y1 - y0) * (x1 - x0)
+    min_area = config['str-object-encoder']['minArea']
+    objects = filter(lambda x: _get_area(*x['box_yxyx']) >= min_area, objects)
+
+    # exclude labels (pre label mapping)
+    exclude_labels = config['str-object-encoder']['excludeLabels'].get(detector, [])
+    objects = filter(lambda x: x['label'] not in exclude_labels, objects)
+
+    # add detector and detector_label fields, uniform labels
+    objects = map(lambda x: {
+        **x,
+        'detector': detector,
+        'detector_label': x['label'],
+        'label': x['label'].lower().replace(' ', '_'),  # overwrites original 'label' key
+    }, objects)
+
+    # applies label mapping
+    mapping = config['str-object-encoder']['labelMap'].get(detector, {})
+    objects = map(lambda x: {**x, 'label': mapping.get(x['label'], x['label'])}, objects)
+
+    # exclude labels (post label mapping)
+    exclude_labels = config['str-object-encoder']['excludeLabels']['all']
+    objects = filter(lambda x: x['label'] not in exclude_labels, objects)
+
+    # materialize object list
+    record['objects'] = list(objects)
+    return record
+
+
+def process_objects_file(jsonlgz_path, config):
+    with gzip.open(jsonlgz_path, 'rt') as records:
+        records = map(str.rstrip, records)
+        records = map(json.loads, records)
+        records = map(lambda x: process_single_detector_record(x, config), records)
+        yield from records
+
+
+def merge_records(records):
+    assert len({r['_id'] for r in records}) == 1, "Records' ids do not match. Are the input records in the same order?"
+
+    objects = [r.pop('objects', []) for r in records]
+    merged_objects = list(reduce(operator.add, objects))
+
+    merged_record = dict(collections.ChainMap(*records))
+    merged_record['objects'] = merged_objects
+    return merged_record
 
 
 def add_hypersets(record, hypersets):
@@ -57,25 +124,24 @@ def add_hypersets(record, hypersets):
     record['objects'] = list(augmented_objects)
     return record
 
+def _area(box):
+    y0, x0, y1, x1 = box
+    return max(0, y1 - y0) * max(0, x1 - x0)
+
+def _iou(boxA, boxB):
+    y0a, x0a, y1a, x1a = boxA
+    y0b, x0b, y1b, x1b = boxB
+
+    intY0 = max(y0a, y0b)
+    intX0 = max(x0a, x0b)
+    intY1 = min(y1a, y1b)
+    intX1 = min(x1a, x1b)
+
+    intArea = max(0, intY1 - intY0) * max(0, intX1 - intX0)
+    unionArea = _area(boxA) + _area(boxB) - intArea
+    return intArea / unionArea
 
 def _nms(objects, iou_threshold):
-    def _area(box):
-        y0, x0, y1, x1 = box
-        return max(0, y1 - y0) * max(0, x1 - x0)
-
-    def _iou(boxA, boxB):
-        y0a, x0a, y1a, x1a = boxA
-        y0b, x0b, y1b, x1b = boxB
-
-        intY0 = max(y0a, y0b)
-        intX0 = max(x0a, x0b)
-        intY1 = min(y1a, y1b)
-        intX1 = min(x1a, x1b)
-
-        intArea = max(0, intY1 - intY0) * max(0, intX1 - intX0)
-        unionArea = _area(boxA) + _area(boxB) - intArea
-        return intArea / unionArea
-
     # sort by increasing scores
     objects = sorted(objects, key=lambda x: x['score'])
     n_objects = len(objects)
@@ -145,7 +211,7 @@ def _str_positional_box_encode(objects, nrows=7, ncols=7, rtol=0.1):
     return surrogate
 
 
-def _str_count_encode(objects, gray, thresholds):
+def _str_count_encode(objects, monochrome, thresholds):
     label_counts = collections.Counter()
 
     tokens = []
@@ -174,10 +240,10 @@ def _str_count_encode(objects, gray, thresholds):
         token = f'4wc{label}{label_count}{frequency}'
         tokens.append(token)
 
-    # is gray
-    gray_token = 'colorkeyframe' if gray > thresholds.get('gray', 0.01) else 'graykeyframe'
-    gray_token = f'4wc{gray_token}'
-    tokens.append(gray_token)
+    # is monochrome
+    monochrome_token = 'colorkeyframe' if monochrome > thresholds.get('monochrome', 0.01) else 'graykeyframe'
+    monochrome_token = f'4wc{monochrome_token}'
+    tokens.append(monochrome_token)
 
     tokens.sort()  # this helps when debugging
     surrogate = ' '.join(tokens)
@@ -217,100 +283,84 @@ def build_object_info(objects):
 
 def str_encode(record, thresholds={}):
     objects = record.get('objects', [])
-    gray = record.get('gray', 1)  # color frame by default
+    monochrome = record.get('monochrome', 0)  # color frame by default
 
     return {
         '_id': record['_id'],
         'object_box_str': _str_positional_box_encode(objects),
-        'object_count_str': _str_count_encode(objects, gray, thresholds),
+        'object_count_str': _str_count_encode(objects, monochrome, thresholds),
     }
 
 
-def generate_write_op(record):
-    _id = record.pop('_id')
-    return UpdateOne({'_id': _id}, {'$set': record})
+def process_merged_record(record, config, hypersets):
+    objects = record.get('objects', [])
 
+    # build debugging info for objects
+    object_info = build_object_info(objects)
 
-def process_record(record, hypersets, object_thresholds):
+    # add hypersets
+    record = add_hypersets(record, hypersets)
 
-    # Step 1:
-    # Filtering by confidence and bounding box area are performed dynamically by an aggregation pipeline in MongoDB.
-    # These steps could be inserted here for easy maintainance and changes.
-    # TODO Implement them also here and test performance differences.
+    # perform non-maximum suppression on boxes
+    record = non_maximum_suppression(record)
 
-    object_info = build_object_info(record.get('objects', []))  # Step 2: build debugging info for objects
+    # build debugging info for objects (again after nms)
+    objects_after_nms = record.get('objects', [])
+    object_info_after_nms = build_object_info(objects_after_nms)
 
-    record = add_hypersets(record, hypersets)  # Step 3: Add hypersets
-    record = non_maximum_suppression(record)  # Step 4: Perform NMS on boxes
+    # compute object count stats for tuning/inspection
+    object_counts = count_objects(record)
 
-    object_info_after_nms = build_object_info(record.get('objects', []))  # Step 4¼: build debugging info for objects (again)
-
-    object_counts = count_objects(record)  # Step 5: Compute object count stats for tuning/inspection
-    record = str_encode(record, thresholds=object_thresholds)  # Step 6: Build STR encodings
+    # build STR encoding
+    thresholds = config['str-object-encoder']['threshold']
+    record = str_encode(record, thresholds=thresholds)
 
     record['object_info_before_nms'] = object_info
     record['object_info'] = object_info_after_nms
 
-    write_op = generate_write_op(record)
-    return object_counts, write_op
-
-
-class PicklableFunc:
-    def __init__(self, func, *args, **kwargs):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, x):
-        return self.func(x, *self.args, **self.kwargs)
+    return object_counts, record
 
 
 def main(args):
-    client = MongoClient(args.host, port=args.port, username=args.username, password=args.password)
-    objects_collection = client[args.db][args.objects_collection]
-    output_collection = client[args.db].get_collection(args.output_collection, write_concern=WriteConcern(w=0))
-
-    n_frames = client[args.db].command('collstats', 'frames')['count']
-    config = client[args.db]['config'].find_one({'_id': 'config'})
-    object_thresholds = config['objects']['threshold']
+    # load config
+    config = load_config_file(args.config_file)
     hypersets = load_hypersets(args.hypersets)
 
-    records = objects_collection.find()
+    # apply per-detector processing (score/area/label filtering, label mapping)
+    records_per_detector = map(lambda x: process_objects_file(x, config), args.objects_input_files)
 
-    with multiprocessing.Pool() as pool:
-        func = PicklableFunc(process_record, hypersets, object_thresholds)
-        counts_and_ops = pool.imap_unordered(func, records)
-        counts_and_ops = tqdm(counts_and_ops, total=n_frames)
+    # merge records of different detectors for the same frames
+    merged_records = map(merge_records, zip(*records_per_detector))
 
-        batches = more_itertools.batched(counts_and_ops, args.batch_size)
-        batches = map(list, batches)
+    # apply general processing (hypersets, nms, counting, str-encoding)
+    counts_and_records = map(lambda x: process_merged_record(x, config, hypersets), merged_records)
 
-        object_counter = collections.Counter()
-        for batch in batches:
-            batch_of_counts, batch_of_ops = more_itertools.unzip(batch)
-            object_counter = functools.reduce(operator.add, batch_of_counts, object_counter)
-            batch_of_ops = list(batch_of_ops)
-            try:
-                output_collection.bulk_write(batch_of_ops, ordered=False)
-            except BulkWriteError as bwe:
-                print('Something wrong in updating docs with codes:')
-                pprint(bwe.details)
+    # if forced, delete old file
+    if args.force and args.str_output_file.exists():
+        args.str_output_file.unlink()
 
-    client[args.db]['stats'].update_one({'_id': 'stats'}, {'$set': {'object_count': object_counter}}, upsert=True)
+    n_frames = None  # TODO
+    object_counter = collections.Counter()
+    with GzipJsonlFile(args.str_output_file, flush_every=args.save_every) as saver:
+        for count, record in tqdm(counts_and_records, total=n_frames):
+            saver.add(record)
+            object_counter += count
+
+    with open(args.count_output_file, 'w') as f:
+        json.dump(object_counter, f)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Surrogate Text Encoding of Object/Color Detection')
 
-    parser.add_argument('--host', default='mongo')
-    parser.add_argument('--port', type=int, default=27017)
-    parser.add_argument('--username', default='admin')
-    parser.add_argument('--password', default='visione')
-    parser.add_argument('db')
-    parser.add_argument('--objects-collection', default='view.objects.all')
-    parser.add_argument('--output-collection', default='frames')
-    parser.add_argument('--hypersets', default='hypersets.csv', help='path to csv file with hypersets')
-    parser.add_argument('--batch-size', type=int, default=5000)
+    parser.add_argument('--config-file', default='/data/index-config.json', help='path to indexing configuration json file')
+    parser.add_argument('--hypersets', default='/data/hypersets.csv', help='path to csv file with hypersets')
+    parser.add_argument('--save-every', type=int, default=100)
+    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
+    
+    parser.add_argument('str_output_file', type=Path, help='output path of the jsonl.gz file with STR-encoded objects')
+    parser.add_argument('count_output_file', type=Path, help='output path of the json file with objects count')
+    parser.add_argument('objects_input_files', nargs='+', type=Path, help='path to jsonl.gz file(s) with detected objects; we assume records have the same order in all files!')
 
     args = parser.parse_args()
     main(args)
