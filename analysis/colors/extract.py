@@ -202,7 +202,7 @@ def table2record(color_table, label_map, nrows, ncols):
     }
 
 
-def compute_monochromaticity(image_np):
+def compute_monochromaticity(image_np, eps=1e-7):
     """ Based on https://stackoverflow.com/a/59218331/3175629 """
 
     image_np = transform.resize(image_np, (128, 128))  # downsample
@@ -210,10 +210,9 @@ def compute_monochromaticity(image_np):
     pixels -= pixels.mean(axis=0)  # center on mean pixel
 
     dd = np.linalg.svd(pixels, compute_uv=False)  # get variance in the 3 PCA directions
-    var1 = dd[0] / dd.sum()  # explained variance in first direction
+    var1 = dd[0] / (dd.sum() + eps)  # explained variance in first direction
 
-    # if most variance is in a single direction,
-    # pixels are mostly collinear in the RGB cube
+    # if most variance is in a single direction, pixels are mostly collinear in the RGB cube
     # => monochrome image
     return {
         'monochrome': var1
