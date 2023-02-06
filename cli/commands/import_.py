@@ -44,7 +44,7 @@ class ImportCommand(BaseCommand):
         self.extract_gem_features(video_id, force=replace)
         self.extract_clip_features(video_id, 'laion/CLIP-ViT-H-14-laion2B-s32B-b79K', dimensions=1024, force=replace)
         self.extract_clip_features(video_id, 'openai/clip-vit-large-patch14', dimensions=768, force=replace)
-        self.extract_color_map(video_id, force=True)
+        self.extract_color_map(video_id, force=replace)
         self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
         self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
         self.detect_objects_oiv4(video_id, force=replace)
