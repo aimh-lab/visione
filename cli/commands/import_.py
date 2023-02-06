@@ -17,12 +17,6 @@ class ImportCommand(BaseCommand):
     def __init__(self, *args, **kwargs):
         super(ImportCommand, self).__init__(*args, **kwargs)
 
-        self.visione_env = {
-            'VISIONE_ROOT': self.collection_dir,
-            'VISIONE_CACHE': self.cache_dir,
-            **os.environ
-        }
-
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('import', help='Import videos to the collection')
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
