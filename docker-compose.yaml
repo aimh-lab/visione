@@ -117,3 +117,10 @@ services:
     profiles: ["analysis"]
     volumes: 
       - ${VISIONE_ROOT}:/data
+  
+  str-object-encoder:
+    build: ./index/str-object-encoder
+    profiles: ["index"]
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ./common:/usr/src/visione:ro
