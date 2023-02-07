@@ -26,9 +26,9 @@ class IndexCommand(BaseCommand):
         # TODO handle (video_id == None) case
 
         # generate surrogate text representation of objects & colors
-        self.str_encode_objects(video_id, force=True)
+        self.str_encode_objects(video_id, force=replace)
 
-    def str_encode_objects(self, video_id, force=True):
+    def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
 
         Args:
@@ -39,11 +39,11 @@ class IndexCommand(BaseCommand):
             # TODO
         """
 
-        str_objects_dir = self.collection_dir / f'str-objects' / video_id
+        str_objects_dir = self.collection_dir / 'str-objects' / video_id
         str_objects_dir.mkdir(parents=True, exist_ok=True)
         str_objects_file = str_objects_dir / f'{video_id}-str-objects.jsonl.gz'
 
-        count_objects_dir = self.collection_dir / f'count-objects' / video_id
+        count_objects_dir = self.collection_dir / 'count-objects' / video_id
         count_objects_dir.mkdir(parents=True, exist_ok=True)
         count_objects_file = count_objects_dir / f'{video_id}-count-objects.json'
 
