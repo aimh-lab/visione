@@ -21,6 +21,7 @@ if __name__ == "__main__":
     commands.InitCommand  (*cmd_args).add_arguments(subparsers)
     commands.ImportCommand(*cmd_args).add_arguments(subparsers)
     commands.IndexCommand (*cmd_args).add_arguments(subparsers)
+    commands.ServeCommand (*cmd_args).add_arguments(subparsers)
 
     if len(sys.argv) < 2:
         parser.print_usage()
