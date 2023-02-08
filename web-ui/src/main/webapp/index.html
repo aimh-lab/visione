@@ -2,9 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
 <meta name="task" content="KIS">
-<meta name="dataset" content="mvk">
 
 <title>Episode IV-A New VISIONE</title>
 <link rel="stylesheet" href="css/jquery-ui.min.css">
@@ -17,9 +15,11 @@
 <script src="js/fabric.js"></script>
 <script src="js/visione.js"></script>
 <script src="js/visioneAVS.js"></script>
-
 <script src="js/canvas.js"></script>
 <script src="js/search_bar_templates.js"></script>
+<script
+	src="https://cdn.jsdelivr.net/npm/@viselect/vanilla/lib/viselect.cjs.js"></script>
+
 
 <style>
 body {
@@ -31,7 +31,7 @@ body {
 	width: 100vw;
 	display: grid;
 	grid-template-columns: 1fr;
-	grid-template-rows: 190px 1fr 30px;
+	grid-template-rows: 190px 1fr 0px;
 }
 
 .headerGrid {
@@ -59,7 +59,6 @@ body {
 	overflow-y: auto;
 	padding: 0px;
 	border-left: 0px solid green;
-	
 }
 </style>
 
@@ -70,70 +69,50 @@ body {
 	<div id="content" class="containerGrid">
 		<div class="headerGrid">
 			<table>
-  	<tr>
-  	  	  	<td colspan=1 valign="top">
- 		  		<div align="left" style="padding: 4px;padding-bottom: 20px;">
-					<div style="float: left; padding-right: 4px;" onclick="startNewKISSession();">
-						<button class="btn btn-outline-info btn-sm"
-							title="Switch to V3C KIS Dataset">
-							<i class="fa fa-home"> V3C KIS</i>
+				<tr>
+					<td colspan=1 valign="top">
+						<div id="dialog" title="Tag Name">
+							<label>tag</label> <input id="tag" name="tag" type="text">
+						</div> <br>
+						<div w3-include-html="palette.html" style="padding-left: 5px;"></div>
 
-						</button>
-					</div>
-					<div style="float: left; padding-right: 16px;" onclick="startNewAVSSession();">
-						<button  
-							class="btn btn-outline-info btn-sm"
-							title="You are running a V3C AVS task">
-							<i class="fa fa-home"> V3C AVS</i>
 
-						</button>
-					</div>
-					<div style="float: left; padding-left: 4px;">
-						<button class="btn btn-primary btn-sm" disabled="disabled" 
-							title="Switch to MVK Dataset">
-							<i class="fa fa-fish"> MVK</i>
-
-						</button>
-					</div>
-					
-		</div>
-		<div id="dialog" title="Tag Name">
-			<label>tag</label> <input id="tag" name="tag" type="text">
-		</div>
-			<br>
-			<div w3-include-html="paletteMVK.html" style="padding-left: 5px;"></div>
-		
-  	
-  	</td>
-<td>
-<div style="float: left;padding-left:30px; padding-top:5px  "><b style="font-size: 140%;"><input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder</b></div>
-<div align="center" style="float: left; padding-left: 30%;">
-<img src="img/logoVISIONE.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt=""> <img
-				src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-				style="border-radius: 20px 20px 20px 20px;" alt="">
-</div>
-<div style="float: right; padding-right: 4%;"><button
-					id="newsession" class="btn btn-warning btn-sm"
-					title="Start a new Session"  onclick="startNewMVKKISSession()">
-					<i class="fa fa-play"> New Session</i>
-				</button></div>
-  		<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
-  	</td>
-  	</tr>
-</table>
+					</td>
+					<td>
+						<div style="float: left; padding-left: 30px; padding-top: 5px">
+							<b style="font-size: 140%;"><input id='simreorder'
+								type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim
+								Reorder</b>
+						</div>
+						<div align="center" style="float: left; padding-left: 30%;">
+							<img src="img/logoVISIONE.png" height="28px"
+								style="border-radius: 20px 20px 20px 20px;" alt=""> <img
+								src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+								style="border-radius: 20px 20px 20px 20px;" alt="">
+						</div>
+						<div style="float: right; padding-right: 4%;">
+							<button id="newsession" class="btn btn-warning btn-sm"
+								title="Start a new Session" onclick="startNewKISSession()">
+								<i class="fa fa-play"> New Session</i>
+							</button>
+						</div>
+						<div id="avsTab"
+							style="height: 15vh; width: 78vw; overflow: auto;"></div>
+					</td>
+				</tr>
+			</table>
 		</div>
 		<div class="bodyGrid">
 			<div class="sidebarGrid">
 				<div id='searchTab'></div>
 				<hr>
-				<div w3-include-html="filters2.html" style="padding-left: 5px;""></div>
-				
+				<div w3-include-html="filters.html" style="padding-left: 5px;""></div>
+
 			</div>
 			<div class="contentGrid" id="content">
 				<div id='results'></div>
 				<ol id="recordingsList"></ol>
-				
+
 			</div>
 		</div>
 	</div>
@@ -149,7 +128,7 @@ body {
 								});
 							});
 							includeHTML();
-							setCollection("mvk")
+							loadConfig();
 
 							$("#searchTab").append(searchForm(0));
 							//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
@@ -196,7 +175,14 @@ body {
 									.keyup(
 											function(event) {
 												if (event.keyCode === 13) {
-													$("#textual0").val($("#textual0").val().replace(/(\r\n|\n|\r)/gm,""));
+													$("#textual0")
+															.val(
+																	$(
+																			"#textual0")
+																			.val()
+																			.replace(
+																					/(\r\n|\n|\r)/gm,
+																					""));
 													queryByTextual();
 												}
 											});
@@ -204,7 +190,14 @@ body {
 									.keyup(
 											function(event) {
 												if (event.keyCode === 13) {
-													$("#textual1").val($("#textual1").val().replace(/(\r\n|\n|\r)/gm,""));
+													$("#textual1")
+															.val(
+																	$(
+																			"#textual1")
+																			.val()
+																			.replace(
+																					/(\r\n|\n|\r)/gm,
+																					""));
 													queryByTextual();
 												}
 											})
@@ -235,49 +228,68 @@ body {
 									searchByForm();
 								}
 							});
-							
-							$("#recordButton0").on('click', function(e) {
-								document.getElementById("recordButton0").style.display = 'none';
-								document.getElementById("stopButton0").style.display = 'block';
-								startRecording(0);
-							});
 
-							$("#recordButton1").on('click', function(e) {
-								document.getElementById("recordButton1").style.display = 'none';
-								document.getElementById("stopButton1").style.display = 'block';
-								startRecording(1);
+							$("#recordButton0")
+									.on(
+											'click',
+											function(e) {
+												document
+														.getElementById("recordButton0").style.display = 'none';
+												document
+														.getElementById("stopButton0").style.display = 'block';
+												startRecording(0);
+											});
 
-							});
+							$("#recordButton1")
+									.on(
+											'click',
+											function(e) {
+												document
+														.getElementById("recordButton1").style.display = 'none';
+												document
+														.getElementById("stopButton1").style.display = 'block';
+												startRecording(1);
 
-							$("#stopButton0").on('click', function(e) {
-								document.getElementById("recordButton0").style.display = 'block';
-								document.getElementById("stopButton0").style.display = 'none';
-								stopRecording(0);
-							});
+											});
 
-							$("#stopButton1").on('click', function(e) {
-								document.getElementById("recordButton1").style.display = 'block';
-								document.getElementById("stopButton1").style.display = 'none';
-								stopRecording(1);
-							});
+							$("#stopButton0")
+									.on(
+											'click',
+											function(e) {
+												document
+														.getElementById("recordButton0").style.display = 'block';
+												document
+														.getElementById("stopButton0").style.display = 'none';
+												stopRecording(0);
+											});
+
+							$("#stopButton1")
+									.on(
+											'click',
+											function(e) {
+												document
+														.getElementById("recordButton1").style.display = 'block';
+												document
+														.getElementById("stopButton1").style.display = 'none';
+												stopRecording(1);
+											});
 
 							canvas0.renderAll();
-							
-							var script = document.createElement('script');					          
-					        script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js"; 
-					        document.head.appendChild(script)
-					        script = document.createElement('script');					          
-					        script.src = "js/WebAudioRecorder/audioRecorder.js"; 
-					        document.head.appendChild(script)
-							
-							
+
+							var script = document.createElement('script');
+							script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
+							document.head.appendChild(script)
+							script = document.createElement('script');
+							script.src = "js/WebAudioRecorder/audioRecorder.js";
+							document.head.appendChild(script)
+
 						});
 	</script>
-	
+
 	<!-- inserting these scripts at the end to be able to use all the elements in the DOM 
 	<script src="js/WebAudioRecorder/WebAudioRecorder.min.js"></script>
 	<script src="js/WebAudioRecorder/audioRecorder.js"></script>-->
-	
+
 
 </body>
 </html>

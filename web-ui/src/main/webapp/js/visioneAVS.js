@@ -9,9 +9,8 @@ avsAutoSelected = []
 maxAutoSelected = 9
 
 
-function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
+function getAvsObj(videoId, imgId, avsTagId, thumb) {
 	avsObj=new Object();
-	avsObj.collection = collection;
 	avsObj.videoId = videoId;
 	avsObj.imgId = imgId;
 	avsObj.avsTagId = avsTagId;
@@ -55,7 +54,7 @@ function submitToServer(selectedItem) {
 	return $.ajax({
 		type: "GET",
 		async: true,
-		url: urlBSService + "/submitResult?id=" + selectedItem.imgId + "&videoid=" + selectedItem.videoId + "&dataset=" + selectedItem.collection + "&isAVS=true&simreorder=" + simreorder,
+		url: urlBSService + "/submitResult?id=" + selectedItem.imgId + "&videoid=" + selectedItem.videoId + "&isAVS=true&simreorder=" + simreorder,
 	}).responseText;
 }
 
@@ -67,13 +66,13 @@ function selectImg(selectedItem) {
 	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
-			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
-			+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
+			+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
 
 			+'<br>'
-			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '">'
+			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '">'
 			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px;" width="145" height= "90" src="' + selectedItem.thumb + '">'
 			+'</div></div></span>'
 			
@@ -103,9 +102,8 @@ function selectImg(selectedItem) {
 				//langInfo = this.lang.split('|');
 				let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
 
-				let collection = langInfo[0];
-				let videoId = langInfo[1];
-				let videourl = langInfo[2];
+				let videoId = langInfo[0];
+				let videourl = langInfo[1];
 				let playerId = 'video' + videoId;
 
 				var elementExists = document.getElementById(playerId);
@@ -122,7 +120,7 @@ function selectImg(selectedItem) {
 					$('#'+ playerId).get(0).play();
 					return;
 				}
-				let backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ imgIdNoRegex + "')";
+				let backgroundImg = "background-image: url('" + thumbnailUrl+ '/'+ imgIdNoRegex + "')";
 			
 				//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
 				//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
@@ -142,9 +140,8 @@ function selectImg(selectedItem) {
 			let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
 			let imgId = avsdiv.replaceAll("avsdiv_", "selected_avs_")
 			let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
-			let collection = langInfo[0];
-			let videoId = langInfo[1];
-			let videourl=langInfo[2];
+			let videoId = langInfo[0];
+			let videourl=langInfo[1];
 			let playerId = 'video' + videoId;
  
 			var elementExists = document.getElementById(playerId);
@@ -276,8 +273,8 @@ function avsSubmittedTab(selectedItem) {
 	img = '<div id="avsSubmittedList_' + selectedItem.imgId + '">';
 	
 	
-	img += '<a style="font-size:9px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
-			//+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+	img += '<a style="font-size:9px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
+			//+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:10px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="gemSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
 			+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + selectedItem.imgId + '" id="aladinSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'

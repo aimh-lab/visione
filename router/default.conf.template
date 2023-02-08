@@ -23,7 +23,7 @@ server {
 
 	location / {
 		root /usr/share/nginx/html;
-		index  index.html index.htm index_V3C.html;
+		index  index.html index.htm;
 	}
 }
 
@@ -47,6 +47,6 @@ server {
 
 	location / {
 		root /usr/share/nginx/html;
-		index  index.html index.htm index_V3C.html;
+		index  index.html index.htm;
 	}
 }

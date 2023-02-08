@@ -3,7 +3,6 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>VBS Indexed Data</title>
-<link href="css/vbs.css" rel="stylesheet">
 <script src="js/jquery-3.3.1.min.js"></script>
 <script src="js/visione.js"></script>
 </head>
@@ -45,26 +44,23 @@
 	imgId = $.urlParam('id');
 	videoId = $.urlParam('videoId');
 
-	collection = $.urlParam('collection');
-	setCollection(collection)
-	
 	frameName = imgId
 
 	imgIdTokens = imgId.split("/");
 	//videoId = imgIdTokens[0];
 	if (imgIdTokens.length > 1)
 		frameName = imgIdTokens[1];
-	path = collection + "/" + videoId + "/"+ frameName;
+	path = videoId + "/"+ frameName;
 	
 
 
-	img = '<img width=1024 src="'+keyFramesUrl+ collection + "/" + videoId + "/" + frameName + '">'
+	img = '<img id="preview" width=1024 src="'+keyFramesUrl+ videoId + "/" + frameName + '.png">'
 	console.log('====ID' + imgId);
-	text = getText(imgId, 'txt', collection);
+	text = getText(imgId, 'txt');
 	console.log('====TEXT' + text);
 
-	objects = getText(imgId, 'objects', collection);
-	objectsInfo = getText(imgId, 'objectsinfo', collection);
+	objects = getText(imgId, 'objects');
+	objectsInfo = getText(imgId, 'objectsinfo');
 	console.log('====objectsInfo' + objectsInfo);
 
 	//annotations = getText(imgId, 'mifile');
@@ -73,8 +69,7 @@
 	//isgray = getText(imgId, 'isgray');
 	//console.log('====isgray ' + isgray);
 	$('.container').css('visibility', 'visible');
-		//$('#imgID').append('<a title="Show All Video Keyframes"  href="showVideoKeyframes.jsp?collection=' + collection + '&id=' + imgId + '#' + imgId.split("/")[1].split("\.")[0] + '"> Keyframes of ' + videoId + '</a>');
-		$('#imgID').append('<a title="Show All Video Keyframes"  href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id=' + imgId + '#' + imgId + '"> Keyframes of ' + videoId + '</a>');
+		$('#imgID').append('<a title="Show All Video Keyframes"  href="showVideoKeyframes.html?videoId='+ videoId + '&id=' + imgId + '#' + imgId + '"> Keyframes of ' + videoId + '</a>');
 		$('#img').append(img);
 		//$('#txt').append(text);
 		indexedCells(text);

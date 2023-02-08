@@ -10,39 +10,11 @@
 <script src="js/jquery-3.3.1.min.js"></script>
 <script src="js/jquery-ui.min.js"></script>
 <script src="js/visione.js"></script>
-<script src="js/visioneMVK.js"></script>
 
 
 </head>
 <body>
-
-<script>
-$.urlParam = function(name) {
-	var results = new RegExp('[\?&]' + name + '=([^&#]*)')
-			.exec(window.location.href);
-	return results[1] || 0;
-}
-
-
-imgId = $.urlParam('id');
-id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
-videoId = $.urlParam('videoId');
-
-collection = $.urlParam('collection');
-setCollection(collection)
-
-console.log('====ID' + imgId);
-res = getAllVideoKeyframes(videoId);
-var keyframes = JSON.parse(res);
-
-
-
-</script>
-
 	<div align="center" style="font-size: x-large; padding: 15px;">
-		<span style="color: navy;">Collection: </span> 
-		<span id="collection" style="color: red;"></span> 
 		<span style="color: navy;">Video</span> 
 		<span><a id="videoURL" style="color: red;" title='Play video' href=""></a></span>
 		<span style="color: navy;">- Keyframe</span> 
@@ -53,40 +25,58 @@ var keyframes = JSON.parse(res);
 	</td></tr></table>
 	
 	<script>
-	videoUrl = videoUrlPrefix + videoId + ".mp4"
-		$("#collection").text(collection.toUpperCase())
-		$("#videoURL").attr("href", videoUrl)
-		$("#videoURL").text(videoId)
-		$("#imgId").attr("href", "#" + imgId)
-		$("#imgId").text(imgId)
-		table = ""
-		for (i = 0; i < keyframes.length; i++) {
-			frameName = keyframes[i]
-			path = collection + "/" + videoId + "/"+ frameName;
-			
-			if (i % 6 == 0) {
-				table += "<div class='row'>";
+		function loadPage() {
+			$.urlParam = function(name) {
+				var results = new RegExp('[\?&]' + name + '=([^&#]*)')
+						.exec(window.location.href);
+				return results[1] || 0;
 			}
-			link = "<div class='myalign'> <a style='font-size:12px;' href='indexedData.html?collection=" + collection + "&videoId=" + videoId + "&id=" + keyframes[i]
-			+ "' title='Show Indexed Data' target='_blank' >" + keyframes[i] + "</a>"
-			+'<i class="fa fa-play" style="font-size:16px; color:#007bff;padding-left: 5px;padding-right: 5px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ videoId+ '\', \''+keyframes[i]+'\'); return false;"></i>'
 
-			+"<span class='pull-right'><i title='Submit result' class='fa fa-arrow-alt-circle-up' style='font-size:21px; float: right; color:#00AA00; padding-left: 0px;' "
-			+ "onclick=\"submitWithAlert('"+ frameName + "', '" + videoId + "', '" +collection + "'); return false;\"></i></span></div>";
+
+			imgId = $.urlParam('id');
+			id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
+
+			videoId = $.urlParam('videoId');
+
+			console.log('====ID' + imgId);
+			res = getAllVideoKeyframes(videoId);
+			var keyframes = JSON.parse(res);
 			
-			if (imgId == keyframes[i] ) {
-				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
-						+ keyframes[i].split("\\.")[0] + "'/></div>";
-			} else {
-				table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
+			videoUrl = videoUrlPrefix + videoId + "-medium.mp4"
+			$("#videoURL").attr("href", videoUrl)
+			$("#videoURL").text(videoId)
+			$("#imgId").attr("href", "#" + imgId)
+			$("#imgId").text(imgId)
+			table = ""
+			for (i = 0; i < keyframes.length; i++) {
+				frameName = keyframes[i]
+				path = videoId + "/"+ frameName + ".png";
+				
+				if (i % 6 == 0) {
+					table += "<div class='row'>";
+				}
+				link = "<div class='myalign'> <a style='font-size:12px;' href='indexedData.html?videoId=" + videoId + "&id=" + keyframes[i]
+				+ "' title='Show Indexed Data' target='_blank' >" + keyframes[i] + "</a>"
+				+'<i class="fa fa-play" style="font-size:16px; color:#007bff;padding-left: 5px;padding-right: 5px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ videoId+ '\', \''+keyframes[i]+'\'); return false;"></i>'
+
+				+"<span class='pull-right'><i title='Submit result' class='fa fa-arrow-alt-circle-up' style='font-size:21px; float: right; color:#00AA00; padding-left: 0px;' "
+				+ "onclick=\"submitWithAlert('"+ frameName + "', '" + videoId + "'); return false;\"></i></span></div>";
+				
+				if (imgId == keyframes[i] ) {
+					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
+							+ keyframes[i].split("\\.")[0] + "'/></div>";
+				} else {
+					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
+				}
+				if (i % 6 == 5) {
+					table += "</div>";
+				}
 			}
-			if (i % 6 == 5) {
-				table += "</div>";
-			}
+			
+			$("#keyframes").append(table);
 		}
-		
-		$("#keyframes").append(table);
 
+		loadConfig().then(loadPage);
 	</script>
 </body>
 </html>
