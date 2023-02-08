@@ -30,10 +30,7 @@
 
 	<script>
 	
-	//var client  = new XMLHttpRequest();
-	//client.onload = handler;
-	//client.open("GET", "js/conf.json", false);
-	//client.send(); 
+	function loadPage() {
 	$.urlParam = function(name) {
 		var results = new RegExp('[\?&]' + name + '=([^&#]*)')
 				.exec(window.location.href);
@@ -78,7 +75,44 @@
 
 		//$('#annotations').append(annotations);
 		//$('#isgray').append(isgray);
+
+		let $preview = $('#preview');
+		let previewOffset = $preview.position();
+		let hlW = $preview.width() / 7;
+		let hlH = $preview.height() / 7;
+
+		let $hl = $('<div id="highlight"></div>');
+		$('body').append($hl);
+
+		$('#cellTable td, #cellTable div').hover((event) => {
+			let elem = event.target.closest('td');
+			let row = elem.closest('tr').rowIndex - 1;
+			let col = elem.cellIndex - 1;
+
+			$hl.width(hlW);
+			$hl.height(hlH);
+
+			$hl.css({
+				display: 'block',
+				left: (previewOffset.left + hlW * col) + 'px',
+				top: (previewOffset.top + hlH * row) + 'px',
+			});
+			return true;
+		}, () => {
+			$hl.css('display', 'none');
+			return true;
+		})
+	}
+
+	loadConfig().then(loadPage);
 	</script>
+	<style>
+		#highlight {
+			display: none;
+			border: 1px solid red;
+			position: absolute;
+		}
+	</style>
 
 </body>
 </html>
