@@ -88,10 +88,6 @@ public class VBSService {
 		datasetSearcher.put("v3c1", v3cSearcher);
 		datasetSearcher.put("v3c2", v3cSearcher);
 		
-		LucTextSearch mvkSearcher = new LucTextSearch();
-		mvkSearcher.openSearcher(Settings.LUCENE_MVK);
-		datasetSearcher.put("mvk", mvkSearcher);
-		
 		gson = new Gson();
 		if (!LOGGING_FOLDER.exists())
 			LOGGING_FOLDER.mkdir();
