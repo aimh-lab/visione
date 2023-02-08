@@ -12,6 +12,7 @@ import dirtorch.datasets as datasets
 import dirtorch.nets as nets
 from dirtorch.utils import common as ops
 from dirtorch.test_dir import extract_image_features
+from tqdm import tqdm
 
 from visione.savers import MongoCollection, GzipJsonlFile, HDF5File
 
