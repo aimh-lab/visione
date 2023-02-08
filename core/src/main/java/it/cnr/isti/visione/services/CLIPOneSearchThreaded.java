@@ -13,13 +13,11 @@ public class CLIPOneSearchThreaded  implements Runnable {
 		private BlockingQueue<TopDocs> hits_tmp;
 		private LucTextSearch searcher;
 		private String clipQuery;
-		private String dataset;
 
-		public CLIPOneSearchThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String clipQuery, String dataset) {
+		public CLIPOneSearchThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String clipQuery) {
 			this.hits_tmp = hits_tmp;
 			this.searcher = searcher;
 			this.clipQuery = clipQuery;
-			this.dataset = dataset;
 		}
 
 		@Override
@@ -27,7 +25,7 @@ public class CLIPOneSearchThreaded  implements Runnable {
 			try {
 				System.out.println("Clippone");
 				long time = -System.currentTimeMillis();
-				hits_tmp.add(searcher.searchByCLIPOne(clipQuery, dataset));
+				hits_tmp.add(searcher.searchByCLIPOne(clipQuery));
 				time += System.currentTimeMillis();
 				System.out.println("**Search CLIPPONE:\t"+ time+" ms");	
 			} catch (ParseException | IOException e) {

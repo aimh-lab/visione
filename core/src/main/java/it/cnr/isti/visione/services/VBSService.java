@@ -59,7 +59,7 @@ public class VBSService {
 	private static File LOGGING_FOLDER_DRES;
 	private static String MEMBER_ID;
 	private static Boolean SEND_LOG_TO_DRES;
-	private HashMap<String, LucTextSearch> datasetSearcher = new HashMap<>();
+	private LucTextSearch searcher = new LucTextSearch();
 	private LogParserDRES dresLog; //saved at each query
 	private Logging visioneLog; //saved at submission time and at each new session (if not empty)
 
@@ -82,11 +82,7 @@ public class VBSService {
 		}
 		
 		LucTextSearch.setPreprocessing(objectPreprocessing);
-		LucTextSearch v3cSearcher = new LucTextSearch();
-		v3cSearcher.openSearcher(Settings.LUCENE);
-		datasetSearcher.put("v3c", v3cSearcher);
-		datasetSearcher.put("v3c1", v3cSearcher);
-		datasetSearcher.put("v3c2", v3cSearcher);
+		searcher.openSearcher(Settings.LUCENE);
 		
 		gson = new Gson();
 		if (!LOGGING_FOLDER.exists())
@@ -151,10 +147,8 @@ public class VBSService {
 	@Path("/search")
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	@Produces(MediaType.TEXT_PLAIN)
-	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
+	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
-		
-		int n_frames_per_row=dataset.equals("mvk")? 20:10;
 		int maxRes=1500;//
 		String response = "";
 		if (k == -1)
@@ -178,25 +172,25 @@ public class VBSService {
 				continue;
 			try {
 				if (queryObj.getQuery().containsKey("vf")) {
-					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
-					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row, maxRes));
+					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
+					log(res, query, logQueries, simReorder);
+					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
-					TopDocs res = datasetSearcher.get(dataset).searchByExample(features, k, hitsToReorder);
-					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row, maxRes));
+					TopDocs res = searcher.searchByExample(features, k, hitsToReorder);
+					log(res, query, logQueries, simReorder);
+					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
-					TopDocs res =datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
-					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row, maxRes));
+					TopDocs res =searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
+					log(res, query, logQueries, simReorder);
+					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
-					TopDocs res = datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("clipSim"), k, dataset);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
-					log(res, query, logQueries, simReorder, dataset);
-					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res,n_frames_per_row, maxRes));
+					TopDocs res = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
+					log(res, query, logQueries, simReorder);
+					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
 				}
 				else {
 					
@@ -233,34 +227,34 @@ public class VBSService {
 							queryObj.getQuery().remove(Fields.ALADIN);
 						}
 						
-						hits_tmp.add(datasetSearcher.get(dataset).search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
+						hits_tmp.add(searcher.search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
 						*/
-							Thread aladinThread = new Thread(new AladinSearchThreaded(hits_tmp, datasetSearcher.get(dataset), textQuery, queryObj, k));
+							Thread aladinThread = new Thread(new AladinSearchThreaded(hits_tmp, searcher, textQuery, queryObj, k));
 							aladinThread.start();
 							threadedCombo.add(aladinThread);
 						}
 						// CLip and Clippone query changes if objects are in the canvas. In such cases Aladin is used as well
 						String clipQuery=textQuery+objectquery;							
 						if (doCLIP)  {
-							Thread clipThread = new Thread(new CLIPSearchThreaded(hits_tmp, datasetSearcher.get(dataset), clipQuery, dataset));
+							Thread clipThread = new Thread(new CLIPSearchThreaded(hits_tmp, searcher, clipQuery));
 							clipThread.start();
 							threadedCombo.add(clipThread);
-							//hits_tmp.add(datasetSearcher.get(dataset).searchByCLIP(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
+							//hits_tmp.add(searcher.searchByCLIP(clipQuery)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 						}
 						if (doCLIPPONE)  {
-							Thread clipponeThread = new Thread(new CLIPOneSearchThreaded(hits_tmp, datasetSearcher.get(dataset), clipQuery, dataset));
+							Thread clipponeThread = new Thread(new CLIPOneSearchThreaded(hits_tmp, searcher, clipQuery));
 							clipponeThread.start();
 							threadedCombo.add(clipponeThread);
 
-							//hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPOne(clipQuery, dataset)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
+							//hits_tmp.add(searcher.searchByCLIPOne(clipQuery)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
 						}
 
 						for (Thread t: threadedCombo)
 							t.join();
-						tabHits.add(datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
+						tabHits.add(searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
 
 					}else {//here we need to call Lucene without text 
-						tabHits.add(datasetSearcher.get(dataset).search(queryObj, k));
+						tabHits.add(searcher.search(queryObj, k));
 					}
 											
 					
@@ -278,19 +272,19 @@ public class VBSService {
 		System.out.println("^^^^^^^^^ RES ^^^^^^^^");
 		try {
 			if (tabHits.size() > 1) {
-				hits = datasetSearcher.get(dataset).mergeResults(tabHits, Settings.K, true);//LUCIA bug fixed(?) Settings.K instead of K
+				hits = searcher.mergeResults(tabHits, Settings.K, true);//LUCIA bug fixed(?) Settings.K instead of K
 			}
 			else if (tabHits.size() == 1) {
 				hits = tabHits.get(0);
 			}
 			
-			log(hits, query, logQueries, simReorder, dataset);
+			log(hits, query, logQueries, simReorder);
 			
 			
-			response = gson.toJson(datasetSearcher.get(dataset).sortByVideo(hits,n_frames_per_row, maxRes));
+			response = gson.toJson(searcher.sortByVideo(hits,n_frames_per_row, maxRes));
 			if (response == null)
 				response = "";//new
-//				response = gson.toJson(datasetSearcher.get(dataset).topDocs2SearchResults(hits));
+//				response = gson.toJson(searcher.topDocs2SearchResults(hits));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -309,11 +303,10 @@ public class VBSService {
 	 * @param query
 	 * @param queries
 	 * @param simReorder
-	 * @param dataset
 	 */
-	public void log(TopDocs hits, String query, List<VisioneQuery> queries, boolean simReorder, @DefaultValue("v3c") @FormParam("dataset") String dataset) {
+	public void log(TopDocs hits, String query, List<VisioneQuery> queries, boolean simReorder) {
 		try {
-			ArrayList<SearchResults> searchResults = datasetSearcher.get(dataset).topDocs2SearchResults(hits, 10000);
+			ArrayList<SearchResults> searchResults = searcher.topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
 			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults); 
 			if(SEND_LOG_TO_DRES)
@@ -356,9 +349,9 @@ public class VBSService {
 		String response = "";
 		try {
 			if (query.startsWith("vf"))
-				response = datasetSearcher.get(dataset).TopDocs2String(datasetSearcher.get(dataset).searchByID(query, K, null), K);
+				response = searcher.TopDocs2String(searcher.searchByID(query, K, null), K);
 			else
-				response = datasetSearcher.get(dataset).TopDocs2String(datasetSearcher.get(dataset).search(query, K, ""), K);
+				response = searcher.TopDocs2String(searcher.search(query, K, ""), K);
 		} catch (IOException | ParseException e) {
 			e.printStackTrace();
 			return response;
@@ -370,11 +363,11 @@ public class VBSService {
 	@Path("/getText")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getText(@QueryParam("id") String id, @QueryParam("field") String field, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getText(@QueryParam("id") String id, @QueryParam("field") String field) {
 
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).getTerms(id, field, false);
+			response = searcher.getTerms(id, field, false);
 			if (field.equals(Fields.OBJECTS))
 				response = response.replaceAll("4wc", "");
 //			System.out.println(field + " ------------------RESPONSE " + response);
@@ -390,11 +383,11 @@ public class VBSService {
 	@Path("/getField")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getField(@QueryParam("id") String id, @QueryParam("field") String field, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getField(@QueryParam("id") String id, @QueryParam("field") String field) {
 
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).get(id, field);
+			response = searcher.get(id, field);
 //			System.out.println(field + " ------------------RESPONSE " + response);
 
 		} catch (IOException e) {
@@ -408,10 +401,10 @@ public class VBSService {
 	@Path("/getStartTime")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getStartTime(@QueryParam("id") String id, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getStartTime(@QueryParam("id") String id) {
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).get(id, Fields.START_TIME);
+			response = searcher.get(id, Fields.START_TIME);
 //			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
 //			System.out.println(getKeyframeNumber(id));
 			
@@ -427,10 +420,10 @@ public class VBSService {
 	@Path("/getEndTime")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getEndTime(@QueryParam("id") String id, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getEndTime(@QueryParam("id") String id) {
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).get(id, Fields.END_TIME);
+			response = searcher.get(id, Fields.END_TIME);
 //			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
 //			System.out.println(getKeyframeNumber(id));
 			
@@ -446,10 +439,10 @@ public class VBSService {
 	@Path("/getMiddleTimestamp")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getMiddleTimestamp(@QueryParam("id") String id, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getMiddleTimestamp(@QueryParam("id") String id) {
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).get(id, Fields.MIDDLE_TIME);
+			response = searcher.get(id, Fields.MIDDLE_TIME);
 //			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
 //			System.out.println(getKeyframeNumber(id));
 			
@@ -465,10 +458,10 @@ public class VBSService {
 	@Path("/getKeyframeNumber")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String getKeyframeNumber(@QueryParam("id") String id, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getKeyframeNumber(@QueryParam("id") String id) {
 		String response = "";
 		try {
-			response = datasetSearcher.get(dataset).getTerms(id, Fields.START_FRAME, false);
+			response = searcher.getTerms(id, Fields.START_FRAME, false);
 //			System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -481,10 +474,10 @@ public class VBSService {
 	@Path("/getAllVideoKeyframes")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.APPLICATION_JSON)
-	public String getAllVideoKeyframes(@QueryParam("videoId") String videoId, @DefaultValue("v3c") @QueryParam("dataset") String dataset) {
+	public String getAllVideoKeyframes(@QueryParam("videoId") String videoId) {
 		String response = "";
 		try {
-			List<String> keyframes = datasetSearcher.get(dataset).getAllVideoKeyframes(videoId);
+			List<String> keyframes = searcher.getAllVideoKeyframes(videoId);
 			response = gson.toJson(keyframes);
 
 //			System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
@@ -505,7 +498,7 @@ public class VBSService {
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder,  @QueryParam("dataset") String dataset) {
+	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder) {
 		long clientSubmissionTimestamp = System.currentTimeMillis();
 		String response = "";
 		System.out.println("isAVS " + isAVS );
@@ -515,9 +508,9 @@ public class VBSService {
 		String value=null;
 		if (keyframeIdParam != null) {
 			try {
-				middleFrame = Integer.parseInt(datasetSearcher.get(dataset).get(keyframeIdParam, Fields.MIDDLE_FRAME));
-				if(dataset.equals("mvk"))
-					time=Tools.convertTimeToVBSFormat(datasetSearcher.get(dataset).get(keyframeIdParam, Fields.MIDDLE_TIME));
+				middleFrame = Integer.parseInt(searcher.get(keyframeIdParam, Fields.MIDDLE_FRAME));
+				//if(dataset.equals("mvk"))
+				//	time=Tools.convertTimeToVBSFormat(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -588,8 +581,8 @@ public class VBSService {
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String setSimilarity(@QueryParam("txtSim") String txtSim, @QueryParam("mifileSim") String mifileSim, @QueryParam("objSim") String objSim, @QueryParam("defaultSim") String defaultSim) {
-		//datasetSearcher.get(dataset).setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
-		//rmacdatasetSearcher.get(dataset).setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
+		//searcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
+		//rmacsearcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
 		return txtSim + "," +  mifileSim + "," + objSim + "," + defaultSim;
 	}
 }

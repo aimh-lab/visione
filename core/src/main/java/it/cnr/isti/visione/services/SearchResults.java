@@ -7,14 +7,11 @@ public class SearchResults  {
 	public String videoId;
 	public String imgId;
 	public int middleFrame;
-
-	public String collection;
 	
-	public SearchResults(String imgId, String videoId, String collection, float score, int middleFrame) {
+	public SearchResults(String imgId, String videoId, float score, int middleFrame) {
 		this.videoId = videoId;
 		this.imgId = imgId;
 		this.middleFrame = middleFrame;
-		this.collection = collection;
 		this.score = score;
 	}
 }

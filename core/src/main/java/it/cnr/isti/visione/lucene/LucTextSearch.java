@@ -278,11 +278,10 @@ public class LucTextSearch {
 		for (int i = 0; i < hits.scoreDocs.length && i < k; i++) {
 			int doc = hits.scoreDocs[i].doc;
 			float score = hits.scoreDocs[i].score;
-			String collection = s.doc(doc).get(Fields.COLLECTION);
 			String imgID = s.doc(doc).get(Fields.IMG_ID);
 			String videoID = s.doc(doc).get(Fields.VIDEO_ID);
 			Integer middleFrame = Integer.parseInt(s.doc(doc).get(Fields.MIDDLE_FRAME));
-			results.add(new SearchResults(imgID, videoID, collection, score, middleFrame));
+			results.add(new SearchResults(imgID, videoID, score, middleFrame));
 			// System.out.println(score + ", " + imgID);
 		}
 		return results;
@@ -458,43 +457,6 @@ public class LucTextSearch {
 		
 		return resultTerms.toString();
 	}
-
-//	private class IdRank {
-//		private String id;
-//		private String collection;
-//		private int rank;
-//		private float timestamp;
-//		private float score;
-//
-//		public IdRank(String collection, String id, int rank, float score, float timestamp) {
-//			this.collection = collection;
-//			this.id = id;
-//			this.rank = rank;
-//			this.timestamp = timestamp;
-//			this.score = score;
-//
-//		}
-//
-//		public String getId() {
-//			return id;
-//		}
-//
-//		public String getCollection() {
-//			return collection;
-//		}
-//
-//		public int getRank() {
-//			return rank;
-//		}
-//
-//		public float getScore() {
-//			return score;
-//		}
-//
-//		public float getTimestamp() {
-//			return timestamp;
-//		}
-//	}
 
 	public class EntrySearchResultsComparator implements Comparator<Entry<Integer, SearchResults>> {
 		@Override
@@ -717,7 +679,6 @@ public class LucTextSearch {
 					Document document = s.doc(scoredoc.doc);
 					String imgID = document.get(Fields.IMG_ID);
 					String videoID = document.get(Fields.VIDEO_ID);
-					String collection = document.get(Fields.COLLECTION);
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
 					Integer middleFrame = Integer.parseInt(document.get(Fields.MIDDLE_FRAME));
 
@@ -727,7 +688,7 @@ public class LucTextSearch {
 					hm.putIfAbsent(videoID, new ConcurrentHashMap<Integer, SearchResults>());
 					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoID); // video keyframes (one for each quantized time interval)
 					
-					keyframes.putIfAbsent(id_quantized_timestamp, new SearchResults(imgID, videoID, collection, score, middleFrame));
+					keyframes.putIfAbsent(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame));
 					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
 					if (representative_keyframe.score > score)
 						continue; // We keep just one keyframe for each quantized time interval
@@ -735,7 +696,7 @@ public class LucTextSearch {
 					synchronized (sem) {
 						keyframes = hm.get(videoID); 
 						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, new SearchResults(imgID, videoID, collection, score, middleFrame));		
+							keyframes.put(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame));		
 							hm.put(videoID, keyframes);
 						}
 					}
@@ -745,7 +706,7 @@ public class LucTextSearch {
 //																// timne interval)
 //			
 //					SearchResults representative_keyframe = keyframes.getOrDefault(id_quantized_timestamp,
-//							new SearchResults(imgID, collection, score));
+//							new SearchResults(imgID, score));
 //
 //					if (representative_keyframe.score > score)
 //						continue; // We keep just one keyframe for each quantized time interval
@@ -1230,17 +1191,13 @@ public class LucTextSearch {
 
 	}
 
-	public TopDocs searchResults2TopDocs(SearchResults[] results, String collection) throws IOException {
+	public TopDocs searchResults2TopDocs(SearchResults[] results) throws IOException {
 		ArrayList<ScoreDoc> scoredocs = new ArrayList<>();
 		float maxScore = -1;
 		for (int i = 0; i < results.length; i++) {
 			
-			String videoId = results[i].imgId.split("_")[0]; //TODO  video ID 
+			String videoId = results[i].videoId;
 			String imageId = results[i].imgId;
-			if(collection.equals("mvk")) {
-				videoId = results[i].imgId.substring(0, results[i].imgId.lastIndexOf("_"));
-			}
-			
 			
 			Query q = new TermQuery(new Term(Fields.IMG_ID, imageId));
 			TopDocs td = s.search(q, 1);
@@ -1266,32 +1223,32 @@ public class LucTextSearch {
 	private LRUCache<Integer, TopDocs> cvCache = new LRUCache<>(10);
 	private LRUCache<Integer, TopDocs> clCache = new LRUCache<>(10);
 
-	public TopDocs searchByCLIP(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
+	public TopDocs searchByCLIP(String textQuery) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
 		if (cvCache.containsKey(textQuery.hashCode()))
 			res = cvCache.get(textQuery.hashCode());
 		else {
-			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery, collection),collection);
+			res = searchResults2TopDocs(CLIPExtractor.text2CLIPResults(textQuery));
 			cvCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
 	}
 	
-	public TopDocs searchByCLIPOne(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
+	public TopDocs searchByCLIPOne(String textQuery) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
 		if (clCache.containsKey(textQuery.hashCode()))
 			res = clCache.get(textQuery.hashCode());
 		else {
-			res = searchResults2TopDocs(CLIPOneExtractor.text2CLIPResults(textQuery, collection),collection);
+			res = searchResults2TopDocs(CLIPOneExtractor.text2CLIPResults(textQuery));
 			clCache.put(textQuery.hashCode(), res);
 		}
 
 		return res;
 	}
 
-	public TopDocs searchByCLIPID(String queryId, int k, String collection) throws org.apache.hc.core5.http.ParseException, IOException {
-		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId, collection), collection));
+	public TopDocs searchByCLIPID(String queryId, int k) throws org.apache.hc.core5.http.ParseException, IOException {
+		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId)));
 	}
 
 	public static void main(String[] args) throws NumberFormatException, IOException {

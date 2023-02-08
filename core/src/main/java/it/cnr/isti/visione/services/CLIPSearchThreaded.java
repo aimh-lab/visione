@@ -13,13 +13,11 @@ public class CLIPSearchThreaded  implements Runnable {
 		private BlockingQueue<TopDocs> hits_tmp;
 		private LucTextSearch searcher;
 		private String clipQuery;
-		private String dataset;
 
-		public CLIPSearchThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String clipQuery, String dataset) {
+		public CLIPSearchThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String clipQuery) {
 			this.hits_tmp = hits_tmp;
 			this.searcher = searcher;
 			this.clipQuery = clipQuery;
-			this.dataset = dataset;
 		}
 
 		@Override
@@ -27,7 +25,7 @@ public class CLIPSearchThreaded  implements Runnable {
 			try {
 				System.out.println("Clip to video");
 				long time = -System.currentTimeMillis();
-				hits_tmp.add(searcher.searchByCLIP(clipQuery, dataset));
+				hits_tmp.add(searcher.searchByCLIP(clipQuery));
 				time += System.currentTimeMillis();
 				System.out.println("**Search clip:\t"+ time+" ms");	
 			} catch (ParseException | IOException e) {
