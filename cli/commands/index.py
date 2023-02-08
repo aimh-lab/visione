@@ -28,6 +28,9 @@ class IndexCommand(BaseCommand):
         # generate surrogate text representation of objects & colors
         self.str_encode_objects(video_id, force=replace)
 
+        # push to index
+        self.add_to_index(video_id, force=True)
+
     def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
 
@@ -75,6 +78,49 @@ class IndexCommand(BaseCommand):
             str(str_output_file),
             str(count_output_file),
         ] + input_files
+
+        ret = subprocess.run(command, check=True, env=self.visione_env)
+        return ret
+
+    def add_to_index(self, video_id, force=False):
+        """ Adds the analyzed frames of a video to the collection index.
+            
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
+
+        Returns:
+            # TODO
+        """
+
+        str_objects_file = self.collection_dir / 'str-objects' / video_id /  f'{video_id}-str-objects.jsonl.gz'
+        scenes_file = self.collection_dir / 'selected-frames' / video_id / f'{video_id}-scenes.csv'
+        lucene_index_dir = self.collection_dir / 'lucene-index'
+        
+        if not force and lucene_index_dir.exists():
+            print(f'Skipping indexing in Lucene, using existing index:', lucene_index_dir.name)
+            return 0
+
+        input_file = '/data' / str_objects_file.relative_to(self.collection_dir)
+        scenes_file = '/data' / scenes_file.relative_to(self.collection_dir)
+        output_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
+
+        command = [
+            'docker-compose',
+            '--project-directory', str(self.install_dir),
+            '--env-file', str(self.collection_dir / 'config.env'),
+            'run',
+            '--rm',
+            '--no-deps',
+            'lucene-index-builder',
+            # 'java', '-jar', 'lucene-index-builder.jar',  # this is already in the ENTRYPOINT
+            '--save-every', '200',  # TODO currently not used
+        ] + (['--force'] if force else []) + [   
+            str(input_file),
+            str(scenes_file),
+            video_id,
+            str(output_dir),
+        ]
 
         ret = subprocess.run(command, check=True, env=self.visione_env)
         return ret
