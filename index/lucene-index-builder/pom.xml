@@ -6,10 +6,10 @@
 
   <groupId>it.cnr.isti.visione</groupId>
   <artifactId>lucene-index-builder</artifactId>
-  <version>4.0</version>
+  <version>0.5</version>
 
   <name>lucene-index-builder</name>
-  <description>Creates VISIONE indices.</description>
+  <description>Manages VISIONE Lucene index.</description>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
@@ -50,11 +50,17 @@
       <artifactId>lucene-queryparser</artifactId>
       <version>7.6.0</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.mongodb/mongo-java-driver -->
+    <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
     <dependency>
-      <groupId>org.mongodb</groupId>
-      <artifactId>mongo-java-driver</artifactId>
-      <version>3.12.11</version>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+        <version>2.10.1</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-csv -->
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-csv</artifactId>
+        <version>1.10.0</version>
     </dependency>
   </dependencies>
 
