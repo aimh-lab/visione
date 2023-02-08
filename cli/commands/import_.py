@@ -241,9 +241,9 @@ class ImportCommand(BaseCommand):
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
         selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
-        thumbnails_list = sorted(thumbnail_dir.glob('*.png'))
+        thumbnails_list = sorted(thumbnail_dir.glob('*.jpg'))
 
-        if not force and [i.name for i in selected_frames_list] == [i.name for i in thumbnails_list]:
+        if not force and [i.stem for i in selected_frames_list] == [i.stem for i in thumbnails_list]:
             print('Skipping thumbnail generation, using existing files ...')
             return 0
         
@@ -259,7 +259,7 @@ class ImportCommand(BaseCommand):
             '-progress', '-', '-nostats',
             '-i', f'/input_dir/{video_id}-%0{n_digits}d.png',
             '-vf', 'scale=192:-1',
-            f'/output_dir/{video_id}-%0{n_digits}d.png',
+            f'/output_dir/{video_id}-%0{n_digits}d.jpg',
         ]
 
         with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
