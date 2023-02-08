@@ -7,8 +7,8 @@ services:
       - ./router:/etc/nginx/templates/
       - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
       - ${VISIONE_ROOT}:/data:ro
-    depends_on: ["core", "mongo-gui"]
-    profiles: ["debug"]
+    depends_on: ["core"]
+    profiles: ["query"]
 
   core:
     build:
@@ -19,7 +19,7 @@ services:
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
-    profiles: ["debug"]
+    profiles: ["query"]
 
   color-extraction:
     build: ./analysis/colors
