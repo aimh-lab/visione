@@ -5,7 +5,7 @@ services:
     env_file: ["${VISIONE_ROOT}/config.env"]
     volumes:
       - ./router:/etc/nginx/templates/
-      - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
+      - ./web-ui:/usr/share/nginx/html:ro
       - ${VISIONE_ROOT}:/data:ro
     depends_on: ["core"]
     profiles: ["query"]
