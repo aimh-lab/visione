@@ -16,44 +16,10 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${VISIONE_USERNAME}
         - TOMCAT_MANAGER_PASS=${VISIONE_PASSWORD}
-    # depends_on: ["clip", "tern"]
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
     profiles: ["debug"]
-
-  tern:
-    image: mesnico/tern_visione_webservice
-    ports: ["5000:5000"]
-    expose: ["5000"]
-    profiles: ["query"]
-
-  mongo:
-    image: mongo:5.0.5
-    command: --wiredTigerCacheSizeGB 1
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${VISIONE_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${VISIONE_PASSWORD}
-    ports: ["27017:27017"]
-    expose: ["27017"]
-    volumes: 
-      - ${VISIONE_ROOT}/mongo-data:/data/db
-      # - ./mongo-scripts/init.js:/docker-entrypoint-initdb.d/init.js
-    profiles: ["mongo", "analysis", "debug"]
-
-  mongo-gui:
-    image: mongo-express:0.54.0
-    restart: always
-    depends_on: ["mongo"]
-    environment:
-      - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${VISIONE_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${VISIONE_PASSWORD}
-      - ME_CONFIG_BASICAUTH_USERNAME=${VISIONE_USERNAME}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${VISIONE_PASSWORD}
-      - ME_CONFIG_SITE_BASEURL=/mongo
-    ports: ["8081:8081"]
-    profiles: ["mongo", "debug"]
 
   color-extraction:
     build: ./analysis/colors
@@ -92,7 +58,6 @@ services:
     volumes:
       - ${VISIONE_ROOT}:/data
       - ./common:/usr/src/visione:ro
-    depends_on: ["mongo"]
     profiles: ["analysis"]
     deploy: *needs_gpu
   
@@ -108,7 +73,6 @@ services:
 
   frame-cluster:
     build: ./analysis/frame-cluster
-    depends_on: ["mongo"]
     profiles: ["analysis"]
   
   scene-detection:
