@@ -1,16 +1,8 @@
-# redirect http to https
+# handles requests coming from outside
 server {
 	listen 80;
 	listen [::]:80;
-	server_name ${VISIONE_SERVER_NAME};
-	return 301 https://$host$request_uri;
-}
 
-# handles requests coming from outside
-server {
-	listen 443 ssl;
-	listen [::]:443 ssl;
-	
 	server_name ${VISIONE_SERVER_NAME};
 
 	### Static File Routing
@@ -27,7 +19,6 @@ server {
 	# location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
 	# location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
 	# location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
-	location ^~ /mongo                      { proxy_pass http://mongo-gui:8081; }
 	location ^~ /services                   { proxy_pass http://core:8080/services/VBSService; }
 
 	location / {

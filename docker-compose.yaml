@@ -5,7 +5,6 @@ services:
     env_file: ["${VISIONE_ROOT}/config.env"]
     volumes:
       - ./router:/etc/nginx/templates/
-      - /etc/letsencrypt:/etc/letsencrypt
       - ./web-ui/src/main/webapp:/usr/share/nginx/html:ro
       - ${VISIONE_ROOT}:/data:ro
     depends_on: ["core", "mongo-gui"]
