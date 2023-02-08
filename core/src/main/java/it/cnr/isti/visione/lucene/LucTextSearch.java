@@ -195,7 +195,7 @@ public class LucTextSearch {
 				System.out.println(booleanQuery);
 				
 				query4Cache += booleanQuery;
-				if (luceneCache.containsKey(query4Cache.hashCode())) {
+				if (false && luceneCache.containsKey(query4Cache.hashCode())) {
 					hits = luceneCache.get(query4Cache.hashCode());
 					System.out.println("\t [lucene query from cache]");
 				} else {
