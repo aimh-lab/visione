@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visione"
+version = "0.5.0"
+authors = [
+  { name="Paolo Bolettieri", email="paolo.bolettieri@isti.cnr.it" },
+  { name="Fabio Carrara", email="fabio.carrara@isti.cnr.it" },
+  { name="Nicola Messina", email="nicola.messina@isti.cnr.it" },
+  { name="Lucia Vadicamo", email="lucia.Vadicamo@isti.cnr.it" },
+  { name="Claudio Vairo", email="claudio.vairo@isti.cnr.it" },
+]
+description = "An interactive video retrieval system."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/aimh-lab/visione"
+"Bug Tracker" = "https://github.com/aimh-lab/visione/issues"
+
+[project.scripts]
+visione = "visione.cli:__main__.main"
+
+[tool.setuptools]
+packages = ["visione.cli"]
+
+[tool.setuptools_scm]
