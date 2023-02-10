@@ -64,14 +64,8 @@ class IndexCommand(BaseCommand):
         str_output_file = '/data' / str_objects_file.relative_to(self.collection_dir)
         count_output_file = '/data' / count_objects_file.relative_to(self.collection_dir)
 
+        service = 'str-object-encoder'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'str-object-encoder',
             'python', 'encode.py',
             '--save-every', '200',
         ] + (['--force'] if force else []) + [   
@@ -79,8 +73,7 @@ class IndexCommand(BaseCommand):
             str(count_output_file),
         ] + input_files
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
 
     def add_to_index(self, video_id, force=False):
         """ Adds the analyzed frames of a video to the collection index.
@@ -105,14 +98,8 @@ class IndexCommand(BaseCommand):
         scenes_file = '/data' / scenes_file.relative_to(self.collection_dir)
         output_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
 
+        service = 'lucene-index-builder'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'lucene-index-builder',
             # 'java', '-jar', 'lucene-index-builder.jar',  # this is already in the ENTRYPOINT
             '--save-every', '200',  # TODO currently not used
         ] + (['--force'] if force else []) + [   
@@ -122,5 +109,4 @@ class IndexCommand(BaseCommand):
             str(output_dir),
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)

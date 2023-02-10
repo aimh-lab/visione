@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.resources
 import os
 from pathlib import Path
 import sys
@@ -8,12 +9,12 @@ from . import commands
 
 
 def main():
-    install_dir = Path(__file__).resolve(strict=True).parent.parent  # installation dir of VISIONE
+    compose_dir = Path(importlib.resources.files("visione.services").joinpath(''))  # directory containing services for docker compose
     collection_dir = Path.cwd()  # data dir of current collection
     cache_dir = os.environ.get("XDG_CACHE_HOME", None) or Path.home() / '.cache'
     cache_dir = Path(cache_dir, 'visione')
 
-    cmd_args = (install_dir, collection_dir, cache_dir)
+    cmd_args = (compose_dir, collection_dir, cache_dir)
 
     parser = argparse.ArgumentParser(description='Manage VISIONE instances')
     subparsers = parser.add_subparsers(help='command')

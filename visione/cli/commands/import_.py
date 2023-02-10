@@ -279,7 +279,7 @@ class ImportCommand(BaseCommand):
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
 
         Returns:
-            _type_: _description_
+            TODO
         """
         gem_dir = self.collection_dir / 'gem' / video_id
         gem_dir.mkdir(parents=True, exist_ok=True)
@@ -295,14 +295,8 @@ class ImportCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / gem_features_file.relative_to(self.collection_dir)
 
+        service = 'features-gem'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'features-gem',
             'python', 'extract.py',
             str(input_dir),
             '--save-every', '200',
@@ -311,8 +305,7 @@ class ImportCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
 
     def extract_clip_features(self, video_id, clip_model, dimensions, force=False):
         """ Extracts CLIP features from selected keyframes of a video for cross-media retrieval.
@@ -340,14 +333,8 @@ class ImportCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / clip_features_file.relative_to(self.collection_dir)
 
+        service = 'features-clip'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'features-clip',
             'python', 'extract.py',
             str(input_dir),
             '--model-handle', clip_model,
@@ -358,8 +345,7 @@ class ImportCommand(BaseCommand):
             '--dimensionality', str(dimensions)
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
 
     def extract_color_map(self, video_id, force=False):
         colors_dir = self.collection_dir / 'objects-colors' / video_id
@@ -376,14 +362,8 @@ class ImportCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / colors_file.relative_to(self.collection_dir)
 
+        service = 'color-extraction'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'color-extraction',
             'python', 'extract.py',
             str(input_dir),
             '--save-every', '200',
@@ -391,8 +371,7 @@ class ImportCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
 
     def detect_objects_mmdet(self, video_id, detector, force=False):
         """ Detect objects form the selected keyframes of a video using pretrained models from mmdetection.
@@ -420,14 +399,8 @@ class ImportCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / objects_file.relative_to(self.collection_dir)
 
+        service = 'objects-mmdet'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'objects-mmdet',
             'python', 'extract.py',
             str(input_dir),
             detector,
@@ -438,8 +411,7 @@ class ImportCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
     
     def detect_objects_oiv4(self, video_id, force=False):
         """ Detect objects form the selected keyframes of a video using the
@@ -469,14 +441,8 @@ class ImportCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / objects_file.relative_to(self.collection_dir)
 
+        service = 'objects-openimagesv4'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '--no-deps',
-            'objects-openimagesv4',
             'python', 'extract.py',
             str(input_dir),
         ] + (['--force'] if force else []) + [   
@@ -485,5 +451,4 @@ class ImportCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)

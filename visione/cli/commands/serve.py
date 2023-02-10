@@ -16,10 +16,7 @@ class ServeCommand(BaseCommand):
         parser.set_defaults(func=self)
     
     def __call__(self, *, port):
-        command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
+        command = self.compose_cmd + [
             '--profile', 'query',
             'up',
             '--build'
