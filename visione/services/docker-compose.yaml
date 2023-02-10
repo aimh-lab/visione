@@ -48,7 +48,6 @@ services:
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
       - ./common:/usr/src/visione:ro
-    depends_on: ["mongo"]
     profiles: ["analysis"]
     deploy: *needs_gpu
 
