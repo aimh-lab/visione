@@ -1,3 +1,4 @@
+import importlib.resources
 from pathlib import Path
 import shutil
 
@@ -16,7 +17,7 @@ class InitCommand(BaseCommand):
         parser.set_defaults(func=self)
     
     def __call__(self, *, directory):
-        skel = self.install_dir / 'skel'
+        skel = Path(importlib.resources.files('visione.skel').joinpath(''))
         # TODO manage already existing collection
         shutil.copytree(skel, directory, dirs_exist_ok=True)
         print(f"Initialzed VISIONE collection in {directory.absolute()}")
