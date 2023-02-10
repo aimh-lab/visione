@@ -9,7 +9,7 @@ authors = [
   { name="Paolo Bolettieri", email="paolo.bolettieri@isti.cnr.it" },
   { name="Fabio Carrara", email="fabio.carrara@isti.cnr.it" },
   { name="Nicola Messina", email="nicola.messina@isti.cnr.it" },
-  { name="Lucia Vadicamo", email="lucia.Vadicamo@isti.cnr.it" },
+  { name="Lucia Vadicamo", email="lucia.vadicamo@isti.cnr.it" },
   { name="Claudio Vairo", email="claudio.vairo@isti.cnr.it" },
 ]
 description = "An interactive video retrieval system."
