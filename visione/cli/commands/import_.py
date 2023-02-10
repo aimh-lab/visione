@@ -195,17 +195,11 @@ class ImportCommand(BaseCommand):
             print('Skipping scene detection and frame generation, using existing files:', scene_file.name)
             return 0
 
-        input_file = video_path.relative_to(self.collection_dir)
-        output_dir = selected_frames_dir.relative_to(self.collection_dir)
+        input_file = '/data' / video_path.relative_to(self.collection_dir)
+        output_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
 
+        service = 'scene-detection'
         command = [
-            'docker-compose',
-            '--project-directory', str(self.install_dir),
-            '--env-file', str(self.collection_dir / 'config.env'),
-            'run',
-            '--rm',
-            '-w', '/data',
-            'scene-detection',
             '--verbosity', 'error',
             '--input', str(input_file),
             '--output', str(output_dir),
@@ -221,8 +215,7 @@ class ImportCommand(BaseCommand):
             '--png', '--compression', '9',
         ]
 
-        ret = subprocess.run(command, check=True, env=self.visione_env)
-        return ret
+        return self.compose_run(service, command)
 
     def create_frames_thumbnails(self, video_id, force=False):
         """ Creates thumbnails for the selected frames of a video.
