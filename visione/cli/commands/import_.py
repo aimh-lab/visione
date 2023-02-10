@@ -319,10 +319,11 @@ class ImportCommand(BaseCommand):
         Returns:
             TODO
         """
-        clip_dir = self.collection_dir / f"clip-{clip_model.replace('/', '-')}" / video_id
+        clip_model_normalized = clip_model.replace('/', '-')
+        clip_dir = self.collection_dir / f"clip-{clip_model_normalized}" / video_id
         clip_dir.mkdir(parents=True, exist_ok=True)
 
-        clip_features_file = clip_dir / f'{video_id}-gem.hdf5'
+        clip_features_file = clip_dir / f'{video_id}-{clip_model_normalized}.hdf5'
         if not force and clip_features_file.exists():
             print(f'Skipping CLIP ({clip_model}) extraction, using existing file:', clip_features_file.name)
             return 0
