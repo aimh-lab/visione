@@ -46,7 +46,9 @@ class BaseCommand(ABC):
         else:
             raise RuntimeError("Docker Compose not found. Install the 'docker-compose' executable or upgrade docker to a version that ships the 'compose' subcommand.")
 
-        self.compose_cmd = compose_executable + [
+        compose_files = []
+
+        self.compose_cmd = compose_executable + compose_files + [
             '--project-directory', str(self.compose_dir),
             '--env-file', str(self.collection_dir / 'config.env'),
         ]

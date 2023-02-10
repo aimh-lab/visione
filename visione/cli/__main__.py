@@ -14,15 +14,11 @@ def main():
     cache_dir = os.environ.get("XDG_CACHE_HOME", None) or Path.home() / '.cache'
     cache_dir = Path(cache_dir, 'visione')
 
-    cmd_args = (compose_dir, collection_dir, cache_dir)
-
     parser = argparse.ArgumentParser(description='Manage VISIONE instances')
     subparsers = parser.add_subparsers(help='command')
 
-    commands.InitCommand  (*cmd_args).add_arguments(subparsers)
-    commands.ImportCommand(*cmd_args).add_arguments(subparsers)
-    commands.IndexCommand (*cmd_args).add_arguments(subparsers)
-    commands.ServeCommand (*cmd_args).add_arguments(subparsers)
+    for command in commands.available_commands:
+        command(compose_dir, collection_dir, cache_dir).add_arguments(subparsers)
 
     if len(sys.argv) < 2:
         parser.print_usage()
@@ -31,8 +27,7 @@ def main():
     args = parser.parse_args()
     args = vars(args)
     func = args.pop('func')
-    ret = func(**args)
-    return ret
+    return func(**args)
 
 
 if __name__ == "__main__":
