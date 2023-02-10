@@ -21,7 +21,13 @@ loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
     logger.setLevel(logging.WARNING)
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stdout,
+    format='%(asctime)s %(levelname)-8s:%(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    force=True,
+)
 log = logging.getLogger(__name__)
 
 
@@ -57,8 +63,8 @@ def apply_detector(detector, x):
         y['image_width'] = w
     except KeyboardInterrupt as e:
         raise e
-    except:
-        log.warning(f'Error applying detector')
+    except Exception as e:
+        log.warning(f'Error applying detector: {e}')
         return None
 
     return y
@@ -85,6 +91,7 @@ def main(args):
     detector_url = 'https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1'
     log.info(f'Loading detector: {detector_url}')
     detector = hub.KerasLayer(detector_url, signature='default', signature_outputs_as_dict=True)
+    log.info(f'Loaded detector.')
     
     with saver:
         # read image ids and paths
