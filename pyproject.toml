@@ -32,6 +32,10 @@ classifiers = [
 visione = "visione.cli:__main__.main"
 
 [tool.setuptools]
-packages = ["visione.cli"]
+packages = [
+  "visione.cli",
+  "visione.services",
+  "visione.skel",
+]
 
 [tool.setuptools_scm]
