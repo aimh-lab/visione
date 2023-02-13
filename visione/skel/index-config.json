@@ -190,7 +190,7 @@
         "index_type": "topk-sq",
         "index_params": {
             "keep": 0.50,
-            "dim_multiplier": 50
+            "dim_multiplier": 2
         }
     }
 }
