@@ -13,7 +13,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonlFile
+from visione.savers import GzipJsonlFile
 
 
 tqdm = partial(tqdm, dynamic_ncols=True)
@@ -75,17 +75,7 @@ def main(args):
     n_images = len(image_list)
     initial = 0
 
-    if args.output_type == 'mongo':
-        saver = MongoCollection(
-            args.db,
-            args.collection,
-            host=args.host,
-            port=args.port,
-            username=args.username,
-            password=args.password,
-            batch_size=args.save_every,
-        )
-    elif args.output_type == 'file':
+    if args.output_type == 'file':
         saver = GzipJsonlFile(args.output, flush_every=args.save_every)
 
     detector_url = 'https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1'
@@ -120,7 +110,7 @@ def main(args):
         # post-process to records
         records = itertools.starmap(lambda frame_id, det: {
                 # useful ids
-                '_id': frame_id,  # automatically indexed by Mongo
+                '_id': frame_id,
                 # 'video_id': video_id,
                 # frame size
                 'width': det['image_width'],
@@ -146,14 +136,6 @@ if __name__ == "__main__":
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     subparsers = parser.add_subparsers(dest="output_type")
-
-    mongo_parser = subparsers.add_parser('mongo')
-    mongo_parser.add_argument('--host', default='mongo')
-    mongo_parser.add_argument('--port', type=int, default=27017)
-    mongo_parser.add_argument('--username', default='admin')
-    mongo_parser.add_argument('--password', default='visione')
-    mongo_parser.add_argument('db')
-    mongo_parser.add_argument('--collection', default='objects.frcnn_incep_resnetv2_openimagesv4')
 
     file_parser = subparsers.add_parser('file')
     file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')

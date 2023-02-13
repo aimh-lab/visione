@@ -9,7 +9,7 @@ import torch
 from transformers import CLIPProcessor, CLIPModel
 from tqdm import tqdm
 
-from visione.savers import MongoCollection, GzipJsonlFile, HDF5File
+from visione.savers import GzipJsonlFile, HDF5File
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -22,17 +22,7 @@ def main(args):
     n_images = len(image_list)
     initial = 0
 
-    if args.output_type == 'mongo':
-        saver = MongoCollection(
-            args.db,
-            args.collection,
-            host=args.host,
-            port=args.port,
-            username=args.username,
-            password=args.password,
-            batch_size=args.save_every,
-        )
-    elif args.output_type == 'file':
+    if args.output_type == 'file':
         saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
         saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
@@ -75,14 +65,6 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', default=False, action='store_true', help='use a GPU')
 
     subparsers = parser.add_subparsers(dest="output_type")
-
-    mongo_parser = subparsers.add_parser('mongo')
-    mongo_parser.add_argument('--host', default='mongo')
-    mongo_parser.add_argument('--port', type=int, default=27017)
-    mongo_parser.add_argument('--username', default='admin')
-    mongo_parser.add_argument('--password', default='visione')
-    mongo_parser.add_argument('db')
-    mongo_parser.add_argument('--collection', default='features.clip')
 
     file_parser = subparsers.add_parser('file')
     file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
