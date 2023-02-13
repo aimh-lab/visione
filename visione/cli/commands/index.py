@@ -37,7 +37,7 @@ class IndexCommand(BaseCommand):
         self.str_encode_features(video_id, 'gem', force=replace)
 
         # push to index
-        self.prepare_lucene_doc(video_id, force=True)
+        self.prepare_lucene_doc(video_id, force=replace)
         self.add_to_lucene_index(video_id, force=replace)
 
     def str_encode_objects(self, video_id, force=False):
@@ -192,7 +192,7 @@ class IndexCommand(BaseCommand):
         str_feature_docs = map(map_features, str_features_files)
 
         # merge fields into single documents
-        str_documents = [str_object_docs, *str_feature_docs]
+        str_documents = [scene_docs, str_object_docs, *str_feature_docs]
 
         def merge_docs(docs):
             for records in zip(*docs):
@@ -239,16 +239,14 @@ class IndexCommand(BaseCommand):
             # TODO
         """
 
-        str_objects_file = self.collection_dir / 'str-objects' / video_id /  f'{video_id}-str-objects.jsonl.gz'
-        scenes_file = self.collection_dir / 'selected-frames' / video_id / f'{video_id}-scenes.csv'
+        documents_file = self.collection_dir / 'lucene-documents' / video_id /  f'{video_id}-lucene-docs.jsonl.gz'
         lucene_index_dir = self.collection_dir / 'lucene-index'
         
         if not force and lucene_index_dir.exists():
             print(f'Skipping indexing in Lucene, using existing index:', lucene_index_dir.name)
             return 0
 
-        input_file = '/data' / str_objects_file.relative_to(self.collection_dir)
-        scenes_file = '/data' / scenes_file.relative_to(self.collection_dir)
+        input_file = '/data' / documents_file.relative_to(self.collection_dir)
         output_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
 
         service = 'lucene-index-builder'
@@ -257,7 +255,6 @@ class IndexCommand(BaseCommand):
             '--save-every', '200',  # TODO currently not used
         ] + (['--force'] if force else []) + [   
             str(input_file),
-            str(scenes_file),
             video_id,
             str(output_dir),
         ]
