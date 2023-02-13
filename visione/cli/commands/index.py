@@ -116,7 +116,7 @@ class IndexCommand(BaseCommand):
         command = [
             'python', 'encode.py',
             '--save-every', '200',
-        ] + (['--force', '--force-encoder'] if force else []) + [
+        ] + (['--force'] if force else []) + [
             str(input_file),
             str(str_encoder_file),
             str(str_output_file),
