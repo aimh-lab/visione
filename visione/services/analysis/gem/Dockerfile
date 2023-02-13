@@ -7,7 +7,6 @@ RUN pip install \
         more-itertools \
         numpy \
         opencv-python \
-        pymongo \
         scikit-learn==0.20.2 \
         tornado \
         tqdm

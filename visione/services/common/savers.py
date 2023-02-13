@@ -6,8 +6,6 @@ from pathlib import Path
 import sys
 
 import h5py
-from pymongo import MongoClient, UpdateOne
-from pymongo.errors import BulkWriteError
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -62,60 +60,6 @@ class GzipJsonlFile(Saver):
 
     def flush(self):
         self.file.flush()
-
-
-class MongoCollection(Saver):
-    def __init__(
-        self,
-        db_name,
-        collection_name,
-        host='mongo',
-        port=27017,
-        username=None,
-        password=None,
-        batch_size=100,
-    ):
-        self.db_name = db_name
-        self.collection_name = collection_name
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-        self.batch_size = batch_size
-
-        self.client = None
-        self.collection = None
-
-        self._batch = []
-
-    def __enter__(self):
-        self.client = MongoClient(self.host, port=self.port, username=self.username, password=self.password)
-        self.collection = self.client[self.db_name][self.collection_name]
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.flush()
-        self.collection = None
-        self.client.close()
-        self.client = None
-
-    def __contains__(self, _id):
-        assert self.collection is not None, "cannot use MongoCollection outside a 'with' statement"
-        return self.collection.find_one({'_id': _id}, {'_id': True}) is not None
-
-    def add(self, record):
-        self._batch.append(record)
-        if len(self._batch) == self.batch_size:
-            self.flush()
-
-    def flush(self):
-        if self._batch:
-            try:
-                ops = [UpdateOne({'_id': doc['_id']}, {'$set': doc}, upsert=True) for doc in self._batch]
-                self.collection.bulk_write(ops, ordered=False)
-                self._batch.clear()
-            except BulkWriteError as bwe:
-                print(bwe.details)
 
 
 class HDF5File(Saver):

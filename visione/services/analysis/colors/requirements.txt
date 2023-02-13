@@ -2,6 +2,5 @@ h5py
 more_itertools
 pandas
 prefetch_generator
-pymongo
 scikit-image
 tqdm

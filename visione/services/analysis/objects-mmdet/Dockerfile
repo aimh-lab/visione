@@ -31,7 +31,6 @@ RUN wget https://download.openmmlab.com/mmdetection/v2.0/lvis/mask_rcnn_x101_64x
 RUN pip install \
         h5py \
         more-itertools \
-        pymongo \
         tqdm
 
 WORKDIR /usr/src/app/

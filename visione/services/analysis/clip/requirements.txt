@@ -4,6 +4,5 @@ h5py
 more_itertools
 Pillow
 prefetch_generator
-pymongo
 transformers
 tqdm

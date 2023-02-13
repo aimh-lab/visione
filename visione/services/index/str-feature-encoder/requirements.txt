@@ -3,5 +3,4 @@ scipy==1.6.0
 git+https://github.com/fabiocarrara/str-encoders@v0.1.0
 more-itertools
 prefetch_generator
-pymongo
 tqdm
