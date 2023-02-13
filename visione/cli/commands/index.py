@@ -218,6 +218,7 @@ class IndexCommand(BaseCommand):
             # features
             record['features'] = record.pop('features_gem_str')
             # record['aladin'] = record.pop('features_aladin_str')
+            return record
         
         records = map(fix_fieldnames, records)
 
