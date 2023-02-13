@@ -137,10 +137,10 @@ class IndexCommand(BaseCommand):
 
         lucene_documents_dir = self.collection_dir / 'lucene-documents' / video_id
         lucene_documents_dir.mkdir(parents=True, exist_ok=True)
-        lucene_documents_file = lucene_documents_dir / f'{video_id}-lucene-doc.jsonl.gz'
+        lucene_documents_file = lucene_documents_dir / f'{video_id}-lucene-docs.jsonl.gz'
 
         if not force and lucene_documents_file.exists():
-            print(f'Skipping Lucene document merging, using existing file:', lucene_documents_file.name)
+            print(f'Skipping Lucene document creation, using existing file:', lucene_documents_file.name)
             return 0
 
         # prepare scene fields of records
