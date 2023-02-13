@@ -14,14 +14,14 @@ from .command import BaseCommand
 
 
 class IndexCommand(BaseCommand):
-    """ Implements the 'import' CLI command. """
+    """ Implements the 'index' CLI command. """
 
     def __init__(self, *args, **kwargs):
         super(IndexCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('index', help='Create an index entry for imported videos.')
-        parser.add_argument('--id', dest='video_id', default=None, help='Video ID. If None, take the filename without extension as ID.')
+        parser.add_argument('--id', dest='video_id', nargs='*', help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.set_defaults(func=self)
 
