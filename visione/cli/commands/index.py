@@ -21,24 +21,28 @@ class IndexCommand(BaseCommand):
 
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('index', help='Create an index entry for imported videos.')
-        parser.add_argument('--id', dest='video_id', nargs='*', help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
+        parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_id, replace):
-        # TODO handle (video_id == None) case
+    def __call__(self, *, video_ids, replace):
+        
+        if len(video_ids) == 0:
+            thumb_dir = self.collection_dir / 'selected-frames'
+            video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
 
-        # generate surrogate text representation of objects & colors
-        self.str_encode_objects(video_id, force=replace)
+        for video_id in tqdm(video_ids, desc="Indexing"):
+            # generate surrogate text representation of objects & colors
+            self.str_encode_objects(video_id, force=replace)
 
-        # generate surrogate text representation of features
-        self.str_encode_features(video_id, 'clip-laion-CLIP-ViT-H-14-laion2B-s32B-b79K', force=replace)
-        self.str_encode_features(video_id, 'clip-openai-clip-vit-large-patch14', force=replace)
-        self.str_encode_features(video_id, 'gem', force=replace)
+            # generate surrogate text representation of features
+            self.str_encode_features(video_id, 'clip-laion-CLIP-ViT-H-14-laion2B-s32B-b79K', force=replace)
+            self.str_encode_features(video_id, 'clip-openai-clip-vit-large-patch14', force=replace)
+            self.str_encode_features(video_id, 'gem', force=replace)
 
-        # push to index
-        self.prepare_lucene_doc(video_id, force=replace)
-        self.add_to_lucene_index(video_id, force=replace)
+            # push to index
+            self.prepare_lucene_doc(video_id, force=replace)
+            self.add_to_lucene_index(video_id, force=replace)
 
     def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
