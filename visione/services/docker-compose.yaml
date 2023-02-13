@@ -66,7 +66,6 @@ services:
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
       - ./common:/usr/src/visione:ro
-      - ./analysis/clip:/usr/src/app/  # for development
     profiles: ["analysis", "query"]
     deploy: *needs_gpu
 
