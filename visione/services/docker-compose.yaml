@@ -87,6 +87,13 @@ services:
       - ${VISIONE_ROOT}:/data
       - ./common:/usr/src/visione:ro
 
+  str-feature-encoder:
+    build: ./index/str-feature-encoder
+    profiles: ["index"]
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ./common:/usr/src/visione:ro
+
   lucene-index-builder:
     build: ./index/lucene-index-builder
     profiles: ["index"]

@@ -1,61 +1,44 @@
 import argparse
 import functools
 import itertools
+import json
+import logging
 from pathlib import Path
-from pprint import pprint
+import sys
 
+import h5py
 import more_itertools
-import numpy as np
-from pymongo import MongoClient, UpdateOne
-from pymongo.errors import BulkWriteError
 import surrogate
 from tqdm import tqdm
 
-
-def collect_features(collection, limit=None):
-    n_documents = collection.database.command('collstats', collection.name)['count']
-
-    total = n_documents
-    cursor = collection.find({}, projection=['feature'])
-
-    if limit:
-        samples_idx = np.random.choice(n_documents, limit, replace=False)
-        samples_idx = np.sort(samples_idx).tolist()
-
-        def gen_samples(cursor, samples_idx):
-            for i, doc in enumerate(cursor):
-                if i == samples_idx[0]:
-                    yield doc
-                    samples_idx.pop(0)
-                    if len(samples_idx) == 0:
-                        break
-
-        cursor = gen_samples(cursor, samples_idx)
-        total = limit
-
-    ids, features = [], []
-    for doc in tqdm(cursor, desc='Collecting Features', total=total):
-        ids.append( doc['_id'] )
-        features.append( np.array(doc['feature'], dtype=np.float32) )
-    
-    features = np.stack(features)
-    return ids, features
+from visione.savers import GzipJsonlFile
 
 
-def load_or_train_encoder(collection, force):
-    db_name = collection.database.name
-    collection_name = collection.name
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stdout,
+    format='%(asctime)s %(levelname)-8s:%(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+log = logging.getLogger(__name__)
 
-    # instantiate STR encoder
-    encoder_filename = Path(f'str-encoder-{db_name}.{collection_name}.pkl')
 
+# TODO factorize across services
+def load_config_file(config_file_path):
+    with open(config_file_path, 'r') as f:
+        return json.load(f)
+
+
+def load_or_build_encoder(encoder_filename, train_features, force):
+
+    # instantiate STR encoder if not existing
     if not encoder_filename.exists() or force:
         # get encoder params
-        config = collection.database['config'].find_one({'_id': 'config'})
+        config = load_config_file(args.config_file)
         config = config.get('str-feature-encoder', {})
 
         default_index_type = 'topk-sq'
-        default_index_params = dict(keep=0.25, rotation_matrix=42)
+        default_index_params = dict(keep=0.25, dim_multiplier=3)
 
         index_type = config.get('index_type', default_index_type)
         index_params = config.get('index_params', default_index_params)
@@ -63,99 +46,85 @@ def load_or_train_encoder(collection, force):
         # init the encoder
         index_string = ', '.join(f'{k}={v}' for k, v in index_params.items())
         index_string = f'{index_type}({index_string})'
-        print('Building encoder:', index_string)
+        log.info(f'Building encoder: {index_string}')
 
-        d = len(collection.find_one({}, projection=['feature'])['feature'])
+        n, d = train_features.shape
         encoder = surrogate.index_factory(d, index_type, index_params)
 
-        if not encoder.is_trained:
-            # get subsample if necessary for training
-            n_documents = collection.database.command('collstats', collection_name)['count']  # get document count
-            n_train_document = min(n_documents, 100_000)  # FIXME: better heuristic?
-            _, x = collect_features(collection, limit=n_train_document)
-            n, d = x.shape
-        
-            # train the encoder
-            print('Training the encoder ...')
-            encoder.train(x)
-            del x
+        assert encoder.is_trained, "Training the encoder on a single video is not supported. It will be supported for bulk indexing."
 
-        # save trained encoder
-        print('Saving trained encoder:', encoder_filename)
+        if not encoder.is_trained:  # currently not used
+            # get subsample if necessary for training
+            n_train = min(n, 100_000)  # FIXME: better heuristic?
+            # train the encoder
+            log.info('Training the encoder ...')
+            encoder.train(train_features[:n_train])  # FIXME random shuffling is missing
+            log.info('Trained.')
+
+        # save encoder
+        log.info(f'Saving encoder: {encoder_filename}')
         surrogate.save_index(encoder, encoder_filename)
     else:
-        print('Loading trained encoder:', encoder_filename)
+        log.info(f'Loading encoder: {encoder_filename}')
         encoder = surrogate.load_index(encoder_filename)
-    
+
     return encoder
 
 
 def main(args):
-    client = MongoClient(args.host, port=args.port, username=args.username, password=args.password)
-    features_collection = client[args.db][args.features_collection]
-    output_collection = client[args.db]['frames']
-    output_field = args.output_field or f"{args.features_collection.replace('.','_')}_str"
 
-    encoder = load_or_train_encoder(features_collection, args.force_encoder)
+    # get features matrix
+    with h5py.File(args.features_input_file, 'r') as f:
+        ids = f['ids'][:]
+        features = f['data'][:]
 
-    feature_docs = features_collection.find({}, projection=['feature'])
+    encoder = load_or_build_encoder(args.features_encoder_file, features, args.force_encoder)
 
-    # filter only non-processed
-    if not args.force:
-        def needs_processing(x):
-            return output_collection.find_one({'_id': x['_id'], output_field: { '$exists': False }}, {'_id': True}) is None
+    n_images = len(ids)
+    initial = 0
 
-        feature_docs = filter(needs_processing, feature_docs)
+    # if forced, delete old file
+    if args.force and args.str_output_file.exists():
+        args.str_output_file.unlink()
 
-    # separate ids and features
-    ids_and_features = map(lambda x: (x['_id'], x['feature']), feature_docs)
-    ids, features = more_itertools.unzip(ids_and_features)
+    # open saver
+    with GzipJsonlFile(args.str_output_file, flush_every=args.save_every) as saver:
+        skip_mask = [_id not in saver for _id in ids]
+        ids = ids[skip_mask]
+        features = features[skip_mask]
 
-    # create batches of features as numpy arrays
-    batches_of_features = more_itertools.batched(features, args.batch_size)
-    to_numpy = functools.partial(np.array, dtype=np.float32)
-    batches_of_features = map(to_numpy, batches_of_features)
+        n_rem = len(ids)
+        initial = n_images - n_rem
+        bs = args.batch_size
 
-    # encode and generate surrogate documents in batches
-    str_encode = functools.partial(encoder.encode, inverted=False)
-    batches_of_encoded_features = map(str_encode, batches_of_features)
-    batches_of_str_encodings = map(surrogate.generate_documents, batches_of_encoded_features)
-    str_encodings = itertools.chain.from_iterable(batches_of_str_encodings)
+        # create batches of features
+        batches_of_features = (features[i:i + bs] for i in range(0, n_rem, bs))
 
-    # generate write ops
-    write_ops = (
-        UpdateOne({'_id': doc_id}, {'$set': {output_field: surrogate_text}})
-        for doc_id, surrogate_text in zip(ids, str_encodings)
-    )
+        # encode and generate surrogate documents in batches
+        str_encode = functools.partial(encoder.encode, inverted=False)
+        batches_of_encoded_features = map(str_encode, batches_of_features)
+        batches_of_str_encodings = map(surrogate.generate_documents, batches_of_encoded_features)
+        str_encodings = itertools.chain.from_iterable(batches_of_str_encodings)
 
-    # progress bar
-    n_documents = features_collection.database.command('collstats', features_collection.name)['count']
-    write_ops = tqdm(write_ops, desc='Updating STRs', total=n_documents)
+        # generate records
+        records = ({'_id': _id.decode('utf8'), 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
 
-    batches_of_ops = more_itertools.batched(write_ops, args.batch_size)
-    batches_of_ops = map(list, batches_of_ops)
-    
-    for batch_of_ops in batches_of_ops:
-        try:
-            output_collection.bulk_write(batch_of_ops, ordered=False)
-        except BulkWriteError as bwe:
-            print('Something wrong in updating docs:')
-            pprint(bwe.details)
+        records = tqdm(records, initial=initial, total=n_images)
+        saver.add_many(records)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Surrogate Text Encoding of Feature Vectors')
 
-    parser.add_argument('--host', default='mongo')
-    parser.add_argument('--port', type=int, default=27017)
-    parser.add_argument('--username', default='admin')
-    parser.add_argument('--password', default='visione')
-    parser.add_argument('db')
-    parser.add_argument('features_collection')
-    parser.add_argument('--output-field', default=None)
-    parser.add_argument('--batch-size', type=int, default=5000)
-    parser.add_argument('--force', default=False, action='store_true')
-    parser.add_argument('--force-encoder', default=False, action='store_true')
+    parser.add_argument('--config-file', default='/data/index-config.json', help='path to indexing configuration json file')
+    parser.add_argument('--save-every', type=int, default=100)
+    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
+    parser.add_argument('--force-encoder', default=False, action='store_true', help='overwrite existing trained encoder')
+    parser.add_argument('--batch-size', type=int, default=5000, help='encoder batch size')
+
+    parser.add_argument('features_input_file', type=Path, help='path to hdf5 file with frame features')
+    parser.add_argument('features_encoder_file', type=Path, help='path to the pkl file defining the feature encoder. It will be created if missing.')
+    parser.add_argument('str_output_file', type=Path, help='output path of the jsonl.gz file with STR-encoded features')
 
     args = parser.parse_args()
     main(args)
