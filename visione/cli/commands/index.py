@@ -1,3 +1,6 @@
+import collections
+import csv
+import gzip
 import json
 from pathlib import Path
 import subprocess
@@ -34,7 +37,8 @@ class IndexCommand(BaseCommand):
         self.str_encode_features(video_id, 'gem', force=replace)
 
         # push to index
-        self.add_to_index(video_id, force=True)
+        self.prepare_lucene_doc(video_id, force=True)
+        self.add_to_lucene_index(video_id, force=replace)
 
     def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
@@ -223,7 +227,7 @@ class IndexCommand(BaseCommand):
                 out.write(json.dumps(record) + '\n')
 
     
-    def add_to_index(self, video_id, force=False):
+    def add_to_lucene_index(self, video_id, force=False):
         """ Adds the analyzed frames of a video to the collection index.
             
         Args:
