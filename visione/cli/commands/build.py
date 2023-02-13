@@ -14,10 +14,10 @@ class BuildCommand(BaseCommand):
     
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('build', help='Build or rebuild services.')
-        parser.add_argument('services', nargs='+', help='services to (re)build (defaults to all)')
+        parser.add_argument('services', nargs='*', help='services to (re)build (defaults to all)')
         parser.set_defaults(func=self)
     
     def __call__(self, *, services):
         command = self.compose_cmd + ['build'] + services
-        ret = subprocess.run(command, check=True, env=self.visione_env)
+        ret = subprocess.check_call(command, env=self.visione_env)
         return ret
