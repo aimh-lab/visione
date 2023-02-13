@@ -73,6 +73,9 @@ services:
   frame-cluster:
     build: ./analysis/frame-cluster
     profiles: ["analysis"]
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ./common:/usr/src/visione:ro
   
   scene-detection:
     build: ./analysis/scene-detection

@@ -1,6 +1,2 @@
-jupyter
-ipyplot
-natsort
-pymongo
+h5py
 scikit-learn
-tqdm

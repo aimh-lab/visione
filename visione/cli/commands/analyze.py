@@ -31,6 +31,8 @@ class AnalyzeCommand(BaseCommand):
             self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
             self.detect_objects_oiv4(video_id, force=replace)
 
+            self.cluster_frames(video_id, force=True)
+
     def extract_gem_features(self, video_id, force=False):
         """ Extracts GeM features from selected keyframes of a video for instance retrieval.
 
@@ -210,6 +212,40 @@ class AnalyzeCommand(BaseCommand):
             '--save-every', '200',
             'file',
             '--output', str(output_file),
+        ]
+
+        return self.compose_run(service, command)
+
+    def cluster_frames(self, video_id, features='gem', force=False):
+        """ Cluster selected frames of a video by visual similarity.
+
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            # TODO
+        """
+        clusters_dir = self.collection_dir / 'cluster-codes' / video_id
+        clusters_dir.mkdir(parents=True, exist_ok=True)
+
+        clusters_file = clusters_dir / f'{video_id}-cluster-codes.jsonl.gz'
+        if not force and clusters_file.exists():
+            print(f'Skipping frame clustering, using existing file:', clusters_file.name)
+            return 0
+        
+        features_file = self.collection_dir / features / video_id / f'{video_id}-{features}.hdf5'
+        assert features_file.exists(), f"Cannot cluster by {features}, file not found: {features_file}"
+        
+        input_file = '/data' / features_file.relative_to(self.collection_dir)
+        output_file = '/data' / clusters_file.relative_to(self.collection_dir)
+
+        service = 'frame-cluster'
+        command = [
+            'python', 'cluster.py',
+            str(input_file),
+        ] + (['--force'] if force else []) + [
+            str(output_file),
         ]
 
         return self.compose_run(service, command)

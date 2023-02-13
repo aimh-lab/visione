@@ -1,18 +1,29 @@
 import argparse
-import itertools
-from functools import partial
-from pprint import pprint
+import logging
+from pathlib import Path
+import sys
 import warnings
 
+import h5py
 import numpy as np
-from pymongo import MongoClient
-from pymongo.errors import BulkWriteError
-from pymongo.operations import UpdateOne
 from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import normalize
-from tqdm import tqdm
+
+from visione.savers import GzipJsonlFile
+
+
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stdout,
+    format='%(asctime)s %(levelname)-8s:%(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    force=True,
+)
+log = logging.getLogger(__name__)
 
 
 @np.vectorize
@@ -29,7 +40,7 @@ def _ascii_encode(num, ascii_chars_lim=(33, 126)):
     return digit0 + digit1
 
 
-def _cluster(X):
+def cluster(X):
     num_samples = X.shape[0]
 
     # TODO better handling of edge case with only one sample
@@ -63,84 +74,29 @@ def _cluster(X):
     return codes
 
 
-def _apply_clustering(features_collection, video_info):
-     # get all features of a video
-    results = features_collection.find({'_id': {'$in': video_info['frames']}}, {'feature': True})
-
-    frames_ids = []
-    frames_features = []
-    for doc in results:
-        frames_ids.append(doc['_id'])
-        frames_features.append(doc['feature'])
-    
-    frames_features = np.array(frames_features)
-    frames_codes = _cluster(frames_features)
-
-    return frames_ids, frames_codes
-
-
-def _generate_write_ops(clustered_frames):
-    for frame_id, frame_code in zip(*clustered_frames):
-        yield UpdateOne({'_id': frame_id}, {'$set': {'cluster_code': frame_code}})
-
-
-def _grouper(iterable, n):
-    """ Iterates an iterable in batches. E.g.,
-        grouper([1, 2, 3, 4, 5], 2)  -->  [(1, 2), (3, 4), (5,)]
-    """
-    it = iter(iterable)
-    while True:
-        chunk_it = itertools.islice(it, n)
-        try:
-            first_el = next(chunk_it)
-        except StopIteration:
-            return
-        yield itertools.chain((first_el,), chunk_it)
-
-
 def main(args):
-    client = MongoClient(args.host, port=args.port, username=args.username, password=args.password)
-    frames_collection = client[args.db]['frames']
-    features_collection = client[args.db][args.features_collection]
+    
+    with h5py.File(args.features_file, 'r') as f:
+        frames_ids = f['ids'][:]
+        frames_features = f['data'][:]
 
-    # group frames by video_id and iterate
-    grouped_frames = frames_collection.aggregate([
-        {'$group': {
-            '_id': '$video_id',  # groupby key
-            'frames': {'$push': '$_id'}  # set of frames ids
-        }}
-    ])
+    frames_codes = cluster(frames_features)
 
-    clustering_fn = partial(_apply_clustering, features_collection)
-    clustered_frames = map(clustering_fn, grouped_frames)
+    records = [{'_id': _id.decode('utf8'), 'cluster_code': code} for _id, code in zip(frames_ids, frames_codes)]
 
-    write_ops = map(_generate_write_ops, clustered_frames)
-    write_ops = itertools.chain.from_iterable(write_ops)
+    if args.force and args.output_codes_file.exists():
+        args.output_codes_file.unlink()
 
-    n_frames = client[args.db].command('collstats', 'frames')['count']
-    write_ops = tqdm(write_ops, total=n_frames)
-
-    batches_of_ops = _grouper(write_ops, args.batch_size)
-    batches_of_ops = map(list, batches_of_ops)
-
-    for batch_of_ops in batches_of_ops:
-        try:
-            frames_collection.bulk_write(batch_of_ops, ordered=False)
-        except BulkWriteError as bwe:
-            print('Something wrong in updating docs with codes:')
-            pprint(bwe.details)
+    with GzipJsonlFile(args.output_codes_file) as saver:
+        saver.add_many(records)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cluster similar frames of a video.')
 
-    parser.add_argument('--host', default='mongo')
-    parser.add_argument('--port', type=int, default=27017)
-    parser.add_argument('--username', default='admin')
-    parser.add_argument('--password', default='visione')
-    parser.add_argument('db')
-    parser.add_argument('--features-collection', default='features.gem')
-    parser.add_argument('--batch-size', type=int, default=1000)
-
+    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
+    parser.add_argument('features_file', type=Path, help='path to hdf5 file containing features of frames to cluster')
+    parser.add_argument('output_codes_file', type=Path, help='path to output jsonl.gz file that will contain cluster codes of frames')
+    
     args = parser.parse_args()
     main(args)

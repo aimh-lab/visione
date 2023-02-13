@@ -172,6 +172,10 @@ class IndexCommand(BaseCommand):
 
         str_object_docs = map_objects(str_objects_file)
 
+        # prepare frames cluster codes
+        clusters_file = self.collection_dir / 'cluster-codes' / video_id / f'{video_id}-cluster-codes.jsonl.gz'
+        cluster_docs = map_objects(clusters_file)
+
         # prepare features fields of records
         str_features_dir = self.collection_dir / 'str-features' / video_id
         str_features_files = str_features_dir.glob(f'{video_id}-str-features-*.jsonl.gz')
@@ -192,7 +196,12 @@ class IndexCommand(BaseCommand):
         str_feature_docs = map(map_features, str_features_files)
 
         # merge fields into single documents
-        str_documents = [scene_docs, str_object_docs, *str_feature_docs]
+        str_documents = [
+            scene_docs,
+            str_object_docs,
+            cluster_docs,
+            *str_feature_docs
+        ]
 
         def merge_docs(docs):
             for records in zip(*docs):
