@@ -19,6 +19,7 @@ def count_objects(record):
     return collections.Counter(o['label'] for o in record['objects'])
 
 
+# TODO factorize across services
 def load_config_file(config_file_path):
     with open(config_file_path, 'r') as f:
         return json.load(f)
