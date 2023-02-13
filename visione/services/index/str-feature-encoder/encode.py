@@ -14,6 +14,10 @@ from tqdm import tqdm
 from visione.savers import GzipJsonlFile
 
 
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
+
 logging.basicConfig(
     level=logging.DEBUG,
     stream=sys.stdout,
