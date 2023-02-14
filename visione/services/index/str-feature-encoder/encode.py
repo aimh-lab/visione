@@ -79,7 +79,7 @@ def main(args):
 
     # get features matrix
     with h5py.File(args.features_input_file, 'r') as f:
-        ids = f['ids'][:]
+        ids = f['ids'].asstr()[:]
         features = f['data'][:]
 
     encoder = load_or_build_encoder(args.features_encoder_file, features, args.force_encoder)
@@ -111,7 +111,7 @@ def main(args):
         str_encodings = itertools.chain.from_iterable(batches_of_str_encodings)
 
         # generate records
-        records = ({'_id': _id.decode('utf8'), 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
+        records = ({'_id': _id, 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
 
         records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)

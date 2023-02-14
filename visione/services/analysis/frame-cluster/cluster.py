@@ -77,12 +77,12 @@ def cluster(X):
 def main(args):
     
     with h5py.File(args.features_file, 'r') as f:
-        frames_ids = f['ids'][:]
+        frames_ids = f['ids'].asstr()[:]
         frames_features = f['data'][:]
 
     frames_codes = cluster(frames_features)
 
-    records = [{'_id': _id.decode('utf8'), 'cluster_code': code} for _id, code in zip(frames_ids, frames_codes)]
+    records = [{'_id': _id, 'cluster_code': code} for _id, code in zip(frames_ids, frames_codes)]
 
     if args.force and args.output_codes_file.exists():
         args.output_codes_file.unlink()

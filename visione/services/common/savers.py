@@ -77,12 +77,12 @@ class HDF5File(Saver):
 
         if self.path.exists():
             with h5py.File(str(self.path), 'r') as f:
-                self._ids = {_id.decode('utf8'): i for i, _id in enumerate(f['ids'])}
+                self._ids = {_id: i for i, _id in enumerate(f['ids'].asstr())}
             log.info(f'Found {len(self._ids)} results')
 
     def __enter__(self):
         self.file = h5py.File(str(self.path), 'a')
-        self._ids_dataset = self.file.require_dataset('ids', shape=self.shape[:1], dtype=h5py.string_dtype())
+        self._ids_dataset = self.file.require_dataset('ids', shape=self.shape[:1], dtype=h5py.string_dtype(encoding='utf-8'))
         self._data_dataset = self.file.require_dataset('data', shape=self.shape, dtype='float32')
         return self
 
