@@ -42,8 +42,8 @@ server {
 	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
 	location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
 	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
-	location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
-	location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
+	location ^~ /clip-laion-text-search     { proxy_pass http://features-clip:5030/text-to-image-search; }
+	location ^~ /clip-laion-internal-search { proxy_pass http://features-clip:5030/internal-image-search; }
 
 	location / {
 		root /usr/share/nginx/html;
