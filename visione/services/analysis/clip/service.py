@@ -44,9 +44,10 @@ def internal_image_search():
     img_id = request.args.get("imgId")
     k = request.args.get("k", type=int, default=10000)
 
-    # connect to mongo and get feature corresponding to img_id
-    item = features_collection.find_one({'_id': img_id}, {'feature': True})
-    feat = np.asarray(item['feature'], dtype=np.float32)
+    # FIXME for IVF indices, we need to add a DirectMap (see https://github.com/facebookresearch/faiss/blob/a17a631dc326b3b394f4e9fb63d0a7af475534dc/tests/test_index.py#L585)
+    # FIXME for non-Flat indice, reconstruction is lossy (may be good enough still)
+    faiss_internal_id = index.id_map[img_id]
+    feat = index.get_internal_feature(img_id)
     if args.normalized:
         faiss.normalize_L2(feat)
 
