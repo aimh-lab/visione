@@ -1,0 +1,44 @@
+services:
+  scene-detection: &common
+    build: ./analysis/scene-detection
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ${VISIONE_CACHE}:/cache
+      - ./common:/usr/src/visione:ro
+    profiles: ["analysis"]
+
+  objects-colors:
+    <<: *common
+    build: ./analysis/objects-colors
+
+  objects-mmdet:
+    <<: *common
+    build: ./analysis/objects-mmdet
+    deploy: &needs_gpu
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  objects-openimagesv4:
+    <<: *common
+    build: ./analysis/objects-openimagesv4
+    deploy: *needs_gpu
+
+  features-gem:
+    <<: *common
+    build: ./analysis/features-gem
+    shm_size: 2GB
+    deploy: *needs_gpu
+  
+  features-clip:
+    <<: *common
+    build: ./analysis/features-clip
+    deploy: *needs_gpu
+
+  frame-cluster:
+    <<: *common
+    build: ./analysis/frame-cluster
+

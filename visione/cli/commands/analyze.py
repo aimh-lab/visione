@@ -125,7 +125,7 @@ class AnalyzeCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / colors_file.relative_to(self.collection_dir)
 
-        service = 'color-extraction'
+        service = 'objects-colors'
         command = [
             'python', 'extract.py',
             str(input_dir),

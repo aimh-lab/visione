@@ -1,0 +1,20 @@
+services:  
+  str-object-encoder: &common
+    build: ./index/str-object-encoder
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ${VISIONE_CACHE}:/cache
+      - ./common:/usr/src/visione:ro
+    profiles: ["index"]
+
+  str-feature-encoder:
+    <<: *common
+    build: ./index/str-feature-encoder
+    
+  lucene-index-builder:
+    <<: *common
+    build: ./index/lucene-index-builder
+  
+  faiss-index-builder:
+    <<: *common
+    build: ./index/faiss-index-builder
