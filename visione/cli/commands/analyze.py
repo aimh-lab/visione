@@ -43,7 +43,7 @@ class AnalyzeCommand(BaseCommand):
         Returns:
             TODO
         """
-        gem_dir = self.collection_dir / 'gem' / video_id
+        gem_dir = self.collection_dir / 'features-gem' / video_id
         gem_dir.mkdir(parents=True, exist_ok=True)
 
         gem_features_file = gem_dir / f'{video_id}-gem.hdf5'
@@ -82,7 +82,7 @@ class AnalyzeCommand(BaseCommand):
             TODO
         """
         clip_model_normalized = clip_model.replace('/', '-')
-        clip_dir = self.collection_dir / f"clip-{clip_model_normalized}" / video_id
+        clip_dir = self.collection_dir / f'features-clip-{clip_model_normalized}' / video_id
         clip_dir.mkdir(parents=True, exist_ok=True)
 
         clip_features_file = clip_dir / f'{video_id}-clip-{clip_model_normalized}.hdf5'
@@ -234,7 +234,7 @@ class AnalyzeCommand(BaseCommand):
             print(f'Skipping frame clustering, using existing file:', clusters_file.name)
             return 0
         
-        features_file = self.collection_dir / features / video_id / f'{video_id}-{features}.hdf5'
+        features_file = self.collection_dir / f'features-{features}' / video_id / f'{video_id}-{features}.hdf5'
         assert features_file.exists(), f"Cannot cluster by {features}, file not found: {features_file}"
         
         input_file = '/data' / features_file.relative_to(self.collection_dir)

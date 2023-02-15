@@ -100,7 +100,7 @@ class IndexCommand(BaseCommand):
             # TODO
         """
 
-        input_file = self.collection_dir / f'{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
+        input_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
 
         str_encoder_file = self.collection_dir / f'str-features-encoder-{features_name}.pkl'
 
