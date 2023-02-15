@@ -74,11 +74,7 @@ def load_features(hdf5_files, progress=False):
 
 
 def build_faiss_index(args):
-    # index_path = Path('build')
-    # index_path.mkdir(parents=True, exist_ok=True)
-
-    # feats_file = index_path / f'clippone_features_{args.db}.h5'
-
+    
     if not args.force and args.index_file.exists() and args.idmap_file.exists():
         logging.info('Loading index ...')
         index = faiss.read_index(str(args.index_file))
