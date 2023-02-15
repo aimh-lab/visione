@@ -31,7 +31,7 @@ class AnalyzeCommand(BaseCommand):
             self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
             self.detect_objects_oiv4(video_id, force=replace)
 
-            self.cluster_frames(video_id, force=True)
+            self.cluster_frames(video_id, force=replace)
 
     def extract_gem_features(self, video_id, force=False):
         """ Extracts GeM features from selected keyframes of a video for instance retrieval.
