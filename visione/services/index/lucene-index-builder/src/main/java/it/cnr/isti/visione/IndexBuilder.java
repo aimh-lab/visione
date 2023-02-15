@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -105,7 +106,7 @@ public class IndexBuilder {
         // skip if documents of this video already exists
         Term videoIdTerm = new Term("videoID", videoId);
 
-        if (!force) {
+        if (!force && DirectoryReader.indexExists(index)) {
             IndexReader reader = DirectoryReader.open(index);
             IndexSearcher searcher = new IndexSearcher(reader);
 
