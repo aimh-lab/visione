@@ -65,7 +65,6 @@ class ImportCommand(BaseCommand):
         video_out = self.collection_dir / 'videos' / f'{video_id}{video_ext}'
         if video_out.exists() and not replace:
             print(f'Using existing video file: {video_out.name}')
-            video_file.close()
             return video_id, video_out
 
         video_url = video_path_or_url
