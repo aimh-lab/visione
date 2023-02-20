@@ -48,8 +48,8 @@ class BaseCommand(ABC):
         # check if docker executable is available
         if shutil.which('docker') is None:
             raise RuntimeError("'docker' executable not found. Do you have docker installed?")
-        
-        # check if docker is already shipped with compose v2 
+
+        # check if docker is already shipped with compose v2
         ret_code = subprocess.call(['docker', 'compose'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         compose_v2 = ret_code == 0
 
@@ -73,7 +73,7 @@ class BaseCommand(ABC):
             '--project-directory', str(self.compose_dir),
             '--project-name', str(self.collection_dir.name),
         ]
-            
+
         self.compose_run_cmd = self.compose_cmd + [
             'run',
             '--rm',

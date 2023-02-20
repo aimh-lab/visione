@@ -36,7 +36,7 @@ def detection2record(detection, detector, classes, image_hw):
         boxes_and_scores = detection[0]
     elif detector.startswith('vfnet'):
         boxes_and_scores = detection
-    
+
     n_instances_per_class = map(len, boxes_and_scores)
     labels = [[c]*n for c, n in zip(classes, n_instances_per_class)]
     labels = list(itertools.chain.from_iterable(labels))
@@ -78,7 +78,7 @@ def main(args):
 
     if args.output_type == 'file':
         saver = GzipJsonlFile(args.output, flush_every=args.save_every)
-    
+
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
         image_list = tqdm(image_list, total=n_images)

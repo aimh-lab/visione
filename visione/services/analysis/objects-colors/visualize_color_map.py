@@ -11,7 +11,7 @@ from extract import COLORS
 def main(args):
     with open(args.color_map, 'r') as f:
         color_map = json.load(f)
-    
+
     hwhw = np.tile((args.height, args.width), 2).reshape(1, 4)
 
     scores = np.array(color_map['object_scores'     ])
@@ -24,7 +24,7 @@ def main(args):
 
     for box, label, score in zip(boxes, labels, scores):
         colors_per_box[tuple(box)].append((label, score))
-    
+
     for box, colors in colors_per_box.items():
         y0, x0, y1, x1 = box
         n = 1. / len(colors)

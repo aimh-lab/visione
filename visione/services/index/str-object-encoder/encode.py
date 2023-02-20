@@ -353,7 +353,7 @@ if __name__ == "__main__":
     parser.add_argument('--hypersets', default='/data/hypersets.csv', help='path to csv file with hypersets')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
-    
+
     parser.add_argument('str_output_file', type=Path, help='output path of the jsonl.gz file with STR-encoded objects')
     parser.add_argument('count_output_file', type=Path, help='output path of the json file with objects count')
     parser.add_argument('objects_input_files', nargs='+', type=Path, help='path to jsonl.gz file(s) with detected objects; we assume records have the same order in all files!')

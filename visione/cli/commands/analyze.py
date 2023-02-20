@@ -32,10 +32,10 @@ class AnalyzeCommand(BaseCommand):
 
             if 'vfnet_X-101-64x4d' in active_object_detectors:
                 self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
-            
+
             if 'mask_rcnn_lvis' in active_object_detectors:
                 self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
-            
+
             if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
                 self.detect_objects_oiv4(video_id, force=replace)
 
@@ -46,10 +46,10 @@ class AnalyzeCommand(BaseCommand):
 
             if 'clip-laion' in active_feature_extractors:
                 self.extract_clip_features(video_id, 'clip-laion', dimensions=1024, force=replace)
-            
+
             if 'clip-openai' in active_feature_extractors:
                 self.extract_clip_features(video_id, 'clip-openai', dimensions=768, force=replace)
-            
+
             # Frame clustering
             clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
             if clustering_features:
@@ -189,7 +189,7 @@ class AnalyzeCommand(BaseCommand):
             'python', 'extract.py',
             str(input_dir),
             detector,
-        ] + (['--force'] if force else []) + [   
+        ] + (['--force'] if force else []) + [
             '--gpu',
             '--save-every', '200',
             'file',
@@ -197,10 +197,10 @@ class AnalyzeCommand(BaseCommand):
         ]
 
         return self.compose_run(service, command)
-    
+
     def detect_objects_oiv4(self, video_id, force=False):
         """ Detect objects form the selected keyframes of a video using the
-            Faster RCNN Inception ResNet V2 model trained on OpenImagesV4 
+            Faster RCNN Inception ResNet V2 model trained on OpenImagesV4
             available in tensorflow hub.
 
         Args:
@@ -230,7 +230,7 @@ class AnalyzeCommand(BaseCommand):
         command = [
             'python', 'extract.py',
             str(input_dir),
-        ] + (['--force'] if force else []) + [   
+        ] + (['--force'] if force else []) + [
             '--save-every', '200',
             'file',
             '--output', str(output_file),
@@ -255,10 +255,10 @@ class AnalyzeCommand(BaseCommand):
         if not force and clusters_file.exists():
             print(f'Skipping frame clustering, using existing file:', clusters_file.name)
             return 0
-        
+
         features_file = self.collection_dir / f'features-{features}' / video_id / f'{video_id}-{features}.hdf5'
         assert features_file.exists(), f"Cannot cluster by {features}, file not found: {features_file}"
-        
+
         input_file = '/data' / features_file.relative_to(self.collection_dir)
         output_file = '/data' / clusters_file.relative_to(self.collection_dir)
 

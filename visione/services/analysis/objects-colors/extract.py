@@ -183,7 +183,7 @@ def table2record(color_table, label_map, nrows, ncols):
     for (r, c), cell_colors in color_table.items():
         if not cell_colors:
             continue
-        
+
         # yxyx format
         bbox = [r / nrows, c / ncols, (r + 1) / nrows, (c + 1) / ncols]
 

@@ -48,7 +48,7 @@ class GeMExtractor(object):
         features = self.extract_from_path(image_path)
         urllib.request.urlcleanup()
         return features
-    
+
     def extract_from_path(self, image_path):
         with tempfile.NamedTemporaryFile('w+') as tmp_list:
             # create temporary list file
@@ -102,7 +102,7 @@ def extract_quant_from_url():
 
     str_doc = str_doc.decode('utf8')
     logging.debug(str_doc[:25] + " ...")
-        
+
     return jsonify(str_doc)
 
 # deprecated, just for backward compatibility of 'core' service
@@ -113,14 +113,14 @@ def extract_quant_from_image():
     with tempfile.NamedTemporaryFile() as tmp_image_path:
         uploaded_file.save(tmp_image_path)
         feature_vector = extractor.extract_from_path(tmp_image_path)
-        
+
         str_doc = requests.post('http://str-feature-encoder:4000/encode', json={
             'type': 'gem',
             'feature_vector': feature_vector.tolist(),
         }).content
 
         str_doc = str_doc.decode('utf8')
-        
+
         return jsonify(str_doc)
 
 

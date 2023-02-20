@@ -29,7 +29,7 @@ class IndexCommand(BaseCommand):
         super(IndexCommand, self).__call__(config_file)
 
         index_config = self.config.get('index', {})
-        
+
         if len(video_ids) == 0:
             thumb_dir = self.collection_dir / 'selected-frames'
             video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
@@ -94,7 +94,7 @@ class IndexCommand(BaseCommand):
             'python', 'encode.py',
             '--config-file', str(config_file),
             '--save-every', '200',
-        ] + (['--force'] if force else []) + [   
+        ] + (['--force'] if force else []) + [
             str(str_output_file),
             str(count_output_file),
         ] + input_files
@@ -149,7 +149,7 @@ class IndexCommand(BaseCommand):
         Args:
             video_id (str): Input Video ID.
             force (bool, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
-        
+
         Returns:
             # TODO
         """
@@ -176,7 +176,7 @@ class IndexCommand(BaseCommand):
                         "endtime": float(row["End Time (seconds)"]),
                         "middletime": (float(row["Start Time (seconds)"]) + float(row["End Time (seconds)"])) / 2,  # TODO check correctness
                     }
-        
+
         scene_docs = map_scenes(scenes_file)
 
         # prepare objects fields of records
@@ -247,7 +247,7 @@ class IndexCommand(BaseCommand):
             record['features'] = record.pop('features_gem_str')
             # record['aladin'] = record.pop('features_aladin_str')
             return record
-        
+
         records = map(fix_fieldnames, records)
 
         # save merged jsonl.gz file
@@ -255,10 +255,9 @@ class IndexCommand(BaseCommand):
             for record in tqdm(records, desc='Creating Lucene Docs'):
                 out.write(json.dumps(record) + '\n')
 
-    
     def add_to_lucene_index(self, video_id, force=False):
         """ Adds the analyzed frames of a video to the collection index.
-            
+
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
@@ -269,7 +268,7 @@ class IndexCommand(BaseCommand):
 
         documents_file = self.collection_dir / 'lucene-documents' / video_id /  f'{video_id}-lucene-docs.jsonl.gz'
         lucene_index_dir = self.collection_dir / 'lucene-index'
-        
+
         if not force and lucene_index_dir.exists():
             print(f'Skipping indexing in Lucene, using existing index:', lucene_index_dir.name)
             return 0
@@ -281,7 +280,7 @@ class IndexCommand(BaseCommand):
         command = [
             # 'java', '-jar', 'lucene-index-builder.jar',  # this is already in the ENTRYPOINT
             '--save-every', '200',  # TODO currently not used
-        ] + (['--force'] if force else []) + [   
+        ] + (['--force'] if force else []) + [
             str(input_file),
             video_id,
             str(output_dir),

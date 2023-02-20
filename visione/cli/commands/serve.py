@@ -9,15 +9,15 @@ class ServeCommand(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super(ServeCommand, self).__init__(*args, **kwargs)
-    
+
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('serve', help='Start the VISIONE server')
         parser.add_argument('-p', '--port', type=int, help='port to which the server will listen')
         parser.set_defaults(func=self)
-    
+
     def __call__(self, *, config_file, port):
         super(ServeCommand, self).__call__(config_file)
-        
+
         # selects mandatory services needed to respond to queries
         profile_options = ['--profile', 'query']
 

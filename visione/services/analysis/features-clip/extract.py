@@ -54,7 +54,7 @@ def main(args):
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
         records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract features from a CLIP model')

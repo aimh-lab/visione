@@ -38,14 +38,14 @@ def load_model(path, iscuda):
 
 def chunk_image_list(image_list_path, tmp_list_path='/tmp/batch.txt', batch_size=1000):
     with open(image_list_path, 'r') as image_list:
-        
+
         for batch_list in more_itertools.batched(image_list, batch_size):
             ids_and_paths = map(lambda x: x.rstrip().split('\t'), batch_list)
             ids, paths = zip(*ids_and_paths)
 
             with open(tmp_list_path, 'w') as tmp_txt:
                 tmp_txt.write('\n'.join(paths))
-            
+
             yield ids, tmp_list_path
 
 
@@ -109,7 +109,7 @@ def main(args):
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
         records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract GeM features.')

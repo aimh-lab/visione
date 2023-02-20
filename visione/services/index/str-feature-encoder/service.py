@@ -18,13 +18,13 @@ loaded_encoders = {}
 def load_encoder(feature_type):
     if feature_type in loaded_encoders:
         return loaded_encoders[feature_type]
-    
+
     encoder = None
     encoder_path = f'/data/str-features-encoder-{feature_type}.pkl'
     if os.path.exists(encoder_path):
         encoder = surrogate.load_index(encoder_path)
         loaded_encoders[feature_type] = encoder
-    
+
     return encoder
 
 

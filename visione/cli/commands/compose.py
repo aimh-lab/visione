@@ -8,12 +8,12 @@ class ComposeCommand(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super(ComposeCommand, self).__init__(*args, **kwargs)
-    
+
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('compose', help='Execute compose commands inside the collection.')
         parser.add_argument('cmd', nargs='*', help='compose command to execute')
         parser.set_defaults(func=self)
-    
+
     def __call__(self, *, config_file, cmd):
         super(ComposeCommand, self).__call__(config_file)
 

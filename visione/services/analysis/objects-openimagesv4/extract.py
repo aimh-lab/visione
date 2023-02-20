@@ -82,7 +82,7 @@ def main(args):
     log.info(f'Loading detector: {detector_url}')
     detector = hub.KerasLayer(detector_url, signature='default', signature_outputs_as_dict=True)
     log.info(f'Loaded detector.')
-    
+
     with saver:
         # read image ids and paths
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
@@ -117,13 +117,13 @@ def main(args):
                 'height': det['image_height'],
                 # detection fields
                 'object_class_labels': det['detection_class_labels'],
-                'object_class_names': det['detection_class_entities'],  # fixes a swap in tensorflow model output 
+                'object_class_names': det['detection_class_entities'],  # fixes a swap in tensorflow model output
                 'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
                 'object_scores': det['detection_scores'],
                 'object_boxes_yxyx': det['detection_boxes'],
                 'detector': 'frcnn_incep_resnetv2_openimagesv4',
             } if det else None, ids_and_dets)
-        
+
         records = filter(lambda x: x is not None, records)
         records = tqdm(records, initial=initial, total=n_images)
         saver.add_many(records)

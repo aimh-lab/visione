@@ -23,7 +23,7 @@ class FaissWrapper():
 
         img_ids = [self.ids[i] for i in I]
         return img_ids, D
-    
+
     def get_internal_feature(self, img_id):
         faiss_internal_id = self.id_map[img_id]
         feat = self.index.reconstruct(faiss_internal_id)

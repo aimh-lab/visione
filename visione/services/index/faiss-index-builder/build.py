@@ -134,7 +134,7 @@ def add(args):
                 return index, idmap
 
             features = h5file['data'][:]
-        
+
         if args.force and positions:  # when forcing, remove existing entries for this video from the index
             idmap = [x for i, x in enumerate(idmap) if i not in positions]
             index.remove_ids(np.array(positions))
@@ -150,7 +150,7 @@ def add(args):
 
             batch_of_features = np.stack(batch_of_features)
             index.add(batch_of_features)
-        
+
         return index, idmap
 
     for video_features_file in args.video_features_files:
@@ -175,7 +175,7 @@ def remove(args):
     index = faiss.read_index(str(args.index_file))
     with open(args.idmap_file, 'r') as lines:
         idmap = list(map(str.rstrip, lines))
-    
+
     for video_id in tqdm(args.video_ids, desc='Removing from FAISS'):
         regexp = re.compile(re.escape(video_id) + r'-\d+')
         positions = [i for i, _id in enumerate(idmap) if regexp.match(_id)]
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument('idmap_file', type=Path, help='path to the id mapping file')
 
     subparsers = parser.add_subparsers(help='command')
-    
+
     create_parser = subparsers.add_parser('create', help='Creates a new FAISS index from scratch')
     create_parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     create_parser.add_argument('--batch-size', type=int, default=50_000, help='add batch size')
@@ -220,6 +220,6 @@ if __name__ == "__main__":
     rm_parser = subparsers.add_parser('remove', help='Remove a video from an existing FAISS index.')
     rm_parser.add_argument('video_ids', type=Path, help='ID(s) of video(s) to be removed')
     rm_parser.set_defaults(func=remove)
-    
+
     args = parser.parse_args()
     args.func(args)

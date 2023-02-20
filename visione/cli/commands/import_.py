@@ -126,7 +126,7 @@ class ImportCommand(BaseCommand):
             '-print_format', 'json', '-show_format',
             '/input_file'
         ]
-        
+
         ret = subprocess.run(command, stdout=subprocess.PIPE, check=True).stdout
         duration_s = float(json.loads(ret).get('format').get('duration', 0))
 
@@ -155,7 +155,7 @@ class ImportCommand(BaseCommand):
 
         with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
             tqdm(desc='Resizing video', total=duration_s, unit='s') as progress:
-            
+
             # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
             for line in ffmpeg.stdout:
                 if line.startswith('out_time_us'):
@@ -227,7 +227,7 @@ class ImportCommand(BaseCommand):
         if not force and [i.stem for i in selected_frames_list] == [i.stem for i in thumbnails_list]:
             print('Skipping thumbnail generation, using existing files ...')
             return 0
-        
+
         n_frames = len(selected_frames_list)
         n_digits = len(selected_frames_list[0].stem.split('-')[-1])
 
@@ -245,7 +245,7 @@ class ImportCommand(BaseCommand):
 
         with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
             tqdm(desc='Generating thumbs', total=n_frames, unit='s') as progress:
-            
+
             # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
             for line in ffmpeg.stdout:
                 if line.startswith('frame'):

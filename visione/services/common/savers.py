@@ -99,7 +99,7 @@ class HDF5File(Saver):
     def add(self, record):
         _id = record['_id']
         if _id in self:
-            return            
+            return
 
         new_index = len(self._ids)
         self._ids[_id] = new_index
