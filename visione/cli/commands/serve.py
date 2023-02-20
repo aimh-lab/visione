@@ -12,7 +12,7 @@ class ServeCommand(BaseCommand):
 
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('serve', help='Start the VISIONE server')
-        parser.add_argument('-p', '--port', type=int, help='port to which the server will listen')
+        parser.add_argument('-p', '--port', type=int, default=8000, help='port to which the server will listen')
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, port):
