@@ -1,0 +1,246 @@
+#
+# \ \     /_)       _)
+#  \ \   /  |   __|  |   _ \   __ \    _ \
+#   \ \ /   | \__ \  |  (   |  |   |   __/
+#    \_/   _| ____/ _| \___/  _|  _| \___|  Configuration File
+#
+
+main:
+  server_name: localhost  # Server name to which this instance will respond. (deprecated)
+  port: 8000              # Port to which this instance will respond.
+
+  username: admin         # Access credentials.
+  password: visione
+
+static_files_urls:
+  videos_url:         null  # URL to which 'videos/...' requests will be redirected. Set to 'null' for serving them locally.
+  resized_videos_url: null  # URL to which 'videos/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
+  frames_url:         null  # URL to which 'frames/...' requests will be redirected. Set to 'null' for serving them locally.
+  resized_frames_url: null  # URL to which 'frames/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
+
+# deprecated
+services_urls:
+  gem_url:                        null
+  aladin_url:                     http://visione-dev.isti.cnr.it:5020/get-text-feature  # URL to which
+  clip_url:                       http://visione-dev.isti.cnr.it:5010/text-to-image-search  # URL to which
+  clip_internal_search_url:       http://visione-dev.isti.cnr.it:5010/internal-image-search  # URL to which
+  clip_laion_url:                 null  # URL to which
+  clip_laion_internal_search_url: null  # URL to which
+
+analysis:
+  # List of object detectors to employ.
+  object_detectors:
+    # - frcnn_incep_resnetv2_openimagesv4
+    - mask_rcnn_lvis
+    - vfnet_X-101-64x4d
+    - colors
+
+  # List of feature vector extractors to employ
+  features:
+    - gem
+    - clip-openai
+    - clip-laion
+
+  frame-cluster:
+    feature: gem  # Which feature vector to employ in frames clustering.
+
+index:
+  # Object-specific indexing parameters
+  objects:
+
+    # Labels to exclude. Labels specified in 'all' are excluded post-label-mapping.
+    # You can specify detector-specific exclusion lists that will be applied pre-label-mapping.
+    exclude_labels:
+      all: []
+
+    # Per-detector label mapping.
+    label_map:
+      frcnn_incep_resnetv2_openimagesv4:
+        accordion: accordion_(musical_instrument)
+        band-aid: band_aid
+        banjo: banjo_(musical_instrument)
+        barge: barge_(boat)
+        bat: bat_(animal)
+        billiard_table: pool_table
+        blender: blender_(kitchenware)
+        blue_jay: blue_jay_(bird)
+        cabinetry: cabinet
+        canary: canary_(bird)
+        cantaloupe: cantaloupe_(melon)
+        cello: cello_(musical_instrument)
+        chest_of_drawers: dresser
+        chicken: chicken_(animal)
+        chime: chime_(musical_instrument)
+        coffeemaker: coffee_maker
+        common_fig: fig_(fruit)
+        computer_mouse: mouse_(computer_equipment)
+        crab: crab_(animal)
+        cutting_board: cutting_board_(kitchenware)
+        drum: drum_(musical_instrument)
+        eagle: eagle_(bird)
+        falcon: falcon_(bird)
+        fedora: fedora_(hat)
+        filing_cabinet: file_cabinet
+        flute: flute_(musical_instrument)
+        flying_disc: frisbee
+        golf_cart: golfcart
+        gondola: gondola_(boat)
+        guitar: guitar_(musical_instrument)
+        harmonica: harmonica_(musical_instrument)
+        harp: harp_(musical_instrument)
+        horn: horn_(musical_instrument)
+        infant_bed: crib
+        jet_ski: water_scooter
+        laptop: laptop_computer
+        lifejacket: life_jacket
+        magpie: magpie_(bird)
+        maracas: maracas_(musical_instrument)
+        mechanical_fan: fan
+        mixer: mixer_(kitchenware)
+        mobile_phone: cell_phone
+        musical_keyboard: musical_keyboard_(musical_instrument)
+        oboe: oboe_(musical_instrument)
+        organ: organ_(musical_instrument)
+        owl: owl_(bird)
+        parrot: parrot_(bird)
+        shorts: short_pants
+        sparrow: sparrow_(bird)
+        squash: squash_(vegetable)
+        suit: suit_(clothing)
+        swimwear: swimsuit
+        tap: faucet
+        tin_can: can
+        trombone: trombone_(musical_instrument)
+        trumpet: trumpet_(musical_instrument)
+        vehicle_registration_plate: license_plate
+        violin: violin_(musical_instrument)
+        wood-burning_stove: woodburning_stove
+        woodpecker: woodpecker_(bird)
+      mask_rcnn_lvis:
+        automatic_washer: washing_machine
+        ax: axe
+        bagpipe: bagpipe_(musical_instrument)
+        banjo: banjo_(musical_instrument)
+        barge: barge_(boat)
+        bass_horn: bass_horn_(musical_instrument)
+        beanie: beanie_(hat)
+        beret: beret_(hat)
+        blender: blender_(kitchenware)
+        bow-tie: bow_tie
+        bow_(weapon): bow_and_arrow
+        bread-bin: bread_bin
+        bus_(vehicle): bus
+        cab_(taxi): taxi
+        cantaloup: cantaloupe_(melon)
+        cap_(headwear): cap_(hat)
+        car_(automobile): car
+        cellular_telephone: cell_phone
+        chime: chime_(musical_instrument)
+        chopping_board: cutting_board_(kitchenware)
+        chopstick: chopsticks
+        clarinet: clarinet_(musical_instrument)
+        convertible_(automobile): convertible_(car)
+        cooking_utensil: kitchen_utensil
+        cornet: trumpet_(musical_instrument)
+        crescent_roll: croissant
+        crow: crow_(bird)
+        cymbal: cymbal_(musical_instrument)
+        die: dice
+        doorknob: door_handle
+        eagle: eagle_(bird)
+        earring: earrings
+        escargot: snail
+        falcon: falcon_(bird)
+        fedora: fedora_(hat)
+        fireplug: fire_hydrant
+        first-aid_kit: first_aid_kit
+        flip-flop_(sandal): flip_flop_(sandal)
+        football_(american): football
+        fruit_juice: juice
+        giant_panda: panda
+        guitar: guitar_(musical_instrument)
+        harmonium: organ_(musical_instrument)
+        headset: headphones
+        heron: heron_(bird)
+        hog: pig
+        hot-air_balloon: hot_air_balloon
+        icecream: ice_cream
+        jean: jeans
+        kitchen_table: kitchen_&_dining_room_table
+        lamb-chop: lamb_chop
+        lightbulb: light_bulb
+        measuring_stick: ruler
+        mixer_(kitchen_tool): mixer_(kitchenware)
+        necktie: tie
+        orange_(fruit): orange
+        owl: owl_(bird)
+        parrot: parrot_(bird)
+        pencil_box: pencil_case
+        piano: piano_(musical_instrument)
+        pigeon: pigeon_(bird)
+        ping-pong_ball: ping_pong_ball
+        pistol: handgun
+        prawn: shrimp
+        pug-dog: pug_dog
+        roller_skate: roller_skates
+        saltshaker: salt_and_pepper_shakers
+        saxophone: saxophone_(musical_instrument)
+        shower_head: shower
+        sofa: couch
+        spectacles: glasses
+        squid_(food): squid
+        stapler_(stapling_machine): stapler
+        straw_(for_drinking): drinking_straw
+        streetlight: street_light
+        sunhat: sun_hat
+        table-tennis_table: table_tennis_table
+        tambourine: tambourine_(musical_instrument)
+        television_set: television
+        toilet_tissue: toilet_paper
+        train_(railroad_vehicle): train
+        violin: violin_(musical_instrument)
+        vulture: vulture_(bird)
+        wall_socket: power_plugs_and_wall_sockets
+        whistle: whistle_(musical_instrument)
+        wineglass: wine_glass
+      vfnet_X-101-64x4d:
+        donut: doughnut
+        hair_drier: hair_dryer
+        keyboard: computer_keyboard
+        laptop: laptop_computer
+        microwave: microwave_oven
+        mouse: mouse_(computer_equipment)
+        potted_plant: flowerpot
+        remote: remote_control
+        skis: ski
+        sports_ball: ball
+        tv: television
+
+    # Exclude detections having a normalized area smaller than this value.
+    min_area: 0.001
+
+    # Exclude detections having a score smaller than this value.
+    threshold:
+      monochrome: 0.01
+      colors: 0.1
+      fish_detector: 0.75
+      frcnn_incep_resnetv2_openimagesv4: 0.6
+      mask_rcnn_lvis: 0.5
+      vfnet_X-101-64x4d: 0.5
+
+  # Feature-specific indexing parameters
+  features:
+    gem:
+      index_engine: str
+      index_type: topk-sq
+      index_params:
+        keep: 0.5
+        dim_multiplier: 2
+
+    clip-openai:
+      index_engine: faiss
+      index_type: Flat
+
+    clip-laion:
+      index_engine: faiss
+      index_type: Flat

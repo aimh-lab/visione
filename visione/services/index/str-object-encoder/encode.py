@@ -12,17 +12,12 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
+from visione import load_config
 from visione.savers import GzipJsonlFile
 
 
 def count_objects(record):
     return collections.Counter(o['label'] for o in record['objects'])
-
-
-# TODO factorize across services
-def load_config_file(config_file_path):
-    with open(config_file_path, 'r') as f:
-        return json.load(f)
 
 
 def load_hypersets(hyperset_file):
@@ -49,17 +44,17 @@ def process_single_detector_record(record, config):
     objects = ({'label': l, 'score': s, 'box_yxyx': b} for l, s, b in zip(labels, scores, boxes))
 
     # filter by score
-    threshold = config['str-object-encoder']['threshold'][detector]
+    threshold = config.get('threshold', {}).get(detector, 0)
     objects = filter(lambda x: x['score'] >= threshold, objects)
 
     # filter by normalized area
     def _get_area(y0, x0, y1, x1):
         return (y1 - y0) * (x1 - x0)
-    min_area = config['str-object-encoder']['minArea']
+    min_area = config.get('min_area', 0)
     objects = filter(lambda x: _get_area(*x['box_yxyx']) >= min_area, objects)
 
     # exclude labels (pre label mapping)
-    exclude_labels = config['str-object-encoder']['excludeLabels'].get(detector, [])
+    exclude_labels = config.get('exclude_labels', {}).get(detector, [])
     objects = filter(lambda x: x['label'] not in exclude_labels, objects)
 
     # add detector and detector_label fields, uniform labels
@@ -71,11 +66,11 @@ def process_single_detector_record(record, config):
     }, objects)
 
     # applies label mapping
-    mapping = config['str-object-encoder']['labelMap'].get(detector, {})
+    mapping = config.get('label_map', {}).get(detector, {})
     objects = map(lambda x: {**x, 'label': mapping.get(x['label'], x['label'])}, objects)
 
     # exclude labels (post label mapping)
-    exclude_labels = config['str-object-encoder']['excludeLabels']['all']
+    exclude_labels = config.get('exclude_labels', {}).get('all', [])
     objects = filter(lambda x: x['label'] not in exclude_labels, objects)
 
     # materialize object list
@@ -313,7 +308,7 @@ def process_merged_record(record, config, hypersets):
     object_counts = count_objects(record)
 
     # build STR encoding
-    thresholds = config['str-object-encoder']['threshold']
+    thresholds = config.get('threshold', {})
     record = str_encode(record, thresholds=thresholds)
 
     record['object_info_before_nms'] = object_info
@@ -324,7 +319,7 @@ def process_merged_record(record, config, hypersets):
 
 def main(args):
     # load config
-    config = load_config_file(args.config_file)
+    config = load_config(args.config_file)['index']['objects']
     hypersets = load_hypersets(args.hypersets)
 
     # apply per-detector processing (score/area/label filtering, label mapping)
@@ -354,7 +349,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Surrogate Text Encoding of Object/Color Detection')
 
-    parser.add_argument('--config-file', default='/data/index-config.json', help='path to indexing configuration json file')
+    parser.add_argument('--config-file', default='/data/config.yaml', help='path to yaml configuration file')
     parser.add_argument('--hypersets', default='/data/hypersets.csv', help='path to csv file with hypersets')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')

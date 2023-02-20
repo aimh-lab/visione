@@ -1,6 +1,3 @@
-import importlib.resources
-from pathlib import Path
-import shutil
 import subprocess
 
 from .command import BaseCommand
@@ -17,7 +14,9 @@ class BuildCommand(BaseCommand):
         parser.add_argument('services', nargs='*', help='services to (re)build (defaults to all)')
         parser.set_defaults(func=self)
     
-    def __call__(self, *, services):
+    def __call__(self, *, config_file, services):
+        super(BuildCommand, self).__call__(config_file)
+
         command = self.compose_cmd + ['build'] + services
-        ret = subprocess.check_call(command, env=self.visione_env)
+        ret = subprocess.check_call(command, env=self.compose_env)
         return ret

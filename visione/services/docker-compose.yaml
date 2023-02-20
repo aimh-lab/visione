@@ -2,7 +2,17 @@ services:
   router:
     image: nginx:1.23.2
     ports: ["${VISIONE_PORT}:80"]
-    env_file: ["${VISIONE_ROOT}/config.env"]
+    environment:
+      - VISIONE_VIDEOS_URL
+      - VISIONE_RESIZED_VIDEOS_URL
+      - VISIONE_FRAMES_URL
+      - VISIONE_RESIZED_FRAMES_URL
+      - VISIONE_GEM_URL
+      - VISIONE_ALADIN_URL
+      - VISIONE_CLIP_URL
+      - VISIONE_CLIP_INTERNAL_SEARCH_URL
+      - VISIONE_CLIP_LAION_URL
+      - VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL
     volumes:
       - ./router:/etc/nginx/templates/
       - ./web-ui:/usr/share/nginx/html:ro

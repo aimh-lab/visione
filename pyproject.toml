@@ -24,6 +24,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+dynamic = ["dependencies"]
+
 [project.urls]
 "Homepage" = "https://github.com/aimh-lab/visione"
 "Bug Tracker" = "https://github.com/aimh-lab/visione/issues"
@@ -37,5 +39,8 @@ packages = [
   "visione.services",
   "visione.skel",
 ]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools_scm]

@@ -15,6 +15,7 @@ def main():
     cache_dir = Path(cache_dir, 'visione')
 
     parser = argparse.ArgumentParser(description='Manage VISIONE instances')
+    parser.add_argument('--config-file', type=Path, help="path to YAML config file to use. It must be inside the collection directory. Defaults to 'config.yaml' in the collection directory.")
     subparsers = parser.add_subparsers(help='command')
 
     for command in commands.available_commands:

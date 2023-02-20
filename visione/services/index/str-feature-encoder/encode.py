@@ -11,6 +11,7 @@ import more_itertools
 import surrogate
 from tqdm import tqdm
 
+from visione import load_config
 from visione.savers import GzipJsonlFile
 
 
@@ -27,25 +28,17 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-# TODO factorize across services
-def load_config_file(config_file_path):
-    with open(config_file_path, 'r') as f:
-        return json.load(f)
-
-
-def load_or_build_encoder(encoder_filename, train_features, force):
+def load_or_build_encoder(encoder_filename, encoder_config, train_features, force):
 
     # instantiate STR encoder if not existing
     if not encoder_filename.exists() or force:
         # get encoder params
-        config = load_config_file(args.config_file)
-        config = config.get('str-feature-encoder', {})
 
         default_index_type = 'topk-sq'
         default_index_params = dict(keep=0.25, dim_multiplier=3)
 
-        index_type = config.get('index_type', default_index_type)
-        index_params = config.get('index_params', default_index_params)
+        index_type = encoder_config.get('index_type', default_index_type)
+        index_params = encoder_config.get('index_params', default_index_params)
 
         # init the encoder
         index_string = ', '.join(f'{k}={v}' for k, v in index_params.items())
@@ -81,8 +74,10 @@ def main(args):
     with h5py.File(args.features_input_file, 'r') as f:
         ids = f['ids'].asstr()[:]
         features = f['data'][:]
+        features_name = f['data'].attrs['features_name']
 
-    encoder = load_or_build_encoder(args.features_encoder_file, features, args.force_encoder)
+    encoder_config = load_config(args.config_file)['index']['features'][features_name]
+    encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features, args.force_encoder)
 
     n_images = len(ids)
     initial = 0
@@ -120,7 +115,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Surrogate Text Encoding of Feature Vectors')
 
-    parser.add_argument('--config-file', default='/data/index-config.json', help='path to indexing configuration json file')
+    parser.add_argument('--config-file', default='/data/config.yaml', help='path to yaml configuration file')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     parser.add_argument('--force-encoder', default=False, action='store_true', help='overwrite existing trained encoder')

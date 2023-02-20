@@ -25,7 +25,10 @@ class IndexCommand(BaseCommand):
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace):
+    def __call__(self, *, config_file, video_ids, replace):
+        super(IndexCommand, self).__call__(config_file)
+
+        index_config = self.config.get('index', {})
         
         if len(video_ids) == 0:
             thumb_dir = self.collection_dir / 'selected-frames'
@@ -33,16 +36,20 @@ class IndexCommand(BaseCommand):
 
         for video_id in tqdm(video_ids, desc="Indexing"):
             # generate surrogate text representation of objects & colors
-            self.str_encode_objects(video_id, force=replace)
+            str_objects = index_config.get('objects', {})
+            if str_objects:
+                self.str_encode_objects(video_id, force=replace)
 
             # generate surrogate text representation of features
-            self.str_encode_features(video_id, 'clip-laion-CLIP-ViT-H-14-laion2B-s32B-b79K', force=replace)
-            self.str_encode_features(video_id, 'clip-openai-clip-vit-large-patch14', force=replace)
-            self.str_encode_features(video_id, 'gem', force=replace)
+            indexed_features = index_config.get('features', {})
+            str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
+            for features_name in str_features:
+                self.str_encode_features(video_id, features_name, force=replace)
 
-            # push to index
-            self.prepare_lucene_doc(video_id, force=replace)
-            self.add_to_lucene_index(video_id, force=replace)
+            # push to Lucene index
+            if str_objects or str_features:
+                self.prepare_lucene_doc(video_id, force=replace)
+                self.add_to_lucene_index(video_id, force=replace)
 
     def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
@@ -76,10 +83,12 @@ class IndexCommand(BaseCommand):
 
         str_output_file = '/data' / str_objects_file.relative_to(self.collection_dir)
         count_output_file = '/data' / count_objects_file.relative_to(self.collection_dir)
+        config_file = '/data' / self.config_file.relative_to(self.collection_dir)
 
         service = 'str-object-encoder'
         command = [
             'python', 'encode.py',
+            '--config-file', str(config_file),
             '--save-every', '200',
         ] + (['--force'] if force else []) + [   
             str(str_output_file),
@@ -115,10 +124,12 @@ class IndexCommand(BaseCommand):
         input_file = '/data' / input_file.relative_to(self.collection_dir)
         str_encoder_file = '/data' / str_encoder_file.relative_to(self.collection_dir)
         str_output_file = '/data' / str_features_file.relative_to(self.collection_dir)
+        config_file = '/data' / self.config_file.relative_to(self.collection_dir)
 
         service = 'str-feature-encoder'
         command = [
             'python', 'encode.py',
+            '--config-file', str(config_file),
             '--save-every', '200',
         ] + (['--force'] if force else []) + [
             str(input_file),

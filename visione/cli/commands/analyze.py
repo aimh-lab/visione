@@ -15,23 +15,45 @@ class AnalyzeCommand(BaseCommand):
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing analyses.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace):
+    def __call__(self, *, config_file, video_ids, replace):
+        super(AnalyzeCommand, self).__call__(config_file)
+
+        analysis_config = self.config.get('analysis', {})
 
         if len(video_ids) == 0:
             thumb_dir = self.collection_dir / 'selected-frames'
             video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
 
         for video_id in tqdm(video_ids, desc="Analyzing"):
-            self.extract_gem_features(video_id, force=replace)
-            self.extract_clip_features(video_id, 'laion/CLIP-ViT-H-14-laion2B-s32B-b79K', dimensions=1024, force=replace)
-            self.extract_clip_features(video_id, 'openai/clip-vit-large-patch14', dimensions=768, force=replace)
-            self.extract_color_map(video_id, force=replace)
+            # Objects & Colors Detection
+            active_object_detectors = analysis_config.get('object_detectors', [])
+            if 'colors' in active_object_detectors:
+                self.extract_color_map(video_id, force=replace)
 
-            self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
-            self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
-            self.detect_objects_oiv4(video_id, force=replace)
+            if 'vfnet_X-101-64x4d' in active_object_detectors:
+                self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
+            
+            if 'mask_rcnn_lvis' in active_object_detectors:
+                self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
+            
+            if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
+                self.detect_objects_oiv4(video_id, force=replace)
 
-            self.cluster_frames(video_id, force=replace)
+            # Feature vector extraction
+            active_feature_extractors = analysis_config.get('features', [])
+            if 'gem' in active_feature_extractors:
+                self.extract_gem_features(video_id, force=replace)
+
+            if 'clip-laion' in active_feature_extractors:
+                self.extract_clip_features(video_id, 'clip-laion', dimensions=1024, force=replace)
+            
+            if 'clip-openai' in active_feature_extractors:
+                self.extract_clip_features(video_id, 'clip-openai', dimensions=768, force=replace)
+            
+            # Frame clustering
+            clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
+            if clustering_features:
+                self.cluster_frames(video_id, features=clustering_features, force=replace)
 
     def extract_gem_features(self, video_id, force=False):
         """ Extracts GeM features from selected keyframes of a video for instance retrieval.
