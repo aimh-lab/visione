@@ -21,5 +21,8 @@ RUN apt update && apt install -y unzip && rm -rf /var/lib/apt/lists/*
 RUN mv Resnet-101-AP-GeM.pt Resnet-101-AP-GeM.pt.zip && unzip Resnet-101-AP-GeM.pt.zip Resnet-101-AP-GeM.pt && rm Resnet-101-AP-GeM.pt.zip
 
 COPY extract.py .
+COPY service.py .
 
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
+
+CMD ["python", "-u", "service.py"]
