@@ -1,8 +1,8 @@
-faiss-cpu
 flask
 h5py
 more_itertools
 Pillow
 prefetch_generator
+pyyaml
 transformers
 tqdm

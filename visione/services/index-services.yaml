@@ -16,6 +16,7 @@ services:
     <<: *common
     build: ./index/lucene-index-builder
   
-  faiss-index-builder:
+  faiss-index-manager:
     <<: *common
-    build: ./index/faiss-index-builder
+    build: ./index/faiss-index-manager
+    profiles: ["index", "query"]

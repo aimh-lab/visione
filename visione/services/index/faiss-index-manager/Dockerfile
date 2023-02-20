@@ -7,3 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
 COPY . .
+
+CMD ["python", "-u", "service.py"]
