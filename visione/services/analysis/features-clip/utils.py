@@ -15,6 +15,12 @@ class FaissWrapper():
         D, I = self.index.search(feat, k)
         I = I[0]
         D = D[0]
+
+        # filter out non-retrieved results
+        valid = I >= 0
+        I = I[valid]
+        D = D[valid]
+
         img_ids = [self.ids[i] for i in I]
         return img_ids, D
     
