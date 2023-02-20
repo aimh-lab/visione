@@ -86,7 +86,7 @@ public class FeatureExtractor {
 	public static String url2FeaturesUrl(String imgUrl) throws IOException, ParseException {
 		String features = null;
 			try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
-				final HttpGet httpget = new HttpGet(Settings.RMAC_SERVICE + "&url=" + imgUrl);
+				final HttpGet httpget = new HttpGet(Settings.RMAC_SERVICE + "?url=" + imgUrl);
 
 				try (final CloseableHttpResponse response = httpclient.execute(httpget)) {
 					final HttpEntity resEntity = response.getEntity();

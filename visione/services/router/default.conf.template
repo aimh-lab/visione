@@ -14,6 +14,7 @@ server {
 
 	### Services Routing
 
+	location ^~ /gem                          { proxy_pass ${VISIONE_GEM_URL}; }
 	# location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
 	# location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
 	# location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
@@ -39,6 +40,7 @@ server {
 	location ^~ /frames       { alias /data/selected-frames/; }
 	location ^~ /frames/tiny  { alias /data/thumbnails/; }
 
+	location ^~ /gem                        { proxy_pass http://features-gem:5090; }
 	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
 	location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
 	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
