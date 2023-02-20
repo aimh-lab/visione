@@ -22,8 +22,8 @@ static_files_urls:
 services_urls:
   gem_url:                        null
   aladin_url:                     http://visione-dev.isti.cnr.it:5020/get-text-feature
-  clip_url:                       http://visione-dev.isti.cnr.it:5010/text-to-image-search
-  clip_internal_search_url:       http://visione-dev.isti.cnr.it:5010/internal-image-search
+  clip_url:                       null
+  clip_internal_search_url:       null
   clip_laion_url:                 null
   clip_laion_internal_search_url: null
 
