@@ -51,6 +51,10 @@ class IndexCommand(BaseCommand):
                 self.prepare_lucene_doc(video_id, force=replace)
                 self.add_to_lucene_index(video_id, force=replace)
 
+            faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
+            for features_name in faiss_features:
+                self.add_to_faiss_index(video_id, features_name, force=True)
+
     def str_encode_objects(self, video_id, force=False):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
 
@@ -281,6 +285,45 @@ class IndexCommand(BaseCommand):
             str(input_file),
             video_id,
             str(output_dir),
+        ]
+
+        return self.compose_run(service, command)
+
+    def add_to_faiss_index(self, video_id, features_name, force=False):
+        """ Adds the analyzed frames of a video to the FAISS index dedicated to the given type of features.
+
+        Args:
+            video_id (str): Input Video ID.
+            features_name (str): Name of the features to index. This will be used to select the index for these features.
+            force (str, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
+
+        Returns:
+            # TODO
+        """
+
+        faiss_index_file = self.collection_dir / f'faiss-index_{features_name}.faiss'
+        faiss_idmap_file = self.collection_dir / f'faiss-idmap_{features_name}.txt'
+
+        if not force and faiss_index_file.exists() and faiss_idmap_file.exists():
+            print(f'Skipping indexing in FAISS, using existing index:', faiss_index_file.name, faiss_idmap_file.name)
+            return 0
+
+        features_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
+
+        faiss_index_file = '/data' / faiss_index_file.relative_to(self.collection_dir)
+        faiss_idmap_file = '/data' / faiss_idmap_file.relative_to(self.collection_dir)
+        features_file = '/data' / features_file.relative_to(self.collection_dir)
+        config_file = '/data' / self.config_file.relative_to(self.collection_dir)
+
+        service = 'faiss-index-builder'
+        command = [
+            'python', 'build.py',
+            '--config-file', str(config_file),
+            str(faiss_index_file),
+            str(faiss_idmap_file),
+            'add'
+        ] + (['--force'] if force else []) + [
+            str(features_file),
         ]
 
         return self.compose_run(service, command)

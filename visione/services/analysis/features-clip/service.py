@@ -1,6 +1,7 @@
 import argparse
 import functools
 import logging
+import os
 from pathlib import Path
 
 import faiss
@@ -46,7 +47,6 @@ def internal_image_search():
 
     # FIXME for IVF indices, we need to add a DirectMap (see https://github.com/facebookresearch/faiss/blob/a17a631dc326b3b394f4e9fb63d0a7af475534dc/tests/test_index.py#L585)
     # FIXME for non-Flat indice, reconstruction is lossy (may be good enough still)
-    faiss_internal_id = index.id_map[img_id]
     feat = index.get_internal_feature(img_id)
     if args.normalized:
         faiss.normalize_L2(feat)
@@ -59,99 +59,40 @@ def internal_image_search():
     return out
 
 
-def load_features(hdf5_files, progress=False):
-    pbar = tqdm(total=0, disable=not progress)
+def load_faiss_index(args):
+    logging.info('Loading index ...')
 
-    for hdf5_file in hdf5_files:
-        with h5py.File(hdf5_file, 'r') as h5file:
-            ids = h5file['ids'].asstr()[:]
-            features = h5file['data'][:]
-
-            pbar.total += len(features)
-            for item in zip(ids, features):
-                pbar.update()
-                yield item
-
-
-def build_faiss_index(args):
-    
-    if not args.force and args.index_file.exists() and args.idmap_file.exists():
-        logging.info('Loading index ...')
-        index = faiss.read_index(str(args.index_file))
-        with open(args.idmap_file, 'r') as lines:
-            ids = tuple(map(str.rstrip, lines))
-        logging.info('Index loaded from disk.')
-        index = FaissWrapper(index, ids)
-        return index
-
-    features_files = args.features_dir.glob('*/*.hdf5')
-    features_files = sorted(features_files)
-    ids_and_features = load_features(features_files, progress=True)
-
-    # peek features to get dimensionality (unpacking is a bit wild..)
-    ((_, sample_feature),), ids_and_features = more_itertools.spy(ids_and_features)
-    dim = sample_feature.shape[0]
-
-    # create index
-    logging.info(f'Creating index: {args.index_type} dim={dim} ...')
-    metric = faiss.METRIC_INNER_PRODUCT
-    index = faiss.index_factory(dim, args.index_type, metric)
-
-    # add elements to index in batches
-    ids = []
-    batches_of_ids_and_features = more_itertools.batched(ids_and_features, args.batch_size)
-    with open(args.idmap_file, 'w') as idmap_file:
-        for batch_of_ids_and_features in batches_of_ids_and_features:
-            batch_of_ids, batch_of_features = zip(*batch_of_ids_and_features)
-            batch_of_features = np.stack(batch_of_features)
-            
-            ids += batch_of_ids
-            idmap_file.write('\n'.join(batch_of_ids))
-            idmap_file.write('\n')
-
-            if not index.is_trained:
-                logging.info('Training index ...')
-                index.train(batch_of_features)
-                logging.info('Index trained.')
-            
-            index.add(batch_of_features)
-    logging.info('Index created.')
-
-    logging.info('Saving index ...')
-    faiss.write_index(index, str(args.index_file))
-    logging.info('Index saved.')
+    index = faiss.read_index(str(args.index_file))
+    with open(args.idmap_file, 'r') as lines:
+        ids = tuple(map(str.rstrip, lines))
 
     index = FaissWrapper(index, ids)
+    logging.info('Index loaded from disk.')
+
     return index
 
 
 if __name__ == '__main__':
+    default_model_handle = os.environ['MODEL_HANDLE']
+    features_name = os.environ['FEATURES_NAME']
+
+    default_index_file = Path(f'/data/faiss-index_{features_name}.faiss')
+    default_idmap_file = Path(f'/data/faiss-idmap_{features_name}.txt')
+
     parser = argparse.ArgumentParser(description='Create a webservice for CLIP model for t2i and i2i searches.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
     parser.add_argument('--port', default='5030', help="Port to use for binding")
-    parser.add_argument('--model-handle', default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K', help='hugging face handle of the CLIP model')
+    parser.add_argument('--model-handle', default=default_model_handle, help='hugging face handle of the CLIP model')
     parser.add_argument('--no-normalized', action='store_false', dest='normalized', default=True, help='Wether to normalize features or not')
 
-    parser.add_argument('--index-type', type=str, default='Flat', help='Which type of index we use')
-    parser.add_argument('--force', action='store_true', help='Disable index caching and force index creation.')
-    parser.add_argument('--batch-size', type=int, default=50_000, help='index this amount of features at a time. If index needs training, it will be trained on the first batch of features')
-
-    parser.add_argument('--features-dir', type=Path, help='path to analysis directory containing features h5df files')
-    parser.add_argument('--index_file', type=Path, help='where the faiss index will be saved on disk')
-    parser.add_argument('--idmap_file', type=Path, help='path to id mapping for the faiss index')
+    parser.add_argument('--index-file', type=Path, default=default_index_file, help='where the faiss index will be saved on disk')
+    parser.add_argument('--idmap-file', type=Path, default=default_idmap_file, help='path to id mapping for the faiss index')
 
     args = parser.parse_args()
 
-    normalized_handle = args.model_handle.replace('/', '-')
-    args.features_dir = args.features_dir or Path(f'/data/clip-{normalized_handle}')
-    args.index_file = args.index_file or Path(f'/data/faiss-index-{normalized_handle}.faiss')
-    args.idmap_file = args.idmap_file or Path(f'/data/faiss-idmap-{normalized_handle}.txt')
-
-    assert args.features_dir.exists() or (args.index_file.exists() and args.idmap_file.exists()), "No features or trained index found, cannot create or load an index."
-
     # build the index
-    index = build_faiss_index(args)
+    index = load_faiss_index(args)
 
     # init the query encoder
     qe = CLIPTextEncoder(args.model_handle)
