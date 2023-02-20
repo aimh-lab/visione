@@ -29,7 +29,7 @@ class ImportCommand(BaseCommand):
         # TODO handle (video_path_or_url == None) case
 
         # import video file
-        video_id, video_path = self.copy_or_download_video_from_url(video_path_or_url, video_id, replace)
+        video_id, video_path = self.copy_or_download_video(video_path_or_url, video_id, replace)
 
         # create resized video files
         # TODO run this in background
@@ -41,7 +41,7 @@ class ImportCommand(BaseCommand):
         # create frames thumbnails
         self.create_frames_thumbnails(video_id, replace)
 
-    def copy_or_download_video_from_url(self, video_path_or_url, video_id=None, replace=False):
+    def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
 
@@ -54,18 +54,10 @@ class ImportCommand(BaseCommand):
             video_id (str): The given video ID (useful if video_id was None).
             video_path (pathlib.Path): Path to the copied video.
         """
-        try:  # try network URL
-            video_file = urllib.request.urlopen(video_path_or_url)
-            length = int(video_file.getheader('content-length', 0))
 
-            video_filename = urllib.parse.urlparse(video_path_or_url).path
-            video_filename = Path(video_filename)
-
-        except ValueError:  # try local path
-            video_file = open(video_path_or_url, 'rb')
-            length = os.path.getsize(video_path_or_url)
-
-            video_filename = Path(video_path_or_url)
+        # get the URL path to extract the video filename and extension
+        url_parts = urllib.parse.urlparse(video_path_or_url)
+        video_filename = Path(url_parts.path)
 
         video_id = str(video_filename.stem) if not video_id else video_id
         video_ext = str(video_filename.suffix)
@@ -76,21 +68,25 @@ class ImportCommand(BaseCommand):
             video_file.close()
             return video_id, video_out
 
+        video_url = video_path_or_url
+        if not url_parts.scheme:  # convert local path to file:// URI
+            video_url = Path(video_path_or_url).resolve().as_uri()
+
         print(f'Importing: {video_id} -> {video_out.name}')
-        with open(video_out, 'wb') as out_file, tqdm(
+
+        progress = tqdm(
             desc=f'Copying video',
-            total=length,
             unit='iB',
             unit_scale=True,
             unit_divisor=1024,
-        ) as progress:
-            data = video_file.read(1024)
-            while data:
-                size = out_file.write(data)
-                progress.update(size)
-                data = video_file.read(1024)
+        )
 
-        video_file.close()
+        def show_progress(block_num, block_size, total_size):
+            progress.total = total_size
+            progress.update(block_size)
+
+        # use urlretrieve
+        urllib.request.urlretrieve(video_url, video_out, show_progress)
         return video_id, video_out
 
     def create_resized_videos(self, video_path, video_id, force=False):
