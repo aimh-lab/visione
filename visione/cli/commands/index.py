@@ -2,11 +2,6 @@ import collections
 import csv
 import gzip
 import json
-from pathlib import Path
-import subprocess
-import sys
-import urllib.parse
-import urllib.request
 
 from tqdm import tqdm
 
