@@ -10,6 +10,7 @@ services:
   str-feature-encoder:
     <<: *common
     build: ./index/str-feature-encoder
+    profiles: ["index", "query"]
     
   lucene-index-builder:
     <<: *common
