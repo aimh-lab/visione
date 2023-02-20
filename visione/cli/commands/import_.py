@@ -134,6 +134,7 @@ class ImportCommand(BaseCommand):
         command = [
             ## Call containerized ffmpeg
             'docker', 'run', '--rm',
+            '--user', f'{os.getuid()}:{os.getgid()}',
             '-v', f'{video_path.resolve()}:/input_file:ro',
             '-v', f'{resized_video_dir.resolve()}:/out',
             'linuxserver/ffmpeg:5.1.2', # 'ffmpeg'
@@ -233,6 +234,7 @@ class ImportCommand(BaseCommand):
 
         command = [
             'docker', 'run', '--rm',
+            '--user', f'{os.getuid()}:{os.getgid()}',
             '-v', f'{selected_frames_dir.resolve()}:/input_dir:ro',
             '-v', f'{thumbnail_dir.resolve()}:/output_dir',
             'linuxserver/ffmpeg:5.1.2',

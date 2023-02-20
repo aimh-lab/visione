@@ -78,6 +78,7 @@ class BaseCommand(ABC):
             'run',
             '--rm',
             '--no-deps',
+            '--user', f'{os.getuid()}:{os.getgid()}',
         ]
 
     def compose_run(self, service_name, service_command):
