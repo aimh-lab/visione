@@ -1,9 +1,7 @@
 # handles requests coming from outside
 server {
 	listen 80 default_server;
-	# listen [::]:80 default_server;
     server_name  _;
-	# server_name ${VISIONE_SERVER_NAME};
 
 	### Static File Routing
 
@@ -14,13 +12,15 @@ server {
 
 	### Services Routing
 
-	location ^~ /gem                          { proxy_pass ${VISIONE_GEM_URL}; }
-	# location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
-	# location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
-	# location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
-	# location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
-	# location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
 	location ^~ /services                   { proxy_pass http://core:8080/services/VBSService; }
+
+	# Routes for services that can be optionally hosted externally
+	location ^~ /gem                        { proxy_pass ${VISIONE_GEM_URL}; }
+	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
+	location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
+	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
+	location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
+	location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
 
 	location / {
 		root /usr/share/nginx/html;
@@ -34,6 +34,7 @@ server {
 	listen [::]:80;
 
 	server_name router;
+	resolver 127.0.0.11 valid=30s;
 
 	location ^~ /videos       { alias /data/resized-videos/medium/; }
 	location ^~ /videos/tiny  { alias /data/resized-videos/tiny/; }
@@ -42,10 +43,10 @@ server {
 
 	location ^~ /gem                        { proxy_pass http://features-gem:5090; }
 	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
-	location ^~ /clip-text-search           { proxy_pass ${VISIONE_CLIP_URL}; }
-	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
-	location ^~ /clip-laion-text-search     { proxy_pass http://features-clip:5030/text-to-image-search; }
-	location ^~ /clip-laion-internal-search { proxy_pass http://features-clip:5030/internal-image-search; }
+	location ^~ /clip-text-search           { proxy_pass http://features-clip-openai:5030/text-to-image-search; }
+	location ^~ /clip-internal-search       { proxy_pass http://features-clip-openai:5030/internal-image-search; }
+	location ^~ /clip-laion-text-search     { proxy_pass http://features-clip-laion:5030/text-to-image-search; }
+	location ^~ /clip-laion-internal-search { proxy_pass http://features-clip-laion:5030/internal-image-search; }
 
 	location / {
 		root /usr/share/nginx/html;
