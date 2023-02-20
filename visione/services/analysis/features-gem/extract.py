@@ -86,7 +86,7 @@ def main(args):
     if args.output_type == 'file':
         saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
-        saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
+        saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every, attrs={'features_name': args.features_name})
 
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
@@ -126,6 +126,7 @@ if __name__ == "__main__":
     hdf5_parser = subparsers.add_parser('hdf5')
     hdf5_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (hdf5 file)')
     hdf5_parser.add_argument('-d', '--dimensionality', type=int, default=2048, help='number of dimensions of features')
+    hdf5_parser.add_argument('-n', '--features-name', default='gem', help='identifier of feature type')
 
     args = parser.parse_args()
     main(args)

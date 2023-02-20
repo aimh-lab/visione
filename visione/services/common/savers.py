@@ -64,10 +64,11 @@ class GzipJsonlFile(Saver):
 
 class HDF5File(Saver):
     """ Save / Load / Append results in a HDF5 file. """
-    def __init__(self, path, shape=None, flush_every=100):
+    def __init__(self, path, shape=None, flush_every=100, attrs={}):
         self.path = Path(path)
         self.shape = shape
         self.flush_every = flush_every
+        self.attrs = attrs
 
         self._ids = dict()
         self._to_be_flushed = 0
@@ -84,6 +85,9 @@ class HDF5File(Saver):
         self.file = h5py.File(str(self.path), 'a')
         self._ids_dataset = self.file.require_dataset('ids', shape=self.shape[:1], dtype=h5py.string_dtype(encoding='utf-8'))
         self._data_dataset = self.file.require_dataset('data', shape=self.shape, dtype='float32')
+        for k, v in self.attrs.items():
+            self._data_dataset.attrs[k] = v
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

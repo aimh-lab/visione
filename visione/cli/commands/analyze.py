@@ -87,29 +87,29 @@ class AnalyzeCommand(BaseCommand):
             '--gpu',
             'hdf5',
             '--output', str(output_file),
+            '--features-name', 'gem',
         ]
 
         return self.compose_run(service, command)
 
-    def extract_clip_features(self, video_id, clip_model, dimensions, force=False):
+    def extract_clip_features(self, video_id, features_name, dimensions, force=False):
         """ Extracts CLIP features from selected keyframes of a video for cross-media retrieval.
 
         Args:
             video_id (str): Input Video ID.
-            clip_model (str): Specifies the CLIP model to be used. It must be a HuggingFace's CLIP model handle (e.g., 'laion/CLIP-ViT-H-14-laion2B-s32B-b79K').
+            features_name (str): Specifies the CLIP model to be used.
             dimensions (int): Number of dimensions of the extracted feature vector.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
 
         Returns:
             TODO
         """
-        clip_model_normalized = clip_model.replace('/', '-')
-        clip_dir = self.collection_dir / f'features-clip-{clip_model_normalized}' / video_id
+        clip_dir = self.collection_dir / f'features-{features_name}' / video_id
         clip_dir.mkdir(parents=True, exist_ok=True)
 
-        clip_features_file = clip_dir / f'{video_id}-clip-{clip_model_normalized}.hdf5'
+        clip_features_file = clip_dir / f'{video_id}-{features_name}.hdf5'
         if not force and clip_features_file.exists():
-            print(f'Skipping CLIP ({clip_model}) extraction, using existing file:', clip_features_file.name)
+            print(f'Skipping {features_name} extraction, using existing file:', clip_features_file.name)
             return 0
 
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
@@ -118,16 +118,16 @@ class AnalyzeCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / clip_features_file.relative_to(self.collection_dir)
 
-        service = 'features-clip'
+        service = f'features-{features_name}'
         command = [
             'python', 'extract.py',
             str(input_dir),
-            '--model-handle', clip_model,
             '--save-every', '200',
             '--gpu',
             'hdf5',
             '--output', str(output_file),
-            '--dimensionality', str(dimensions)
+            '--dimensionality', str(dimensions),
+            '--features-name', features_name,
         ]
 
         return self.compose_run(service, command)

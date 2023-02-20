@@ -32,11 +32,25 @@ services:
     build: ./analysis/features-gem
     shm_size: 2GB
     deploy: *needs_gpu
+    profiles: ["features-gem"]
   
-  features-clip:
+  features-clip-openai:
     <<: *common
     build: ./analysis/features-clip
+    environment: 
+      - FEATURES_NAME=clip-openai
+      - MODEL_HANDLE=openai/clip-vit-large-patch14
     deploy: *needs_gpu
+    profiles: ["features-clip-openai"]
+
+  features-clip-laion:
+    <<: *common
+    build: ./analysis/features-clip
+    environment:
+      - FEATURES_NAME=clip-laion
+      - MODEL_HANDLE=laion/CLIP-ViT-H-14-laion2B-s32B-b79K
+    deploy: *needs_gpu
+    profiles: ["features-clip-laion"]
 
   frame-cluster:
     <<: *common

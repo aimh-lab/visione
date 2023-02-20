@@ -1,6 +1,7 @@
 import argparse
 import logging
 import more_itertools
+import os
 from pathlib import Path
 
 from PIL import Image
@@ -25,7 +26,7 @@ def main(args):
     if args.output_type == 'file':
         saver = GzipJsonlFile(args.output, flush_every=args.save_every)
     elif args.output_type == 'hdf5':
-        saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every)
+        saver = HDF5File(args.output, shape=(n_images, args.dimensionality), flush_every=args.save_every, attrs={'features_name': args.features_name})
 
     device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
     model = CLIPModel.from_pretrained(args.model_handle).to(device)
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
     parser.add_argument('--save-every', type=int, default=100)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
-    parser.add_argument('--model-handle', default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K', help='hugging face handle of the CLIP model')
+    parser.add_argument('--model-handle', default=os.environ['MODEL_HANDLE'], help='hugging face handle of the CLIP model')
     parser.add_argument('--gpu', default=False, action='store_true', help='use a GPU')
 
     subparsers = parser.add_subparsers(dest="output_type")
@@ -72,6 +73,7 @@ if __name__ == "__main__":
     hdf5_parser = subparsers.add_parser('hdf5')
     hdf5_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (hdf5 file)')
     hdf5_parser.add_argument('-d', '--dimensionality', type=int, default=768, help='number of dimensions of features')
+    hdf5_parser.add_argument('-n', '--features-name', default='clip-generic', help='identifier of feature type')
 
     args = parser.parse_args()
     main(args)
