@@ -81,7 +81,20 @@ class BaseCommand(ABC):
             '--user', f'{os.getuid()}:{os.getgid()}',
         ]
 
-    def compose_run(self, service_name, service_command):
+    def compose_run(self, service_name, service_command, **run_kws):
         command = self.compose_run_cmd + [service_name] + service_command
-        ret = subprocess.run(command, check=True, env=self.compose_env)
+        ret = subprocess.run(command, check=True, env=self.compose_env, **run_kws)
         return ret
+
+    def is_gpu_available(self):
+        # FIXME we are assuming nvidia-smi is installed on systems with GPU(s)
+        if shutil.which('nvidia-smi') is None:
+            return False
+
+        try:
+            command = "nvidia-smi --list-gpus | wc -l"
+            gpus = subprocess.check_output(command, shell=True, text='utf8')
+            return int(gpus) > 0
+
+        except Exception:
+            return False

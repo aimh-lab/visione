@@ -1,4 +1,19 @@
 services:
+  ffmpeg:
+    image: jrottenberg/ffmpeg:5.1.2-nvidia2004
+    entrypoint: []
+    volumes:
+      - ${VISIONE_ROOT}:/data
+      - ${VISIONE_CACHE}:/cache
+    profiles: ["analysis"]
+    deploy: &needs_gpu
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   scene-detection: &common
     build: ./analysis/scene-detection
     volumes:
@@ -14,13 +29,7 @@ services:
   objects-mmdet:
     <<: *common
     build: ./analysis/objects-mmdet
-    deploy: &needs_gpu
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    deploy: *needs_gpu
 
   objects-openimagesv4:
     <<: *common

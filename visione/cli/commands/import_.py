@@ -112,48 +112,57 @@ class ImportCommand(BaseCommand):
         tiny_video_path  .parent.mkdir(parents=True, exist_ok=True)
         medium_video_path.parent.mkdir(parents=True, exist_ok=True)
 
-        tiny_output   = Path('/out') / tiny_video_path  .relative_to(resized_video_dir)
-        medium_output = Path('/out') / medium_video_path.relative_to(resized_video_dir)
+        video_input   = '/data' / video_path       .relative_to(self.collection_dir)
+        tiny_output   = '/data' / tiny_video_path  .relative_to(self.collection_dir)
+        medium_output = '/data' / medium_video_path.relative_to(self.collection_dir)
 
         # find out video duration
+        service = 'ffmpeg'
         command = [
-            'docker', 'run', '--rm',
-            '-v', f'{video_path.resolve()}:/input_file:ro',
-            '--entrypoint', 'ffprobe',
-            'linuxserver/ffmpeg:5.1.2',
+            'ffprobe',
             '-v', 'quiet',
             '-print_format', 'json', '-show_format',
-            '/input_file'
+            str(video_input),
         ]
 
-        ret = subprocess.run(command, stdout=subprocess.PIPE, check=True).stdout
+        ret = self.compose_run(service, command, stdout=subprocess.PIPE).stdout
         duration_s = float(json.loads(ret).get('format').get('duration', 0))
+
+        gpu = self.is_gpu_available()
 
         # execute reduction via ffmpeg
         command = [
-            ## Call containerized ffmpeg
-            'docker', 'run', '--rm',
-            '--user', f'{os.getuid()}:{os.getgid()}',
-            '-v', f'{video_path.resolve()}:/input_file:ro',
-            '-v', f'{resized_video_dir.resolve()}:/out',
-            'linuxserver/ffmpeg:5.1.2', # 'ffmpeg'
-            '-y', '-hide_banner', '-loglevel', 'warning', # '-threads ${THREADS}'
+            'ffmpeg',
+            '-y', '-hide_banner', '-loglevel', 'error',
             '-progress', '-', '-nostats',
             ## Define input
-            '-i', '/input_file',
+            ] + (['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda',] if gpu else []) + [
+            '-i', str(video_input),
             ## Define output 1 (tiny, 146 x height)
-            '-vf', "scale=146:-1:force_divisible_by=2,pad='iw+mod(iw\,2)':'ih+mod(ih\,2)'",
-            '-c:v', 'libx264', '-preset', 'slower', '-crf', '28', '-movflags', '+faststart',
-            '-c:a', 'aac', '-b:a', '128k', # '-threads ${THREADS}'
-            tiny_output,
+            ] + ([
+                '-vf', "scale_npp=146:-1:force_divisible_by=2",
+                '-c:v', 'h264_nvenc', '-preset', 'p6', '-tune', 'hq',
+            ] if gpu else [
+                '-vf', "scale=146:-1:force_divisible_by=2,pad='iw+mod(iw\,2)':'ih+mod(ih\,2)'",
+                '-c:v', 'libx264', '-preset', 'slower', '-crf', '28', '-movflags', '+faststart',
+            ]) + [
+            '-c:a', 'aac', '-b:a', '128k',
+            str(tiny_output),
             # Define output 2 (medium, width x 480)
-            '-vf', "scale=-1:480:force_divisible_by=2,pad='iw+mod(iw\,2)':'ih+mod(ih\,2)'",
-            '-c:v', 'libx264', '-preset', 'slower', '-crf', '30', '-movflags', '+faststart',
-            '-c:a', 'aac', '-b:a', '128k', # '-threads ${THREADS}'
-            medium_output,
+            ] + ([
+                '-vf', "scale_npp=-1:480:force_divisible_by=2",
+                '-c:v', 'h264_nvenc', '-preset', 'p6', '-tune', 'hq',
+            ] if gpu else [
+                '-vf', "scale=-1:480:force_divisible_by=2,pad='iw+mod(iw\,2)':'ih+mod(ih\,2)'",
+                '-c:v', 'libx264', '-preset', 'slower', '-crf', '30', '-movflags', '+faststart',
+            ]) + [
+            '-c:a', 'aac', '-b:a', '128k',
+            str(medium_output),
         ]
 
-        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
+        # we do not use self.compose_run(), we want to parse stdout
+        command = self.compose_run_cmd + [service] + command
+        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=None, env=self.compose_env) as ffmpeg, \
             tqdm(desc='Resizing video', total=duration_s, unit='s') as progress:
 
             # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
@@ -231,20 +240,23 @@ class ImportCommand(BaseCommand):
         n_frames = len(selected_frames_list)
         n_digits = len(selected_frames_list[0].stem.split('-')[-1])
 
+        selected_frames = '/data' / selected_frames_dir.relative_to(self.collection_dir) / f'{video_id}-%0{n_digits}d.png'
+        thumbnails = '/data' / thumbnail_dir.relative_to(self.collection_dir) / f'{video_id}-%0{n_digits}d.jpg'
+
+        service = 'ffmpeg'
         command = [
-            'docker', 'run', '--rm',
-            '--user', f'{os.getuid()}:{os.getgid()}',
-            '-v', f'{selected_frames_dir.resolve()}:/input_dir:ro',
-            '-v', f'{thumbnail_dir.resolve()}:/output_dir',
-            'linuxserver/ffmpeg:5.1.2',
-            '-y', '-hide_banner', '-loglevel', 'warning', # '-threads ${THREADS}'
+            'ffmpeg',
+            '-y', '-hide_banner',
+            '-loglevel', 'error',
             '-progress', '-', '-nostats',
-            '-i', f'/input_dir/{video_id}-%0{n_digits}d.png',
+            '-i', str(selected_frames),
             '-vf', 'scale=192:-1',
-            f'/output_dir/{video_id}-%0{n_digits}d.jpg',
+            str(thumbnails),
         ]
 
-        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as ffmpeg, \
+        # we do not use self.compose_run(), we want to parse stdout
+        command = self.compose_run_cmd + [service] + command
+        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=None, env=self.compose_env) as ffmpeg, \
             tqdm(desc='Generating thumbs', total=n_frames, unit='s') as progress:
 
             # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
