@@ -274,7 +274,7 @@ class IndexCommand(BaseCommand):
         service = 'lucene-index-builder'
         command = [
             # 'java', '-jar', 'lucene-index-builder.jar',  # this is already in the ENTRYPOINT
-            '--save-every', '200',  # TODO currently not used
+            '--save-every', '200',  # FIXME currently not used
         ] + (['--force'] if force else []) + [
             str(input_file),
             video_id,
