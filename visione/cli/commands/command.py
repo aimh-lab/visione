@@ -19,6 +19,9 @@ class BaseCommand(ABC):
 
     @abstractmethod
     def __call__(self, config_file):
+        # ensure cache folder exists
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
         # load config
         self.config_file = config_file or (self.collection_dir / 'config.yaml')
 
