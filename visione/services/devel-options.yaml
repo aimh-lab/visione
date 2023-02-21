@@ -1,0 +1,38 @@
+services:
+  scene-detection:
+    volumes: ["./analysis/scene-detection:/usr/src/app"]
+
+  objects-colors:
+    volumes: ["./analysis/objects-colors:/usr/src/app"]
+
+  objects-mmdet:
+    volumes: ["./analysis/objects-mmdet:/usr/src/app"]
+
+  objects-openimagesv4:
+    volumes: ["./analysis/objects-openimagesv4:/usr/src/app"]
+
+  features-clip-openai:
+    volumes: ["./analysis/features-clip:/usr/src/app"]
+
+  features-clip-laion:
+    volumes: ["./analysis/features-clip:/usr/src/app"]
+
+  features-gem:
+    volumes:
+      - ./analysis/features-gem/extract.py:/usr/src/app/extract.py
+      - ./analysis/features-gem/service.py:/usr/src/app/service.py
+
+  frame-cluster:
+    volumes: ["./analysis/frame-cluster:/usr/src/app"]
+
+  str-object-encoder:
+    volumes: ["./index/str-object-encoder:/usr/src/app"]
+
+  str-feature-encoder:
+    volumes: ["./index/str-feature-encoder:/usr/src/app"]
+
+  lucene-index-builder:
+    # volumes: ["./index/lucene-index-builder:/usr/src/app"]
+
+  faiss-index-manager:
+    volumes: ["./index/faiss-index-manager:/usr/src/app"]

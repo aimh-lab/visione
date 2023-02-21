@@ -12,6 +12,8 @@ main:
   username: admin         # Access credentials.
   password: visione
 
+  devel: false            # if true, enable code mounts for editable installs
+
 static_files_urls:
   videos_url:         null  # URL to which 'videos/...' requests will be redirected. Set to 'null' for serving them locally.
   resized_videos_url: null  # URL to which 'videos/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.

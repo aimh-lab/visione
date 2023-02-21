@@ -69,6 +69,11 @@ class BaseCommand(ABC):
             '--file', str(self.compose_dir / 'index-services.yaml'),
         ]
 
+        if self.config['main'].get('develop', False):
+            compose_files += [
+                '--file', str(self.compose_dir / 'devel-options.yaml'),  # for development
+            ]
+
         self.compose_cmd = compose_executable + compose_files + [
             '--project-directory', str(self.compose_dir),
             '--project-name', str(self.collection_dir.name),
