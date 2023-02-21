@@ -309,7 +309,7 @@ class IndexCommand(BaseCommand):
         features_file = '/data' / features_file.relative_to(self.collection_dir)
         config_file = '/data' / self.config_file.relative_to(self.collection_dir)
 
-        service = 'faiss-index-builder'
+        service = 'faiss-index-manager'
         command = [
             'python', 'build.py',
             '--config-file', str(config_file),
