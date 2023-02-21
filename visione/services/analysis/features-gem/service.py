@@ -125,11 +125,12 @@ def extract_quant_from_image():
 
 
 if __name__ == '__main__':
+    default_gpu = torch.cuda.is_available() and torch.cuda.device_count() > 0
     parser = argparse.ArgumentParser(description='Create a webservice for CLIP model for t2i and i2i searches.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
     parser.add_argument('--port', default='5090', help="Port to use for binding")
-    parser.add_argument('--gpu', action='store_true', default=torch.cuda.is_available(), help='Whether to use GPU')
+    parser.add_argument('--gpu', action='store_true', default=default_gpu, help='Whether to use GPU')
 
     args = parser.parse_args()
 
