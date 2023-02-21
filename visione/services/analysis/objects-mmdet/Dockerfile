@@ -38,6 +38,7 @@ WORKDIR /usr/src/app/
 COPY extract.py .
 
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
+ENV MPLCONFIGDIR /tmp
 
 #  MaskRCNN LVIS
 # RUN wget https://raw.githubusercontent.com/open-mmlab/mmdetection/master/configs/lvis/mask_rcnn_x101_64x4d_fpn_sample1e-3_mstrain_1x_lvis_v1.py && \
