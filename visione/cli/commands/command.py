@@ -69,7 +69,7 @@ class BaseCommand(ABC):
             '--file', str(self.compose_dir / 'index-services.yaml'),
         ]
 
-        if self.config['main'].get('develop', False):
+        if self.config['main'].get('develop_mode', False):
             compose_files += [
                 '--file', str(self.compose_dir / 'devel-options.yaml'),  # for development
             ]
