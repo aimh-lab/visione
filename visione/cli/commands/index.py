@@ -263,10 +263,6 @@ class IndexCommand(BaseCommand):
         documents_file = self.collection_dir / 'lucene-documents' / video_id /  f'{video_id}-lucene-docs.jsonl.gz'
         lucene_index_dir = self.collection_dir / 'lucene-index'
 
-        if not force and lucene_index_dir.exists():
-            print(f'Skipping indexing in Lucene, using existing index:', lucene_index_dir.name)
-            return 0
-
         documents_file = '/data' / documents_file.relative_to(self.collection_dir)
         lucene_index_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
 
@@ -296,11 +292,6 @@ class IndexCommand(BaseCommand):
 
         faiss_index_file = self.collection_dir / f'faiss-index_{features_name}.faiss'
         faiss_idmap_file = self.collection_dir / f'faiss-idmap_{features_name}.txt'
-
-        if not force and faiss_index_file.exists() and faiss_idmap_file.exists():
-            print(f'Skipping indexing in FAISS, using existing index:', faiss_index_file.name, faiss_idmap_file.name)
-            return 0
-
         features_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
 
         faiss_index_file = '/data' / faiss_index_file.relative_to(self.collection_dir)
