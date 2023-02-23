@@ -25,7 +25,7 @@ class ImportCommand(BaseCommand):
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, video_path_or_url, video_id, replace):
-        super(ImportCommand, self).__call__(config_file)
+        super(ImportCommand, ImportCommand).__call__(self, config_file)
         # TODO handle (video_path_or_url == None) case
 
         # import video file

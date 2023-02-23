@@ -15,7 +15,7 @@ class ComposeCommand(BaseCommand):
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, cmd):
-        super(ComposeCommand, self).__call__(config_file)
+        super(ComposeCommand, ComposeCommand).__call__(self, config_file)
 
         command = self.compose_cmd + cmd
         ret = subprocess.check_call(command, env=self.compose_env)

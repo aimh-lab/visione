@@ -21,7 +21,7 @@ class IndexCommand(BaseCommand):
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, video_ids, replace):
-        super(IndexCommand, self).__call__(config_file)
+        super(IndexCommand, IndexCommand).__call__(self, config_file)
 
         index_config = self.config.get('index', {})
 

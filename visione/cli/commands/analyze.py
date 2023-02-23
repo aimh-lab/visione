@@ -16,7 +16,7 @@ class AnalyzeCommand(BaseCommand):
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, video_ids, replace):
-        super(AnalyzeCommand, self).__call__(config_file)
+        super(AnalyzeCommand, AnalyzeCommand).__call__(self, config_file)
 
         analysis_config = self.config.get('analysis', {})
 

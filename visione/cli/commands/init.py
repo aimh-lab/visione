@@ -18,7 +18,7 @@ class InitCommand(BaseCommand):
 
     def __call__(self, *, config_file, directory):
         # FIXME config loading is in common command setup, but must be skipped for 'init'
-        # super(InitCommand, self).__call__(config_file)
+        # super(InitCommand, InitCommand).__call__(self, config_file)
 
         skel = Path(importlib.resources.files('visione.skel').joinpath(''))
         # TODO manage already existing collection
