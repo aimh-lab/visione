@@ -13,12 +13,17 @@ class BaseCommand(ABC):
         self.collection_dir = collection_dir
         self.cache_dir = cache_dir
 
+        self.config_file = None
+
     @abstractmethod
     def add_arguments(self, subparser):
         pass
 
     @abstractmethod
     def __call__(self, config_file):
+        if self.config_file:  # avoid loading config again
+            return 
+        
         # ensure cache folder exists
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
