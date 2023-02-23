@@ -43,7 +43,6 @@ class BaseCommand(ABC):
         config_env_vars.update({f'VISIONE_{k.upper()}': str(v) for k, v in self.config['services_urls'].items()})
 
         self.compose_env = {
-            **os.environ,
             **config_env_vars,
             'VISIONE_ROOT': self.collection_dir,
             'VISIONE_CACHE': self.cache_dir,
