@@ -73,8 +73,7 @@ class IndexCommand(BaseCommand):
             print(f'Skipping STR object encoding, using existing file:', str_objects_file.name, count_objects_file.name)
             return 0
 
-        detectors = self.collection_dir.glob('objects-*')
-        detectors = [d.name[len('objects-'):] for d in detectors]
+        detectors = self.config.get('analysis', {}).get('object_detectors', [])
         input_files = [self.collection_dir / f'objects-{d}' / video_id / f'{video_id}-objects-{d}.jsonl.gz' for d in detectors]
         input_files = ['/data' / p.relative_to(self.collection_dir) for p in input_files]
         input_files = map(str, input_files)
