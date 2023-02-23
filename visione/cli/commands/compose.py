@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 
 from .command import BaseCommand
@@ -11,7 +12,7 @@ class ComposeCommand(BaseCommand):
 
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('compose', help='Execute compose commands inside the collection.')
-        parser.add_argument('cmd', nargs='*', help='compose command to execute')
+        parser.add_argument('cmd', nargs=argparse.REMAINDER, help='compose command to execute')
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, cmd):
