@@ -1,4 +1,5 @@
 from pathlib import Path
+import signal
 import subprocess
 
 from .command import BaseCommand
@@ -12,11 +13,13 @@ class ServeCommand(BaseCommand):
 
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('serve', help='Start the VISIONE server')
-        parser.add_argument('-p', '--port', type=int, default=8000, help='port to which the server will listen')
+        parser.add_argument('-p', '--port', type=int, help='port to which the server will listen')
         parser.set_defaults(func=self)
 
     def __call__(self, *, config_file, port):
         super(ServeCommand, ServeCommand).__call__(self, config_file)
+
+        develop_mode = self.config['main'].get('develop_mode', False)
 
         # selects mandatory services needed to respond to queries
         profile_options = ['--profile', 'query']
@@ -28,10 +31,17 @@ class ServeCommand(BaseCommand):
         for service in optional_services:
             profile_options.extend(['--profile', service])
 
-        command = self.compose_cmd + profile_options + [
-            'up',
-            '--build'
-        ]
+        command = self.compose_cmd + profile_options + ['up']
+        if develop_mode:
+            command += ['--build']
 
-        ret = subprocess.run(command, check=True, env=self.compose_env)
+        if port:
+            self.compose_env['VISIONE_PORT'] = str(port)
+
+        process = subprocess.Popen(command, env=self.compose_env)
+        
+        # forward CTRL+Cs to subprocess
+        signal.signal(signal.SIGINT, lambda s, f: process.send_signal(s))
+
+        ret = process.wait()
         return ret
