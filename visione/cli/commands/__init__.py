@@ -3,6 +3,7 @@ from .compose import ComposeCommand
 from .import_ import ImportCommand
 from .index import IndexCommand
 from .init import InitCommand
+from .remove import RemoveCommand
 from .serve import ServeCommand
 
 available_commands = (
@@ -11,5 +12,6 @@ available_commands = (
     ImportCommand,
     IndexCommand,
     InitCommand,
+    RemoveCommand,
     ServeCommand,
 )
