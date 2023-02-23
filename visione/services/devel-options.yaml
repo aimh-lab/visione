@@ -31,8 +31,8 @@ services:
   str-feature-encoder:
     volumes: ["./index/str-feature-encoder:/usr/src/app"]
 
-  lucene-index-builder: {}
-    # volumes: ["./index/lucene-index-builder:/usr/src/app"]
+  lucene-index-manager: {}
+    # volumes: ["./index/lucene-index-manager:/usr/src/app"]
 
   faiss-index-manager:
     volumes: ["./index/faiss-index-manager:/usr/src/app"]

@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>it.cnr.isti.visione</groupId>
-  <artifactId>lucene-index-builder</artifactId>
+  <artifactId>lucene-index-manager</artifactId>
   <version>0.5</version>
 
-  <name>lucene-index-builder</name>
+  <name>lucene-index-manager</name>
   <description>Manages VISIONE Lucene index.</description>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
@@ -102,7 +102,7 @@
             </descriptorRefs>
             <archive>
               <manifest>
-                <mainClass>it.cnr.isti.visione.IndexBuilder</mainClass>
+                <mainClass>it.cnr.isti.visione.IndexManager</mainClass>
               </manifest>
             </archive>
             <appendAssemblyId>false</appendAssemblyId>

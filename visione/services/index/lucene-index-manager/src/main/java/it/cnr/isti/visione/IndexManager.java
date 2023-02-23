@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -47,8 +49,10 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.action.StoreTrueArgumentAction;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
+import net.sourceforge.argparse4j.inf.Subparser;
+import net.sourceforge.argparse4j.inf.Subparsers;
 
-public class IndexBuilder {
+public class IndexManager {
 
     /* Whitespace Analyzer + DelimitedTermFrequencyTokenFilter */
     protected static class TermFrequencyAnalyzer extends Analyzer {
@@ -75,23 +79,36 @@ public class IndexBuilder {
     }};
 
     public static void main(String[] args) throws IOException {
-        ArgumentParser parser = ArgumentParsers.newFor("IndexBuilder").build()
-                .defaultHelp(true)
-                .description("Creates or adds to a Lucene index of a collection.");
+        ArgumentParser parser = ArgumentParsers.newFor("IndexManager").build().defaultHelp(true)
+                .description("Manages Lucene indices of a VISIONE collection.");
 
-        parser.addArgument("--save-every")
-                .type(Integer.class)
-                .setDefault(200)
-                .help("commit index every this amount of indexed documents");
-
-        parser.addArgument("-f", "--force")
-                .action(new StoreTrueArgumentAction())
-                .help("whether to replace existing document or skip insertion");
-
-        parser.addArgument("documents_file").help("jsonl.gz file containing documents to be added");
-        parser.addArgument("video_id").help("id of the video to which input documents belong");
         parser.addArgument("index_dir").help("directory in which the index is stored");
+
+        Subparsers subparsers = parser.addSubparsers().help("sub-command help");
+
+        // add sub-command
+        Subparser addParser = subparsers.addParser("add").setDefault("command", "add").help("add/replace documents in an index");
+        addParser.addArgument("--save-every").type(Integer.class).setDefault(200).help("commit index every this amount of indexed documents");
+        addParser.addArgument("-f", "--force").action(new StoreTrueArgumentAction()).help("whether to replace existing document or skip insertion");
+        addParser.addArgument("documents_file").help("jsonl.gz file containing documents to be added");
+        addParser.addArgument("video_id").help("id of the video to which input documents belong");
+
+        // remove sub-command
+        Subparser rmParser = subparsers.addParser("remove").setDefault("command", "remove").help("remove docs from an index");
+        rmParser.addArgument("video_ids").nargs("+").help("ID(s) of video(s) to remove");
+
         Namespace ns = parser.parseArgsOrFail(args);
+
+        // call the method specified by the sub-command
+        String subCommand = ns.getString("command");
+        switch (subCommand) {
+            case "add": add(ns); break;
+            case "remove": remove(ns); break;
+            default: parser.printUsage(); System.exit(1);
+        }
+    }
+
+    public static void add(Namespace ns) throws IOException {
 
         int saveEvery = ns.getInt("save_every"); // TODO not used yet
         String documentsFile = ns.getString("documents_file");
@@ -135,8 +152,8 @@ public class IndexBuilder {
             // iterates over json objects
             Stream<Document> documents = lines
                 .map(line -> JsonParser.parseString(line).getAsJsonObject())  // lines to json objects
-                .map(IndexBuilder::createDocument);
-            
+                .map(IndexManager::createDocument);
+
             Iterable<Document> documentsWithProgressBar = (Iterable<Document>) ProgressBar.wrap(documents, "Indexing")::iterator;
 
             int count = 0; // TODO
@@ -146,11 +163,36 @@ public class IndexBuilder {
         }
     }
 
+    public static void remove(Namespace ns) throws IOException {
+        List<String> videoIds = ns.getList("video_ids");
+        String indexDirectory = ns.getString("index_dir");
+
+        // open the index dir
+        Path absolutePath = Paths.get(indexDirectory, "");
+        FSDirectory index = FSDirectory.open(absolutePath);
+
+        if (!DirectoryReader.indexExists(index)) {
+            System.err.println("Lucene index not found: " + indexDirectory);
+            System.exit(1);
+        }
+
+        // configure index writer
+        Analyzer analyzer = new TermFrequencyAnalyzer(); // parses "term1|freq1 term2|freq2 ..."
+        IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+        conf.setOpenMode(OpenMode.APPEND);
+
+        try (IndexWriter writer = new IndexWriter(index, conf)) {
+            Term[] videoIdTerms = videoIds.stream().map(videoId -> new Term("videoID", videoId)).toArray(Term[]::new);
+            writer.deleteDocuments(videoIdTerms);
+        }
+
+    }
+
     protected static Document createDocument(JsonObject record) {
         Document doc = new Document();
-        
+
         record.entrySet().stream()
-            .map(IndexBuilder::getLuceneField)
+            .map(IndexManager::getLuceneField)
             .filter(field -> field != null)
             .forEach(field -> doc.add(field));
 
@@ -166,19 +208,19 @@ public class IndexBuilder {
             case "imgID":
             case "videoID":
                 return new Field(fieldName, fieldValue.getAsString(), storedTextFieldType);
-            
+
             // stored int fields
             case "startframe":
             case "endframe":
             case "middleframe":
                 return new StoredField(fieldName, fieldValue.getAsInt());
-            
+
             // stored double fields
             case "starttime":
             case "endtime":
             case "middletime":
                 return new StoredField(fieldName, fieldValue.getAsDouble());
-            
+
             // indexed STR fields
             case "txt":
             case "objects":
@@ -187,11 +229,11 @@ public class IndexBuilder {
             case "features_clip-openai-clip-vit-large-patch14_str":
             case "features_clip-laion-CLIP-ViT-H-14-laion2B-s32B-b79K_str":
                 return new Field(fieldName, fieldValue.getAsString(), surrogateTextFieldType);
-            
+
             // ignored fields
             case "":
                 return null;
-            
+
             // stored string field
             default:
                 return new StoredField(fieldName, fieldValue.getAsString());

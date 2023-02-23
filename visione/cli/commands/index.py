@@ -268,17 +268,17 @@ class IndexCommand(BaseCommand):
             print(f'Skipping indexing in Lucene, using existing index:', lucene_index_dir.name)
             return 0
 
-        input_file = '/data' / documents_file.relative_to(self.collection_dir)
-        output_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
+        documents_file = '/data' / documents_file.relative_to(self.collection_dir)
+        lucene_index_dir = '/data' / lucene_index_dir.relative_to(self.collection_dir)
 
-        service = 'lucene-index-builder'
+        service = 'lucene-index-manager'
         command = [
-            # 'java', '-jar', 'lucene-index-builder.jar',  # this is already in the ENTRYPOINT
-            '--save-every', '200',  # FIXME currently not used
+            # 'java', '-jar', 'lucene-index-manager.jar',  # this is already in the ENTRYPOINT
+            str(lucene_index_dir),
+            'add',
         ] + (['--force'] if force else []) + [
-            str(input_file),
+            str(documents_file),
             video_id,
-            str(output_dir),
         ]
 
         return self.compose_run(service, command)

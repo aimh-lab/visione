@@ -1,4 +1,4 @@
-services:  
+services:
   str-object-encoder: &common
     build: ./index/str-object-encoder
     volumes:
@@ -11,11 +11,11 @@ services:
     <<: *common
     build: ./index/str-feature-encoder
     profiles: ["index", "query"]
-    
-  lucene-index-builder:
+
+  lucene-index-manager:
     <<: *common
-    build: ./index/lucene-index-builder
-  
+    build: ./index/lucene-index-manager
+
   faiss-index-manager:
     <<: *common
     build: ./index/faiss-index-manager
