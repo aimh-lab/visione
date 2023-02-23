@@ -176,12 +176,20 @@ def remove(args):
     with open(args.idmap_file, 'r') as lines:
         idmap = list(map(str.rstrip, lines))
 
-    for video_id in tqdm(args.video_ids, desc='Removing from FAISS'):
+    positions = set()
+    for video_id in tqdm(args.video_ids, delay=3):
         regexp = re.compile(re.escape(video_id) + r'-\d+')
-        positions = [i for i, _id in enumerate(idmap) if regexp.match(_id)]
-        idmap = [x for i, x in enumerate(idmap) if i not in positions]
-        index.remove_ids(np.array(positions))
-        logging.info(f'Removed: {video_id}')
+        positions.update([i for i, _id in enumerate(idmap) if regexp.match(_id)])
+
+    # skip index saving if no changes were made
+    if not positions:
+        logging.info('Nothing to remove.')
+        return
+
+    idmap = [x for i, x in enumerate(idmap) if i not in positions]
+    positions = np.fromiter(positions, int, len(positions))
+    index.remove_ids(positions)
+    logging.info(f"Removed: {' '.join(video_ids)}")
 
     # save index to disk
     logging.info('Saving index ...')
@@ -218,7 +226,7 @@ if __name__ == "__main__":
     add_parser.set_defaults(func=add)
 
     rm_parser = subparsers.add_parser('remove', help='Remove a video from an existing FAISS index.')
-    rm_parser.add_argument('video_ids', type=Path, help='ID(s) of video(s) to be removed')
+    rm_parser.add_argument('video_ids', nargs='+', help='ID(s) of video(s) to be removed')
     rm_parser.set_defaults(func=remove)
 
     args = parser.parse_args()
