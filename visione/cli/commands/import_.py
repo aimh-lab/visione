@@ -41,6 +41,8 @@ class ImportCommand(BaseCommand):
         # create frames thumbnails
         self.create_frames_thumbnails(video_id, replace)
 
+        return video_id
+
     def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
