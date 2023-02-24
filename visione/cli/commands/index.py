@@ -75,6 +75,9 @@ class IndexCommand(BaseCommand):
 
         detectors = self.config.get('analysis', {}).get('object_detectors', [])
         input_files = [self.collection_dir / f'objects-{d}' / video_id / f'{video_id}-objects-{d}.jsonl.gz' for d in detectors]
+
+        assert all(i.exists() for i in input_files), f"Analysis files missing for '{video_id}'. Have you run 'analyze' on it?"
+
         input_files = ['/data' / p.relative_to(self.collection_dir) for p in input_files]
         input_files = map(str, input_files)
         input_files = sorted(input_files)
