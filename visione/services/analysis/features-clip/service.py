@@ -56,7 +56,7 @@ def text_to_image_search():
         'feature_vector': text_feature.tolist(),
         'k': k,
     }).content
-    
+
     return response
 
 # deprecated, kept for backward compatibility of 'core' service

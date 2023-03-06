@@ -39,7 +39,7 @@ class ServeCommand(BaseCommand):
             self.compose_env['VISIONE_PORT'] = str(port)
 
         process = subprocess.Popen(command, env=self.compose_env)
-        
+
         # forward CTRL+Cs to subprocess
         signal.signal(signal.SIGINT, lambda s, f: process.send_signal(s))
 
