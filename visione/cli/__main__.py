@@ -28,7 +28,9 @@ def main():
     args = parser.parse_args()
     args = vars(args)
     func = args.pop('func')
-    return func(**args)
+    ret = func(**args)
+    ret = ret if isinstance(ret, int) else 0
+    return ret
 
 
 if __name__ == "__main__":
