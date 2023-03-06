@@ -7,10 +7,13 @@ from mmdet.apis import init_detector, inference_detector
 import more_itertools
 import numpy as np
 import torch
-from tqdm import tqdm
+# from tqdm import tqdm
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile
 
+# progress = tqdm
+progress = cli_progress
 
 CONFIG_DIR = Path('/usr/src/mmdetection/configs')
 CKPT_DIR = Path('/usr/src/mmdetection/checkpoints')
@@ -81,7 +84,7 @@ def main(args):
 
     with saver:
         image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
-        image_list = tqdm(image_list, total=n_images)
+        image_list = progress(image_list, total=n_images)
 
         ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
         if not args.force:

@@ -12,9 +12,14 @@ import dirtorch.datasets as datasets
 import dirtorch.nets as nets
 from dirtorch.utils import common as ops
 from dirtorch.test_dir import extract_image_features
-from tqdm import tqdm
+# from tqdm import tqdm
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile, HDF5File
+
+
+# progress = tqdm
+progress = cli_progress
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -107,7 +112,7 @@ def main(args):
         image_features = itertools.chain.from_iterable(chunked_features)
 
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
-        records = tqdm(records, initial=initial, total=n_images)
+        records = progress(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 

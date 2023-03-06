@@ -1,7 +1,8 @@
-from tqdm import tqdm
+import subprocess
 
-from .command import BaseCommand
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, MofNCompleteColumn
 
+from .command import BaseCommand, progress_callback
 
 class AnalyzeCommand(BaseCommand):
     """ Implements the 'analyze' CLI command. """
@@ -24,38 +25,76 @@ class AnalyzeCommand(BaseCommand):
             thumb_dir = self.collection_dir / 'selected-frames'
             video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
 
-        for video_id in tqdm(video_ids, desc="Analyzing"):
-            # Objects & Colors Detection
-            active_object_detectors = analysis_config.get('object_detectors', [])
-            if 'colors' in active_object_detectors:
-                self.extract_color_map(video_id, force=replace)
+        progress_cols = [
+            SpinnerColumn(),
+            *Progress.get_default_columns()[:1],
+            MofNCompleteColumn(),
+            *Progress.get_default_columns()[1:],
+            TimeElapsedColumn()
+        ]
+        with Progress(*progress_cols, transient=True) as progress:
+            n_videos = len(video_ids)
+            progress.console.log(f"Starting analysis on {n_videos} video{'' if n_videos == 1 else 's'}.")
+            task = progress.add_task('', total=n_videos)
 
-            if 'vfnet_X-101-64x4d' in active_object_detectors:
-                self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace)
+            for video_id in video_ids:
+                progress.update(task, description=f"Analyzing '{video_id}'")
+                subtasks = []
 
-            if 'mask_rcnn_lvis' in active_object_detectors:
-                self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace)
+                # Objects & Colors Detection
+                active_object_detectors = analysis_config.get('object_detectors', [])
+                if 'colors' in active_object_detectors:
+                    subtask = progress.add_task('- Extracting colors', total=None)
+                    self.extract_color_map(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-            if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
-                self.detect_objects_oiv4(video_id, force=replace)
+                if 'vfnet_X-101-64x4d' in active_object_detectors:
+                    subtask = progress.add_task('- Detecting objects (vfnet_X-101-64x4d)', total=None)
+                    self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-            # Feature vector extraction
-            active_feature_extractors = analysis_config.get('features', [])
-            if 'gem' in active_feature_extractors:
-                self.extract_gem_features(video_id, force=replace)
+                if 'mask_rcnn_lvis' in active_object_detectors:
+                    subtask = progress.add_task('- Detecting objects (mask_rcnn_lvis)', total=None)
+                    self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-            if 'clip-laion' in active_feature_extractors:
-                self.extract_clip_features(video_id, 'clip-laion', dimensions=1024, force=replace)
+                if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
+                    subtask = progress.add_task('- Detecting objects (frcnn_incep_resnetv2_openimagesv4)', total=None)
+                    self.detect_objects_oiv4(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-            if 'clip-openai' in active_feature_extractors:
-                self.extract_clip_features(video_id, 'clip-openai', dimensions=768, force=replace)
+                # Feature vector extraction
+                active_feature_extractors = analysis_config.get('features', [])
+                if 'gem' in active_feature_extractors:
+                    subtask = progress.add_task('- Extracting features (GeM)', total=None)
+                    self.extract_gem_features(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-            # Frame clustering
-            clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
-            if clustering_features:
-                self.cluster_frames(video_id, features=clustering_features, force=replace)
+                if 'clip-laion' in active_feature_extractors:
+                    subtask = progress.add_task('- Extracting features (CLIP LAION)', total=None)
+                    self.extract_clip_features(video_id, 'clip-laion', dimensions=1024, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-    def extract_gem_features(self, video_id, force=False):
+                if 'clip-openai' in active_feature_extractors:
+                    subtask = progress.add_task('- Extracting features (CLIP OpenAI)', total=None)
+                    self.extract_clip_features(video_id, 'clip-openai', dimensions=768, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+
+                # Frame clustering
+                clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
+                if clustering_features:
+                    subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=None)
+                    self.cluster_frames(video_id, features=clustering_features, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+
+                progress.console.log(f"- '{video_id}' analyzed.")
+                for subtask in subtasks:
+                    progress.remove_task(subtask)
+                progress.update(task, advance=1)
+
+            progress.console.log('Analysis complete.')
+
+    def extract_gem_features(self, video_id, force=False, **run_kws):
         """ Extracts GeM features from selected keyframes of a video for instance retrieval.
 
         Args:
@@ -90,9 +129,9 @@ class AnalyzeCommand(BaseCommand):
             '--features-name', 'gem',
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def extract_clip_features(self, video_id, features_name, dimensions, force=False):
+    def extract_clip_features(self, video_id, features_name, dimensions, force=False, **run_kws):
         """ Extracts CLIP features from selected keyframes of a video for cross-media retrieval.
 
         Args:
@@ -130,9 +169,9 @@ class AnalyzeCommand(BaseCommand):
             '--features-name', features_name,
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def extract_color_map(self, video_id, force=False):
+    def extract_color_map(self, video_id, force=False, **run_kws):
         colors_dir = self.collection_dir / 'objects-colors' / video_id
         colors_dir.mkdir(parents=True, exist_ok=True)
 
@@ -156,9 +195,9 @@ class AnalyzeCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def detect_objects_mmdet(self, video_id, detector, force=False):
+    def detect_objects_mmdet(self, video_id, detector, force=False, **run_kws):
         """ Detect objects form the selected keyframes of a video using pretrained models from mmdetection.
 
         Args:
@@ -196,9 +235,9 @@ class AnalyzeCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def detect_objects_oiv4(self, video_id, force=False):
+    def detect_objects_oiv4(self, video_id, force=False, **run_kws):
         """ Detect objects form the selected keyframes of a video using the
             Faster RCNN Inception ResNet V2 model trained on OpenImagesV4
             available in tensorflow hub.
@@ -236,9 +275,9 @@ class AnalyzeCommand(BaseCommand):
             '--output', str(output_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def cluster_frames(self, video_id, features='gem', force=False):
+    def cluster_frames(self, video_id, features='gem', force=False, **run_kws):
         """ Cluster selected frames of a video by visual similarity.
 
         Args:
@@ -270,4 +309,4 @@ class AnalyzeCommand(BaseCommand):
             str(output_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)

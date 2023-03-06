@@ -8,7 +8,7 @@ import sys
 import h5py
 
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 

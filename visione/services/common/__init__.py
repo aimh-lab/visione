@@ -16,3 +16,18 @@ def load_config(yaml_path):
     _fill_null(config['services_urls'], 'http://router')
 
     return config
+
+
+def cli_progress(iterable, initial=0, total=-1):
+    if total is None:
+        total = -1
+
+    print(f'progress: {initial}/{total}', flush=True)
+    for it in iterable:
+        yield it
+        initial += 1
+        print(f'progress: {initial}/{total}', flush=True)
+
+    if total < 0:
+        total = initial
+    print(f'progress: {initial}/{total}', flush=True)

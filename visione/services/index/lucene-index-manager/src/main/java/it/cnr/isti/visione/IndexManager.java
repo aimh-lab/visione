@@ -148,11 +148,12 @@ public class IndexManager {
             BufferedReader buffered = new BufferedReader(decoder);
             Stream<String> lines = buffered.lines();
         ) {
-
+            startCliProgress();
             // iterates over json objects
             Stream<Document> documents = lines
                 .map(line -> JsonParser.parseString(line).getAsJsonObject())  // lines to json objects
-                .map(IndexManager::createDocument);
+                .map(IndexManager::createDocument)
+                .map(IndexManager::printCliProgress);
 
             Iterable<Document> documentsWithProgressBar = (Iterable<Document>) ProgressBar.wrap(documents, "Indexing")::iterator;
 
@@ -160,6 +161,7 @@ public class IndexManager {
             try (IndexWriter writer = new IndexWriter(index, conf)) {
                 writer.updateDocuments(videoIdTerm, documentsWithProgressBar);
             }
+            endCliProgress();
         }
     }
 
@@ -197,6 +199,24 @@ public class IndexManager {
             .forEach(field -> doc.add(field));
 
         return doc;
+    }
+
+    // Management of progress prints for the VISIONE CLI
+    protected static int initial = 0;
+    protected static int total = -1;
+    protected static void startCliProgress() {
+        System.out.println(String.format("progress: %d/%d", initial, total));
+    }
+
+    protected static <T> T printCliProgress(T obj) {
+        initial++;
+        System.out.println(String.format("progress: %d/%d", initial, total));
+        return obj;
+    }
+
+    protected static void endCliProgress() {
+        total = (total < 0) ? initial : total;
+        System.out.println(String.format("progress: %d/%d", initial, total));
     }
 
     protected static Field getLuceneField(Map.Entry<String,JsonElement> field) {

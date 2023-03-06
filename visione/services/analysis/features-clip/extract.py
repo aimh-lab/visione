@@ -8,9 +8,14 @@ from PIL import Image
 from prefetch_generator import BackgroundGenerator
 import torch
 from transformers import CLIPProcessor, CLIPModel
-from tqdm import tqdm
+# from tqdm import tqdm
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile, HDF5File
+
+
+# progress = tqdm
+progress = cli_progress
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -52,7 +57,7 @@ def main(args):
         image_features = map(lambda x: model.get_image_features(**x), images_pt)
 
         records = ({'_id': _id, 'feature': feature.tolist()} for _id, feature in zip(image_ids, image_features))
-        records = tqdm(records, initial=initial, total=n_images)
+        records = progress(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 

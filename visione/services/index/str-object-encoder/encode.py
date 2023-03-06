@@ -10,10 +10,14 @@ import operator
 from pathlib import Path
 
 import pandas as pd
-from tqdm import tqdm
+# from tqdm import tqdm
 
-from visione import load_config
+from visione import load_config, cli_progress
 from visione.savers import GzipJsonlFile
+
+
+# progress = tqdm
+progress = cli_progress
 
 
 def count_objects(record):
@@ -338,7 +342,7 @@ def main(args):
     n_frames = None  # TODO
     object_counter = collections.Counter()
     with GzipJsonlFile(args.str_output_file, flush_every=args.save_every) as saver:
-        for count, record in tqdm(counts_and_records, total=n_frames):
+        for count, record in progress(counts_and_records, total=n_frames):
             saver.add(record)
             object_counter += count
 

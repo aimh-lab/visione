@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 from prefetch_generator import BackgroundGenerator
 from skimage import io, measure, transform
-from tqdm import tqdm
+# from tqdm import tqdm
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile
 
 
@@ -18,6 +19,9 @@ loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
     logger.setLevel(logging.WARNING)
 
+
+# progress = tqdm
+progress = cli_progress
 
 COLORS = {
     'black' : [0.00, 0.00, 0.00],
@@ -263,7 +267,7 @@ def main(args):
         monochrome_records = map(compute_monochromaticity, images2)
 
         records = itertools.starmap(lambda _id, cr, mr: {'_id': _id, **cr, **mr}, zip(image_ids, color_records, monochrome_records))
-        records = tqdm(records, initial=initial, total=n_images)
+        records = progress(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 

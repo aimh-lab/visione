@@ -9,6 +9,7 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import AgglomerativeClustering
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile
 
 
@@ -83,6 +84,7 @@ def main(args):
     frames_codes = cluster(frames_features)
 
     records = [{'_id': _id, 'cluster_code': code} for _id, code in zip(frames_ids, frames_codes)]
+    records = progress(records)
 
     if args.force and args.output_codes_file.exists():
         args.output_codes_file.unlink()

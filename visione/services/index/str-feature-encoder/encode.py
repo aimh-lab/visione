@@ -9,10 +9,14 @@ import sys
 import h5py
 import more_itertools
 import surrogate
-from tqdm import tqdm
+# from tqdm import tqdm
 
-from visione import load_config
+from visione import load_config, cli_progress
 from visione.savers import GzipJsonlFile
+
+
+# progress = tqdm
+progress = cli_progress
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -108,7 +112,7 @@ def main(args):
         # generate records
         records = ({'_id': _id, 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
 
-        records = tqdm(records, initial=initial, total=n_images)
+        records = progress(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 

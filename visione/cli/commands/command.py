@@ -1,9 +1,22 @@
 from abc import ABC, abstractmethod
 import os
+import selectors
 import shutil
 import subprocess
+import sys
+
+from rich.console import Console
 
 from ...services.common import load_config
+
+
+def progress_callback(progress, task_id):
+    def _func(line):
+        if line.startswith('progress:'):
+            completed, total = map(int, line[len('progress:'):].strip().split('/'))
+            total = total if total >= 0 else None
+            progress.update(task_id, completed=completed, total=total)
+    return _func
 
 
 class BaseCommand(ABC):
@@ -22,8 +35,8 @@ class BaseCommand(ABC):
     @abstractmethod
     def __call__(self, config_file):
         if self.config_file:  # avoid loading config again
-            return 
-        
+            return
+
         # ensure cache folder exists
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -93,10 +106,32 @@ class BaseCommand(ABC):
             '--user', f'{os.getuid()}:{os.getgid()}',
         ]
 
-    def compose_run(self, service_name, service_command, **run_kws):
+    def compose_run(self, service_name, service_command, stdout_callback=None, stderr_callback=None, **run_kws):
         command = self.compose_run_cmd + [service_name] + service_command
-        ret = subprocess.run(command, check=True, env=self.compose_env, **run_kws)
-        return ret
+
+        popen_kws = dict(
+            text='utf8',
+            bufsize=0,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.compose_env,
+        )
+        with subprocess.Popen(command, **popen_kws) as service_process, selectors.DefaultSelector() as selector:
+            selector.register(service_process.stdout, selectors.EVENT_READ, stdout_callback)
+            selector.register(service_process.stderr, selectors.EVENT_READ, stderr_callback)
+
+            while selector.get_map():
+                for key, mask in selector.select():
+                    line = key.fileobj.readline()
+                    if not line:
+                        selector.unregister(key.fileobj)
+                        continue
+
+                    callback = key.data
+                    if callback:
+                        callback(line)
+
+            return service_process.returncode
 
     def is_gpu_available(self):
         # FIXME we are assuming nvidia-smi is installed on systems with GPU(s)

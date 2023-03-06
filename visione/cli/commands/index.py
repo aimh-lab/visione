@@ -2,10 +2,11 @@ import collections
 import csv
 import gzip
 import json
+import threading
 
-from tqdm import tqdm
+from rich.progress import Progress, SpinnerColumn, MofNCompleteColumn, TimeElapsedColumn
 
-from .command import BaseCommand
+from .command import BaseCommand, progress_callback
 
 
 class IndexCommand(BaseCommand):
@@ -29,28 +30,68 @@ class IndexCommand(BaseCommand):
             thumb_dir = self.collection_dir / 'selected-frames'
             video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
 
-        for video_id in tqdm(video_ids, desc="Indexing"):
-            # generate surrogate text representation of objects & colors
-            str_objects = index_config.get('objects', {})
-            if str_objects:
-                self.str_encode_objects(video_id, force=replace)
+        progress_cols = [
+            SpinnerColumn(),
+            *Progress.get_default_columns()[:1],
+            MofNCompleteColumn(),
+            *Progress.get_default_columns()[1:],
+            TimeElapsedColumn()
+        ]
+        with Progress(*progress_cols, transient=True) as progress:
+            n_videos = len(video_ids)
+            progress.console.log(f"Starting indexing of {n_videos} video{'' if n_videos == 1 else 's'}.")
+            task = progress.add_task('', total=n_videos)
 
-            # generate surrogate text representation of features
-            indexed_features = index_config.get('features', {})
-            str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
-            for features_name in str_features:
-                self.str_encode_features(video_id, features_name, force=replace)
+            for video_id in video_ids:
+                progress.update(task, description=f"Indexing '{video_id}'")
+                subtasks = []
+                threads = []
 
-            # push to Lucene index
-            if str_objects or str_features:
-                self.prepare_lucene_doc(video_id, force=replace)
-                self.add_to_lucene_index(video_id, force=replace)
+                # generate surrogate text representation of objects & colors
+                str_objects = index_config.get('objects', {})
+                if str_objects:
+                    subtask = progress.add_task('- Encoding objects with STR', total=None)
+                    # self.str_encode_objects(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    thread = threading.Thread(target=self.str_encode_objects, args=(video_id,), kwargs=dict(force=replace, stdout_callback=progress_callback(progress, subtask)))
+                    thread.start()
+                    threads.append(thread)
+                    subtasks.append(subtask)
 
-            faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
-            for features_name in faiss_features:
-                self.add_to_faiss_index(video_id, features_name, force=True)
+                # generate surrogate text representation of features
+                indexed_features = index_config.get('features', {})
+                str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
+                for features_name in str_features:
+                    subtask = progress.add_task(f"- Encoding features '{features_name}' with STR", total=None)
+                    self.str_encode_features(video_id, features_name, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
 
-    def str_encode_objects(self, video_id, force=False):
+                # push to Lucene index
+                if str_objects or str_features:
+                    for thread in threads:
+                        thread.join()
+                    subtask = progress.add_task('- Creating Lucene documents', total=None)
+                    self.prepare_lucene_doc(video_id, force=replace, progress=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+
+                    subtask = progress.add_task('- Adding to Lucene index', total=None)
+                    self.add_to_lucene_index(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+
+                faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
+                for features_name in faiss_features:
+                    subtask = progress.add_task(f"- Adding features '{features_name}' to FAISS index", total=1)
+                    self.add_to_faiss_index(video_id, features_name, force=True)
+                    progress.update(subtask, completed=1, total=1)  # set as complete
+                    subtasks.append(subtask)
+
+                progress.console.log(f"- '{video_id}' indexed.")
+                for subtask in subtasks:
+                    progress.remove_task(subtask)
+                progress.update(task, advance=1)
+
+            progress.console.log('Indexing complete.')
+
+    def str_encode_objects(self, video_id, force=False, **run_kws):
         """ Encodes colors, detected objects, and their count of each selected frame of a video with surrogate text representations.
 
         Args:
@@ -96,9 +137,9 @@ class IndexCommand(BaseCommand):
             str(count_output_file),
         ] + input_files
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def str_encode_features(self, video_id, features_name, force=False):
+    def str_encode_features(self, video_id, features_name, force=False, **run_kws):
         """ Encodes feature vectors of each selected frame of a video with surrogate text representations.
 
         Args:
@@ -138,9 +179,9 @@ class IndexCommand(BaseCommand):
             str(str_output_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def prepare_lucene_doc(self, video_id, force=False):
+    def prepare_lucene_doc(self, video_id, force=False, progress=None):
         """ Merges jsonl.gz document into a unique doc ready to be indexed by Lucene.
 
         Args:
@@ -247,12 +288,21 @@ class IndexCommand(BaseCommand):
 
         records = map(fix_fieldnames, records)
 
+        if progress:
+            def add_progress(records):
+                for i, record in enumerate(records, start=1):
+                    progress(f'progress: {i}/-1')
+                    yield record
+                progress(f'progress: {i}/{i}')
+
+            records = add_progress(records)
+
         # save merged jsonl.gz file
         with gzip.open(lucene_documents_file, 'wt') as out:
-            for record in tqdm(records, desc='Creating Lucene Docs'):
+            for record in records:
                 out.write(json.dumps(record) + '\n')
 
-    def add_to_lucene_index(self, video_id, force=False):
+    def add_to_lucene_index(self, video_id, force=False, **run_kws):
         """ Adds the analyzed frames of a video to the collection index.
 
         Args:
@@ -279,9 +329,9 @@ class IndexCommand(BaseCommand):
             video_id,
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
-    def add_to_faiss_index(self, video_id, features_name, force=False):
+    def add_to_faiss_index(self, video_id, features_name, force=False, **run_kws):
         """ Adds the analyzed frames of a video to the FAISS index dedicated to the given type of features.
 
         Args:
@@ -313,4 +363,4 @@ class IndexCommand(BaseCommand):
             str(features_file),
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)

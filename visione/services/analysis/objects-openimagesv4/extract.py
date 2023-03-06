@@ -11,12 +11,15 @@ from prefetch_generator import BackgroundGenerator
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-from tqdm import tqdm
+# from tqdm import tqdm
 
+from visione import cli_progress
 from visione.savers import GzipJsonlFile
 
 
-tqdm = partial(tqdm, dynamic_ncols=True)
+# progress = partial(tqdm, dynamic_ncols=True)
+progress = cli_progress
+
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
     logger.setLevel(logging.WARNING)
@@ -125,7 +128,7 @@ def main(args):
             } if det else None, ids_and_dets)
 
         records = filter(lambda x: x is not None, records)
-        records = tqdm(records, initial=initial, total=n_images)
+        records = progress(records, initial=initial, total=n_images)
         saver.add_many(records)
 
 

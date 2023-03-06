@@ -3,10 +3,11 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import urllib.parse
 import urllib.request
 
-from tqdm import tqdm
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
 from .command import BaseCommand
 
@@ -28,22 +29,47 @@ class ImportCommand(BaseCommand):
         super(ImportCommand, ImportCommand).__call__(self, config_file)
         # TODO handle (video_path_or_url == None) case
 
-        # import video file
-        video_id, video_path = self.copy_or_download_video(video_path_or_url, video_id, replace)
+        progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
+        with Progress(*progress_cols, transient=True) as progress:
 
-        # create resized video files
-        # TODO run this in background
-        self.create_resized_videos(video_path, video_id, replace)
+            def show_progress(task_id):
+                return lambda completed, total: progress.update(task_id, completed=completed, total=total)
 
-        # detect scenes and extract frames
-        self.detect_scenes_and_extract_frames(video_path, video_id, replace)
+            task = progress.add_task(f"Importing '{video_id}'", total=1)
+            subtasks = []
 
-        # create frames thumbnails
-        self.create_frames_thumbnails(video_id, replace)
+            # import video file
+            subtask = progress.add_task('- Copying video file')
+            video_id, video_path = self.copy_or_download_video(video_path_or_url, video_id, replace, show_progress(subtask))
+            subtasks.append(subtask)
+
+            # create resized video files
+            subtask = progress.add_task('- Resizing video')
+            thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, show_progress(subtask)))
+            thread.start()
+            subtasks.append(subtask)
+
+            # detect scenes and extract frames
+            subtask = progress.add_task('- Detect scenes', total=None)
+            self.detect_scenes_and_extract_frames(video_path, video_id, replace, show_progress(subtask))
+            subtasks.append(subtask)
+
+            # create frames thumbnails
+            subtask = progress.add_task('- Generating thumbs')
+            self.create_frames_thumbnails(video_id, replace, show_progress(subtask))
+            subtasks.append(subtask)
+
+            thread.join()
+            progress.console.log(f"- '{video_id}' imported.")
+            for subtask in subtasks:
+                progress.remove_task(subtask)
+            progress.update(task, advance=1)
+
+            progress.console.log('Import complete.')
 
         return video_id
 
-    def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False):
+    def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False, show_progress=None):
         """ Copies or downloads a video from a local path or URL and places it
             in `./videos/<video_id>.<ext>`.
 
@@ -51,6 +77,7 @@ class ImportCommand(BaseCommand):
             video_path_or_url (str or pathlib.Path): Local path or URL of the video.
             video_id (str, optional): New ID of the downloaded video. If None, take the video file stem as video ID. Defaults to None.
             replace (bool, optional): Whether to replace any existing video with the same video_id. Defaults to False.
+            show_progress (func, optional): Callback to show progress.
 
         Returns:
             video_id (str): The given video ID (useful if video_id was None).
@@ -67,37 +94,31 @@ class ImportCommand(BaseCommand):
         video_out = self.collection_dir / 'videos' / f'{video_id}{video_ext}'
         if video_out.exists() and not replace:
             print(f'Using existing video file: {video_out.name}')
+            if show_progress:
+                show_progress(1, 1)  # set as completed
             return video_id, video_out
 
         video_url = video_path_or_url
         if not url_parts.scheme:  # convert local path to file:// URI
             video_url = Path(video_path_or_url).resolve().as_uri()
 
-        print(f'Importing: {video_id} -> {video_out.name}')
-
-        progress = tqdm(
-            desc=f'Copying video',
-            unit='iB',
-            unit_scale=True,
-            unit_divisor=1024,
-        )
-
-        def show_progress(block_num, block_size, total_size):
-            progress.total = total_size
-            progress.update(block_size)
+        show_progress_fn = None
+        if show_progress:
+            show_progress_fn = lambda block_num, block_size, total_size: show_progress(block_num * block_size, total_size)
 
         # use urlretrieve
-        urllib.request.urlretrieve(video_url, video_out, show_progress)
+        urllib.request.urlretrieve(video_url, video_out, show_progress_fn)
         return video_id, video_out
 
-    def create_resized_videos(self, video_path, video_id, force=False):
-        """ Created downsampled videos for visualization purposes.
+    def create_resized_videos(self, video_path, video_id, force=False, show_progress=None):
+        """ Creates downsampled videos for visualization purposes.
             This implementation uses a dockerized version of ffmpeg.
 
         Args:
             video_path (pathlib.Path): Path to input video.
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            show_progress (func, optional): Callback to show progress.
 
         Returns:
             # TODO
@@ -109,6 +130,8 @@ class ImportCommand(BaseCommand):
 
         if not force and tiny_video_path.exists() and medium_video_path.exists():
             print('Skipping video resizing, using existing files:', tiny_video_path.name, medium_video_path.name)
+            if show_progress:
+                show_progress(1, 1)  # set as completed
             return 0
 
         tiny_video_path  .parent.mkdir(parents=True, exist_ok=True)
@@ -127,8 +150,10 @@ class ImportCommand(BaseCommand):
             str(video_input),
         ]
 
-        ret = self.compose_run(service, command, stdout=subprocess.PIPE).stdout
-        duration_s = float(json.loads(ret).get('format').get('duration', 0))
+        ffprobe_output = []
+        ret = self.compose_run(service, command, stdout_callback=ffprobe_output.append)
+        ffprobe_output = ''.join(ffprobe_output)
+        duration_s = float(json.loads(ffprobe_output).get('format').get('duration', 0))
 
         gpu = self.is_gpu_available()
 
@@ -162,26 +187,22 @@ class ImportCommand(BaseCommand):
             str(medium_output),
         ]
 
-        # we do not use self.compose_run(), we want to parse stdout
-        command = self.compose_run_cmd + [service] + command
-        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=None, env=self.compose_env) as ffmpeg, \
-            tqdm(desc='Resizing video', total=duration_s, unit='s') as progress:
-
+        def stdout_callback(line):
             # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
-            for line in ffmpeg.stdout:
-                if line.startswith('out_time_us'):
-                    current_time_ms = float(line.rstrip().split('=')[1]) / 1_000_000
-                    progress.update(current_time_ms - progress.n)
+            if show_progress and line.startswith('out_time_us'):
+                current_time_s = float(line.rstrip().split('=')[1]) / 1_000_000
+                show_progress(current_time_s, duration_s)
 
-        return ret
+        return self.compose_run(service, command, stdout_callback=stdout_callback, stderr_callback=print)
 
-    def detect_scenes_and_extract_frames(self, video_path, video_id, force=False):
+    def detect_scenes_and_extract_frames(self, video_path, video_id, force=False, show_progress=None):
         """ Detect scenes from a video file and extract the middle frame of every scene.
 
         Args:
             video_path (pathlib.Path): Path to input video.
             video_id (str): Input Video ID.
             force (bool, optional): Whether to replace existing output or skip computation. Defaults to False.
+            show_progress (func, optional): Callback to show progress.
 
         Returns:
             # TODO
@@ -192,6 +213,8 @@ class ImportCommand(BaseCommand):
         scene_file = selected_frames_dir / f'{video_id}-scenes.csv'
         if not force and scene_file.exists():
             print('Skipping scene detection and frame generation, using existing files:', scene_file.name)
+            if show_progress:
+                show_progress(1, 1)  # set as completed
             return 0
 
         input_file = '/data' / video_path.relative_to(self.collection_dir)
@@ -199,7 +222,7 @@ class ImportCommand(BaseCommand):
 
         service = 'scene-detection'
         command = [
-            '--verbosity', 'error',
+            '--quiet',
             '--input', str(input_file),
             '--output', str(output_dir),
             # '--min-scene-len', '0.6s'
@@ -214,15 +237,21 @@ class ImportCommand(BaseCommand):
             '--png', '--compression', '9',
         ]
 
-        return self.compose_run(service, command)
+        ret = self.compose_run(service, command)
 
-    def create_frames_thumbnails(self, video_id, force=False):
+        if show_progress:
+            show_progress(1, 1)  # set as completed
+
+        return ret
+
+    def create_frames_thumbnails(self, video_id, force=False, show_progress=None):
         """ Creates thumbnails for the selected frames of a video.
             This implementation uses a dockerized version of ffmpeg.
 
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            show_progress (func, optional): Callback to show progress.
 
         Returns:
             # TODO
@@ -237,6 +266,8 @@ class ImportCommand(BaseCommand):
 
         if not force and [i.stem for i in selected_frames_list] == [i.stem for i in thumbnails_list]:
             print('Skipping thumbnail generation, using existing files ...')
+            if show_progress:
+                show_progress(1,1)  # set as completed
             return 0
 
         n_frames = len(selected_frames_list)
@@ -256,13 +287,10 @@ class ImportCommand(BaseCommand):
             str(thumbnails),
         ]
 
-        # we do not use self.compose_run(), we want to parse stdout
-        command = self.compose_run_cmd + [service] + command
-        with subprocess.Popen(command, text='utf8', bufsize=1, stdout=subprocess.PIPE, stderr=None, env=self.compose_env) as ffmpeg, \
-            tqdm(desc='Generating thumbs', total=n_frames, unit='s') as progress:
+        def stdout_callback(line):
+            if show_progress and line.startswith('frame'):
+                current_frame = int(line.rstrip().split('=')[1])
+                show_progress(current_frame, n_frames)
 
-            # parse ffmpeg progress output, keep only current time in milliseconds to update progress bar
-            for line in ffmpeg.stdout:
-                if line.startswith('frame'):
-                    current_frame = int(line.rstrip().split('=')[1])
-                    progress.update(current_frame - progress.n)
+        return self.compose_run(service, command, stdout_callback=stdout_callback, stderr_callback=print)
+
