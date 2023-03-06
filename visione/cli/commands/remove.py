@@ -1,4 +1,7 @@
 import shutil
+import subprocess
+
+from rich.status import Status
 
 from .command import BaseCommand
 
@@ -10,44 +13,72 @@ class RemoveCommand(BaseCommand):
         super(RemoveCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('remove', help='Removes one or more videos from the collection.')
-        parser.add_argument('--purge', action='store_true', default=False, help='Purge also content and analyses.')
+        parser = subparsers.add_parser('remove', help='Removes one or more videos from the collection indices.')
+        parser.add_argument('--content', action='store_true', default=False, help='Remove also static contents (videos, selected frames, thumbs).')
+        parser.add_argument('--analysis', action='store_true', default=False, help='Remove also analyses.')
         parser.add_argument('video_ids', nargs='+', help='ID(s) of video(s) to be removed.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_ids, purge):
+    def __call__(self, *, config_file, video_ids, content, analysis):
         super(RemoveCommand, RemoveCommand).__call__(self, config_file)
 
-        nondata_folders = ['logs', 'logs_dres']
-        data_folders = [x for x in self.collection_dir.iterdir() if x.is_dir() and x.name not in nondata_folders]
+        status = Status('Removing ...')
+        status.start()
 
-        if purge:
-            # remove content and analyses files
+        logs_folders = ('logs', 'logs_dres')
+        content_folders = ('videos', 'resized-videos', 'selected-frames', 'thumbnails')
+        non_analysis_folders = content_folders + logs_folders
+
+        analysis_folders = [x for x in self.collection_dir.iterdir() if x.is_dir() and x.name not in non_analysis_folders]
+        logs_folders     = [self.collection_dir / d for d in logs_folders]
+        content_folders  = [self.collection_dir / d for d in content_folders]
+
+        if analysis:  # remove analyses, intermediate files
+            status.update('Removing files (analysis) ...')
             for video_id in video_ids:
-                print('Purging:', video_id)
-
-                # analyses, intermediate files
-                for data_dir in data_folders:
+                for data_dir in analysis_folders:
                     video_dir = data_dir / video_id
                     if video_dir.exists():
                         shutil.rmtree(video_dir, ignore_errors=True)
 
-                # video content
+            status.console.log('Analysis files deleted.')
+
+        if content:  # remove content files
+            status.update('Removing files (content) ...')
+            for video_id in video_ids:
+                for data_dir in content_folders:
+                    video_dir = data_dir / video_id
+                    if video_dir.exists():
+                        shutil.rmtree(video_dir, ignore_errors=True)
+
                 for size in ('medium', 'tiny'):
                     (self.collection_dir / 'resized-videos' / size / f'{video_id}-{size}.mp4').unlink(missing_ok=True)
 
                 # FIXME: the video extension is unknown, we assume mp4 here, but we should smartly glob.
                 (self.collection_dir / 'videos' / f'{video_id}.mp4').unlink(missing_ok=True)
 
+            status.console.log('Content files deleted.')
 
-        self.remove_from_lucene_index(video_ids)
+        status.update('Removing (Lucene) ...')
+        self.remove_from_lucene_index(video_ids, stderr_callback=status.console.print)
+        status.console.log('Removed from Lucene.')
 
         indexed_features = self.config.get('index', {}).get('features', {})
         faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
-        for features_name in faiss_features:
-            self.remove_from_faiss_index(video_ids, features_name)
+        if faiss_features:
+            status.update('Removing (FAISS) ...')
 
-    def remove_from_lucene_index(self, video_ids):
+            for features_name in faiss_features:
+                self.remove_from_faiss_index(video_ids, features_name, stderr_callback=status.console.print)
+
+            status.console.log('Removed from FAISS.')
+
+        for video_id in video_ids:
+            status.console.log(f"- '{video_id}' removed.")
+
+        status.stop()
+
+    def remove_from_lucene_index(self, video_ids, **run_kws):
         """ Removes all the frames of one or more videos from the Lucene collection index.
 
         Args:
@@ -67,9 +98,9 @@ class RemoveCommand(BaseCommand):
             'remove',
         ] + video_ids
 
-        return self.compose_run(service, command)
-    
-    def remove_from_faiss_index(self, video_ids, features_name):
+        return self.compose_run(service, command, **run_kws)
+
+    def remove_from_faiss_index(self, video_ids, features_name, **run_kws):
         """ Removes frames of one or more videos from the FAISS index dedicated to the given type of features.
 
         Args:
@@ -96,4 +127,4 @@ class RemoveCommand(BaseCommand):
             'remove'
         ] + video_ids
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
