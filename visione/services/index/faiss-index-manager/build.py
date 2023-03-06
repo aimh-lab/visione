@@ -189,7 +189,7 @@ def remove(args):
     idmap = [x for i, x in enumerate(idmap) if i not in positions]
     positions = np.fromiter(positions, int, len(positions))
     index.remove_ids(positions)
-    logging.info(f"Removed: {' '.join(video_ids)}")
+    logging.info(f"Removed: {' '.join(args.video_ids)}")
 
     # save index to disk
     logging.info('Saving index ...')
