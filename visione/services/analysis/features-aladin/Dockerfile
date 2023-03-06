@@ -42,8 +42,5 @@ RUN wget https://azcopyvnext.azureedge.net/release20230123/azcopy_linux_amd64_10
     mv azcopy_linux_amd64_10.17.0/azcopy .
 RUN ./azcopy copy 'https://biglmdiag.blob.core.windows.net/vinvl/model_ckpts/coco_ir/base/checkpoint-0132780/' . --recursive
 
-WORKDIR /usr/src/app/
-COPY extract.sh .
-COPY service.py ./ALADIN/alad/
-
 WORKDIR /usr/src/app/ALADIN
+COPY . ./alad

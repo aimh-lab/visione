@@ -33,8 +33,8 @@ shift "$(($OPTIND -1))"
 echo "Input: $IMG_PATH; Output: $OUT_PATH"
 
 # ------------------------ GO! ------------------------- #
-find $IMG_PATH -name '*.png' > image_list.txt 
-IMG_LIST_FILE=image_list.txt
+IMG_LIST_FILE=$SG_BENCHMARK_PATH/image_list.txt
+find $IMG_PATH -name '*.png' > $IMG_LIST_FILE
 
 BATCH_SIZE=10000 # how many images we extract the feature of before running ALADIN and dumping to h5
 
@@ -63,7 +63,7 @@ do
     PYTHONPATH=. conda run --no-capture-output -n sg_benchmark python extraction_service/test_sg_net.py \
     --config-file sgg_configs/vgattr/vinvl_x152c4.yaml \
     --img_folder $IMG_PATH \
-    --file_list_txt ../$IMG_LIST_FILE \
+    --file_list_txt $IMG_LIST_FILE \
     --from_idx $FROM \
     --to_idx $TO \
     TEST.IMS_PER_BATCH 4 \
