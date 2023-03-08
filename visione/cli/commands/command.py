@@ -61,6 +61,8 @@ class BaseCommand(ABC):
             'VISIONE_CACHE': self.cache_dir,
         }
 
+        self.develop_mode = self.config['main'].get('develop_mode', False)
+
         self._find_docker_compose_executable()
 
 
@@ -89,7 +91,7 @@ class BaseCommand(ABC):
             '--file', str(self.compose_dir / 'index-services.yaml'),
         ]
 
-        if self.config['main'].get('develop_mode', False):
+        if self.develop_mode:
             compose_files += [
                 '--file', str(self.compose_dir / 'devel-options.yaml'),  # for development
             ]
@@ -108,6 +110,10 @@ class BaseCommand(ABC):
 
     def compose_run(self, service_name, service_command, stdout_callback=None, stderr_callback=None, **run_kws):
         command = self.compose_run_cmd + [service_name] + service_command
+
+        if self.develop_mode:
+            print(f"Running: {' '.join(command)}")
+            return subprocess.run(command, env=self.compose_env)
 
         popen_kws = dict(
             text='utf8',
