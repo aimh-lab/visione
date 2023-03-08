@@ -97,9 +97,10 @@ class IndexCommand(BaseCommand):
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            runs_kws (dict, optional): Keyword arguments to be passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the subprocess.
         """
 
         str_objects_dir = self.collection_dir / 'str-objects' / video_id
@@ -146,9 +147,10 @@ class IndexCommand(BaseCommand):
             video_id (str): Input Video ID.
             features_name (str): Name of the features to encode.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            runs_kws (dict, optional): Keyword arguments to be passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the subprocess.
         """
 
         input_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
@@ -187,9 +189,7 @@ class IndexCommand(BaseCommand):
         Args:
             video_id (str): Input Video ID.
             force (bool, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
-
-        Returns:
-            # TODO
+            progress (callback, optional): Callback function to report progress. Defaults to None.
         """
 
         lucene_documents_dir = self.collection_dir / 'lucene-documents' / video_id
@@ -308,9 +308,10 @@ class IndexCommand(BaseCommand):
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
+            run_kws (dict, optional): Additional keyword arguments passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: The return code of the subprocess.
         """
 
         documents_file = self.collection_dir / 'lucene-documents' / video_id /  f'{video_id}-lucene-docs.jsonl.gz'
@@ -338,9 +339,10 @@ class IndexCommand(BaseCommand):
             video_id (str): Input Video ID.
             features_name (str): Name of the features to index. This will be used to select the index for these features.
             force (str, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
+            run_kws (dict, optional): Additional keyword arguments passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: The return code of the subprocess.
         """
 
         faiss_index_file = self.collection_dir / f'faiss-index_{features_name}.faiss'

@@ -121,7 +121,7 @@ class ImportCommand(BaseCommand):
             show_progress (func, optional): Callback to show progress.
 
         Returns:
-            # TODO
+            int: Return code of the ffmpeg command.
         """
 
         resized_video_dir = self.collection_dir / 'resized-videos'
@@ -205,7 +205,7 @@ class ImportCommand(BaseCommand):
             show_progress (func, optional): Callback to show progress.
 
         Returns:
-            # TODO
+            int: Return code of the scene detection command.
         """
 
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
@@ -254,7 +254,7 @@ class ImportCommand(BaseCommand):
             show_progress (func, optional): Callback to show progress.
 
         Returns:
-            # TODO
+            int: Return code of the thumbnail generation command.
         """
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
         thumbnail_dir = self.collection_dir / 'thumbnails' / video_id

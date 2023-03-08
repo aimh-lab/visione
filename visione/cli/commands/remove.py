@@ -83,9 +83,10 @@ class RemoveCommand(BaseCommand):
 
         Args:
             video_ids (list of str): IDs of videos to be removed.
+            run_kws (dict): Keyword arguments to be passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the Lucene index manager.
         """
 
         lucene_index_dir = self.collection_dir / 'lucene-index'
@@ -106,9 +107,10 @@ class RemoveCommand(BaseCommand):
         Args:
             video_ids (list of str): IDs of videos to be removed.
             features_name (str): Name of the features in the index. This will be used to select the index for these features.
+            run_kws (dict): Keyword arguments to be passed to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the FAISS index manager.
         """
 
         faiss_index_file = self.collection_dir / f'faiss-index_{features_name}.faiss'

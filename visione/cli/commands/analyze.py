@@ -107,9 +107,10 @@ class AnalyzeCommand(BaseCommand):
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            TODO
+            int: Return code of the subprocess.
         """
         gem_dir = self.collection_dir / 'features-gem' / video_id
         gem_dir.mkdir(parents=True, exist_ok=True)
@@ -147,9 +148,10 @@ class AnalyzeCommand(BaseCommand):
             features_name (str): Specifies the CLIP model to be used.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            TODO
+            int: Return code of the subprocess.
         """
         clip_dir = self.collection_dir / f'features-{features_name}' / video_id
         clip_dir.mkdir(parents=True, exist_ok=True)
@@ -214,6 +216,16 @@ class AnalyzeCommand(BaseCommand):
         return self.compose_run(service, command)
 
     def extract_color_map(self, video_id, force=False, **run_kws):
+        """ Extracts color map from selected keyframes of a video for cross-media retrieval.
+
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
+        
+        Returns:
+            int: Return code of the subprocess.
+        """
         colors_dir = self.collection_dir / 'objects-colors' / video_id
         colors_dir.mkdir(parents=True, exist_ok=True)
 
@@ -247,9 +259,10 @@ class AnalyzeCommand(BaseCommand):
             detector (str): Specifies the detector to use. It must be one of 'vfnet_X-101-32x4d', 'vfnet_X-101-64x4d', or 'mask_rcnn_lvis'.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the subprocess.
         """
 
         objects_dir = self.collection_dir / f'objects-{detector}' / video_id
@@ -289,9 +302,10 @@ class AnalyzeCommand(BaseCommand):
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the subprocess.
         """
 
         detector = 'frcnn_incep_resnetv2_openimagesv4'
@@ -327,10 +341,12 @@ class AnalyzeCommand(BaseCommand):
 
         Args:
             video_id (str): Input Video ID.
+            features (str, optional): Features to use for clustering. Defaults to 'gem'.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            # TODO
+            int: Return code of the subprocess.
         """
         clusters_dir = self.collection_dir / 'cluster-codes' / video_id
         clusters_dir.mkdir(parents=True, exist_ok=True)
