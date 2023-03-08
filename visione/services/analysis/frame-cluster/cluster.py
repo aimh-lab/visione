@@ -9,7 +9,7 @@ import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import AgglomerativeClustering
 
-from visione import cli_progress
+from visione import cli_progress as progress
 from visione.savers import GzipJsonlFile
 
 
