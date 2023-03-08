@@ -69,6 +69,11 @@ class AnalyzeCommand(BaseCommand):
                     subtask = progress.add_task('- Extracting features (GeM)', total=None)
                     self.extract_gem_features(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
                     subtasks.append(subtask)
+            
+                if 'aladin' in active_feature_extractors:
+                    subtask = progress.add_task('- Extracting features (ALADIN)', total=None)
+                    self.extract_aladin_features(video_id, force=replace)
+                    subtasks.append(subtask)
 
                 if 'clip-laion' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (CLIP LAION)', total=None)
@@ -169,7 +174,41 @@ class AnalyzeCommand(BaseCommand):
             '--features-name', features_name,
         ]
 
-        return self.compose_run(service, command, **run_kws)
+        return self.compose_run(service, command)
+    
+    def extract_aladin_features(self, video_id, force=False):
+        """ Extracts ALADIN features from selected keyframes of a video for cross-media retrieval.
+
+        Args:
+            video_id (str): Input Video ID.
+            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        Returns:
+            TODO
+        """
+        features_name = 'aladin'
+        aladin_dir = self.collection_dir / f'features-{features_name}' / video_id
+        aladin_dir.mkdir(parents=True, exist_ok=True)
+
+        aladin_features_file = aladin_dir / f'{video_id}-{features_name}.hdf5'
+        if not force and aladin_features_file.exists():
+            print(f'Skipping {features_name} extraction, using existing file:', aladin_features_file.name)
+            return 0
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+
+        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        output_file = '/data' / aladin_features_file.relative_to(self.collection_dir)
+
+        service = f'features-{features_name}'
+        command = [
+            'bash', 'alad/extract.sh',
+            '-i', str(input_dir),
+            '-o', str(output_file)
+        ]
+
+        return self.compose_run(service, command)
 
     def extract_color_map(self, video_id, force=False, **run_kws):
         colors_dir = self.collection_dir / 'objects-colors' / video_id

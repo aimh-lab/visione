@@ -61,6 +61,12 @@ services:
     deploy: *needs_gpu
     profiles: ["features-clip-laion"]
 
+  features-aladin:
+    <<: *common
+    build: ./analysis/features-aladin
+    deploy: *needs_gpu
+    profiles: ["features-aladin"]
+
   frame-cluster:
     <<: *common
     build: ./analysis/frame-cluster

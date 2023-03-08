@@ -15,7 +15,9 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 
 # create the query encoder object
-args_str = '--eval_model_dir checkpoint-0132780 --max_seq_length 50 --max_img_seq_length 34 --load_checkpoint weights/best_model_align_and_distill.pth.tar'
+args_str = '--eval_model_dir checkpoint-0132780 '+ 
+           '--max_seq_length 50 --max_img_seq_length 34 '+
+           '--load_checkpoint weights/best_model_align_and_distill.pth.tar'
 qe = QueryEncoder(args_str)
 
 @app.route('/get-text-feature', methods=['GET'])

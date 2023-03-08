@@ -42,5 +42,8 @@ RUN wget https://azcopyvnext.azureedge.net/release20230123/azcopy_linux_amd64_10
     mv azcopy_linux_amd64_10.17.0/azcopy .
 RUN ./azcopy copy 'https://biglmdiag.blob.core.windows.net/vinvl/model_ckpts/coco_ir/base/checkpoint-0132780/' . --recursive
 
+# FIXME: use build-args to pass UID and GID to docker build to inject the host user id during image build
+RUN chmod -R a+rw /usr/src/app/
+
 WORKDIR /usr/src/app/ALADIN
 COPY . ./alad

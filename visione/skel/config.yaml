@@ -23,7 +23,7 @@ static_files_urls:
 # (deprecated) URLs for externally hosted backend services. If null, use the locally hosted service.
 services_urls:
   gem_url:                        null
-  aladin_url:                     http://visione-dev.isti.cnr.it:5020/get-text-feature
+  aladin_url:                     null
   clip_url:                       null
   clip_internal_search_url:       null
   clip_laion_url:                 null
@@ -40,6 +40,7 @@ analysis:
   # List of feature vector extractors to employ.
   features:
     - gem
+    - aladin
     - clip-openai
     - clip-laion
 
@@ -240,6 +241,13 @@ index:
       index_engine: str
       index_type: topk-sq
       index_params:
+        keep: 0.5
+        dim_multiplier: 2
+
+    aladin:
+      index_engine: str
+      index_type: topk-sq
+      index_params: #TODO: change these params, copied grom GEM
         keep: 0.5
         dim_multiplier: 2
 
