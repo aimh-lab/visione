@@ -2,40 +2,17 @@ import argparse
 import collections
 import itertools
 import logging
-import more_itertools
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from prefetch_generator import BackgroundGenerator
 from skimage import io, measure, transform
-# from tqdm import tqdm
 
-from visione import cli_progress
-from visione.savers import GzipJsonlFile
+from visione.extractor import BaseExtractor
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
     logger.setLevel(logging.WARNING)
-
-
-# progress = tqdm
-progress = cli_progress
-
-COLORS = {
-    'black' : [0.00, 0.00, 0.00],
-    'blue'  : [0.00, 0.00, 1.00],
-    'brown' : [0.50, 0.40, 0.25],
-    'grey'  : [0.50, 0.50, 0.50],
-    'green' : [0.00, 1.00, 0.00],
-    'orange': [1.00, 0.80, 0.00],
-    'pink'  : [1.00, 0.50, 1.00],
-    'purple': [1.00, 0.00, 1.00],
-    'red'   : [1.00, 0.00, 0.00],
-    'white' : [1.00, 1.00, 1.00],
-    'yellow': [1.00, 1.00, 0.00],
-}
 
 
 def load_image(image_path):
@@ -142,43 +119,6 @@ def merge_colors(tables, keep_duplicates=True):
     return merged_table
 
 
-def process_images(
-    images,
-    nrows=7,
-    ncols=7,
-    dominant_threshold=0.30,
-    associated_threshold=0.15,
-    quotient_threshold=0.30,
-    dominant_only=False,
-    keep_duplicates=True,
-):
-    n_colors = len(COLORS)
-    column_names = ['R', 'G', 'B'] + list(range(n_colors))
-
-    def read_color_table(path):
-        color_table = pd.read_csv(path, names=column_names, index_col=['R','G','B'], delim_whitespace=True)
-        pixel2color_idx = color_table.idxmax(axis=1).values
-        return pixel2color_idx
-
-    josa_map = read_color_table('tables/LUT_JOSA.txt')
-    w2c_map = read_color_table('tables/w2c.txt')
-
-    common = dict(
-        nrows=nrows,
-        ncols=ncols,
-        dominant_threshold=dominant_threshold,
-        associated_threshold=associated_threshold,
-        quotient_threshold=quotient_threshold,
-        dominant_only=dominant_only,
-    )
-
-    for image_np in images:
-        josa_colors = extract_colors(image_np, josa_map, **common)
-        w2c_colors  = extract_colors(image_np, w2c_map , **common)
-        color_table = merge_colors([josa_colors, w2c_colors], keep_duplicates=keep_duplicates)
-        yield color_table
-
-
 def table2record(color_table, label_map, nrows, ncols):
     scores = []
     boxes = []
@@ -223,76 +163,90 @@ def compute_monochromaticity(image_np, eps=1e-7):
     }
 
 
-def main(args):
-    image_list = sorted(args.image_dir.glob('*.png'))
-    n_images = len(image_list)
-    initial = 0
+class ColorExtractor(BaseExtractor):
 
-    if args.output_type == 'file':
-        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
+    COLORS = {
+        'black' : [0.00, 0.00, 0.00],
+        'blue'  : [0.00, 0.00, 1.00],
+        'brown' : [0.50, 0.40, 0.25],
+        'grey'  : [0.50, 0.50, 0.50],
+        'green' : [0.00, 1.00, 0.00],
+        'orange': [1.00, 0.80, 0.00],
+        'pink'  : [1.00, 0.50, 1.00],
+        'purple': [1.00, 0.00, 1.00],
+        'red'   : [1.00, 0.00, 0.00],
+        'white' : [1.00, 1.00, 1.00],
+        'yellow': [1.00, 1.00, 0.00],
+    }
 
-    with saver:
-        image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
-        ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
+    LABEL_MAP = list(COLORS.keys())
 
-        # process missing only (resume)
-        if not args.force:
-            ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
-            ids_and_paths = list(ids_and_paths)
-            initial = n_images - len(ids_and_paths)
+    @classmethod
+    def add_arguments(cls, parser):
+        parser.add_argument('--nrows', type=int, default=7)
+        parser.add_argument('--ncols', type=int, default=7)
+        parser.add_argument('--dominant-threshold', type=float, default=0.30)
+        parser.add_argument('--associated-threshold', type=float, default=0.15)
+        parser.add_argument('--quotient-threshold', type=float, default=0.30)
+        parser.add_argument('--dominant-only', action='store_true', default=False)
+        parser.add_argument('--discard-duplicates', dest='keep_duplicates', action='store_true', default=True)
+        super(ColorExtractor, cls).add_arguments(parser)
 
-        unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
-        head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
-        image_ids, image_paths = unzipped_ids_and_paths if head else ((),())
+    def __init__(self, args):
+        super(ColorExtractor, self).__init__(args)
+        self._loaded = False
 
-        # load images
-        images = map(io.imread, image_paths)
-        # images = BackgroundGenerator(images, max_prefetch=10)
+    def setup(self):
+        if self._loaded:
+            return
 
-        images1, images2 = itertools.tee(images, 2)
+        n_colors = len(self.COLORS)
+        column_names = ['R', 'G', 'B'] + list(range(n_colors))
 
-        color_tables = process_images(
-            images1,
-            nrows=args.nrows,
-            ncols=args.ncols,
-            dominant_threshold=args.dominant_threshold,
-            associated_threshold=args.associated_threshold,
-            quotient_threshold=args.quotient_threshold,
-            dominant_only=args.dominant_only,
-            keep_duplicates=args.keep_duplicates,
+        def read_color_table(path):
+            color_table = pd.read_csv(path, names=column_names, index_col=['R','G','B'], delim_whitespace=True)
+            pixel2color_idx = color_table.idxmax(axis=1).values
+            return pixel2color_idx
+
+        self.josa_map = read_color_table('tables/LUT_JOSA.txt')
+        self.w2c_map = read_color_table('tables/w2c.txt')
+
+        self._loaded = True
+
+    def extract_one(self, image_path):
+        image_np = load_image(image_path)
+        if image_np is None:
+            return None
+
+        common = dict(
+            nrows=self.args.nrows,
+            ncols=self.args.ncols,
+            dominant_threshold=self.args.dominant_threshold,
+            associated_threshold=self.args.associated_threshold,
+            quotient_threshold=self.args.quotient_threshold,
+            dominant_only=self.args.dominant_only,
         )
 
-        label_map = list(COLORS.keys())
-        color_records = map(lambda x: table2record(x, label_map, args.nrows, args.ncols), color_tables)
-        monochrome_records = map(compute_monochromaticity, images2)
+        josa_colors = extract_colors(image_np, self.josa_map, **common)
+        w2c_colors  = extract_colors(image_np, self.w2c_map , **common)
+        color_table = merge_colors([josa_colors, w2c_colors], keep_duplicates=self.args.keep_duplicates)
 
-        records = itertools.starmap(lambda _id, cr, mr: {'_id': _id, **cr, **mr}, zip(image_ids, color_records, monochrome_records))
-        records = progress(records, initial=initial, total=n_images)
-        saver.add_many(records)
+        color_record = table2record(color_table, self.LABEL_MAP, self.args.nrows, self.args.ncols)
+
+        monochrome_record = compute_monochromaticity(image_np)
+        record = {**color_record, **monochrome_record}
+        return record
+
+    def extract(self, image_paths):
+        self.setup()  # lazy loading extractor
+        records = map(self.extract_one, image_paths)
+        records = list(records)
+        return records
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract color annotations.')
-
-    # input params
-    parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
-    parser.add_argument('--save-every', type=int, default=100)
-    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
-
-    # extraction params
-    parser.add_argument('--ncols', type=int, default=7, help='number of cell columns')
-    parser.add_argument('--nrows', type=int, default=7, help='number of cell rows')
-    parser.add_argument('--dominant-threshold', type=float, default=0.3, help='th_dominant')
-    parser.add_argument('--associated-threshold', type=float, default=0.15, help='th_associated')
-    parser.add_argument('--quotient-threshold', type=float, default=0.15, help='th_quotient_da')
-    parser.add_argument('--dominant-only', default=False, action='store_true', help='whether to keep duplicate colors')
-    parser.add_argument('--keep-duplicates', default=True, action='store_true', help='whether to keep duplicate colors')
-
-    # output params
-    subparsers = parser.add_subparsers(dest="output_type")
-
-    file_parser = subparsers.add_parser('file')
-    file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
-
+    ColorExtractor.add_arguments(parser)
     args = parser.parse_args()
-    main(args)
+    extractor = ColorExtractor(args)
+    extractor.run()

@@ -14,9 +14,10 @@ class AnalyzeCommand(BaseCommand):
         parser = subparsers.add_parser('analyze', help='Analyzes videos imported in the collection')
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all imported videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing analyses.')
+        parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_ids, replace):
+    def __call__(self, *, config_file, video_ids, replace, gpu):
         super(AnalyzeCommand, AnalyzeCommand).__call__(self, config_file)
 
         analysis_config = self.config.get('analysis', {})
@@ -77,12 +78,12 @@ class AnalyzeCommand(BaseCommand):
 
                 if 'clip-laion' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (CLIP LAION)', total=None)
-                    self.extract_clip_features(video_id, 'clip-laion', dimensions=1024, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_clip_features(video_id, 'clip-laion', force=replace, stdout_callback=progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'clip-openai' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (CLIP OpenAI)', total=None)
-                    self.extract_clip_features(video_id, 'clip-openai', dimensions=768, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_clip_features(video_id, 'clip-openai', force=replace, stdout_callback=progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Frame clustering
@@ -99,12 +100,13 @@ class AnalyzeCommand(BaseCommand):
 
             progress.console.log('Analysis complete.')
 
-    def extract_gem_features(self, video_id, force=False, **run_kws):
+    def extract_gem_features(self, video_id, force=False, gpu=False, **run_kws):
         """ Extracts GeM features from selected keyframes of a video for instance retrieval.
 
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU. Defaults to False.
 
         Returns:
             TODO
@@ -126,9 +128,10 @@ class AnalyzeCommand(BaseCommand):
         service = 'features-gem'
         command = [
             'python', 'extract.py',
-            str(input_dir),
+        ] + (['--force'] if force else []) + [
+        ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            '--gpu',
+            str(input_dir),
             'hdf5',
             '--output', str(output_file),
             '--features-name', 'gem',
@@ -136,14 +139,14 @@ class AnalyzeCommand(BaseCommand):
 
         return self.compose_run(service, command, **run_kws)
 
-    def extract_clip_features(self, video_id, features_name, dimensions, force=False, **run_kws):
+    def extract_clip_features(self, video_id, features_name, force=False, gpu=False, **run_kws):
         """ Extracts CLIP features from selected keyframes of a video for cross-media retrieval.
 
         Args:
             video_id (str): Input Video ID.
             features_name (str): Specifies the CLIP model to be used.
-            dimensions (int): Number of dimensions of the extracted feature vector.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU. Defaults to False.
 
         Returns:
             TODO
@@ -165,12 +168,12 @@ class AnalyzeCommand(BaseCommand):
         service = f'features-{features_name}'
         command = [
             'python', 'extract.py',
-            str(input_dir),
+        ] + (['--force'] if force else []) + [
+        ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            '--gpu',
+            str(input_dir),
             'hdf5',
             '--output', str(output_file),
-            '--dimensionality', str(dimensions),
             '--features-name', features_name,
         ]
 
@@ -228,21 +231,22 @@ class AnalyzeCommand(BaseCommand):
         service = 'objects-colors'
         command = [
             'python', 'extract.py',
-            str(input_dir),
             '--save-every', '200',
-            'file',
+            str(input_dir),
+            'jsonl',
             '--output', str(output_file),
         ]
 
         return self.compose_run(service, command, **run_kws)
 
-    def detect_objects_mmdet(self, video_id, detector, force=False, **run_kws):
+    def detect_objects_mmdet(self, video_id, detector, force=False, gpu=False, **run_kws):
         """ Detect objects form the selected keyframes of a video using pretrained models from mmdetection.
 
         Args:
             video_id (str): Input Video ID.
             detector (str): Specifies the detector to use. It must be one of 'vfnet_X-101-32x4d', 'vfnet_X-101-64x4d', or 'mask_rcnn_lvis'.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU. Defaults to False.
 
         Returns:
             # TODO
@@ -265,18 +269,18 @@ class AnalyzeCommand(BaseCommand):
         service = 'objects-mmdet'
         command = [
             'python', 'extract.py',
-            str(input_dir),
             detector,
         ] + (['--force'] if force else []) + [
-            '--gpu',
+        ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            'file',
+            str(input_dir),
+            'jsonl',
             '--output', str(output_file),
         ]
 
         return self.compose_run(service, command, **run_kws)
 
-    def detect_objects_oiv4(self, video_id, force=False, **run_kws):
+    def detect_objects_oiv4(self, video_id, force=False, gpu=False, **run_kws):
         """ Detect objects form the selected keyframes of a video using the
             Faster RCNN Inception ResNet V2 model trained on OpenImagesV4
             available in tensorflow hub.
@@ -284,6 +288,7 @@ class AnalyzeCommand(BaseCommand):
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU. Defaults to False.
 
         Returns:
             # TODO
@@ -307,10 +312,11 @@ class AnalyzeCommand(BaseCommand):
         service = 'objects-openimagesv4'
         command = [
             'python', 'extract.py',
-            str(input_dir),
         ] + (['--force'] if force else []) + [
+        ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            'file',
+            str(input_dir),
+            'jsonl',
             '--output', str(output_file),
         ]
 

@@ -1,24 +1,13 @@
 import argparse
-from functools import partial
 import logging
-import itertools
-import more_itertools
-from pathlib import Path
 import sys
 
 from PIL import Image
-from prefetch_generator import BackgroundGenerator
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-# from tqdm import tqdm
 
-from visione import cli_progress
-from visione.savers import GzipJsonlFile
-
-
-# progress = partial(tqdm, dynamic_ncols=True)
-progress = cli_progress
+from visione.extractor import BaseExtractor
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
@@ -73,75 +62,50 @@ def apply_detector(detector, x):
     return y
 
 
-def main(args):
-    image_list = sorted(args.image_dir.glob('*.png'))
-    n_images = len(image_list)
-    initial = 0
+class ObjectOIV4Extractor(BaseExtractor):
+    """ Extracts objects from images using Open Images V4 Faster R-CNN detector. """
 
-    if args.output_type == 'file':
-        saver = GzipJsonlFile(args.output, flush_every=args.save_every)
+    @classmethod
+    def add_arguments(cls, parser):
+        parser.add_argument('--detector-url', default='https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1', help='URL of the detector to use')
+        super(ObjectOIV4Extractor, cls).add_arguments(parser)
 
-    detector_url = 'https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1'
-    log.info(f'Loading detector: {detector_url}')
-    detector = hub.KerasLayer(detector_url, signature='default', signature_outputs_as_dict=True)
-    log.info(f'Loaded detector.')
+    def __init__(self, args):
+        super(ObjectOIV4Extractor, self).__init__(args)
+        if not args.gpu:
+            tf.config.set_visible_devices([], 'GPU')
 
-    with saver:
-        # read image ids and paths
-        image_list = map(lambda x: f'{x.stem}\t{x}', image_list)
-        ids_and_paths = map(lambda x: x.rstrip().split('\t'), image_list)
+        self.detector = None
 
-        # process missing only (resume)
-        if not args.force:
-            ids_and_paths = filter(lambda x: x[0] not in saver, ids_and_paths)
-            ids_and_paths = list(ids_and_paths)
-            initial = n_images - len(ids_and_paths)
+    def setup(self):
+        if self.detector is None:
+            log.info(f'Loading detector: {self.args.detector_url}')
+            self.detector = hub.KerasLayer(self.args.detector_url, signature='default', signature_outputs_as_dict=True)
+            log.info(f'Loaded detector.')
 
-        # prepare image paths
-        unzipped_ids_and_paths = more_itertools.unzip(ids_and_paths)
-        head, unzipped_ids_and_paths = more_itertools.spy(unzipped_ids_and_paths)
-        image_ids, image_paths = unzipped_ids_and_paths if head else ((),())
+    def extract_one(self, image_path):
+        self.setup()  # lazy load model
+        image = load_image_pil(image_path)
+        det = apply_detector(self.detector, image)
+        det = {
+            'object_class_labels': det['detection_class_labels'],
+            'object_class_names': det['detection_class_entities'],  # fixes a swap in tensorflow model output
+            'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
+            'object_scores': det['detection_scores'],
+            'object_boxes_yxyx': det['detection_boxes'],
+            'detector': 'frcnn_incep_resnetv2_openimagesv4',
+        } if det else None
+        return det
 
-        # load images
-        images = map(load_image_pil, image_paths)
-        # images = BackgroundGenerator(images, max_prefetch=10)
-
-        # apply detector
-        dets = map(lambda x: apply_detector(detector, x), images)
-        ids_and_dets = zip(image_ids, dets)
-
-        # post-process to records
-        records = itertools.starmap(lambda frame_id, det: {
-                # useful ids
-                '_id': frame_id,
-                # 'video_id': video_id,
-                # frame size
-                'width': det['image_width'],
-                'height': det['image_height'],
-                # detection fields
-                'object_class_labels': det['detection_class_labels'],
-                'object_class_names': det['detection_class_entities'],  # fixes a swap in tensorflow model output
-                'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
-                'object_scores': det['detection_scores'],
-                'object_boxes_yxyx': det['detection_boxes'],
-                'detector': 'frcnn_incep_resnetv2_openimagesv4',
-            } if det else None, ids_and_dets)
-
-        records = filter(lambda x: x is not None, records)
-        records = progress(records, initial=initial, total=n_images)
-        saver.add_many(records)
+    def extract(self, image_paths):
+        records = map(self.extract_one, image_paths)
+        records = list(records)
+        return records
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Detect Objects with TensorFlow Hub models.')
-
-    parser.add_argument('image_dir', type=Path, help='directory containing images to be processed')
-    parser.add_argument('--save-every', type=int, default=100)
-    parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
-    subparsers = parser.add_subparsers(dest="output_type")
-
-    file_parser = subparsers.add_parser('file')
-    file_parser.add_argument('-o', '--output', type=Path, default=None, help='path to result file (gzipped JSONP file)')
-
+    ObjectOIV4Extractor.add_arguments(parser)
     args = parser.parse_args()
-    main(args)
+    extractor = ObjectOIV4Extractor(args)
+    extractor.run()
