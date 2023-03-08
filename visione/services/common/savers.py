@@ -18,10 +18,9 @@ class Saver(abc.ABC):
     def add(self, record):
         pass
 
-    def add_many(self, records):
+    def add_many(self, records, *args, **kwargs):
         for record in records:
-            self.add(record)
-
+            self.add(record, *args, **kwargs)
 
 
 class GzipJsonlFile(Saver):
@@ -47,7 +46,7 @@ class GzipJsonlFile(Saver):
     def __contains__(self, _id):
         return _id in self._ids
 
-    def add(self, record):
+    def add(self, record, force=False):
         _id = record['_id']
         if _id not in self:
             self._ids.add(_id)
@@ -64,9 +63,8 @@ class GzipJsonlFile(Saver):
 
 class HDF5File(Saver):
     """ Save / Load / Append results in a HDF5 file. """
-    def __init__(self, path, shape=None, flush_every=100, attrs={}):
+    def __init__(self, path, flush_every=100, attrs={}):
         self.path = Path(path)
-        self.shape = shape
         self.flush_every = flush_every
         self.attrs = attrs
 
@@ -76,17 +74,16 @@ class HDF5File(Saver):
         self._ids_dataset = None
         self._data_dataset = None
 
-        if self.path.exists():
-            with h5py.File(str(self.path), 'r') as f:
-                self._ids = {_id: i for i, _id in enumerate(f['ids'].asstr())}
-            log.info(f'Found {len(self._ids)} results')
-
     def __enter__(self):
         self.file = h5py.File(str(self.path), 'a')
-        self._ids_dataset = self.file.require_dataset('ids', shape=self.shape[:1], dtype=h5py.string_dtype(encoding='utf-8'))
-        self._data_dataset = self.file.require_dataset('data', shape=self.shape, dtype='float32')
+
+        if 'ids' in self.file:
+            self._ids_dataset = self.file['ids']
+            self._data_dataset = self.file['data']
+            self._ids = {_id: i for i, _id in enumerate(self._ids_dataset.asstr())}
+
         for k, v in self.attrs.items():
-            self._data_dataset.attrs[k] = v
+            self.file.attrs[k] = v
 
         return self
 
@@ -96,15 +93,27 @@ class HDF5File(Saver):
     def __contains__(self, _id):
         return _id in self._ids
 
-    def add(self, record):
+    def add(self, record, force=False):
+        feature_vector = record['feature_vector']
+        dim = len(feature_vector)
+
+        if self._ids_dataset is None:
+            self._ids_dataset = self.file.create_dataset('ids', (0,), maxshape=(None,), dtype=h5py.special_dtype(vlen=str))
+            self._data_dataset = self.file.create_dataset('data', (0, dim), maxshape=(None, dim), dtype='float32')
+
         _id = record['_id']
         if _id in self:
-            return
+            if not force:
+                return
+            index = self._ids[_id]
+        else:
+            index = len(self._ids)
+            self._ids_dataset.resize((index + 1,))
+            self._data_dataset.resize((index + 1, dim))
+            self._ids[_id] = index
 
-        new_index = len(self._ids)
-        self._ids[_id] = new_index
-        self._ids_dataset[new_index] = _id
-        self._data_dataset[new_index, :] = record['feature']
+        self._ids_dataset[index] = _id
+        self._data_dataset[index, :] = feature_vector
 
         self._to_be_flushed += 1
         if self._to_be_flushed == self.flush_every:
