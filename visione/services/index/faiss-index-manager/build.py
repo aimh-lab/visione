@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 def peek_features_attributes(h5file):
     with h5py.File(h5file, 'r') as f:
         features_dim = f['data'].shape[1]
-        features_name = f['data'].attrs['features_name']
+        features_name = f.attrs['features_name']
         return features_dim, features_name
 
 
