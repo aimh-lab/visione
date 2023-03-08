@@ -1,6 +1,7 @@
 services:
   str-object-encoder: &common
     build: ./index/str-object-encoder
+    image: visione/str-object-encoder
     volumes:
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
@@ -10,13 +11,16 @@ services:
   str-feature-encoder:
     <<: *common
     build: ./index/str-feature-encoder
+    image: visione/str-feature-encoder
     profiles: ["index", "query"]
 
   lucene-index-manager:
     <<: *common
     build: ./index/lucene-index-manager
+    image: visione/lucene-index-manager
 
   faiss-index-manager:
     <<: *common
     build: ./index/faiss-index-manager
+    image: visione/faiss-index-manager
     profiles: ["index", "query"]

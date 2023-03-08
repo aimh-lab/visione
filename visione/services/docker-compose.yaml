@@ -26,6 +26,7 @@ services:
       args:
         - TOMCAT_MANAGER_USER=${VISIONE_USERNAME}
         - TOMCAT_MANAGER_PASS=${VISIONE_PASSWORD}
+    image: visione/core
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
