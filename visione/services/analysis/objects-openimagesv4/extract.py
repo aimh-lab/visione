@@ -45,14 +45,11 @@ def apply_detector(detector, x):
         return None
 
     try:
-        h, w = x.shape[1:3]
         x = tf.convert_to_tensor(x)    # from numpy to tf.Tensor
         y = detector(x)
         y = {k: v.numpy().tolist() for k, v in y.items()}
         for i in ('detection_class_names', 'detection_class_entities'):
             y[i] = [l.decode('utf8') for l in y[i]]
-        y['image_height'] = h
-        y['image_width'] = w
     except KeyboardInterrupt as e:
         raise e
     except Exception as e:
