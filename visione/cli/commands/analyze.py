@@ -2,7 +2,7 @@ import subprocess
 
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, MofNCompleteColumn
 
-from .command import BaseCommand, progress_callback
+from .command import BaseCommand
 
 class AnalyzeCommand(BaseCommand):
     """ Implements the 'analyze' CLI command. """
@@ -46,29 +46,29 @@ class AnalyzeCommand(BaseCommand):
                 active_object_detectors = analysis_config.get('object_detectors', [])
                 if 'colors' in active_object_detectors:
                     subtask = progress.add_task('- Extracting colors', total=None)
-                    self.extract_color_map(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_color_map(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'vfnet_X-101-64x4d' in active_object_detectors:
                     subtask = progress.add_task('- Detecting objects (vfnet_X-101-64x4d)', total=None)
-                    self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'mask_rcnn_lvis' in active_object_detectors:
                     subtask = progress.add_task('- Detecting objects (mask_rcnn_lvis)', total=None)
-                    self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
                     subtask = progress.add_task('- Detecting objects (frcnn_incep_resnetv2_openimagesv4)', total=None)
-                    self.detect_objects_oiv4(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.detect_objects_oiv4(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Feature vector extraction
                 active_feature_extractors = analysis_config.get('features', [])
                 if 'gem' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (GeM)', total=None)
-                    self.extract_gem_features(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_gem_features(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
             
                 if 'aladin' in active_feature_extractors:
@@ -78,19 +78,19 @@ class AnalyzeCommand(BaseCommand):
 
                 if 'clip-laion' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (CLIP LAION)', total=None)
-                    self.extract_clip_features(video_id, 'clip-laion', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_clip_features(video_id, 'clip-laion', force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'clip-openai' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (CLIP OpenAI)', total=None)
-                    self.extract_clip_features(video_id, 'clip-openai', force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.extract_clip_features(video_id, 'clip-openai', force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Frame clustering
                 clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
                 if clustering_features:
                     subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=None)
-                    self.cluster_frames(video_id, features=clustering_features, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.cluster_frames(video_id, features=clustering_features, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 progress.console.log(f"- '{video_id}' analyzed.")

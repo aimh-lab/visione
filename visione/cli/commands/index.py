@@ -6,7 +6,7 @@ import threading
 
 from rich.progress import Progress, SpinnerColumn, MofNCompleteColumn, TimeElapsedColumn
 
-from .command import BaseCommand, progress_callback
+from .command import BaseCommand
 
 
 class IndexCommand(BaseCommand):
@@ -51,8 +51,7 @@ class IndexCommand(BaseCommand):
                 str_objects = index_config.get('objects', {})
                 if str_objects:
                     subtask = progress.add_task('- Encoding objects with STR', total=None)
-                    # self.str_encode_objects(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
-                    thread = threading.Thread(target=self.str_encode_objects, args=(video_id,), kwargs=dict(force=replace, stdout_callback=progress_callback(progress, subtask)))
+                    thread = threading.Thread(target=self.str_encode_objects, args=(video_id,), kwargs=dict(force=replace, stdout_callback=self.progress_callback(progress, subtask)))
                     thread.start()
                     threads.append(thread)
                     subtasks.append(subtask)
@@ -62,7 +61,7 @@ class IndexCommand(BaseCommand):
                 str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
                 for features_name in str_features:
                     subtask = progress.add_task(f"- Encoding features '{features_name}' with STR", total=None)
-                    self.str_encode_features(video_id, features_name, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.str_encode_features(video_id, features_name, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # push to Lucene index
@@ -70,11 +69,11 @@ class IndexCommand(BaseCommand):
                     for thread in threads:
                         thread.join()
                     subtask = progress.add_task('- Creating Lucene documents', total=None)
-                    self.prepare_lucene_doc(video_id, force=replace, progress=progress_callback(progress, subtask))
+                    self.prepare_lucene_doc(video_id, force=replace, progress=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                     subtask = progress.add_task('- Adding to Lucene index', total=None)
-                    self.add_to_lucene_index(video_id, force=replace, stdout_callback=progress_callback(progress, subtask))
+                    self.add_to_lucene_index(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']

@@ -10,15 +10,6 @@ from rich.console import Console
 from ...services.common import load_config
 
 
-def progress_callback(progress, task_id):
-    def _func(line):
-        if line.startswith('progress:'):
-            completed, total = map(int, line[len('progress:'):].strip().split('/'))
-            total = total if total >= 0 else None
-            progress.update(task_id, completed=completed, total=total)
-    return _func
-
-
 class BaseCommand(ABC):
 
     def __init__(self, compose_dir, collection_dir, cache_dir):
@@ -113,7 +104,8 @@ class BaseCommand(ABC):
 
         if self.develop_mode:
             print(f"Running: {' '.join(command)}")
-            return subprocess.run(command, env=self.compose_env)
+            stdout_callback = stdout_callback or print
+            stderr_callback = stderr_callback or print
 
         popen_kws = dict(
             text='utf8',
@@ -151,3 +143,14 @@ class BaseCommand(ABC):
 
         except Exception:
             return False
+    
+    def progress_callback(self, progress, task_id):
+        def _func(line):
+            if line.startswith('progress:'):
+                completed, total = map(int, line[len('progress:'):].strip().split('/'))
+                total = total if total >= 0 else None
+                progress.update(task_id, completed=completed, total=total)
+
+            if self.develop_mode:
+                print(line, end='')
+        return _func
