@@ -69,6 +69,7 @@ if [ $? -ne 0 ]; then
     continue
 fi
 
+TMP_H5=tmp_output.h5
 cd $ALADIN_PATH
 
 #conda run --no-capture-output -n oscar python 
@@ -78,4 +79,8 @@ PYTHONPATH=. conda run --no-capture-output -n oscar python alad/extraction/extra
 --max_seq_length 50 \
 --max_img_seq_length 34 \
 --load_checkpoint weights/best_model_align_and_distill.pth.tar \
---features_h5 $OUT_H5_FILE
+--features_h5 $TMP_H5
+
+#-------------- Convert ALADIN output into the appropriate h5py format --------------#
+
+PYTHONPATH=/usr/src/ conda run --no-capture-output -n oscar python alad/h5_converter.py --input $TMP_H5 --output $OUT_H5_FILE
