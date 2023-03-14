@@ -19,8 +19,6 @@ class ServeCommand(BaseCommand):
     def __call__(self, *, config_file, port):
         super(ServeCommand, ServeCommand).__call__(self, config_file)
 
-        develop_mode = self.config['main'].get('develop_mode', False)
-
         # selects mandatory services needed to respond to queries
         profile_options = ['--profile', 'query']
 
@@ -32,7 +30,7 @@ class ServeCommand(BaseCommand):
             profile_options.extend(['--profile', service])
 
         command = self.compose_cmd + profile_options + ['up']
-        if develop_mode:
+        if self.develop_mode:
             command += ['--build']
 
         if port:
