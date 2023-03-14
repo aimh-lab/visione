@@ -18,7 +18,7 @@ services:
       - ./web-ui:/usr/share/nginx/html:ro
       - ${VISIONE_ROOT}:/data:ro
     depends_on: ["core"]
-    profiles: ["query"]
+    profiles: ["query", "router"]
 
   core:
     build:
@@ -30,4 +30,4 @@ services:
     expose: ["8080"]
     volumes:
       - ${VISIONE_ROOT}:/data
-    profiles: ["query"]
+    profiles: ["query", "core"]

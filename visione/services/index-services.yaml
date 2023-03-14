@@ -1,26 +1,27 @@
 services:
-  str-object-encoder: &common
+  str-object-encoder:
     build: ./index/str-object-encoder
     image: visione/str-object-encoder
-    volumes:
+    volumes: &common_volumes
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
       - ./common:/usr/src/visione:ro
-    profiles: ["index"]
+    profiles: ["index", "str-object-encoder"]
 
   str-feature-encoder:
-    <<: *common
     build: ./index/str-feature-encoder
     image: visione/str-feature-encoder
-    profiles: ["index", "query"]
+    volumes: *common_volumes
+    profiles: ["query", "index", "str-feature-encoder"]
 
   lucene-index-manager:
-    <<: *common
     build: ./index/lucene-index-manager
     image: visione/lucene-index-manager
+    volumes: *common_volumes
+    profiles: ["index", "lucene-index-manager"]
 
   faiss-index-manager:
-    <<: *common
     build: ./index/faiss-index-manager
     image: visione/faiss-index-manager
-    profiles: ["index", "query"]
+    volumes: *common_volumes
+    profiles: ["query", "index", "faiss-index-manager"]

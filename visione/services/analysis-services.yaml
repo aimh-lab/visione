@@ -5,7 +5,7 @@ services:
     volumes:
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
-    profiles: ["analysis"]
+    profiles: ["analysis", "ffmpeg"]
     deploy: &needs_gpu
       resources:
         reservations:
@@ -14,68 +14,73 @@ services:
               count: 1
               capabilities: [gpu]
 
-  scene-detection: &common
+  scene-detection:
     build: ./analysis/scene-detection
     image: visione/scene-detection
-    volumes:
+    volumes: &common_volumes
       - ${VISIONE_ROOT}:/data
       - ${VISIONE_CACHE}:/cache
       - ./common:/usr/src/visione:ro
-    profiles: ["analysis"]
+    profiles: ["analysis", "scene-detection"]
 
   objects-colors:
-    <<: *common
     build: ./analysis/objects-colors
     image: visione/objects-colors
+    volumes: *common_volumes
+    profiles: ["analysis", "objects-colors"]
 
   objects-mmdet:
-    <<: *common
     build: ./analysis/objects-mmdet
     image: visione/objects-mmdet
+    volumes: *common_volumes
+    profiles: ["analysis", "objects-mmdet"]
     deploy: *needs_gpu
 
   objects-openimagesv4:
-    <<: *common
     build: ./analysis/objects-openimagesv4
     image: visione/objects-openimagesv4
+    volumes: *common_volumes
+    profiles: ["analysis", "objects-openimagesv4"]
     deploy: *needs_gpu
 
   features-gem:
-    <<: *common
     build: ./analysis/features-gem
     image: visione/features-gem
     shm_size: 2GB
+    volumes: *common_volumes
+    profiles: ["analysis", "features-gem"]
     deploy: *needs_gpu
-    profiles: ["features-gem"]
-  
+
   features-clip-openai:
-    <<: *common
     build: ./analysis/features-clip
     image: visione/features-clip
-    environment: 
+    environment:
       - FEATURES_NAME=clip-openai
       - MODEL_HANDLE=openai/clip-vit-large-patch14
     deploy: *needs_gpu
-    profiles: ["features-clip-openai"]
+    volumes: *common_volumes
+    profiles: ["analysis", "features-clip-openai"]
 
   features-clip-laion:
-    <<: *common
     build: ./analysis/features-clip
     image: visione/features-clip
     environment:
       - FEATURES_NAME=clip-laion
       - MODEL_HANDLE=laion/CLIP-ViT-H-14-laion2B-s32B-b79K
+    volumes: *common_volumes
+    profiles: ["analysis", "features-clip-laion"]
     deploy: *needs_gpu
-    profiles: ["features-clip-laion"]
 
   features-aladin:
-    <<: *common
     build: ./analysis/features-aladin
+    image: visione/features-aladin
+    volumes: *common_volumes
+    profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
-    profiles: ["features-aladin"]
 
   frame-cluster:
-    <<: *common
     build: ./analysis/frame-cluster
     image: visione/frame-cluster
+    volumes: *common_volumes
+    profiles: ["analysis", "frame-cluster"]
 
