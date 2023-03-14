@@ -57,7 +57,7 @@ class ObjectsMMDetExtractor(BaseExtractor):
 
     @classmethod
     def add_arguments(cls, parser):
-        parser.add_argument('detector', choices=DETECTORS.keys(), help='detector to be used')
+        parser.add_argument('detector', choices=cls.DETECTORS.keys(), help='detector to be used')
         super(ObjectsMMDetExtractor, cls).add_arguments(parser)
 
     def __init__(self, args):
@@ -69,13 +69,14 @@ class ObjectsMMDetExtractor(BaseExtractor):
         if self.model is not None:
             return
 
-        config_file = str(DETECTORS[self.detector]['config'])
-        checkpoint_file = str(DETECTORS[self.detector]['checkpoint'])
+        config_file = str(self.DETECTORS[self.detector]['config'])
+        checkpoint_file = str(self.DETECTORS[self.detector]['checkpoint'])
         device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
         self.model = init_detector(config_file, checkpoint_file, device=device)
 
     @torch.no_grad()
     def extract_one(self, image_path):
+        self.setup()
         image = mmcv.imread(image_path)
         image_hw = image.shape[:2]
         detection = inference_detector(self.model, image)
