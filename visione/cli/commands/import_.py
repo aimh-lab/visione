@@ -27,6 +27,8 @@ class ImportCommand(BaseCommand):
 
     def __call__(self, *, config_file, video_path_or_url, video_id, replace):
         super(ImportCommand, ImportCommand).__call__(self, config_file)
+        self.create_services_containers('analysis')
+
         # TODO handle (video_path_or_url == None) case
 
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]

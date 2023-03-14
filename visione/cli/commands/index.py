@@ -23,6 +23,7 @@ class IndexCommand(BaseCommand):
 
     def __call__(self, *, config_file, video_ids, replace):
         super(IndexCommand, IndexCommand).__call__(self, config_file)
+        self.create_services_containers('index')
 
         index_config = self.config.get('index', {})
 

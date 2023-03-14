@@ -145,6 +145,24 @@ class BaseCommand(ABC):
         except Exception:
             return False
     
+    def create_services_containers(self, profiles=None):
+        profiles = profiles or ()
+        profiles = profiles if isinstance(profiles, (list, tuple)) else (profiles,)
+
+        command = self.compose_cmd
+
+        for profile in profiles or ():
+            command += ['--profile', profile]
+
+        command += [
+            'up',
+            '--no-start',
+            '--no-recreate',
+        ]
+
+        return subprocess.run(command, env=self.compose_env, check=True)
+
+    
     def progress_callback(self, progress, task_id):
         def _func(line):
             if line.startswith('progress:'):
