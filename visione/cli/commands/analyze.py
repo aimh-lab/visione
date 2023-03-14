@@ -73,7 +73,7 @@ class AnalyzeCommand(BaseCommand):
             
                 if 'aladin' in active_feature_extractors:
                     subtask = progress.add_task('- Extracting features (ALADIN)', total=None)
-                    self.extract_aladin_features(video_id, force=replace)
+                    self.extract_aladin_features(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 if 'clip-laion' in active_feature_extractors:
@@ -179,17 +179,19 @@ class AnalyzeCommand(BaseCommand):
             '--features-name', features_name,
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
     
-    def extract_aladin_features(self, video_id, force=False):
+    def extract_aladin_features(self, video_id, force=False, gpu=False, **run_kws):
         """ Extracts ALADIN features from selected keyframes of a video for cross-media retrieval.
 
         Args:
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU. Defaults to False.
+            run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
         Returns:
-            TODO
+            int: Return code of the subprocess.
         """
         features_name = 'aladin'
         aladin_dir = self.collection_dir / f'features-{features_name}' / video_id
@@ -208,12 +210,17 @@ class AnalyzeCommand(BaseCommand):
 
         service = f'features-{features_name}'
         command = [
-            'bash', 'alad/extract.sh',
-            '-i', str(input_dir),
-            '-o', str(output_file)
+            'python', 'extract.py',
+        ] + (['--force'] if force else []) + [
+        ] + (['--gpu'] if gpu else []) + [
+            '--save-every', '200',
+            str(input_dir),
+            'hdf5',
+            '--output', str(output_file),
+            '--features-name', features_name,
         ]
 
-        return self.compose_run(service, command)
+        return self.compose_run(service, command, **run_kws)
 
     def extract_color_map(self, video_id, force=False, **run_kws):
         """ Extracts color map from selected keyframes of a video for cross-media retrieval.

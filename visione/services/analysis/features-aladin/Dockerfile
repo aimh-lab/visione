@@ -45,6 +45,9 @@ RUN ./azcopy copy 'https://biglmdiag.blob.core.windows.net/vinvl/model_ckpts/coc
 # FIXME: use build-args to pass UID and GID to docker build to inject the host user id during image build
 RUN chmod -R a+rw /usr/src/app/
 
+RUN pip install more_itertools
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
+
 WORKDIR /usr/src/app/ALADIN
 COPY . ./alad
 
