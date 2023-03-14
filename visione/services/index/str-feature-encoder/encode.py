@@ -78,7 +78,7 @@ def main(args):
     with h5py.File(args.features_input_file, 'r') as f:
         ids = f['ids'].asstr()[:]
         features = f['data'][:]
-        features_name = f['data'].attrs['features_name']
+        features_name = f.attrs['features_name']
 
     encoder_config = load_config(args.config_file)['index']['features'][features_name]
     encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features, args.force_encoder)
