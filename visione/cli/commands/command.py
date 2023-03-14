@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from functools import partial
 import os
 import selectors
 import shutil
@@ -104,8 +105,8 @@ class BaseCommand(ABC):
 
         if self.develop_mode:
             print(f"Running: {' '.join(command)}")
-            stdout_callback = stdout_callback or print
-            stderr_callback = stderr_callback or print
+            stdout_callback = stdout_callback or partial(print, end='')
+            stderr_callback = stderr_callback or partial(print, end='')
 
         popen_kws = dict(
             text='utf8',
