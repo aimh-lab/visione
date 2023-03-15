@@ -44,50 +44,20 @@ class AnalyzeCommand(BaseCommand):
 
                 # Objects & Colors Detection
                 active_object_detectors = analysis_config.get('object_detectors', [])
-                if 'colors' in active_object_detectors:
-                    subtask = progress.add_task('- Extracting colors', total=None)
-                    self.extract_color_map(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-
-                if 'vfnet_X-101-64x4d' in active_object_detectors:
-                    subtask = progress.add_task('- Detecting objects (vfnet_X-101-64x4d)', total=None)
-                    self.detect_objects_mmdet(video_id, 'vfnet_X-101-64x4d', force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-
-                if 'mask_rcnn_lvis' in active_object_detectors:
-                    subtask = progress.add_task('- Detecting objects (mask_rcnn_lvis)', total=None)
-                    self.detect_objects_mmdet(video_id, 'mask_rcnn_lvis', force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-
-                if 'frcnn_incep_resnetv2_openimagesv4' in active_object_detectors:
-                    subtask = progress.add_task('- Detecting objects (frcnn_incep_resnetv2_openimagesv4)', total=None)
-                    self.detect_objects_oiv4(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
+                for detector in active_object_detectors:
+                    subtask = progress.add_task(f'- Detecting objects ({detector})', total=None)
+                    self.detect_objects_single_video(video_id, detector, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Feature vector extraction
                 active_feature_extractors = analysis_config.get('features', [])
-                if 'gem' in active_feature_extractors:
-                    subtask = progress.add_task('- Extracting features (GeM)', total=None)
-                    self.extract_gem_features(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-            
-                if 'aladin' in active_feature_extractors:
-                    subtask = progress.add_task('- Extracting features (ALADIN)', total=None)
-                    self.extract_aladin_features(video_id, force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-
-                if 'clip-laion' in active_feature_extractors:
-                    subtask = progress.add_task('- Extracting features (CLIP LAION)', total=None)
-                    self.extract_clip_features(video_id, 'clip-laion', force=replace, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-
-                if 'clip-openai' in active_feature_extractors:
-                    subtask = progress.add_task('- Extracting features (CLIP OpenAI)', total=None)
-                    self.extract_clip_features(video_id, 'clip-openai', force=replace, stdout_callback=self.progress_callback(progress, subtask))
+                for feature_name in active_feature_extractors:
+                    subtask = progress.add_task(f'- Extracting features ({feature_name})', total=None)
+                    self.extract_features_single_video(video_id, feature_name, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Frame clustering
-                clustering_features = analysis_config.get('frame-cluster', {}).get('feature', None)
+                clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
                 if clustering_features:
                     subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=None)
                     self.cluster_frames(video_id, features=clustering_features, force=replace, stdout_callback=self.progress_callback(progress, subtask))
@@ -100,11 +70,12 @@ class AnalyzeCommand(BaseCommand):
 
             progress.console.log('Analysis complete.')
 
-    def extract_gem_features(self, video_id, force=False, gpu=False, **run_kws):
-        """ Extracts GeM features from selected keyframes of a video for instance retrieval.
+    def extract_features_single_video(self, video_id, features_name, force=False, gpu=False, **run_kws):
+        """ Extracts features from selected keyframes of a video.
 
         Args:
             video_id (str): Input Video ID.
+            features_name (str): Name of the features to extract.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
             run_kws: Additional arguments to pass to `subprocess.Popen()`.
@@ -112,101 +83,18 @@ class AnalyzeCommand(BaseCommand):
         Returns:
             int: Return code of the subprocess.
         """
-        gem_dir = self.collection_dir / 'features-gem' / video_id
-        gem_dir.mkdir(parents=True, exist_ok=True)
+        features_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
+        features_file.parent.mkdir(parents=True, exist_ok=True)
 
-        gem_features_file = gem_dir / f'{video_id}-gem.hdf5'
-        if not force and gem_features_file.exists():
-            print('Skipping GeM extraction, using existing file:', gem_features_file.name)
+        if not force and features_file.exists():
+            print(f'Skipping {features_name} extraction, using existing file:', features_file.name)
             return 0
 
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
         selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
 
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / gem_features_file.relative_to(self.collection_dir)
-
-        service = 'features-gem'
-        command = [
-            'python', 'extract.py',
-        ] + (['--force'] if force else []) + [
-        ] + (['--gpu'] if gpu else []) + [
-            '--save-every', '200',
-            str(input_dir),
-            'hdf5',
-            '--output', str(output_file),
-            '--features-name', 'gem',
-        ]
-
-        return self.compose_run(service, command, **run_kws)
-
-    def extract_clip_features(self, video_id, features_name, force=False, gpu=False, **run_kws):
-        """ Extracts CLIP features from selected keyframes of a video for cross-media retrieval.
-
-        Args:
-            video_id (str): Input Video ID.
-            features_name (str): Specifies the CLIP model to be used.
-            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
-            gpu (bool, optional): Whether to use the GPU. Defaults to False.
-            run_kws: Additional arguments to pass to `subprocess.Popen()`.
-
-        Returns:
-            int: Return code of the subprocess.
-        """
-        clip_dir = self.collection_dir / f'features-{features_name}' / video_id
-        clip_dir.mkdir(parents=True, exist_ok=True)
-
-        clip_features_file = clip_dir / f'{video_id}-{features_name}.hdf5'
-        if not force and clip_features_file.exists():
-            print(f'Skipping {features_name} extraction, using existing file:', clip_features_file.name)
-            return 0
-
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
-
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / clip_features_file.relative_to(self.collection_dir)
-
-        service = f'features-{features_name}'
-        command = [
-            'python', 'extract.py',
-        ] + (['--force'] if force else []) + [
-        ] + (['--gpu'] if gpu else []) + [
-            '--save-every', '200',
-            str(input_dir),
-            'hdf5',
-            '--output', str(output_file),
-            '--features-name', features_name,
-        ]
-
-        return self.compose_run(service, command, **run_kws)
-    
-    def extract_aladin_features(self, video_id, force=False, gpu=False, **run_kws):
-        """ Extracts ALADIN features from selected keyframes of a video for cross-media retrieval.
-
-        Args:
-            video_id (str): Input Video ID.
-            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
-            gpu (bool, optional): Whether to use the GPU. Defaults to False.
-            run_kws: Additional arguments to pass to `subprocess.Popen()`.
-
-        Returns:
-            int: Return code of the subprocess.
-        """
-        features_name = 'aladin'
-        aladin_dir = self.collection_dir / f'features-{features_name}' / video_id
-        aladin_dir.mkdir(parents=True, exist_ok=True)
-
-        aladin_features_file = aladin_dir / f'{video_id}-{features_name}.hdf5'
-        if not force and aladin_features_file.exists():
-            print(f'Skipping {features_name} extraction, using existing file:', aladin_features_file.name)
-            return 0
-
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
-
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / aladin_features_file.relative_to(self.collection_dir)
+        output_file = '/data' / features_file.relative_to(self.collection_dir)
 
         service = f'features-{features_name}'
         command = [
@@ -222,48 +110,12 @@ class AnalyzeCommand(BaseCommand):
 
         return self.compose_run(service, command, **run_kws)
 
-    def extract_color_map(self, video_id, force=False, **run_kws):
-        """ Extracts color map from selected keyframes of a video for cross-media retrieval.
+    def detect_objects_single_video(self, video_id, detector_name, force=False, gpu=False, **run_kws):
+        """ Detects objects in selected keyframes of a video.
 
         Args:
             video_id (str): Input Video ID.
-            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
-            run_kws: Additional arguments to pass to `subprocess.Popen()`.
-        
-        Returns:
-            int: Return code of the subprocess.
-        """
-        colors_dir = self.collection_dir / 'objects-colors' / video_id
-        colors_dir.mkdir(parents=True, exist_ok=True)
-
-        colors_file = colors_dir / f'{video_id}-objects-colors.jsonl.gz'
-        if not force and colors_file.exists():
-            print(f'Skipping color extraction, using existing file:', colors_file.name)
-            return 0
-
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
-
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / colors_file.relative_to(self.collection_dir)
-
-        service = 'objects-colors'
-        command = [
-            'python', 'extract.py',
-            '--save-every', '200',
-            str(input_dir),
-            'jsonl',
-            '--output', str(output_file),
-        ]
-
-        return self.compose_run(service, command, **run_kws)
-
-    def detect_objects_mmdet(self, video_id, detector, force=False, gpu=False, **run_kws):
-        """ Detect objects form the selected keyframes of a video using pretrained models from mmdetection.
-
-        Args:
-            video_id (str): Input Video ID.
-            detector (str): Specifies the detector to use. It must be one of 'vfnet_X-101-32x4d', 'vfnet_X-101-64x4d', or 'mask_rcnn_lvis'.
+            detector_name (str): Name of the detector to use.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
             run_kws: Additional arguments to pass to `subprocess.Popen()`.
@@ -271,13 +123,11 @@ class AnalyzeCommand(BaseCommand):
         Returns:
             int: Return code of the subprocess.
         """
+        objects_file = self.collection_dir / f'objects-{detector_name}' / video_id / f'{video_id}-objects-{detector_name}.jsonl.gz'
+        objects_file.parent.mkdir(parents=True, exist_ok=True)
 
-        objects_dir = self.collection_dir / f'objects-{detector}' / video_id
-        objects_dir.mkdir(parents=True, exist_ok=True)
-
-        objects_file = objects_dir / f'{video_id}-objects-{detector}.jsonl.gz'
         if not force and objects_file.exists():
-            print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
+            print(f'Skipping object detection ({detector_name}), using existing file:', objects_file.name)
             return 0
 
         selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
@@ -286,51 +136,7 @@ class AnalyzeCommand(BaseCommand):
         input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
         output_file = '/data' / objects_file.relative_to(self.collection_dir)
 
-        service = 'objects-mmdet'
-        command = [
-            'python', 'extract.py',
-            detector,
-        ] + (['--force'] if force else []) + [
-        ] + (['--gpu'] if gpu else []) + [
-            '--save-every', '200',
-            str(input_dir),
-            'jsonl',
-            '--output', str(output_file),
-        ]
-
-        return self.compose_run(service, command, **run_kws)
-
-    def detect_objects_oiv4(self, video_id, force=False, gpu=False, **run_kws):
-        """ Detect objects form the selected keyframes of a video using the
-            Faster RCNN Inception ResNet V2 model trained on OpenImagesV4
-            available in tensorflow hub.
-
-        Args:
-            video_id (str): Input Video ID.
-            force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
-            gpu (bool, optional): Whether to use the GPU. Defaults to False.
-            run_kws: Additional arguments to pass to `subprocess.Popen()`.
-
-        Returns:
-            int: Return code of the subprocess.
-        """
-
-        detector = 'frcnn_incep_resnetv2_openimagesv4'
-        objects_dir = self.collection_dir / f'objects-{detector}' / video_id
-        objects_dir.mkdir(parents=True, exist_ok=True)
-
-        objects_file = objects_dir / f'{video_id}-objects-{detector}.jsonl.gz'
-        if not force and objects_file.exists():
-            print(f'Skipping object detection ({detector}), using existing file:', objects_file.name)
-            return 0
-
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
-
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / objects_file.relative_to(self.collection_dir)
-
-        service = 'objects-openimagesv4'
+        service = f'objects-{detector_name}'
         command = [
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
@@ -355,10 +161,9 @@ class AnalyzeCommand(BaseCommand):
         Returns:
             int: Return code of the subprocess.
         """
-        clusters_dir = self.collection_dir / 'cluster-codes' / video_id
-        clusters_dir.mkdir(parents=True, exist_ok=True)
+        clusters_file = self.collection_dir / 'cluster-codes' / video_id / f'{video_id}-cluster-codes.jsonl.gz'
+        clusters_file.parent.mkdir(parents=True, exist_ok=True)
 
-        clusters_file = clusters_dir / f'{video_id}-cluster-codes.jsonl.gz'
         if not force and clusters_file.exists():
             print(f'Skipping frame clustering, using existing file:', clusters_file.name)
             return 0
