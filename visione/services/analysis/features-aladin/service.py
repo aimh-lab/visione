@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 
 # create the query encoder object
-args_str = '--eval_model_dir checkpoint-0132780 '+ 
-           '--max_seq_length 50 --max_img_seq_length 34 '+
+args_str = '--eval_model_dir checkpoint-0132780 '+\
+           '--max_seq_length 50 --max_img_seq_length 34 '+\
            '--load_checkpoint weights/best_model_align_and_distill.pth.tar'
 qe = QueryEncoder(args_str)
 
@@ -26,40 +26,27 @@ def query_example():
 
     # first, produce the feature
     text_feature = qe.get_text_embedding(text)
-    text_feature = text_feature[np.newaxis, :]  # 1 x 1024  # TODO: is needed?
+    # text_feature = text_feature[np.newaxis, :]  # 1 x 1024  # TODO: is needed?
 
     out = jsonify(text_feature.tolist())
     return out
 
-# deprecated, kept for backward compatibility of 'core' service
-@app.route('/text-to-image-search', methods=['GET'])
-def text_to_image_search():
+# deprecated, just for backward compatibility of 'core' service
+@app.route('/aladin', methods=['GET'])
+def extract_quant_from_text():
     text = request.args.get("text")
-    k = request.args.get("k", type=int, default=10000)
-    logging.info('Received text: {}'.format(text))
-    text_feature = qe.get_text_embedding(text)
-
-    response = requests.post('http://faiss-index-manager:4010/search', json={
+    logging.info(f'Received text: {text}')
+    feature_vector = qe.get_text_embedding(text)
+    logging.debug(f'Feature Vector: {feature_vector[:5]} ...')
+    str_doc = requests.post('http://str-feature-encoder:4000/encode', json={
         'type': 'aladin',
-        'feature_vector': text_feature.tolist(),
-        'k': k,
-    }).content
-    
-    return response
-
-# deprecated, kept for backward compatibility of 'core' service
-@app.route('/internal-image-search', methods=['GET'])
-def internal_image_search():
-    img_id = request.args.get("imgId")
-    k = request.args.get("k", type=int, default=10000)
-
-    response = requests.post('http://faiss-index-manager:4010/search', json={
-        'type': 'aladin',
-        'query_id': img_id,
-        'k': k,
+        'feature_vector': feature_vector.tolist(),
     }).content
 
-    return response
+    str_doc = str_doc.decode('utf8')
+    logging.debug(str_doc[:25] + " ...")
+
+    return jsonify(str_doc)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Service for query feature extraction for ALADIN models.')

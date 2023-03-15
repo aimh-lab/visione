@@ -65,7 +65,7 @@ public class ALADINExtractor {
 						if (resEntity != null) {
 							aladin = EntityUtils.toString(resEntity);
 							if (aladin != null)
-								aladin = aladin.replaceAll("\\|", "\\^");
+								aladin = aladin.replaceAll("\\|", "\\^").replaceAll("\"", "");
 
 						}
 					}

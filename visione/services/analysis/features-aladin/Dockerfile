@@ -47,3 +47,5 @@ RUN chmod -R a+rw /usr/src/app/
 
 WORKDIR /usr/src/app/ALADIN
 COPY . ./alad
+
+CMD ["conda", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]
