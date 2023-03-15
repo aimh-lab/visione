@@ -29,18 +29,27 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "objects-colors"]
 
-  objects-mmdet:
+  objects-mrcnn-lvis:
     build: ./analysis/objects-mmdet
     image: visione/objects-mmdet
+    environment: ["DETECTOR_NAME=mask_rcnn_lvis"]
     volumes: *common_volumes
-    profiles: ["analysis", "objects-mmdet"]
+    profiles: ["analysis", "objects-mrcnn-lvis"]
+    deploy: *needs_gpu
+  
+  objects-vfnet64-coco:
+    build: ./analysis/objects-mmdet
+    image: visione/objects-mmdet
+    environment: ["DETECTOR_NAME=vfnet_X-101-64x4d"]
+    volumes: *common_volumes
+    profiles: ["analysis", "objects-vfnet64-coco"]
     deploy: *needs_gpu
 
-  objects-openimagesv4:
+  objects-frcnn-oiv4:
     build: ./analysis/objects-openimagesv4
     image: visione/objects-openimagesv4
     volumes: *common_volumes
-    profiles: ["analysis", "objects-openimagesv4"]
+    profiles: ["analysis", "objects-frcnn-oiv4"]
     deploy: *needs_gpu
 
   features-gem:

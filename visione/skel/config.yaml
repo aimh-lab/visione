@@ -32,10 +32,10 @@ services_urls:
 analysis:
   # List of object detectors to employ.
   object_detectors:
-    - frcnn_incep_resnetv2_openimagesv4
-    - mask_rcnn_lvis
-    - vfnet_X-101-64x4d
     - colors
+    - mrcnn-lvis
+    - vfnet64-coco
+    - frcnn-oiv4
 
   # List of feature vector extractors to employ.
   features:
@@ -44,7 +44,7 @@ analysis:
     - clip-openai
     - clip-laion
 
-  frame-cluster:
+  frame_cluster:
     feature: gem  # Which feature vector to employ in frames clustering.
 
 index:
@@ -56,13 +56,13 @@ index:
     exclude_labels:
       all: []
       # Example of detector-specific exclusion list:
-      # vfnet_X-101-64x4d:
+      # vfnet64-coco:
       #  - person
       #  - tv
 
     # Per-detector label mapping.
     label_map:
-      frcnn_incep_resnetv2_openimagesv4:
+      frcnn-oiv4:
         accordion: accordion_(musical_instrument)
         band-aid: band_aid
         banjo: banjo_(musical_instrument)
@@ -123,7 +123,7 @@ index:
         violin: violin_(musical_instrument)
         wood-burning_stove: woodburning_stove
         woodpecker: woodpecker_(bird)
-      mask_rcnn_lvis:
+      mrcnn-lvis:
         automatic_washer: washing_machine
         ax: axe
         bagpipe: bagpipe_(musical_instrument)
@@ -210,7 +210,7 @@ index:
         wall_socket: power_plugs_and_wall_sockets
         whistle: whistle_(musical_instrument)
         wineglass: wine_glass
-      vfnet_X-101-64x4d:
+      vfnet64-coco:
         donut: doughnut
         hair_drier: hair_dryer
         keyboard: computer_keyboard
@@ -231,9 +231,9 @@ index:
       monochrome: 0.01
       colors: 0.1
       fish_detector: 0.75
-      frcnn_incep_resnetv2_openimagesv4: 0.6
-      mask_rcnn_lvis: 0.5
-      vfnet_X-101-64x4d: 0.5
+      frcnn-oiv4: 0.6
+      mrcnn-lvis: 0.5
+      vfnet64-coco: 0.5
 
   # Feature-specific indexing parameters.
   features:
@@ -247,7 +247,7 @@ index:
     aladin:
       index_engine: str
       index_type: topk-sq
-      index_params: #TODO: change these params, copied grom GEM
+      index_params:  # TODO: change these params, copied from GEM
         keep: 0.5
         dim_multiplier: 2
 

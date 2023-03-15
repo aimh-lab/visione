@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import os
 from pathlib import Path
 
 import mmcv
@@ -57,7 +58,7 @@ class ObjectsMMDetExtractor(BaseExtractor):
 
     @classmethod
     def add_arguments(cls, parser):
-        parser.add_argument('detector', choices=cls.DETECTORS.keys(), help='detector to be used')
+        parser.add_argument('--detector', default=os.environ['DETECTOR_NAME'], choices=cls.DETECTORS.keys(), help='detector to be used')
         super(ObjectsMMDetExtractor, cls).add_arguments(parser)
 
     def __init__(self, args):
