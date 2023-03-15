@@ -42,7 +42,7 @@ server {
 	location ^~ /frames/tiny  { alias /data/thumbnails/; }
 
 	location ^~ /gem                        { proxy_pass http://features-gem:5090; }
-	location ^~ /aladin                     { proxy_pass ${VISIONE_ALADIN_URL}; }
+	location ^~ /aladin                     { proxy_pass http://features-aladin:5020; }
 	location ^~ /clip-text-search           { proxy_pass http://features-clip-openai:5030/text-to-image-search; }
 	location ^~ /clip-internal-search       { proxy_pass http://features-clip-openai:5030/internal-image-search; }
 	location ^~ /clip-laion-text-search     { proxy_pass http://features-clip-laion:5030/text-to-image-search; }
