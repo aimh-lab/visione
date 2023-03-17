@@ -11,7 +11,6 @@ from visione.extractor import BaseExtractor
 class AladinExtractor(BaseExtractor):
 
     def extract(self, image_paths):
-        # with tempfile.NamedTemporaryFile(text=True, suffix='.txt') as image_list:
         with tempfile.TemporaryDirectory() as temp_dir:
             # 1. write image list
             image_list_path = os.path.join(temp_dir, 'image_list.txt')
