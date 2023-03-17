@@ -5,10 +5,13 @@ services:
   objects-colors:
     volumes: ["./analysis/objects-colors:/usr/src/app"]
 
-  objects-mmdet:
+  objects-mrcnn-lvis: &mmdet
     volumes: ["./analysis/objects-mmdet:/usr/src/app"]
 
-  objects-openimagesv4:
+  objects-vfnet64-coco:
+    <<: *mmdet
+
+  objects-frcnn-oiv4:
     volumes: ["./analysis/objects-openimagesv4:/usr/src/app"]
 
   features-clip-openai:
