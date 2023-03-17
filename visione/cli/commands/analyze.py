@@ -1,4 +1,6 @@
+from pathlib import Path
 import subprocess
+import tempfile
 
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, MofNCompleteColumn
 
@@ -20,11 +22,15 @@ class AnalyzeCommand(BaseCommand):
     def __call__(self, *, config_file, video_ids, replace, gpu):
         super(AnalyzeCommand, AnalyzeCommand).__call__(self, config_file)
 
-        analysis_config = self.config.get('analysis', {})
+        # if video IDs are given, analyze only those
+        if len(video_ids):
+            return self.analyze_videos(video_ids, replace=replace, gpu=gpu)
 
-        if len(video_ids) == 0:
-            thumb_dir = self.collection_dir / 'selected-frames'
-            video_ids = [p.name for p in thumb_dir.iterdir() if p.is_dir()]
+        # otherwise, bulk analyze all videos in the collection
+        return self.bulk_analyze_videos(replace=replace, gpu=gpu)
+
+    def analyze_videos(self, video_ids, replace=False, gpu=False):
+        """ Analyzes a list of videos given by IDs. """
 
         progress_cols = [
             SpinnerColumn(),
@@ -38,6 +44,8 @@ class AnalyzeCommand(BaseCommand):
             progress.console.log(f"Starting analysis on {n_videos} video{'' if n_videos == 1 else 's'}.")
             task = progress.add_task('', total=n_videos)
 
+            analysis_config = self.config.get('analysis', {})
+
             for video_id in video_ids:
                 progress.update(task, description=f"Analyzing '{video_id}'")
                 subtasks = []
@@ -46,21 +54,21 @@ class AnalyzeCommand(BaseCommand):
                 active_object_detectors = analysis_config.get('object_detectors', [])
                 for detector in active_object_detectors:
                     subtask = progress.add_task(f'- Detecting objects ({detector})', total=None)
-                    self.detect_objects_single_video(video_id, detector, force=replace, stdout_callback=self.progress_callback(progress, subtask))
+                    self.detect_objects(detector, video_id=video_id, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Feature vector extraction
                 active_feature_extractors = analysis_config.get('features', [])
-                for feature_name in active_feature_extractors:
-                    subtask = progress.add_task(f'- Extracting features ({feature_name})', total=None)
-                    self.extract_features_single_video(video_id, feature_name, force=replace, stdout_callback=self.progress_callback(progress, subtask))
+                for extractor in active_feature_extractors:
+                    subtask = progress.add_task(f'- Extracting features ({extractor})', total=None)
+                    self.extract_features(extractor, video_id=video_id, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Frame clustering
                 clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
                 if clustering_features:
                     subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=None)
-                    self.cluster_frames(video_id, features=clustering_features, force=replace, stdout_callback=self.progress_callback(progress, subtask))
+                    self.cluster_frames(video_id, features=clustering_features, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 progress.console.log(f"- '{video_id}' analyzed.")
@@ -70,71 +78,155 @@ class AnalyzeCommand(BaseCommand):
 
             progress.console.log('Analysis complete.')
 
-    def extract_features_single_video(self, video_id, features_name, force=False, gpu=False, **run_kws):
+    def bulk_analyze_videos(self, replace=False, gpu=False, **run_kws):
+        """ Analyzes all videos in the collection in bulk. """
+
+        frames_dir = self.collection_dir / 'selected-frames'
+        video_dirs = frames_dir.iterdir()
+        video_dirs = filter(lambda p: p.is_dir(), video_dirs)
+
+        with tempfile.NamedTemporaryFile(
+                mode='w',
+                encoding='utf8',
+                prefix='bulk_analysis_',
+                suffix='.txt',
+                dir=self.collection_dir,
+                delete=not self.develop_mode,
+            ) as image_list:
+
+            # generate image list
+            n_frames = 0
+            video_ids = []
+            for video_dir in video_dirs:
+                video_id = video_dir.name
+                video_frames = sorted(p for p in video_dir.iterdir() if p.name.endswith('.png'))
+                for video_frame in video_frames:
+                    frame_id = video_frame.stem
+                    frame_path = '/data' / video_frame.relative_to(self.collection_dir)
+                    image_list.write(f'{video_id}\t{frame_id}\t{frame_path}\n')
+                    n_frames += 1
+                video_ids.append(video_id)
+
+            image_list.flush()
+            image_list.seek(0)
+
+            image_list_path = Path(image_list.name)
+
+            progress_cols = [
+                SpinnerColumn(),
+                *Progress.get_default_columns()[:1],
+                MofNCompleteColumn(),
+                *Progress.get_default_columns()[1:],
+                TimeElapsedColumn()
+            ]
+            with Progress(*progress_cols, transient=True) as progress:
+                progress.console.log(f"Starting analysis on {n_frames} frame{'' if n_frames == 1 else 's'}.")
+
+                analysis_config = self.config.get('analysis', {})
+                active_object_detectors = analysis_config.get('object_detectors', [])
+                active_feature_extractors = analysis_config.get('features', [])
+                clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
+
+                n_analyses = len(active_object_detectors) + len(active_feature_extractors) + (1 if clustering_features else 0)
+
+                task = progress.add_task(f'Bulk analysis ({"GPU" if gpu else "CPU"})', total=n_analyses)
+                subtasks = []
+
+                # run analysis: objects & colors detectors
+                for detector in active_object_detectors:
+                    subtask = progress.add_task(f'- Detecting objects ({detector})', total=n_frames)
+                    self.detect_objects(detector, image_list=image_list_path, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+                    progress.advance(task)
+
+                # run analysis: feature vector extraction
+                for extractor in active_feature_extractors:
+                    subtask = progress.add_task(f'- Extracting features ({extractor})', total=n_frames)
+                    self.extract_features(extractor, image_list=image_list_path, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    subtasks.append(subtask)
+                    progress.advance(task)
+
+                # run analysis: frame clustering
+                if clustering_features:
+                    subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=len(video_ids))
+                    for video_id in video_ids:
+                        self.cluster_frames(video_id, features=clustering_features, force=replace, gpu=gpu)
+                        progress.advance(subtask)
+                    subtasks.append(subtask)
+
+    def extract_features(self, extractor, image_list=None, video_id=None, force=False, gpu=False, **run_kws):
         """ Extracts features from selected keyframes of a video.
 
         Args:
-            video_id (str): Input Video ID.
-            features_name (str): Name of the features to extract.
+            extractor (str): Name of the extractor.
+            image_list (list, optional): List of image paths to extract features from. Defaults to None.
+            video_id (str, optional): ID of the video to extract features from. Defaults to None.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
             run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
+        Note:
+            Either `image_list` or `video_id` must be given.
+
         Returns:
             int: Return code of the subprocess.
         """
-        features_file = self.collection_dir / f'features-{features_name}' / video_id / f'{video_id}-{features_name}.hdf5'
-        features_file.parent.mkdir(parents=True, exist_ok=True)
 
-        if not force and features_file.exists():
-            print(f'Skipping {features_name} extraction, using existing file:', features_file.name)
-            return 0
+        assert image_list or video_id, 'Either image_list or video_id must be given.'
+        assert not (image_list and video_id), 'Only one of image_list or video_id must be given.'
 
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+        output_template = self.collection_dir / f'features-{extractor}' / '{video_id}' / f'{{video_id}}-{extractor}.hdf5'
 
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / features_file.relative_to(self.collection_dir)
+        input_path = image_list
+        if video_id:
+            input_path = self.collection_dir / 'selected-frames' / video_id
 
-        service = f'features-{features_name}'
+        input_path = '/data' / input_path.relative_to(self.collection_dir)
+        output_template = '/data' / output_template.relative_to(self.collection_dir)
+
+        service = f'features-{extractor}'
         command = [
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            str(input_dir),
+            str(input_path),
             'hdf5',
-            '--output', str(output_file),
-            '--features-name', features_name,
+            '--features-name', extractor,
+            '--output', str(output_template),
         ]
 
         return self.compose_run(service, command, **run_kws)
 
-    def detect_objects_single_video(self, video_id, detector_name, force=False, gpu=False, **run_kws):
-        """ Detects objects in selected keyframes of a video.
+    def detect_objects(self, detector_name, image_list=None, video_id=None, force=False, gpu=False, **run_kws):
+        """ Detects objects in selected keyframes.
 
         Args:
-            video_id (str): Input Video ID.
             detector_name (str): Name of the detector to use.
+            image_list (list, optional): Path to list of images to detect objects in. Defaults to None.
+            video_id (str, optional): ID of the video to detect objects in. Defaults to None.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
             run_kws: Additional arguments to pass to `subprocess.Popen()`.
 
+        Note:
+            Either `image_list` or `video_id` must be specified.
+
         Returns:
             int: Return code of the subprocess.
         """
-        objects_file = self.collection_dir / f'objects-{detector_name}' / video_id / f'{video_id}-objects-{detector_name}.jsonl.gz'
-        objects_file.parent.mkdir(parents=True, exist_ok=True)
 
-        if not force and objects_file.exists():
-            print(f'Skipping object detection ({detector_name}), using existing file:', objects_file.name)
-            return 0
+        assert image_list or video_id, 'Either `image_list` or `video_id` must be specified.'
+        assert not (image_list and video_id), 'Only one of `image_list` or `video_id` can be specified.'
 
-        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+        output_template = self.collection_dir / f'objects-{detector_name}' / '{video_id}' / f'{{video_id}}-objects-{detector_name}.jsonl.gz'
 
-        input_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
-        output_file = '/data' / objects_file.relative_to(self.collection_dir)
+        input_path = image_list
+        if video_id:
+            input_path = self.collection_dir / 'selected-frames' / video_id
+
+        input_path = '/data' / input_path.relative_to(self.collection_dir)
+        output_template = '/data' / output_template.relative_to(self.collection_dir)
 
         service = f'objects-{detector_name}'
         command = [
@@ -142,9 +234,9 @@ class AnalyzeCommand(BaseCommand):
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
-            str(input_dir),
+            str(input_path),
             'jsonl',
-            '--output', str(output_file),
+            '--output', str(output_template),
         ]
 
         return self.compose_run(service, command, **run_kws)
