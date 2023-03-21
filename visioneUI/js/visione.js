@@ -1087,13 +1087,22 @@ function showResults(data) {
 	if((data == null || data == "") && latestQuery != "") {
 		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 		$("#results").append(imgtable);
-		if (!isAdvanced)
-			document.getElementById("textual0").className='simplifiedSearchBar'
+		if (!isAdvanced) {
+			document.getElementById('searchTab').className='simplifiedSearchBar'
+			document.getElementById('block1').style.display='none';
+
+		}
+	
+
+			//document.getElementById("textual0").className='simplifiedSearchBar'
 		console.log(document.getElementById("textual0"))
 
 	} else if((data == null || data == "")) {
-		if (!isAdvanced)
-		document.getElementById("textual0").className='simplifiedSearchBar'
+		if (!isAdvanced) {
+			document.getElementById("textual0").className='simplifiedSearchBar'
+			document.getElementById('block1').style.display='none';
+		}
+
 	} else if(data != null && data != "") {
 		document.getElementById("textual0").className='ppp'
 		console.log(document.getElementById("textual0"))
@@ -1104,11 +1113,15 @@ function showResults(data) {
 		//	res = res.slice(0, 1200);
 		if(res.length == 0 ) {
 			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-			if (!isAdvanced)
+			if (!isAdvanced) {
 				document.getElementById("textual0").className='simplifiedSearchBar'
+
+			}
 			console.log(document.getElementById("textual0"))
 		} 
 		else {
+			document.getElementById('block1').style.display='block';
+
 		borderColorsIdx = 0;
 		numberborderColors = borderColors.length;
 		imgtable = '<div><table id="imgtable" style="text-align: left; width: 1050px;">';
@@ -1621,19 +1634,33 @@ function canvasCleanUndo(idx) {
     })
 }
 
+function displayAdvancedToggle() {
+	if (isAdvanced) {
+		displayAdvanced(false);
+	}
+	else {
+		displayAdvanced(true);
+	}
+}
 function displayAdvanced(isToDisplay) {
 	isAdvanced = isToDisplay
 
 	if (isAdvanced) {
 		setDisplayTo="block";
-		document.getElementById("advancedUIButton").className='btn btn-primary btn-sm';
-		document.getElementById("simplifiedUIButton").className='btn btn-outline-primary btn-sm';
-	}
+		document.getElementById('block0').style.position='relative';
+		document.getElementById('block1').style.display='block';
+		document.getElementById('collectionsTab').style.display='block';
 
+
+
+	}
 	else {
 		setDisplayTo="none";
-		document.getElementById("simplifiedUIButton").className='btn btn-primary btn-sm';
-		document.getElementById("advancedUIButton").className='btn btn-outline-primary btn-sm';
+		document.getElementById('block0').style.position='static';
+		document.getElementById('block1').style.display='none';
+		document.getElementById('collectionsTab').style.display='none';
+		
+
 	}
 	var elements = document.getElementsByClassName("advanced");
 	for(var i=0; i<elements.length; i++) {
@@ -1642,6 +1669,21 @@ function displayAdvanced(isToDisplay) {
 	searchByForm();
 }
 
-
+//create a function that create an input text with a microphone icon inside the input text
+function createInputTextWithMic() {
+	var inputText = document.createElement("input");
+	inputText.setAttribute("type", "text");
+	inputText.setAttribute("id", "inputText");
+	inputText.setAttribute("class", "form-control");
+	inputText.setAttribute("placeholder", "Search by voice");
+	var micIcon = document.createElement("i");
+	micIcon.setAttribute("class", "fa fa-microphone");
+	micIcon.setAttribute("id", "micIcon");
+	micIcon.setAttribute("aria-hidden", "true");
+	micIcon.setAttribute("onclick", "startDictation(event)");
+	inputText.appendChild(micIcon);
+	console.log(inputText);
+	return inputText;
+}
 
 

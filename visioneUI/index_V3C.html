@@ -13,6 +13,7 @@
 	href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
 <link rel="stylesheet" href="css/bootstrap.css">
 <link rel="stylesheet" href="css/visione.css">
+<link rel="stylesheet" href="css/toggle.css">
 <script src="js/jquery-3.3.1.min.js"></script>
 <script src="js/jquery-ui.min.js"></script>
 <script src="js/fabric.js"></script>
@@ -71,43 +72,26 @@ body {
 
 	<div id="content" class="containerGrid">
 		<div class="headerGrid">
+
 			<table>
 				<tr>
 					<td>
-						<div style="float: left; padding-right: 16px;"onclick="displayAdvanced(false);">
-							<button id="simplifiedUIButton"
-								class="btn btn-outline-primary btn-sm"
-								title="Switch to simplified UI">
-								<i class="fa fa-bicycle"> Simplified UI</i>
-
-							</button>
+						<div class="tg-list-item">
+							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" checked/>
+							<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
+							
 						</div>
-						<div style="float: left; padding-left: 4px;"
-							onclick="displayAdvanced(true);">
-							<button id="advancedUIButton" class="btn btn-primary btn-sm"
-								title="Switch to advanced UI">
-								<i class="fa fa-fighter-jet"> Advanced UI</i>
-
-							</button>
-						</div>
+						 
+						
 					</td>
 					<td>
-						<div style="padding: 10px;">
-							<input type="radio" id="uitype"
-							name="uitype" value="simplified" 
-							onchange="displayAdvanced(false)"><label for="simplifieduitype">&nbsp;Simplified UI</label>
-							<input type="radio" id="uitype" name="uitype" checked
-							value="advanced" onchange="displayAdvanced(true)"><label
-							for="advanceduitype">&nbsp;Advanced UI</label>
-
-						</div>
 
 					</td>
 					<td></td>
 				</tr>
 				<tr>
 					<td colspan=1 valign="top" style="min-width: 350px;">
-						<div align="left" style="padding: 4px;padding-bottom: 20px;">
+						<div id="collectionsTab" align="left" style="padding: 4px;padding-bottom: 20px;">
 									<div style="float: left; padding-right: 4px;">
 										<button disabled="disabled" class="btn btn-info btn-sm"
 											title="You are running a V3C KIS task">
@@ -165,7 +149,7 @@ body {
 			</table>
 		</div>
 		<div class="bodyGrid">
-			<div class="sidebarGrid">
+			<div class="sidebarGrid" id="searchSidebar">
 				<div id='searchTab'></div>
 				<hr class="advanced">
 				<div w3-include-html="filters.html" style="padding-left: 5px;""></div>
@@ -291,29 +275,56 @@ body {
 								}
 							});
 
+							var blink0 = null;
+							var blink1 = null;
+
 							$("#recordButton0")
 									.on(
 											'click',
 											function(e) {
-												document
-														.getElementById("recordButton0").style.display = 'none';
-												document
-														.getElementById("stopButton0").style.display = 'block';
-												startRecording(0);
+												if ($("#recordButton0").css('color') == "rgb(0, 128, 0)") {
+													$("#recordButton0").css('color', 'red');
+													blink0 = setInterval(() => {
+														$('#recordButton0').fadeIn();
+														$('#recordButton0').fadeOut();
+													}, 100);
+													
+													startRecording(0);
+												}
+												else {
+													clearInterval(blink0);
+													$('#recordButton0').finish();
+													$('#recordButton0').show();
+													$("#recordButton0").css('color', 'green');
+
+													//stopRecording(0);
+
+												}
 											});
 
 							$("#recordButton1")
 									.on(
 											'click',
 											function(e) {
-												document
-														.getElementById("recordButton1").style.display = 'none';
-												document
-														.getElementById("stopButton1").style.display = 'block';
-												startRecording(1);
+												if ($("#recordButton1").css('color') == "rgb(0, 128, 0)") {
+													$("#recordButton1").css('color', 'red');
+													blink1 = setInterval(() => {
+														$('#recordButton1').fadeIn();
+														$('#recordButton1').fadeOut();
+													}, 100);
+													startRecording(1);
+												}
+												else {
+													clearInterval(blink1);
+													$('#recordButton1').finish();
+													$('#recordButton1').show();
+													$("#recordButton1").css('color', 'green');
+													stopRecording(1);
 
-											});
+												}
 
+										});
+/*
 							$("#stopButton0")
 									.on(
 											'click',
@@ -335,7 +346,7 @@ body {
 														.getElementById("stopButton1").style.display = 'none';
 												stopRecording(1);
 											});
-
+*/
 							canvas0.renderAll();
 
 							var script = document.createElement('script');
@@ -344,6 +355,14 @@ body {
 							script = document.createElement('script');
 							script.src = "js/WebAudioRecorder/audioRecorder.js";
 							document.head.appendChild(script)
+
+							const microphoneIcon = document.querySelector('.microphone-icon');
+							const inputText = document.querySelector('input[type="text"]');
+						  
+							microphoneIcon.addEventListener('click', () => {
+							  // Avvia la registrazione audio
+							  console.log('Registrazione audio avviata');
+							});
 
 						});
 	</script>
