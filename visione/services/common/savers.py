@@ -48,6 +48,9 @@ class GzipJsonlFile(Saver):
 
     def add(self, record, force=False):
         _id = record['_id']
+
+        assert not (force and _id in self), f"Cannot force add existing record '{_id}' in jsonl.gz file."
+
         if _id not in self:
             self._ids.add(_id)
             self.file.write(json.dumps(record) + '\n')
