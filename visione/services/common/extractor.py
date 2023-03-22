@@ -45,7 +45,7 @@ class BaseExtractor(object):
         input_path = self.args.input_images
         if input_path.is_dir():  # input is a directory, list all images in it
             image_paths = sorted(input_path.glob("*.png"))
-            ids_and_paths = [(input_path.name, p.name, p) for p in image_paths]
+            ids_and_paths = [(input_path.name, p.stem, p) for p in image_paths]
         else:  # input is a file, parse it
             with input_path.open() as image_list:
                 reader = csv.reader(image_list, delimiter='\t')
