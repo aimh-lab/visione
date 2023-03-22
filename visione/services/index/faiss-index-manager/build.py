@@ -10,7 +10,7 @@ import more_itertools
 import numpy as np
 from tqdm import tqdm
 
-from visione import load_config
+from visione import load_config, CliProgress
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -33,30 +33,37 @@ def peek_features_attributes(h5file):
         return features_dim, features_name
 
 
-def load_features(hdf5_files, progress=False):
-    pbar = tqdm(total=0, disable=not progress)
+def load_features(hdf5_files):
+    progress = CliProgress(total=0)
 
     for hdf5_file in hdf5_files:
         with h5py.File(hdf5_file, 'r') as h5file:
             ids = h5file['ids'].asstr()[:]
             features = h5file['data'][:]
 
-            pbar.total += len(features)
-            for item in zip(ids, features):
-                pbar.update()
-                yield item
+            progress.total += len(features)
+            ids_and_features = zip(ids, features)
+            ids_and_features = progress(ids_and_features)
+
+            yield from ids_and_features
 
 
 def create(args):
     # skip if existing
     if not args.force and args.index_file.exists() and args.idmap_file.exists():
         logging.info('Found index, skipping creation.')
+
+        # get number of lines in idmap file
+        with open(args.idmap_file, 'r') as idmap_file:
+            num_lines = sum(1 for line in idmap_file)
+        
+        CliProgress(initial=num_lines, total=num_lines).print()
         return
 
     # load features
     features_files = args.features_dir.glob('*/*.hdf5')
     features_files = sorted(features_files)
-    ids_and_features = load_features(features_files, progress=True)
+    ids_and_features = load_features(features_files)
 
     # peek features to get type and dimensionality
     dim, features_name = peek_features_attributes(features_files[0])
@@ -130,7 +137,7 @@ def add(args):
 
             positions = [i for i, x in enumerate(idmap) if x in ids]
             if not args.force and positions:  # frames with this video_id are present in the index
-                print(f'Skipping adding {video_id} to FAISS index, already present.')
+                print(f'Skipping adding to FAISS index, already present.')
                 return index, idmap
 
             features = h5file['data'][:]
@@ -222,7 +229,7 @@ if __name__ == "__main__":
     add_parser = subparsers.add_parser('add', help='Adds features to an existing FAISS index.')
     add_parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     add_parser.add_argument('--batch-size', type=int, default=50_000, help='add batch size')
-    add_parser.add_argument('video_features_files', nargs='+', type=Path, help='path(s) to h5df file(s) containing video features')
+    add_parser.add_argument('video_features_files', nargs='+', type=Path, help='path(s) to h5df file(s) or dir(s) containing video features')
     add_parser.set_defaults(func=add)
 
     rm_parser = subparsers.add_parser('remove', help='Remove a video from an existing FAISS index.')
