@@ -149,9 +149,9 @@ class BaseCommand(ABC):
         profiles = profiles or ()
         profiles = profiles if isinstance(profiles, (list, tuple)) else (profiles,)
 
-        command = self.compose_cmd
+        command = self.compose_cmd.copy()
 
-        for profile in profiles or ():
+        for profile in profiles:
             command += ['--profile', profile]
 
         command += [
