@@ -8,16 +8,12 @@ import json
 import math
 import operator
 from pathlib import Path
+import subprocess
 
 import pandas as pd
-# from tqdm import tqdm
 
-from visione import load_config, cli_progress
+from visione import load_config, CliProgress
 from visione.savers import GzipJsonlFile
-
-
-# progress = tqdm
-progress = cli_progress
 
 
 def count_objects(record):
@@ -321,13 +317,33 @@ def process_merged_record(record, config, hypersets):
     return object_counts, record
 
 
-def main(args):
-    # load config
-    config = load_config(args.config_file)['index']['objects']
-    hypersets = load_hypersets(args.hypersets)
+def process_video_id(
+    objects_input_files,
+    str_output_file,
+    count_output_file,
+    config,
+    hypersets,
+    force,
+    save_every,
+    progress,
+    video_id=None,
+):
+
+    # TODO ugly hack.. should be done in a better way
+    n_frames = int(subprocess.check_output([f'zcat "{str_output_file}" | wc -l'] , shell=True))
+    progress.total += n_frames + (progress.total < 0)
+    progress.print()
+
+    if not force and str_output_file.exists() and count_output_file.exists():
+        print(f'Skipping STR object encoding, using existing file:', str_output_file.name, count_output_file.name)
+        progress.initial += n_frames
+        progress.print()
+        return
+    
+    assert all(i.exists() for i in objects_input_files), f"Analysis files missing for '{video_id}'. Have you run 'analyze' on it?"
 
     # apply per-detector processing (score/area/label filtering, label mapping)
-    records_per_detector = map(lambda x: process_objects_file(x, config), args.objects_input_files)
+    records_per_detector = map(lambda x: process_objects_file(x, config), objects_input_files)
 
     # merge records of different detectors for the same frames
     merged_records = map(merge_records, zip(*records_per_detector))
@@ -336,18 +352,47 @@ def main(args):
     counts_and_records = map(lambda x: process_merged_record(x, config, hypersets), merged_records)
 
     # if forced, delete old file
-    if args.force and args.str_output_file.exists():
-        args.str_output_file.unlink()
+    if force and str_output_file.exists():
+        str_output_file.unlink()
 
     n_frames = None  # TODO
     object_counter = collections.Counter()
-    with GzipJsonlFile(args.str_output_file, flush_every=args.save_every) as saver:
-        for count, record in progress(counts_and_records, total=n_frames):
+    with GzipJsonlFile(str_output_file, flush_every=save_every) as saver:
+        for count, record in progress(counts_and_records):
             saver.add(record)
             object_counter += count
 
-    with open(args.count_output_file, 'w') as f:
+    with open(count_output_file, 'w') as f:
         json.dump(object_counter, f)
+
+
+def main(args):
+    # load config
+    config = load_config(args.config_file)['index']['objects']
+    hypersets = load_hypersets(args.hypersets)
+
+    video_ids = None
+    if args.video_ids_list_path:
+        with args.video_ids_list_path.open() as f:
+            video_ids = list(map(str.strip, f))
+    
+    if args.video_ids:
+        video_ids = args.video_ids
+
+    progress = CliProgress()
+
+    common_args = (config, hypersets, args.force, args.save_every, progress)
+    
+    if not video_ids:  # process only given files, do not use video_id in file names
+        process_video_id(args.objects_input_templates, args.str_output_template, args.count_output_template, *common_args)
+        return
+    
+    for video_id in video_ids:  # process all files with given video_id
+        object_input_files = [Path(str(t).format(video_id=video_id)) for t in args.objects_input_templates]
+        str_output_file = Path(str(args.str_output_template).format(video_id=video_id))
+        count_output_file = Path(str(args.count_output_template).format(video_id=video_id))
+
+        process_video_id(object_input_files, str_output_file, count_output_file, *common_args, video_id=video_id)
 
 
 if __name__ == "__main__":
@@ -355,12 +400,15 @@ if __name__ == "__main__":
 
     parser.add_argument('--config-file', default='/data/config.yaml', help='path to yaml configuration file')
     parser.add_argument('--hypersets', default='/data/hypersets.csv', help='path to csv file with hypersets')
-    parser.add_argument('--save-every', type=int, default=100)
+    parser.add_argument('--save-every', type=int, default=5000)
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
 
-    parser.add_argument('str_output_file', type=Path, help='output path of the jsonl.gz file with STR-encoded objects')
-    parser.add_argument('count_output_file', type=Path, help='output path of the json file with objects count')
-    parser.add_argument('objects_input_files', nargs='+', type=Path, help='path to jsonl.gz file(s) with detected objects; we assume records have the same order in all files!')
+    parser.add_argument('--video-ids-list-path', type=Path, help='path to file with list of video ids to process')
+    parser.add_argument('--video-ids', nargs='+', help='list of video ids to process')
+
+    parser.add_argument('str_output_template', type=Path, help='output path of the jsonl.gz file with STR-encoded objects. {video_id} will be replaced with the video id')
+    parser.add_argument('count_output_template', type=Path, help='output path of the json file with objects count. {video_id} will be replaced with the video id.')
+    parser.add_argument('objects_input_templates', nargs='+', type=Path, help='path to jsonl.gz file(s) with detected objects; {video_id} will be replaced with the video id. We assume records have the same order in all files!')
 
     args = parser.parse_args()
     main(args)
