@@ -16,6 +16,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Manage VISIONE instances')
     parser.add_argument('--config-file', type=Path, help="path to YAML config file to use. It must be inside the collection directory. Defaults to 'config.yaml' in the collection directory.")
+    parser.add_argument('--verbose', '-v', action='store_true', help="Show verbose output. Useful for debugging.")
     subparsers = parser.add_subparsers(help='command')
 
     for command in commands.available_commands:

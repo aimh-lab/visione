@@ -25,7 +25,7 @@ class BaseCommand(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, *, config_file):
+    def __call__(self, *, config_file, verbose):
         if self.config_file:  # avoid loading config again
             return
 
@@ -54,6 +54,7 @@ class BaseCommand(ABC):
         }
 
         self.develop_mode = self.config['main'].get('develop_mode', False)
+        self.verbose = verbose
 
         self._find_docker_compose_executable()
 
@@ -103,7 +104,7 @@ class BaseCommand(ABC):
     def compose_run(self, service_name, service_command, stdout_callback=None, stderr_callback=None, **run_kws):
         command = self.compose_run_cmd + [service_name] + service_command
 
-        if self.develop_mode:
+        if self.verbose:
             print(f"Running: {' '.join(command)}")
             stdout_callback = stdout_callback or partial(print, end='')
             stderr_callback = stderr_callback or partial(print, end='')
@@ -171,6 +172,6 @@ class BaseCommand(ABC):
                 total = total if total >= 0 else None
                 progress.update(task_id, completed=completed, total=total)
 
-            if self.develop_mode:
+            if self.verbose:
                 print(line, end='', **kwargs)
         return _func
