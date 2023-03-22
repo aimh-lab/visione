@@ -20,25 +20,29 @@ def load_config(yaml_path):
 
 class CliProgress(object):
     """ Progress bar for CLI. """
-    def __init__(self, initial=0, total=-1):
+    def __init__(self, initial=0, total=-1, print_fn=print):
         super(CliProgress, self).__init__()
         self.initial = initial
         self.total = -1 if total is None else total
+        self.print_fn = print_fn
 
     def __call__(self, iterable):
 
         def _wrapped(iterable):
-            print(f'progress: {self.initial}/{self.total}', flush=True)
+            self.print()
             for it in iterable:
                 yield it
                 self.initial += 1
-                print(f'progress: {self.initial}/{self.total}', flush=True)
+                self.print()
 
             if self.total < 0:
                 self.total = self.initial
-            print(f'progress: {self.initial}/{self.total}', flush=True)
+            self.print()
 
         return _wrapped(iterable)
+    
+    def print(self):
+        self.print_fn(f'progress: {self.initial}/{self.total}', flush=True)
 
 
 def cli_progress(iterable, initial=0, total=-1):
