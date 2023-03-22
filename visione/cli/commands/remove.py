@@ -19,8 +19,8 @@ class RemoveCommand(BaseCommand):
         parser.add_argument('video_ids', nargs='+', help='ID(s) of video(s) to be removed.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_ids, content, analysis):
-        super(RemoveCommand, RemoveCommand).__call__(self, config_file)
+    def __call__(self, *, video_ids, content, analysis, **kwargs):
+        super(RemoveCommand, RemoveCommand).__call__(self, **kwargs)
 
         status = Status('Removing ...')
         status.start()

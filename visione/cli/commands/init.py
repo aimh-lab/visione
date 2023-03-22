@@ -16,9 +16,9 @@ class InitCommand(BaseCommand):
         parser.add_argument('directory', nargs='?', type=Path, default=Path('.'), help='Directory to initialize (defaults to current directory)')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, directory):
+    def __call__(self, *, directory, **kwargs):
         # FIXME config loading is in common command setup, but must be skipped for 'init'
-        # super(InitCommand, InitCommand).__call__(self, config_file)
+        # super(InitCommand, InitCommand).__call__(self, **kwargs)
 
         skel = Path(importlib.resources.files('visione.skel').joinpath(''))
         # TODO manage already existing collection

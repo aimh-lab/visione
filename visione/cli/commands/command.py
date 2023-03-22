@@ -25,7 +25,7 @@ class BaseCommand(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, config_file):
+    def __call__(self, *, config_file):
         if self.config_file:  # avoid loading config again
             return
 

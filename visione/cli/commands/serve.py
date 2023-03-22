@@ -16,8 +16,8 @@ class ServeCommand(BaseCommand):
         parser.add_argument('-p', '--port', type=int, help='port to which the server will listen')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, port):
-        super(ServeCommand, ServeCommand).__call__(self, config_file)
+    def __call__(self, *, port, **kwargs):
+        super(ServeCommand, ServeCommand).__call__(self, **kwargs)
 
         # selects mandatory services needed to respond to queries
         profile_options = ['--profile', 'query']

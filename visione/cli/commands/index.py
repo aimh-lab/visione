@@ -24,8 +24,8 @@ class IndexCommand(BaseCommand):
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_ids, replace):
-        super(IndexCommand, IndexCommand).__call__(self, config_file)
+    def __call__(self, *, video_ids, replace, **kwargs):
+        super(IndexCommand, IndexCommand).__call__(self, **kwargs)
         self.create_services_containers('index')
 
         # if video IDs are given, index only those

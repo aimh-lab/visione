@@ -25,8 +25,8 @@ class ImportCommand(BaseCommand):
         parser.add_argument('video_path_or_url', nargs='?', default=None, help='Path or URL to video file to be imported. If not given, resumes importing of existing videos.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_path_or_url, video_id, replace):
-        super(ImportCommand, ImportCommand).__call__(self, config_file)
+    def __call__(self, *, video_path_or_url, video_id, replace, **kwargs):
+        super(ImportCommand, ImportCommand).__call__(self, **kwargs)
         self.create_services_containers('analysis')
 
         # TODO handle (video_path_or_url == None) case

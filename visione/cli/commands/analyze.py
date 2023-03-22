@@ -19,8 +19,8 @@ class AnalyzeCommand(BaseCommand):
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, config_file, video_ids, replace, gpu):
-        super(AnalyzeCommand, AnalyzeCommand).__call__(self, config_file)
+    def __call__(self, *, video_ids, replace, gpu, **kwargs):
+        super(AnalyzeCommand, AnalyzeCommand).__call__(self, **kwargs)
         self.create_services_containers('analysis')
 
         # if video IDs are given, analyze only those
