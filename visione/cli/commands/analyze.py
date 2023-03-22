@@ -160,7 +160,7 @@ class AnalyzeCommand(BaseCommand):
 
         Args:
             extractor (str): Name of the extractor.
-            image_list (list, optional): List of image paths to extract features from. Defaults to None.
+            image_list (Path, optional): Path to a file containing a list of images to extract features from. Defaults to None.
             video_id (str, optional): ID of the video to extract features from. Defaults to None.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
@@ -204,7 +204,7 @@ class AnalyzeCommand(BaseCommand):
 
         Args:
             detector_name (str): Name of the detector to use.
-            image_list (list, optional): Path to list of images to detect objects in. Defaults to None.
+            image_list (Path, optional): Path to list of images to detect objects in. Defaults to None.
             video_id (str, optional): ID of the video to detect objects in. Defaults to None.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
             gpu (bool, optional): Whether to use the GPU. Defaults to False.
