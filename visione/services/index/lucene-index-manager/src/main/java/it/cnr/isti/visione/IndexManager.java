@@ -48,6 +48,7 @@ import me.tongfei.progressbar.ProgressBar;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.action.StoreTrueArgumentAction;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.MutuallyExclusiveGroup;
 import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
@@ -90,8 +91,10 @@ public class IndexManager {
         Subparser addParser = subparsers.addParser("add").setDefault("command", "add").help("add/replace documents in an index");
         addParser.addArgument("--save-every").type(Integer.class).setDefault(200).help("commit index every this amount of indexed documents");
         addParser.addArgument("-f", "--force").action(new StoreTrueArgumentAction()).help("whether to replace existing document or skip insertion");
-        addParser.addArgument("documents_file").help("jsonl.gz file containing documents to be added");
-        addParser.addArgument("video_id").help("id of the video to which input documents belong");
+        addParser.addArgument("documents_file_template").help("jsonl.gz file containing documents to be added; {video_id} will be replaced with the video id");
+        MutuallyExclusiveGroup group = addParser.addMutuallyExclusiveGroup("video_ids_input").required(true);
+        group.addArgument("--video-ids-list-path").help("path to a file containing a list of video ids to be added");
+        group.addArgument("--video-ids").help("id of the video to which input documents belong");
 
         // remove sub-command
         Subparser rmParser = subparsers.addParser("remove").setDefault("command", "remove").help("remove docs from an index");
@@ -111,14 +114,33 @@ public class IndexManager {
     public static void add(Namespace ns) throws IOException {
 
         int saveEvery = ns.getInt("save_every"); // TODO not used yet
-        String documentsFile = ns.getString("documents_file");
-        String videoId = ns.getString("video_id");
+        String documentsFileTemplate = ns.getString("documents_file_template");
+        String videoIdsListPath = ns.getString("video_ids_list_path");
+        String videoId = ns.getString("video_ids");
         String indexDirectory = ns.getString("index_dir");
         boolean force = ns.getBoolean("force");
 
         // open the index dir
         Path absolutePath = Paths.get(indexDirectory, "");
         FSDirectory index = FSDirectory.open(absolutePath);
+
+        Stream<String> videoIds;
+        if (videoIdsListPath != null) {
+            videoIds = Files.lines(Paths.get(videoIdsListPath)).map(String::trim);
+        } else {
+            videoIds = Stream.of(videoId);
+        }
+
+        startCliProgress();
+        videoIds.forEach(vId -> { try {
+                addOne(vId, documentsFileTemplate.replace("{video_id}", vId), index, force);
+            } catch (IOException e) { e.printStackTrace(); }
+        });
+        endCliProgress();
+
+    }
+
+    protected static void addOne(String videoId, String documentsFile, FSDirectory index, boolean force) throws IOException {
 
         // skip if documents of this video already exists
         Term videoIdTerm = new Term("videoID", videoId);
@@ -131,6 +153,7 @@ public class IndexManager {
             long hits = searcher.search(query, 1).totalHits;
             if (hits > 0) {
                 System.out.println("Found " + hits + " documents for video '" + videoId + "': skipping...");
+                initial += hits;
                 return;
             }
         }
@@ -148,7 +171,6 @@ public class IndexManager {
             BufferedReader buffered = new BufferedReader(decoder);
             Stream<String> lines = buffered.lines();
         ) {
-            startCliProgress();
             // iterates over json objects
             Stream<Document> documents = lines
                 .map(line -> JsonParser.parseString(line).getAsJsonObject())  // lines to json objects
@@ -161,7 +183,6 @@ public class IndexManager {
             try (IndexWriter writer = new IndexWriter(index, conf)) {
                 writer.updateDocuments(videoIdTerm, documentsWithProgressBar);
             }
-            endCliProgress();
         }
     }
 
