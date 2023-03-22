@@ -158,18 +158,19 @@ class BaseCommand(ABC):
             'up',
             '--no-start',
             '--no-recreate',
+            '--remove-orphans',
         ]
 
         return subprocess.run(command, env=self.compose_env, check=True)
 
     
     def progress_callback(self, progress, task_id):
-        def _func(line):
+        def _func(line, **kwargs):
             if line.startswith('progress:'):
                 completed, total = map(int, line[len('progress:'):].strip().split('/'))
                 total = total if total >= 0 else None
                 progress.update(task_id, completed=completed, total=total)
 
             if self.develop_mode:
-                print(line, end='')
+                print(line, end='', **kwargs)
         return _func
