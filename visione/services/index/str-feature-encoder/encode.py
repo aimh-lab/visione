@@ -9,14 +9,9 @@ import sys
 import h5py
 import more_itertools
 import surrogate
-# from tqdm import tqdm
 
-from visione import load_config, cli_progress
+from visione import load_config, CliProgress
 from visione.savers import GzipJsonlFile
-
-
-# progress = tqdm
-progress = cli_progress
 
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
@@ -32,7 +27,27 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def load_or_build_encoder(encoder_filename, encoder_config, train_features, force):
+def get_features(features_input_template, video_ids):
+    features_input_template = str(features_input_template)
+
+    # peek features name
+    features_h5 = features_input_template.format(video_id=video_ids[0])
+    with h5py.File(features_h5, 'r') as f:
+        features_name = f.attrs['features_name']
+        features_dim = f['data'].shape[1]
+    
+    # generate training set
+    def _gen():
+        for video_id in video_ids:
+            features_h5 = features_input_template.format(video_id=video_id)
+            with h5py.File(features_h5, 'r') as f:
+                yield from f['data']
+
+    train_features = _gen()
+    return features_dim, features_name, train_features
+
+
+def load_or_build_encoder(encoder_filename, encoder_config, dim, features, n_train, force):
 
     # instantiate STR encoder if not existing
     if not encoder_filename.exists() or force:
@@ -49,17 +64,16 @@ def load_or_build_encoder(encoder_filename, encoder_config, train_features, forc
         index_string = f'{index_type}({index_string})'
         log.info(f'Building encoder: {index_string}')
 
-        n, d = train_features.shape
-        encoder = surrogate.index_factory(d, index_type, index_params)
+        encoder = surrogate.index_factory(dim, index_type, index_params)
 
         assert encoder.is_trained, "Training the encoder on a single video is not supported. It will be supported for bulk indexing."
 
         if not encoder.is_trained:  # currently not used
             # get subsample if necessary for training
-            n_train = min(n, 100_000)  # FIXME: better heuristic?
+            train_features = itertools.islice(features, 0, n_train)
             # train the encoder
             log.info('Training the encoder ...')
-            encoder.train(train_features[:n_train])  # FIXME random shuffling is missing
+            encoder.train(train_features)  # FIXME random shuffling is missing
             log.info('Trained.')
 
         # save encoder
@@ -72,32 +86,35 @@ def load_or_build_encoder(encoder_filename, encoder_config, train_features, forc
     return encoder
 
 
-def main(args):
+def process_video_id(features_input_file, str_output_file, encoder, force, save_every, progress):
 
-    # get features matrix
-    with h5py.File(args.features_input_file, 'r') as f:
+    with h5py.File(features_input_file, 'r') as f:
+        n_images = f['data'].shape[0]
+        progress.total += n_images + (progress.total < 0)
+        progress.print()
+
+        if str_output_file.exists():
+            if force:  # if forced, delete old file
+                str_output_file.unlink()
+            else:
+                print(f'Skipping STR features encoding, using existing file:', str_output_file.name)
+                progress.initial += n_images
+                progress.print()
+                return
+
+        # get ids and features matrix
         ids = f['ids'].asstr()[:]
         features = f['data'][:]
-        features_name = f.attrs['features_name']
-
-    encoder_config = load_config(args.config_file)['index']['features'][features_name]
-    encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features, args.force_encoder)
-
-    n_images = len(ids)
-    initial = 0
-
-    # if forced, delete old file
-    if args.force and args.str_output_file.exists():
-        args.str_output_file.unlink()
 
     # open saver
-    with GzipJsonlFile(args.str_output_file, flush_every=args.save_every) as saver:
+    with GzipJsonlFile(str_output_file, flush_every=save_every) as saver:
         skip_mask = [_id not in saver for _id in ids]
         ids = ids[skip_mask]
         features = features[skip_mask]
 
         n_rem = len(ids)
         initial = n_images - n_rem
+        progress.initial += initial
         bs = args.batch_size
 
         # create batches of features
@@ -112,8 +129,33 @@ def main(args):
         # generate records
         records = ({'_id': _id, 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
 
-        records = progress(records, initial=initial, total=n_images)
+        records = progress(records)
         saver.add_many(records)
+
+
+def main(args):
+
+    video_ids = None
+    if args.video_ids_list_path:
+        with args.video_ids_list_path.open() as f:
+            video_ids = list(map(str.strip, f))
+    
+    if args.video_ids:
+        video_ids = args.video_ids
+    
+    # peek features names and training set
+    features_dim, features_name, features = get_features(args.features_input_template, video_ids)
+    
+    # get encoder config
+    encoder_config = load_config(args.config_file)['index']['features'][features_name]
+    encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features_dim, features, args.train_size, args.force_encoder)
+
+    progress = CliProgress()
+
+    for video_id in video_ids:
+        features_input_file = Path(str(args.features_input_template).format(video_id=video_id))
+        str_output_file = Path(str(args.str_output_template).format(video_id=video_id))
+        process_video_id(features_input_file, str_output_file, encoder, args.force, args.save_every, progress)
 
 
 if __name__ == "__main__":
@@ -124,10 +166,14 @@ if __name__ == "__main__":
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     parser.add_argument('--force-encoder', default=False, action='store_true', help='overwrite existing trained encoder')
     parser.add_argument('--batch-size', type=int, default=5000, help='encoder batch size')
+    parser.add_argument('--train-size', type=int, default=10_000, help='encoder train set size')
 
-    parser.add_argument('features_input_file', type=Path, help='path to hdf5 file with frame features')
+    parser.add_argument('--video-ids-list-path', type=Path, help='path to file with list of video ids to process')
+    parser.add_argument('--video-ids', nargs='+', help='list of video ids to process')
+
+    parser.add_argument('features_input_template', type=Path, help='path to hdf5 file with frame features. {video_id} will be replaced by the video id.')
     parser.add_argument('features_encoder_file', type=Path, help='path to the pkl file defining the feature encoder. It will be created if missing.')
-    parser.add_argument('str_output_file', type=Path, help='output path of the jsonl.gz file with STR-encoded features')
+    parser.add_argument('str_output_template', type=Path, help='output path of the jsonl.gz file with STR-encoded features. {video_id} will be replaced by the video id.')
 
     args = parser.parse_args()
     main(args)
