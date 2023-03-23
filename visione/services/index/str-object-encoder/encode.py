@@ -355,6 +355,8 @@ def process_video_id(
 
     n_frames = None  # TODO
     object_counter = collections.Counter()
+
+    str_output_file.parent.mkdir(parents=True, exist_ok=True)
     with GzipJsonlFile(str_output_file, flush_every=save_every) as saver:
         for count, record in progress(counts_and_records):
             saver.add(record)
@@ -364,6 +366,7 @@ def process_video_id(
         progress.total = progress.initial
         progress.print()
 
+    count_output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(count_output_file, 'w') as f:
         json.dump(object_counter, f)
 

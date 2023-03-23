@@ -107,6 +107,7 @@ def process_video_id(features_input_file, str_output_file, encoder, force, save_
         features = f['data'][:]
 
     # open saver
+    str_output_file.parent.mkdir(parents=True, exist_ok=True)
     with GzipJsonlFile(str_output_file, flush_every=save_every) as saver:
         skip_mask = [_id not in saver for _id in ids]
         ids = ids[skip_mask]
