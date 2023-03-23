@@ -134,7 +134,11 @@ class BaseCommand(ABC):
             # check if the process exited with an error
             service_process.wait()
             if check and service_process.returncode != 0:
-                raise RuntimeError(f"Command {' '.join(command)} exited with error code {service_process.returncode}")
+                raise RuntimeError(
+                    f"Process in '{service_name}' service exited with error code {service_process.returncode}.\n"
+                    f"Command: {' '.join(service_command)}\n"
+                    f"Docker Compose command: {' '.join(command)}\n"
+                )
 
             return service_process.returncode
 
