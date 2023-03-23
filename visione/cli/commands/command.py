@@ -101,7 +101,7 @@ class BaseCommand(ABC):
             '--user', f'{os.getuid()}:{os.getgid()}',
         ]
 
-    def compose_run(self, service_name, service_command, stdout_callback=None, stderr_callback=None, **run_kws):
+    def compose_run(self, service_name, service_command, stdout_callback=None, stderr_callback=None, check=True, **run_kws):
         command = self.compose_run_cmd + [service_name] + service_command
 
         if self.verbose:
@@ -130,6 +130,11 @@ class BaseCommand(ABC):
                     callback = key.data
                     if callback:
                         callback(line)
+
+            # check if the process exited with an error
+            service_process.wait()
+            if check and service_process.returncode != 0:
+                raise RuntimeError(f"Command {' '.join(command)} exited with error code {service_process.returncode}")
 
             return service_process.returncode
 
