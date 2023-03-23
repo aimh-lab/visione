@@ -329,13 +329,11 @@ def process_video_id(
     video_id=None,
 ):
 
-    # TODO ugly hack.. should be done in a better way
-    n_frames = int(subprocess.check_output([f'zcat "{str_output_file}" | wc -l'] , shell=True))
-    progress.total += n_frames + (progress.total < 0)
-    progress.print()
-
     if not force and str_output_file.exists() and count_output_file.exists():
         print(f'Skipping STR object encoding, using existing file:', str_output_file.name, count_output_file.name)
+        # TODO ugly hack.. should be done in a better way
+        n_frames = int(subprocess.check_output([f'zcat "{str_output_file}" | wc -l'] , shell=True))
+        progress.total += n_frames + (progress.total < 0)
         progress.initial += n_frames
         progress.print()
         return
@@ -361,6 +359,10 @@ def process_video_id(
         for count, record in progress(counts_and_records):
             saver.add(record)
             object_counter += count
+
+    if progress.total < progress.initial:
+        progress.total = progress.initial
+        progress.print()
 
     with open(count_output_file, 'w') as f:
         json.dump(object_counter, f)
