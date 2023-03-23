@@ -90,7 +90,7 @@ class ObjectOIV4Extractor(BaseExtractor):
             'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
             'object_scores': det['detection_scores'],
             'object_boxes_yxyx': det['detection_boxes'],
-            'detector': 'frcnn_incep_resnetv2_openimagesv4',
+            'detector': 'frcnn-oiv4',
         } if det else None
         return det
 

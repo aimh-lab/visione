@@ -32,7 +32,7 @@ services:
   objects-mrcnn-lvis:
     build: ./analysis/objects-mmdet
     image: visione/objects-mmdet
-    environment: ["DETECTOR_NAME=mask_rcnn_lvis"]
+    environment: ["DETECTOR_NAME=mrcnn-lvis"]
     volumes: *common_volumes
     profiles: ["analysis", "objects-mrcnn-lvis"]
     deploy: *needs_gpu
@@ -40,7 +40,7 @@ services:
   objects-vfnet64-coco:
     build: ./analysis/objects-mmdet
     image: visione/objects-mmdet
-    environment: ["DETECTOR_NAME=vfnet_X-101-64x4d"]
+    environment: ["DETECTOR_NAME=vfnet64-coco"]
     volumes: *common_volumes
     profiles: ["analysis", "objects-vfnet64-coco"]
     deploy: *needs_gpu

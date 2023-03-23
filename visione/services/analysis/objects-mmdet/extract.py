@@ -12,7 +12,7 @@ from visione.extractor import BaseExtractor
 
 
 def detection2record(detection, detector, classes, image_hw):
-    if detector == 'mask_rcnn_lvis':
+    if detector == 'mrcnn-lvis':
         boxes_and_scores = detection[0]
     elif detector.startswith('vfnet'):
         boxes_and_scores = detection
@@ -42,15 +42,15 @@ class ObjectsMMDetExtractor(BaseExtractor):
     CKPT_DIR = Path('/usr/src/mmdetection/checkpoints')
 
     DETECTORS = {
-        'vfnet_X-101-32x4d': {
+        'vfnet32-coco': {
             'config': CONFIG_DIR / 'vfnet' / 'vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco.py',
             'checkpoint': CKPT_DIR / 'vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_20201027pth-d300a6fc.pth',
         },
-        'vfnet_X-101-64x4d': {
+        'vfnet64-coco': {
             'config': CONFIG_DIR / 'vfnet' / 'vfnet_x101_64x4d_fpn_mdconv_c3-c5_mstrain_2x_coco.py',
             'checkpoint': CKPT_DIR / 'vfnet_x101_64x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_20201027pth-b5f6da5e.pth',
         },
-        'mask_rcnn_lvis': {
+        'mrcnn-lvis': {
             'config': CONFIG_DIR / 'lvis' / 'mask_rcnn_x101_64x4d_fpn_sample1e-3_mstrain_1x_lvis_v1.py',
             'checkpoint': CKPT_DIR / 'mask_rcnn_x101_64x4d_fpn_sample1e-3_mstrain_1x_lvis_v1-43d9edfe.pth',
         },
