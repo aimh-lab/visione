@@ -154,6 +154,8 @@ public class IndexManager {
             if (hits > 0) {
                 System.out.println("Found " + hits + " documents for video '" + videoId + "': skipping...");
                 initial += hits;
+                total += hits + (total < 0 ? 1 : 0);
+                printCliProgress();
                 return;
             }
         }
@@ -175,15 +177,19 @@ public class IndexManager {
             Stream<Document> documents = lines
                 .map(line -> JsonParser.parseString(line).getAsJsonObject())  // lines to json objects
                 .map(IndexManager::createDocument)
-                .map(IndexManager::printCliProgress);
+                .map(IndexManager::wrapCliProgress);
 
-            Iterable<Document> documentsWithProgressBar = (Iterable<Document>) ProgressBar.wrap(documents, "Indexing")::iterator;
+            Iterable<Document> documentsWithProgressBar = documents::iterator;
+            // Iterable<Document> documentsWithProgressBar = (Iterable<Document>) ProgressBar.wrap(documents, "Indexing")::iterator;
 
             int count = 0; // TODO
             try (IndexWriter writer = new IndexWriter(index, conf)) {
                 writer.updateDocuments(videoIdTerm, documentsWithProgressBar);
             }
         }
+
+        total = initial;
+        printCliProgress();
     }
 
     public static void remove(Namespace ns) throws IOException {
@@ -225,19 +231,21 @@ public class IndexManager {
     // Management of progress prints for the VISIONE CLI
     protected static int initial = 0;
     protected static int total = -1;
-    protected static void startCliProgress() {
+    protected static void printCliProgress() {
         System.out.println(String.format("progress: %d/%d", initial, total));
     }
 
-    protected static <T> T printCliProgress(T obj) {
+    protected static void startCliProgress() { printCliProgress(); }
+
+    protected static <T> T wrapCliProgress(T obj) {
         initial++;
-        System.out.println(String.format("progress: %d/%d", initial, total));
+        printCliProgress();
         return obj;
     }
 
     protected static void endCliProgress() {
         total = (total < 0) ? initial : total;
-        System.out.println(String.format("progress: %d/%d", initial, total));
+        printCliProgress();
     }
 
     protected static Field getLuceneField(Map.Entry<String,JsonElement> field) {
