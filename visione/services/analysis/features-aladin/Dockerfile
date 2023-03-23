@@ -49,6 +49,7 @@ RUN pip install more_itertools
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
 
 WORKDIR /usr/src/app/ALADIN
-COPY . ./alad
+COPY extract.py .
+COPY service.py ./alad
 
 CMD ["conda", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]
