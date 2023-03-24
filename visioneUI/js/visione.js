@@ -1088,8 +1088,8 @@ function showResults(data) {
 		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 		$("#results").append(imgtable);
 		if (!isAdvanced) {
-			document.getElementById('searchTab').className='simplifiedSearchBar'
-			document.getElementById('block1').style.display='none';
+			//document.getElementById('searchTab').className='simplifiedSearchBar'
+			//document.getElementById('block1').style.display='none';
 
 		}
 	
@@ -1099,12 +1099,12 @@ function showResults(data) {
 
 	} else if((data == null || data == "")) {
 		if (!isAdvanced) {
-			document.getElementById("textual0").className='simplifiedSearchBar'
-			document.getElementById('block1').style.display='none';
+			//document.getElementById("textual0").className='simplifiedSearchBar'
+			//document.getElementById('block1').style.display='none';
 		}
 
 	} else if(data != null && data != "") {
-		document.getElementById("textual0").className='ppp'
+		//document.getElementById("textual0").className='ppp'
 		console.log(document.getElementById("textual0"))
 
 		var res = JSON.parse(data);
@@ -1114,7 +1114,7 @@ function showResults(data) {
 		if(res.length == 0 ) {
 			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 			if (!isAdvanced) {
-				document.getElementById("textual0").className='simplifiedSearchBar'
+				//document.getElementById("textual0").className='simplifiedSearchBar'
 
 			}
 			console.log(document.getElementById("textual0"))
@@ -1642,23 +1642,35 @@ function displayAdvancedToggle() {
 		displayAdvanced(true);
 	}
 }
+
 function displayAdvanced(isToDisplay) {
 	isAdvanced = isToDisplay
 
 	if (isAdvanced) {
 		setDisplayTo="block";
-		document.getElementById('block0').style.position='relative';
+		//document.getElementById('block0').style.position='relative';
+		document.getElementById('block0').style.display='block';
 		document.getElementById('block1').style.display='block';
 		document.getElementById('collectionsTab').style.display='block';
-
-
-
+		//$("#div_textual0").appendTo("#textual0_container");
+		document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
+		document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
+		$("#visionelogo").appendTo("#visionelogo_central");
+		$('.sidebarGrid').css('width', '0px');
 	}
 	else {
 		setDisplayTo="none";
-		document.getElementById('block0').style.position='static';
+		//document.getElementById('block0').style.position='static';
+		document.getElementById('block0').style.display='none';
 		document.getElementById('block1').style.display='none';
 		document.getElementById('collectionsTab').style.display='none';
+		document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
+		document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
+		$("#visionelogo").appendTo("#visionelogo_sidebar");
+		$('.sidebarGrid').css('width', '330px');
+
+
+		//$("#div_textual0").appendTo("#simplified0");
 		
 
 	}

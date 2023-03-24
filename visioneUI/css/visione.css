@@ -280,15 +280,28 @@ video::-webkit-media-controls {
   display: block;
 }
 
+.simplified0 {
+  width: 570px;
+  height: 72px;
+
+
+}
+
+.simplified1 {
+  width: 570px;
+  height: 72px;
+
+}
+
 .simplifiedSearchBar {
-  position: absolute;
+  /* position: absolute;
 
   font-size: 12px;
   left: 35vw;
   width: 570px;
   height: 72px;
   padding: 2em;
-  border-radius: 31px;
+  border-radius: 31px;*/
 }
 
 .speechinput {
