@@ -56,7 +56,7 @@
 }
 
 body{
-	font-size: 10px;
+	font-size: 11px;
 	
 }
 
@@ -180,7 +180,7 @@ h4{
   transition: transform .2s;
   margin: 0 auto;
   padding: 0.1rem;
-  packground-color: #fff;
+  background-color: #fff;
   width: 140px;
   height: 80px;
 }
@@ -274,34 +274,57 @@ video::-webkit-media-controls {
 	  font-size: large;
 	
 }
-  
+
+.visioneLogo_bigger {
+  position: absolute;
+
+  font-size: 12px;
+  left: 41vw;
+  top: 6vw;
+  width: 900px;
+  height: 72px;
+  padding: 2em;
+  border-radius: 31px;}
+
+.visionelogo {
+  position: relative;
+
+  float: right;
+}
+
+.visionelogoImg {
+  height: 25px;
+}
+
+.visionelogoImg_bigger {
+  height: 60px;
+}
 
 .advanced {
-  display: block;
+  display: none;
 }
 
 .simplified0 {
-  width: 570px;
+  width: 500px;
   height: 72px;
-
-
 }
 
 .simplified1 {
-  width: 570px;
+  width: 500px;
   height: 72px;
 
 }
 
 .simplifiedSearchBar {
-  /* position: absolute;
+  position: absolute;
 
   font-size: 12px;
   left: 35vw;
-  width: 570px;
+  top: 15vw;
+  width: 700px;
   height: 72px;
   padding: 2em;
-  border-radius: 31px;*/
+  border-radius: 31px;
 }
 
 .speechinput {
@@ -324,8 +347,8 @@ video::-webkit-media-controls {
  .textualquery {
   width: 100%;
   margin:4px;
-  font-size:12px;
-  border-radius: 8px;
+  font-size:14px;
+  border-radius: 16px;
  }
 
  .Icon-inside {

@@ -115,7 +115,7 @@ var tempSearchForms = 2
 var dataset = "v3c";
 var latestQuery = "";
 var setDisplayTo = "block";
-var isAdvanced = true
+var isAdvanced = false
 
 function handler() {
 	  if (this.readyState == 4 && this.status == 200) {
@@ -690,7 +690,6 @@ function sortByVideo(data) {
 			resPerVideo =  dataDict[keys[i]];
 			for (j = 0; j < resPerVideo.length; j++) {
 				resultsSortedByVideo.push(resPerVideo[j]);
-	
 			}
 		}
 		}
@@ -1090,6 +1089,7 @@ function showResults(data) {
 		if (!isAdvanced) {
 			//document.getElementById('searchTab').className='simplifiedSearchBar'
 			//document.getElementById('block1').style.display='none';
+			
 
 		}
 	
@@ -1106,6 +1106,17 @@ function showResults(data) {
 	} else if(data != null && data != "") {
 		//document.getElementById("textual0").className='ppp'
 		console.log(document.getElementById("textual0"))
+
+		if (!isAdvanced)	{
+
+			document.getElementById('sceneDes1').style.display='block';
+			document.getElementById('simplified1').style.display='block';
+			document.getElementById("simplified0").className='simplified0'
+			document.getElementById("visionelogo").className='visioneLogo'
+			document.getElementById("visionelogoImg").className='visionelogoImg'
+
+
+		}	
 
 		var res = JSON.parse(data);
 		//patch temporanea 20/07/20 per il merge
@@ -1651,26 +1662,50 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('block0').style.position='relative';
 		document.getElementById('block0').style.display='block';
 		document.getElementById('block1').style.display='block';
-		document.getElementById('collectionsTab').style.display='block';
+		document.getElementById('sceneDes0').style.display='none';
+		document.getElementById('sceneDes1').style.display='none';
+
+		//document.getElementById('collectionsTab').style.display='block';
 		//$("#div_textual0").appendTo("#textual0_container");
 		document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
 		document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
-		$("#visionelogo").appendTo("#visionelogo_central");
-		$('.sidebarGrid').css('width', '0px');
+		document.getElementById("visionelogo").className='visioneLogo'
+		document.getElementById("visionelogoImg").className='visionelogoImg'
+		//$('.sidebarGrid').css('width', '0px');
 	}
 	else {
 		setDisplayTo="none";
 		//document.getElementById('block0').style.position='static';
 		document.getElementById('block0').style.display='none';
 		document.getElementById('block1').style.display='none';
-		document.getElementById('collectionsTab').style.display='none';
+		document.getElementById('sceneDes0').style.display='block';
+		document.getElementById('sceneDes1').style.display='block';
+		//document.getElementById('collectionsTab').style.display='none';
 		document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
 		document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
 		$("#visionelogo").appendTo("#visionelogo_sidebar");
-		$('.sidebarGrid').css('width', '330px');
+		//$('.sidebarGrid').css('width', '330px');
 
 
 		//$("#div_textual0").appendTo("#simplified0");
+
+		if (latestQuery == "")	{
+			document.getElementById('sceneDes1').style.display='none';
+			document.getElementById('simplified1').style.display='none';
+			document.getElementById("simplified0").className='simplifiedSearchBar'
+			document.getElementById("visionelogo").className='visioneLogo_bigger'
+			document.getElementById("visionelogoImg").className='visionelogoImg_bigger'
+			$('#sceneDes0').css('width', '530px');
+		} else {
+			document.getElementById('sceneDes1').style.display='block';
+			document.getElementById('simplified1').style.display='block';
+			document.getElementById("simplified0").className='simplified0'
+			document.getElementById("visionelogo").className='visioneLogo'
+			document.getElementById("visionelogoImg").className='visionelogoImg'
+
+
+		}	
+
 		
 
 	}
