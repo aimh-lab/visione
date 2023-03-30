@@ -22,10 +22,11 @@ class ImportCommand(BaseCommand):
         parser = subparsers.add_parser('import', help='Import videos to the collection')
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing video with the given Video ID.')
+        parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
         parser.add_argument('video_path_or_url', nargs='?', default=None, help='Path or URL to video file to be imported. If not given, resumes importing of existing videos.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_path_or_url, video_id, replace, **kwargs):
+    def __call__(self, *, video_path_or_url, video_id, replace, gpu, **kwargs):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
         self.create_services_containers('analysis')
 
@@ -47,7 +48,7 @@ class ImportCommand(BaseCommand):
 
             # create resized video files
             subtask = progress.add_task('- Resizing video')
-            thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, show_progress(subtask)))
+            thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, gpu, show_progress(subtask)))
             thread.start()
             subtasks.append(subtask)
 
@@ -112,7 +113,7 @@ class ImportCommand(BaseCommand):
         urllib.request.urlretrieve(video_url, video_out, show_progress_fn)
         return video_id, video_out
 
-    def create_resized_videos(self, video_path, video_id, force=False, show_progress=None):
+    def create_resized_videos(self, video_path, video_id, force=False, gpu=False, show_progress=None):
         """ Creates downsampled videos for visualization purposes.
             This implementation uses a dockerized version of ffmpeg.
 
@@ -120,6 +121,7 @@ class ImportCommand(BaseCommand):
             video_path (pathlib.Path): Path to input video.
             video_id (str): Input Video ID.
             force (str, optional): Whether to replace existing output or skip computation. Defaults to False.
+            gpu (bool, optional): Whether to use the GPU if available. Defaults to False.
             show_progress (func, optional): Callback to show progress.
 
         Returns:
@@ -156,8 +158,6 @@ class ImportCommand(BaseCommand):
         ret = self.compose_run(service, command, stdout_callback=ffprobe_output.append)
         ffprobe_output = ''.join(ffprobe_output)
         duration_s = float(json.loads(ffprobe_output).get('format').get('duration', 0))
-
-        gpu = self.is_gpu_available()
 
         # execute reduction via ffmpeg
         command = [
