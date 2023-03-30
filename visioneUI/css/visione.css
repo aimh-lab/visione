@@ -306,12 +306,14 @@ video::-webkit-media-controls {
 
 .simplified0 {
   width: 500px;
-  height: 72px;
+  height: 30px;
+  color: #A7090E;
 }
 
 .simplified1 {
   width: 500px;
-  height: 72px;
+  height: 40px;
+  color: #008b8b;
 
 }
 
@@ -344,11 +346,22 @@ video::-webkit-media-controls {
 }
 
 
- .textualquery {
+ .textualquery0 {
   width: 100%;
   margin:4px;
   font-size:14px;
   border-radius: 16px;
+  border-color: #A7070C;
+
+ }
+
+ .textualquery1 {
+  width: 100%;
+  margin:4px;
+  font-size:14px;
+  border-radius: 16px;
+  border-color: #13a0a0;
+
  }
 
  .Icon-inside {
@@ -361,4 +374,18 @@ video::-webkit-media-controls {
   top:10px;
   padding:15px 0px 0px 5px;
   color:green;
+ }
+
+ .scene0 {
+  color: #a41318;
+  border-color: #a41318;
+  border: 1px;
+  border-style: solid;
+ }
+
+ .scene1 {
+  color: #13a0a0;
+  border-color: #13a0a0;
+  border: 1px;
+  border-style: solid;
  }
