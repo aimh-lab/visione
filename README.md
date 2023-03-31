@@ -29,6 +29,11 @@ pip install git+ssh://git@github.com/aimh-lab/visione.git@dev
 ```
 It might ask you to unlock the private key several times.
 
+For a **development installation**, clone the repo and install via pip in editable mode:
+```bash
+pip install -e .
+```
+
 ## Getting Started
 ```bash
 # 1. Initialize a new empty collection
@@ -70,3 +75,9 @@ visione serve
 Configuration can be changed collection-wise.
 Once you initialized a new collection with `visione init`, you can change the `config.yaml` inside the collection folder to customize settings.
 
+## CLI Usage
+See
+```bash
+visione -h
+visione <cmd> -h
+```
