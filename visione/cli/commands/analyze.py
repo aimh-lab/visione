@@ -13,7 +13,7 @@ class AnalyzeCommand(BaseCommand):
         super(AnalyzeCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('analyze', help='Analyzes videos imported in the collection')
+        parser = subparsers.add_parser('analyze', help='Analyzes videos imported in the collection.')
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all imported videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing analyses.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')

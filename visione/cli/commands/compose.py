@@ -11,7 +11,7 @@ class ComposeCommand(BaseCommand):
         super(ComposeCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('compose', help='Execute compose commands inside the collection.')
+        parser = subparsers.add_parser('compose', help='Execute compose commands in the compose project of the collection.')
         parser.add_argument('cmd', nargs=argparse.REMAINDER, help='compose command to execute')
         parser.set_defaults(func=self)
 

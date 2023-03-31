@@ -19,7 +19,7 @@ class ImportCommand(BaseCommand):
         super(ImportCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('import', help='Import videos to the collection')
+        parser = subparsers.add_parser('import', help='Imports a video to the collection.')
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing video with the given Video ID.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')

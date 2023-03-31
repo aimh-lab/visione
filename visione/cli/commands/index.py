@@ -19,7 +19,7 @@ class IndexCommand(BaseCommand):
         super(IndexCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('index', help='Create an index entry for imported videos.')
+        parser = subparsers.add_parser('index', help='Create index entries for analyzed videos.')
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.set_defaults(func=self)

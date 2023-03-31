@@ -12,7 +12,7 @@ class InitCommand(BaseCommand):
         super(InitCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('init', help='Create a new empty collection')
+        parser = subparsers.add_parser('init', help='Create a new empty collection.')
         parser.add_argument('directory', nargs='?', type=Path, default=Path('.'), help='Directory to initialize (defaults to current directory)')
         parser.set_defaults(func=self)
 

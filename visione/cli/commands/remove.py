@@ -14,7 +14,7 @@ class RemoveCommand(BaseCommand):
         super(RemoveCommand, self).__init__(*args, **kwargs)
 
     def add_arguments(self, subparsers):
-        parser = subparsers.add_parser('remove', help='Removes one or more videos from the collection indices.')
+        parser = subparsers.add_parser('remove', help='Removes one or more videos from the collection.')
         parser.add_argument('--content', action='store_true', default=False, help='Remove also static contents (videos, selected frames, thumbs).')
         parser.add_argument('--analysis', action='store_true', default=False, help='Remove also analyses.')
         parser.add_argument('video_ids', nargs='+', help='ID(s) of video(s) to be removed.')
