@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 
@@ -54,8 +55,15 @@ class RemoveCommand(BaseCommand):
                 for size in ('medium', 'tiny'):
                     (self.collection_dir / 'resized-videos' / size / f'{video_id}-{size}.mp4').unlink(missing_ok=True)
 
-                # FIXME: the video extension is unknown, we assume mp4 here, but we should smartly glob.
-                (self.collection_dir / 'videos' / f'{video_id}.mp4').unlink(missing_ok=True)
+                # find the video file (it can have any extension)
+                escaped_video_id = re.escape(video_id)
+                candidates = (self.collection_dir / 'videos').glob(f'{video_id}.*')
+                candidates = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)]
+
+                if len(candidates) == 1:
+                    candidates[0].unlink(missing_ok=True)
+                else:
+                    status.console.log(f"WARNING: multiple video file found for '{video_id}'. Skipping removal.")
 
             status.console.log('Content files deleted.')
 
