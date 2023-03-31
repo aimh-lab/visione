@@ -72,7 +72,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 		var pointer = canvas1.getPointer(event.e);
 		var posX = pointer.x;
 		var posY = pointer.y;
-		if ((posX >= 0 && posX <= widthCanvas) && (posY >= 0 && posY <= heightCanvas)) {
+		if ((posX >= 0 && posX <= canvasWidth) && (posY >= 0 && posY <= canvasHeight)) {
 			activeCanvas = canvas1;
 			activeCanvasIdx = 1;
 		}

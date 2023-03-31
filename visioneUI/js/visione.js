@@ -1,13 +1,13 @@
 
 var cells = 49;
-var widthCanvas = 250;
-var heightCanvas= 140;
+var canvasWidth = 288;
+var canvasHeight= 160;
 
 CELL_COLS = 7;
 CELL_ROWS = 7;
 
-var cellWidth = widthCanvas / CELL_COLS;
-var cellHeight = heightCanvas /CELL_ROWS;
+var cellWidth = canvasWidth / CELL_COLS;
+var cellHeight = canvasHeight /CELL_ROWS;
 
 var borderColors = ["#63b598", "#ce7d78", "#ea9e70", "#a48a9e", "#c6e1e8", "#648177" ,"#0d5ac1" ,
 	"#f205e6" ,"#1c0365" ,"#14a9ad" ,"#4ca2f9" ,"#a4e43f" ,"#d298e2" ,"#6119d0",
@@ -430,21 +430,21 @@ function cell2Text(idx) {
 				if (o && o.oCoords) {
 					startCol = Math.floor(Math.max(0, o.oCoords.tl.x)
 							/ cellWidth);
-					endCol = Math.ceil(Math.min(widthCanvas, o.oCoords.tr.x)
+					endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x)
 							/ cellWidth);	resultsSortedByVideo = [];
 
 
 					startRow = Math.floor(Math.max(0, o.oCoords.tr.y)
 							/ cellHeight);
-					endRow = Math.ceil(Math.min(heightCanvas, o.oCoords.br.y)
+					endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y)
 							/ cellHeight);
 				} else {
 					startCol = Math.floor(Math.max(0, o.left) / cellWidth);
-					endCol = Math.ceil(Math.min(widthCanvas, (o.left + o.width))
+					endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width))
 							/ cellWidth);
 
 					startRow = Math.floor(Math.max(0, o.top) / cellHeight);
-					endRow = Math.ceil(Math.min(heightCanvas, (o.top + o.height))
+					endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height))
 							/ cellHeight);
 				}
 				label = $("#" + o.uuid).attr('title').trim();
@@ -1137,6 +1137,8 @@ function showResults(data) {
 		} 
 		else {
 			document.getElementById('block1').style.display='block';
+			document.getElementById('newsession').style.display='block';
+
 
 		borderColorsIdx = 0;
 		numberborderColors = borderColors.length;
@@ -1402,7 +1404,7 @@ dropImage = function(e) {
 	var pointer = canvas1.getPointer(event.e);
 	var posX = pointer.x;
 	var posY = pointer.y;
-	if ((posX >= 0 && posX <= widthCanvas) && (posY >= 0 && posY <= heightCanvas)) {
+	if ((posX >= 0 && posX <= canvasWidth) && (posY >= 0 && posY <= canvasHeight)) {
 		activeCanvas = canvas1;
 		activeCanvasIdx = 1;
 	}
@@ -1659,10 +1661,19 @@ function displayAdvancedToggle() {
 	}
 }
 
+function initLayout() {
+	document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
+	document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
+	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+	document.getElementById('newsession').style.display='none';
+}
+
 function displayAdvanced(isToDisplay) {
 	isAdvanced = isToDisplay
 
 	if (isAdvanced) {
+		document.getElementById('newsession').style.display='block';
 		setDisplayTo="block";
 		//document.getElementById('block0').style.position='relative';
 		document.getElementById('block0').style.display='block';
@@ -1673,8 +1684,8 @@ function displayAdvanced(isToDisplay) {
 		document.getElementById('simplified1').style.display='block';
 		document.getElementById("simplified0").className='simplified0'
 		document.getElementById("sceneDes0").className='fa fa-hourglass-start fa-2x'
-		document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-		document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+		//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+		//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 		document.getElementById('textualOptions0').style.display='block'
 
 
@@ -1695,12 +1706,12 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('block0').style.position='static';
 		document.getElementById('block0').style.display='none';
 		document.getElementById('block1').style.display='none';
-		document.getElementById('sceneDes0').style.display='block';
-		document.getElementById('sceneDes1').style.display='block';
+		//document.getElementById('sceneDes0').style.display='block';
+		//document.getElementById('sceneDes1').style.display='block';
 
 		//document.getElementById('collectionsTab').style.display='none';
-		document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
-		document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
+		//document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
+		//document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
 		$("#visionelogo").appendTo("#visionelogo_sidebar");
 		//$('.sidebarGrid').css('width', '330px');
 
@@ -1715,6 +1726,8 @@ function displayAdvanced(isToDisplay) {
 			document.getElementById("visionelogoImg").className='visionelogoImg_bigger'
 			document.getElementById("sceneDes0").className='fa fa-hourglass-start_ppp fa-2x'
 			document.getElementById('textualOptions0').style.display='none'
+			document.getElementById('newsession').style.display='none';
+
 			
 			$('#sceneDes0').css('width', '530px');
 		} else {
@@ -1723,6 +1736,8 @@ function displayAdvanced(isToDisplay) {
 			document.getElementById("simplified0").className='simplified0'
 			document.getElementById("visionelogo").className='visioneLogo'
 			document.getElementById("visionelogoImg").className='visionelogoImg'
+			document.getElementById('newsession').style.display='block';
+
 		}	
 
 		

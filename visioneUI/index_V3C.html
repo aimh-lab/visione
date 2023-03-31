@@ -78,7 +78,7 @@ body {
 					title="Start a new Session" onclick="startNewKISSession()">
 					<i class="fas fa-sync-alt"></i> Restart</i>
 				</button>
-				<div class="advanced" style="">
+				<div class="advanced" style="position: absolute; margin-top: 10px;">
 					<b style="font-size: 140%;"><input id='simreorder'
 						type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder</b>
 				</div>
@@ -91,16 +91,11 @@ body {
 			</div>
 
 			<div style="float: left;">
-				<div class="simplified0" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified0">
-					<i id="sceneDes0" class="scene0" aria-hidden="true" style="color: #a41318; padding-left: 20px;"> Describe the scene</i>
-
-					
+				<div class="simplified0" style="float: left; padding-left: 30px; padding-top: 5px" id="simplified0">
+					<i id="sceneDes0" aria-hidden="true" style="color: #a41318; padding-left: 20px;"> Describe the scene</i>
 				</div>
-				<div class="simplified1" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified1">
-					<i id="sceneDes1" class="fa fa-hourglass-end fa-2x" aria-hidden="true" style="color: #13a0a0; padding-left: 20px;"> Describe the next scene (optional)</i>
-
-					
-
+				<div class="simplified1" style="float: left; padding-left: 30px; padding-top: 5px" id="simplified1">
+					<i id="sceneDes0" class="fa fa-hourglass-end fa-2x" aria-hidden="true" style="color: #13a0a0; padding-left: 20px;"> Describe the next scene (optional)</i>
 				</div>
 			</div>
 
@@ -110,13 +105,7 @@ body {
 					src="img/cropped-aimh_logo5-1024x372.png" height="28px"
 					style="border-radius: 20px 20px 20px 20px;" alt="">-->
 			</div>
-
-
-			
-			<div id="dialog" title="Tag Name">
-				<label>tag</label> <input id="tag" name="tag" type="text">
-			</div> <br>
-			<div w3-include-html="palette.html" style="clear: both; padding-left: 5px;"></div>
+			<div w3-include-html="palette.html" style="clear: both; padding-left: 5px; margin-top: 70px;"></div>
 
 				<!--<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>-->
 
@@ -449,6 +438,8 @@ body {
 											});
 */
 							canvas0.renderAll();
+
+							initLayout();
 
 							displayAdvanced(false);
 

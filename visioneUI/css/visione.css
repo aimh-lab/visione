@@ -57,14 +57,8 @@
 
 body{
 	font-size: 11px;
-	
 }
 
-
-input::-webkit-input-placeholder {
-    font-size: 10px;
-    line-height: 3;
-}
 
 #overlay0 {
   position: absolute;
@@ -349,6 +343,8 @@ video::-webkit-media-controls {
  .textualquery0 {
   width: 100%;
   margin:4px;
+  padding: 10px;
+  padding-right: 55px;
   font-size:14px;
   border-radius: 16px;
   border-color: #A7070C;
@@ -358,6 +354,8 @@ video::-webkit-media-controls {
  .textualquery1 {
   width: 100%;
   margin:4px;
+  padding: 10px;
+  padding-right: 55px;
   font-size:14px;
   border-radius: 16px;
   border-color: #13a0a0;
@@ -371,8 +369,8 @@ video::-webkit-media-controls {
  .Icon-inside i {
   position:absolute;
   right:0;
-  top:10px;
-  padding:15px 0px 0px 5px;
+  top:5px;
+  padding:15px 20px 0px 5px;
   color:green;
  }
 
@@ -389,3 +387,11 @@ video::-webkit-media-controls {
   border: 1px;
   border-style: solid;
  }
+
+ ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  font-size: 12px;
+}
+
+::-ms-input-placeholder { /* Microsoft Edge */
+  font-size: 12px;
+}
