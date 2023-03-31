@@ -38,7 +38,7 @@ class ImportCommand(BaseCommand):
             def show_progress(task_id):
                 return lambda completed, total: progress.update(task_id, completed=completed, total=total)
 
-            task = progress.add_task(f"Importing '{video_id}'", total=1)
+            task = progress.add_task(f"Importing {video_id or video_path_or_url}", total=1)
             subtasks = []
 
             # import video file
@@ -195,7 +195,7 @@ class ImportCommand(BaseCommand):
                 current_time_s = float(line.rstrip().split('=')[1]) / 1_000_000
                 show_progress(current_time_s, duration_s)
 
-        return self.compose_run(service, command, stdout_callback=stdout_callback, stderr_callback=print)
+        return self.compose_run(service, command, stdout_callback=stdout_callback)
 
     def detect_scenes_and_extract_frames(self, video_path, video_id, force=False, show_progress=None):
         """ Detect scenes from a video file and extract the middle frame of every scene.
