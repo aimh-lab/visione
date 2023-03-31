@@ -25,6 +25,6 @@ class AddCommand(ImportCommand, AnalyzeCommand, IndexCommand):
         gpu = kwargs.pop('gpu')
         common = dict(replace=replace, **kwargs)
 
-        video_id = ImportCommand.__call__(self, video_id=video_id, video_path_or_url=video_path_or_url, **common)
+        video_id = ImportCommand.__call__(self, video_id=video_id, video_path_or_url=video_path_or_url, gpu=gpu, **common)
         AnalyzeCommand.__call__(self, video_ids=[video_id], gpu=gpu, **common)
         IndexCommand.__call__(self, video_ids=[video_id], **common)
