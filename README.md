@@ -25,7 +25,7 @@ The installation has been tested so far on Ubuntu 22.04 with
 ## Installation
 Ensure you have public key access to this repo, then run:
 ```bash
-pip install git+ssh://git@github.com/aimh-lab/visione.git@dev
+pip install git+ssh://git@github.com/aimh-lab/visione-rai.git
 ```
 It might ask you to unlock the private key several times.
 
