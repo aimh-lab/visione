@@ -197,6 +197,10 @@ public class LogParserDRES {
 			category = "image";
 			break;
 			
+		case "comboVisualSim":
+			category = "image";
+			break;
+			
 		case "qbe":
 			category = "image";
 			break;
@@ -296,6 +300,10 @@ public class LogParserDRES {
 		
 		case "vf":
 			type = "globalFeatures";
+			break;
+			
+		case "comboVisualSim":
+			type = "fusion";
 			break;
 			
 		case "qbe":

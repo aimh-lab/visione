@@ -23,8 +23,10 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.client.ResponseProcessingException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.TopDocs;
@@ -181,7 +183,17 @@ public class VBSService {
 			if (queryObj.getQuery().size() == 0)
 				continue;
 			try {
-				if (queryObj.getQuery().containsKey("vf")) {
+				if (queryObj.getQuery().containsKey("comboVisualSim")) {
+					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
+
+					hits_tmp.add(datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
+					hits_tmp.add(datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
+					hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k, dataset));//search by Clip4Video
+					TopDocs res = datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
+					log(res, query, logQueries, simReorder, dataset);
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row, maxRes));
+				}
+				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row, maxRes));
@@ -261,7 +273,7 @@ public class VBSService {
 
 						for (Thread t: threadedCombo)
 							t.join();
-						tabHits.add(datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
+						tabHits.add(datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k, 3, false));//merging lucene res with clip res and adding it to tabHits	
 
 					}else {//here we need to call Lucene without text 
 						tabHits.add(datasetSearcher.get(dataset).search(queryObj, k));
@@ -282,7 +294,7 @@ public class VBSService {
 		System.out.println("^^^^^^^^^ RES ^^^^^^^^");
 		try {
 			if (tabHits.size() > 1) {
-				hits = datasetSearcher.get(dataset).mergeResults(tabHits, Settings.K, true);//LUCIA bug fixed(?) Settings.K instead of K
+				hits = datasetSearcher.get(dataset).mergeResults(tabHits, Settings.K, 3, true);//LUCIA bug fixed(?) Settings.K instead of K
 			}
 			else if (tabHits.size() == 1) {
 				hits = tabHits.get(0);
@@ -299,9 +311,6 @@ public class VBSService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		
-
 		System.out.println("--End Java--");
 		return response	;
 	}

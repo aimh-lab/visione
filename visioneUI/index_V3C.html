@@ -82,6 +82,9 @@ body {
 					<b style="font-size: 140%;"><input id='simreorder'
 						type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder</b>
 				</div>
+				<div id="dialog" title="Tag Name">
+					<label>tag</label> <input id="tag" name="tag" type="text">
+				</div>
 			</div>
 
 			<div style="float: left; font-size: larger; font-weight: bold;">ADVANCED MODE </div>
@@ -360,7 +363,7 @@ body {
 													$("#recordButton0").css('font-size', 'medium');
 
 
-													//stopRecording(0);
+													stopRecording(0);
 
 												}
 											});
@@ -444,7 +447,15 @@ body {
 							displayAdvanced(false);
 
 
-							var script = document.createElement('script');
+							var script = document.createElement('script');					          
+					        script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js"; 
+					        document.head.appendChild(script)
+					        script = document.createElement('script');					          
+					        script.src = "js/WebAudioRecorder/audioRecorder.js"; 
+					        document.head.appendChild(script);
+
+
+							/*var script = document.createElement('script');
 							script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
 							document.head.appendChild(script)
 							script = document.createElement('script');
@@ -457,7 +468,7 @@ body {
 							microphoneIcon.addEventListener('click', () => {
 							  // Avvia la registrazione audio
 							  console.log('Registrazione audio avviata');
-							});
+							});*/
 
 						});
 	</script>
