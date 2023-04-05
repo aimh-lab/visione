@@ -1,4 +1,4 @@
-FROM docker.io/continuumio/anaconda3
+FROM docker.io/continuumio/anaconda3:2022.10
 
 RUN apt-get update && apt-get install -y build-essential
 
@@ -27,7 +27,9 @@ WORKDIR /usr/src/app/
 RUN git clone --recursive https://github.com/mesnico/ALADIN
 WORKDIR /usr/src/app/ALADIN
 RUN git checkout feature_extraction
-RUN conda env create -f environment.yaml && \
+RUN conda create --name oscar python=3.7 && \
+    conda install -n oscar pytorch==1.2.0 torchvision==0.4.0 cudatoolkit=10.0 -c pytorch && \
+    conda run --no-capture-output -n oscar pip install -r requirements.txt && \
     conda run --no-capture-output -n oscar python setup.py build develop
 
 # Download weights
