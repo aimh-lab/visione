@@ -1,15 +1,32 @@
 # import main Flask class and request object
 import argparse
 from flask import Flask, jsonify, request
-from alad.extraction.image_retrieval import QueryEncoder
+from alad.extraction.retrieval_utils import load_oscar
 import os
 import logging
 import numpy as np
 import requests
+import torch
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ""
 
 logging.basicConfig(level=logging.DEBUG)
+
+class QueryEncoder:
+    def __init__(self, str_args):
+        args, student_model, dataloader = load_oscar(str_args)
+        self.model = student_model
+        self.model.eval()
+
+        self.dataset = dataloader.dataset
+
+    def get_text_embedding(self, caption):
+        examples_text = [self.dataset.tensorize_example_disentangled(text_a=caption, img_feat=None, text_b=None, return_lengths=True)]
+        examples_text = [torch.stack(t) if isinstance(t[0], torch.Tensor) else t for t in zip(*examples_text)]
+        with torch.no_grad():
+            _, txt_feature, _, _, _, _, _ = self.model.forward_emb(None, examples_text)
+            txt_feature = txt_feature.cpu().squeeze(0).numpy()
+            return txt_feature
 
 # create the Flask app
 app = Flask(__name__)

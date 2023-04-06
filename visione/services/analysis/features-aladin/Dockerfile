@@ -30,6 +30,7 @@ RUN git checkout feature_extraction
 RUN conda create --name oscar python=3.7 && \
     conda install -n oscar pytorch==1.2.0 torchvision==0.4.0 cudatoolkit=10.0 -c pytorch && \
     conda run --no-capture-output -n oscar pip install -r requirements.txt && \
+    conda run --no-capture-output -n oscar pip install Flask && \
     conda run --no-capture-output -n oscar python setup.py build develop
 
 # Download weights
