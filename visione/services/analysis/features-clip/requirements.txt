@@ -1,8 +1,6 @@
-flask
+flask==2.2.3
 h5py
 more_itertools
 Pillow
-prefetch_generator
 pyyaml
-transformers
-tqdm
+transformers==4.27.4

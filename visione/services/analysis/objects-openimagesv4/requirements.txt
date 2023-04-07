@@ -1,6 +1,5 @@
 more_itertools
 Pillow
-prefetch_generator
+protobuf==3.20.*
 pyyaml
-tensorflow_hub
-tqdm
+tensorflow_hub==0.13.0
