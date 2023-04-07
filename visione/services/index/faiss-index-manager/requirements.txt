@@ -1,5 +1,5 @@
-faiss-cpu
-flask
+faiss-cpu==1.7.3
+flask==2.2.3
 h5py
 more-itertools
 pyyaml

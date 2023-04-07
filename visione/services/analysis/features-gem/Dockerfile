@@ -1,14 +1,13 @@
 FROM docker.io/pytorch/pytorch:1.4-cuda10.1-cudnn7-runtime
 
 RUN pip install \
-        flask-restful \
+        flask-restful==0.3.9 \
         h5py \
         matplotlib \
         more-itertools \
         numpy \
         opencv-python \
         scikit-learn==0.20.2 \
-        tornado \
         tqdm
 
 RUN git clone https://github.com/naver/deep-image-retrieval.git /usr/src/app

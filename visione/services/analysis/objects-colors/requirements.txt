@@ -1,7 +1,5 @@
 h5py
 more_itertools
 pandas
-prefetch_generator
 pyyaml
-scikit-image
-tqdm
+scikit-image==0.19.3
