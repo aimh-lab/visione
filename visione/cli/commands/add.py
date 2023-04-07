@@ -1,5 +1,3 @@
-from tqdm import tqdm
-
 from .analyze import AnalyzeCommand
 from .command import BaseCommand
 from .import_ import ImportCommand
