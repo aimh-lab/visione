@@ -135,7 +135,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # initialize feature extractor
-    extractor = GeMExtractor()
+    extractor = GeMExtractor(gpu=args.gpu)
 
     # run the flask app
     app.run(debug=False, host=args.host, port=args.port)
