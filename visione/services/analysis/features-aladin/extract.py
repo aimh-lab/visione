@@ -36,6 +36,7 @@ class AladinExtractor(BaseExtractor):
                 'TEST.OUTPUT_FEATURE', 'True',
                 'DATASETS.LABELMAP_FILE', 'models/vinvl/VG-SGG-dicts-vgoi6-clipped.json',
                 'DATASETS.TEST', '("train.yaml", )',
+                'MODEL.DEVICE', ('cuda' if args.gpu else 'cpu'),
             ]
 
             sg_benchmark_path = "/usr/src/app/scene_graph_benchmark"
