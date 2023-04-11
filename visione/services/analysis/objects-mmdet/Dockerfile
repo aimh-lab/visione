@@ -4,11 +4,12 @@ RUN apt-get update && \
     apt-get install -y build-essential wget git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir -U openmim && \
-    mim install mmcv-full
+RUN pip install --no-cache-dir -U openmim==0.3.7 && \
+    mim install mmcv-full==1.7.1
 
 RUN git clone https://github.com/open-mmlab/mmdetection.git /usr/src/mmdetection && \
     cd /usr/src/mmdetection && \
+    git reset --hard e9cae2d0787cd5c2fc6165a6061f92fa09e48fb1 && \
     pip install -v -e .
 
 # substitute cv2 with the headless version
