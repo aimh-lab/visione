@@ -10,7 +10,18 @@ WORKDIR /usr/src/app/
 
 RUN git clone https://github.com/mesnico/scene_graph_benchmark
 WORKDIR /usr/src/app/scene_graph_benchmark
-RUN conda env create -f environment.yml && \
+
+# fixes for newer torch
+RUN sed -i -e 's|if torch._six.PY3:|if True:|' maskrcnn_benchmark/utils/imports.py
+RUN sed -i -e 's|from torch.hub import _download_url_to_file|from torch.hub import download_url_to_file|' maskrcnn_benchmark/utils/model_zoo.py
+
+RUN conda create --name sg_benchmark python=3.7 -y && \
+    conda install -n sg_benchmark pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge && \
+    conda install -n sg_benchmark ipython h5py nltk joblib jupyter pandas scipy && \
+    conda run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
+    conda install -n sg_benchmark -c conda-forge timm einops && \
+    conda install -n sg_benchmark -c conda-forge pycocotools && \
+    conda run --no-capture-output -n sg_benchmark python -m pip install cityscapesscripts && \
     conda run --no-capture-output -n sg_benchmark python setup.py build develop
 
 # Download weights and labelmaps
@@ -28,7 +39,7 @@ RUN git clone --recursive https://github.com/mesnico/ALADIN
 WORKDIR /usr/src/app/ALADIN
 RUN git checkout feature_extraction
 RUN conda create --name oscar python=3.7 && \
-    conda install -n oscar pytorch==1.2.0 torchvision==0.4.0 cudatoolkit=10.0 -c pytorch && \
+    conda install -n oscar pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge && \
     conda run --no-capture-output -n oscar pip install -r requirements.txt && \
     conda run --no-capture-output -n oscar pip install Flask && \
     conda run --no-capture-output -n oscar python setup.py build develop
