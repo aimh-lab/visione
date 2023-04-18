@@ -2,12 +2,8 @@ import argparse
 import logging
 import sys
 
-from PIL import Image
-import numpy as np
-import tensorflow as tf
-import tensorflow_hub as hub
-
 from visione.extractor import BaseExtractor
+
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
@@ -69,16 +65,24 @@ class ObjectOIV4Extractor(BaseExtractor):
 
     def __init__(self, args):
         super(ObjectOIV4Extractor, self).__init__(args)
-        if not args.gpu:
-            tf.config.set_visible_devices([], 'GPU')
-
         self.detector = None
 
     def setup(self):
-        if self.detector is None:
-            log.info(f'Loading detector: {self.args.detector_url}')
-            self.detector = hub.KerasLayer(self.args.detector_url, signature='default', signature_outputs_as_dict=True)
-            log.info(f'Loaded detector.')
+        if self.detector is not None:
+            return
+
+        # lazy load libraries and models
+        from PIL import Image
+        import numpy as np
+        import tensorflow as tf
+        import tensorflow_hub as hub
+
+        if not self.args.gpu:
+            tf.config.set_visible_devices([], 'GPU')
+
+        log.info(f'Loading detector: {self.args.detector_url}')
+        self.detector = hub.KerasLayer(self.args.detector_url, signature='default', signature_outputs_as_dict=True)
+        log.info(f'Loaded detector.')
 
     def extract_one(self, image_path):
         self.setup()  # lazy load model
