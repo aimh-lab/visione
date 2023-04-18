@@ -3,15 +3,6 @@ import logging
 import os
 import tempfile
 
-import torch
-import torch.nn.functional as F
-
-os.environ['DB_ROOT'] = ''
-import dirtorch.datasets as datasets
-import dirtorch.nets as nets
-from dirtorch.utils import common as ops
-from dirtorch.test_dir import extract_image_features
-
 from visione.extractor import BaseExtractor
 
 
@@ -31,6 +22,16 @@ class GeMExtractor(BaseExtractor):
     def setup(self):
         if self.net is not None:
             return
+        
+        # lazy load libraries and models
+        import torch
+        import torch.nn.functional as F
+
+        os.environ['DB_ROOT'] = ''
+        import dirtorch.datasets as datasets
+        import dirtorch.nets as nets
+        from dirtorch.utils import common as ops
+        from dirtorch.test_dir import extract_image_features
 
         gpus = [0] if self.args.gpu else [-1]
 

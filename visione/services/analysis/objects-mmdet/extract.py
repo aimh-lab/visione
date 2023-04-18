@@ -3,11 +3,6 @@ import itertools
 import os
 from pathlib import Path
 
-import mmcv
-from mmdet.apis import init_detector, inference_detector
-import numpy as np
-import torch
-
 from visione.extractor import BaseExtractor
 
 
@@ -69,6 +64,12 @@ class ObjectsMMDetExtractor(BaseExtractor):
     def setup(self):
         if self.model is not None:
             return
+
+        # lazy load libraries and models
+        import mmcv
+        from mmdet.apis import init_detector, inference_detector
+        import numpy as np
+        import torch
 
         config_file = str(self.DETECTORS[self.detector]['config'])
         checkpoint_file = str(self.DETECTORS[self.detector]['checkpoint'])

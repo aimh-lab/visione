@@ -2,10 +2,6 @@ import argparse
 import logging
 import os
 
-from PIL import Image
-import torch
-from transformers import CLIPProcessor, CLIPModel
-
 from visione.extractor import BaseExtractor
 
 
@@ -29,6 +25,11 @@ class CLIPExtractor(BaseExtractor):
 
     def setup(self):
         if self.model is None:
+            # lazy load libraries and models
+            from PIL import Image
+            import torch
+            from transformers import CLIPProcessor, CLIPModel
+
             self.device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
             self.model = CLIPModel.from_pretrained(args.model_handle).to(self.device)
             self.processor = CLIPProcessor.from_pretrained(args.model_handle)
