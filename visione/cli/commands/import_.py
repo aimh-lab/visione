@@ -227,7 +227,7 @@ class ImportCommand(BaseCommand):
             '--quiet',
             '--input', str(input_file),
             '--output', str(output_dir),
-            # '--min-scene-len', '0.6s'
+            '--min-scene-len', '1', '--drop-short-scenes',  #  ensure that every scene has at least one frame
             'detect-adaptive',
             'detect-threshold',
             'list-scenes', # '--quiet',
