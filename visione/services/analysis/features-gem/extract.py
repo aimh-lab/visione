@@ -24,14 +24,9 @@ class GeMExtractor(BaseExtractor):
             return
         
         # lazy load libraries and models
-        import torch
-        import torch.nn.functional as F
-
         os.environ['DB_ROOT'] = ''
-        import dirtorch.datasets as datasets
         import dirtorch.nets as nets
         from dirtorch.utils import common as ops
-        from dirtorch.test_dir import extract_image_features
 
         gpus = [0] if self.args.gpu else [-1]
 
@@ -52,11 +47,17 @@ class GeMExtractor(BaseExtractor):
         self.whiten = {'whitenp': 0.25, 'whitenv': None, 'whitenm': 1.0}
         self.transforms = "Scale(1050, interpolation=Image.BICUBIC, largest=True)"
 
-    @torch.no_grad()
     def extract(self, image_paths):
         self.setup()  # lazy load model
 
-        with tempfile.NamedTemporaryFile('w+') as tmp_list:
+        import torch
+        import torch.nn.functional as F
+
+        import dirtorch.datasets as datasets
+        from dirtorch.utils import common as ops
+        from dirtorch.test_dir import extract_image_features
+
+        with tempfile.NamedTemporaryFile('w+') as tmp_list, torch.no_grad():
             # create temporary list file
             tmp_list.write('\n'.join(map(str, image_paths)) + '\n')
             tmp_list.seek(0)

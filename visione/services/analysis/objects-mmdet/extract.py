@@ -7,6 +7,8 @@ from visione.extractor import BaseExtractor
 
 
 def detection2record(detection, detector, classes, image_hw):
+    import numpy as np
+
     if detector == 'mrcnn-lvis':
         boxes_and_scores = detection[0]
     elif detector.startswith('vfnet'):
@@ -66,9 +68,7 @@ class ObjectsMMDetExtractor(BaseExtractor):
             return
 
         # lazy load libraries and models
-        import mmcv
-        from mmdet.apis import init_detector, inference_detector
-        import numpy as np
+        from mmdet.apis import init_detector
         import torch
 
         config_file = str(self.DETECTORS[self.detector]['config'])
@@ -76,14 +76,19 @@ class ObjectsMMDetExtractor(BaseExtractor):
         device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
         self.model = init_detector(config_file, checkpoint_file, device=device)
 
-    @torch.no_grad()
     def extract_one(self, image_path):
         self.setup()
-        image = mmcv.imread(image_path)
-        image_hw = image.shape[:2]
-        detection = inference_detector(self.model, image)
-        record = detection2record(detection, self.detector, self.model.CLASSES, image_hw)
-        return record
+
+        import mmcv
+        from mmdet.apis import inference_detector
+        import torch
+
+        with torch.no_grad():
+            image = mmcv.imread(image_path)
+            image_hw = image.shape[:2]
+            detection = inference_detector(self.model, image)
+            record = detection2record(detection, self.detector, self.model.CLASSES, image_hw)
+            return record
 
     def extract(self, image_paths):
         records = map(self.extract_one, image_paths)

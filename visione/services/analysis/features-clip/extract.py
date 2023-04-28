@@ -26,7 +26,6 @@ class CLIPExtractor(BaseExtractor):
     def setup(self):
         if self.model is None:
             # lazy load libraries and models
-            from PIL import Image
             import torch
             from transformers import CLIPProcessor, CLIPModel
 
@@ -34,15 +33,19 @@ class CLIPExtractor(BaseExtractor):
             self.model = CLIPModel.from_pretrained(args.model_handle).to(self.device)
             self.processor = CLIPProcessor.from_pretrained(args.model_handle)
 
-    @torch.no_grad()
     def extract(self, image_paths):
         self.setup()  # lazy load model
-        images_pil = [Image.open(i) for i in image_paths]
-        image_pt = self.processor(images=images_pil, return_tensors="pt")
-        image_pt = {k: v.to(self.device) for k, v in image_pt.items()}
-        image_features = self.model.get_image_features(**image_pt)
-        records = [{'feature_vector': f.tolist()} for f in image_features.cpu().numpy()]
-        return records
+
+        from PIL import Image
+        import torch
+
+        with torch.no_grad():
+            images_pil = [Image.open(i) for i in image_paths]
+            image_pt = self.processor(images=images_pil, return_tensors="pt")
+            image_pt = {k: v.to(self.device) for k, v in image_pt.items()}
+            image_features = self.model.get_image_features(**image_pt)
+            records = [{'feature_vector': f.tolist()} for f in image_features.cpu().numpy()]
+            return records
 
 
 if __name__ == "__main__":

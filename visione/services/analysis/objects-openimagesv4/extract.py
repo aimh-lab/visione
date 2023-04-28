@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)
 
 
 def load_image_pil(image_path):
+    from PIL import Image
+    import numpy as np
+
     try:
         with Image.open(image_path) as image_pil:
             image_np = np.array(image_pil.convert('RGB'))               # convert PIL image to numpy
@@ -37,6 +40,8 @@ def load_image_pil(image_path):
 
 
 def apply_detector(detector, x):
+    import tensorflow as tf
+
     if x is None:
         return None
 
@@ -72,8 +77,6 @@ class ObjectOIV4Extractor(BaseExtractor):
             return
 
         # lazy load libraries and models
-        from PIL import Image
-        import numpy as np
         import tensorflow as tf
         import tensorflow_hub as hub
 
