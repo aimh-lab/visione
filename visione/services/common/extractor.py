@@ -180,8 +180,9 @@ class BaseVideoExtractor(object):
             assert num_cols == 10
 
             # parse the rest of the file
-            parse_row = lambda row: (video_id, row[0], video_path, row[1], row[3], row[4], row[6])
+            parse_row = lambda row: (video_id, row[0], video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
 
+            next(reader)    # skips the header
             shot_paths_and_times = [parse_row(row) for row in reader]
 
         return shot_paths_and_times
@@ -207,9 +208,9 @@ class BaseVideoExtractor(object):
         for video_id, group in itertools.groupby(shot_paths_and_times, key=lambda x: x[0]):
             with self.get_saver(video_id) as saver:
                 to_be_processed = []
-                for video_id, shot_id, image_path, *_ in group:
+                for video_id, shot_id, image_path, *other in group:
                     if shot_id not in saver:
-                        to_be_processed.append((video_id, shot_id, image_path))
+                        to_be_processed.append((video_id, shot_id, image_path, *other))
                     elif progress:
                         progress.initial += 1
             # ensure saver is closed before yielding from group
@@ -231,7 +232,7 @@ class BaseVideoExtractor(object):
 
         # unzip ids and paths
         shot_paths_and_times_unzipped = more_itertools.unzip(shot_paths_and_times)
-        video_ids, image_ids, image_paths = shot_paths_and_times_unzipped
+        video_ids, image_ids, image_paths, *_ = shot_paths_and_times_unzipped
 
         shot_ids_and_records = zip(video_ids, image_ids, records)
         shot_ids_and_records = progress(shot_ids_and_records)

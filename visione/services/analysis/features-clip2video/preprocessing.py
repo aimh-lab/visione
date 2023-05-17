@@ -5,6 +5,7 @@ import csv
 import tqdm
 import shlex
 import json
+from pathlib import Path
 
 def extract_frames(video_name, start_time, end_time, out_file, fps=5):
     # dur = end_time - start_time
@@ -25,9 +26,9 @@ def extract_frames(video_name, start_time, end_time, out_file, fps=5):
 def process(line):
     # print(line)
     mp4_name, start_time, end_time, out_folder = line
-    extract_frames(mp4_name, start_time, end_time, out_folder)
+    extract_frames(mp4_name.as_posix(), start_time, end_time, out_folder.as_posix())
 
-def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder="video_feat_extraction"):
+def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Path("video_feat_extraction")):
     """
     Preprocesses the shot metadata and performs ffmpeg processing.
     It includes merging together the shots if they are too short, if needed.
@@ -40,6 +41,8 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder="vi
     # Otherwise, there's the risk that shots from different videos are merged together
     if min_duration > 0.0:
         raise NotImplementedError()
+
+    out_folder.mkdir(exist_ok=True)
 
     lines = []
     skip = False
@@ -54,7 +57,7 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder="vi
         else:
             skip = False
         # out_video_ext = '.mp4' # os.path.splitext(mp4_file)[1]
-        out_file = os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
+        out_file = out_folder / '{}_{}.mp4'.format(video_id, shot_id_visione) # os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
         lines.append((video_path, start_time, end_time, out_file))
 
     # starting parallel ffmpeg processing, multi-threaded
