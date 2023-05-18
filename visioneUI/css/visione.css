@@ -395,3 +395,57 @@ video::-webkit-media-controls {
 ::-ms-input-placeholder { /* Microsoft Edge */
   font-size: 12px;
 }
+
+.gridcontainer {
+  display: grid;
+  grid-template-columns: repeat(11, auto); /* Maximum 10+1 columns */
+  grid-gap: 1px; /* Adjust the gap between grid cells as needed */
+}
+
+.item {
+  margin: auto;
+}
+
+.column-span-1 {
+  grid-column: span 1;
+}
+
+.column-span-2 {
+  grid-column: span 2;
+}
+
+.column-span-3 {
+  grid-column: span 3;
+}
+
+.column-span-4 {
+  grid-column: span 4;
+}
+
+.column-span-5 {
+  grid-column: span 5;
+}
+
+.column-span-6 {
+  grid-column: span 6;
+}
+
+.column-span-7 {
+  grid-column: span 7;
+}
+
+.column-span-8 {
+  grid-column: span 8;
+}
+
+.column-span-9 {
+  grid-column: span 9;
+}
+
+.column-span-10 {
+  grid-column: span 10;
+}
+
+.column-span-11 {
+  grid-column: span 11;
+}

@@ -1,21 +1,21 @@
 
 var cells = 49;
 var canvasWidth = 288;
-var canvasHeight= 160;
+var canvasHeight = 160;
 
 CELL_COLS = 7;
 CELL_ROWS = 7;
 
 var cellWidth = canvasWidth / CELL_COLS;
-var cellHeight = canvasHeight /CELL_ROWS;
+var cellHeight = canvasHeight / CELL_ROWS;
 
-var borderColors = ["#63b598", "#ce7d78", "#ea9e70", "#a48a9e", "#c6e1e8", "#648177" ,"#0d5ac1" ,
-	"#f205e6" ,"#1c0365" ,"#14a9ad" ,"#4ca2f9" ,"#a4e43f" ,"#d298e2" ,"#6119d0",
-	"#d2737d" ,"#c0a43c" ,"#f2510e" ,"#651be6" ,"#79806e" ,"#61da5e" ,"#cd2f00" ,
-	"#9348af" ,"#01ac53" ,"#c5a4fb" ,"#996635","#b11573" ,"#4bb473" ,"#75d89e" ,
-	"#2f3f94" ,"#2f7b99" ,"#da967d" ,"#34891f" ,"#b0d87b" ,"#ca4751" ,"#7e50a8" ,
-	"#c4d647" ,"#e0eeb8" ,"#11dec1" ,"#289812" ,"#566ca0" ,"#ffdbe1" ,"#2f1179" ,
-	"#935b6d" ,"#916988" ,"#513d98" ,"#aead3a", "#9e6d71", "#4b5bdc", "#0cd36d",
+var borderColors = ["#63b598", "#ce7d78", "#ea9e70", "#a48a9e", "#c6e1e8", "#648177", "#0d5ac1",
+	"#f205e6", "#1c0365", "#14a9ad", "#4ca2f9", "#a4e43f", "#d298e2", "#6119d0",
+	"#d2737d", "#c0a43c", "#f2510e", "#651be6", "#79806e", "#61da5e", "#cd2f00",
+	"#9348af", "#01ac53", "#c5a4fb", "#996635", "#b11573", "#4bb473", "#75d89e",
+	"#2f3f94", "#2f7b99", "#da967d", "#34891f", "#b0d87b", "#ca4751", "#7e50a8",
+	"#c4d647", "#e0eeb8", "#11dec1", "#289812", "#566ca0", "#ffdbe1", "#2f1179",
+	"#935b6d", "#916988", "#513d98", "#aead3a", "#9e6d71", "#4b5bdc", "#0cd36d",
 	"#250662", "#cb5bea", "#228916", "#ac3e1b", "#df514a", "#539397", "#880977",
 	"#f697c1", "#ba96ce", "#679c9d", "#c6c42c", "#5d2c52", "#48b41b", "#e1cf3b",
 	"#5be4f0", "#57c4d8", "#a4d17a", "#225b8", "#be608b", "#96b00c", "#088baf",
@@ -49,25 +49,25 @@ var borderColors = ["#63b598", "#ce7d78", "#ea9e70", "#a48a9e", "#c6e1e8", "#648
 	"#88e9b8", "#c2b0e2", "#86e98f", "#ae90e2", "#1a806b", "#436a9e", "#0ec0ff",
 	"#f812b3", "#b17fc9", "#8d6c2f", "#d3277a", "#2ca1ae", "#9685eb", "#8a96c6",
 	"#dba2e6", "#76fc1b", "#608fa4", "#20f6ba", "#07d7f6", "#dce77a", "#77ecca"];
-	
+
 var colorMap = {
-	'white' : 'style="background-color: white; color: rgb(0,0,0);  border: 1px solid #000;"',
-	'black' : 'style="background-color: black; color: rgb(255,255,255);"',
-	'blue' : 'style="background-color: blue; color: rgb(255,255,255);"',
-	'brown' : 'style="background-color: brown; color: rgb(255,255,255);"',
-	'green' : 'style="background-color: green; color: rgb(255,255,255);"',
-	'grey' : 'style="background-color: grey; color: rgb(255,255,255);"',
-	'orange' : 'style="background-color: orange; color: rgb(255,255,255);"',
-	'pink' : 'style="background-color: pink; color: rgb(255,255,255);"',
-	'purple' : 'style="background-color: purple; color: rgb(255,255,255);"',
-	'red' : 'style="background-color: red; color: rgb(255,255,255);"',
-	'yellow' : 'style="background-color: yellow; color: rgb(0,0,0);"'
+	'white': 'style="background-color: white; color: rgb(0,0,0);  border: 1px solid #000;"',
+	'black': 'style="background-color: black; color: rgb(255,255,255);"',
+	'blue': 'style="background-color: blue; color: rgb(255,255,255);"',
+	'brown': 'style="background-color: brown; color: rgb(255,255,255);"',
+	'green': 'style="background-color: green; color: rgb(255,255,255);"',
+	'grey': 'style="background-color: grey; color: rgb(255,255,255);"',
+	'orange': 'style="background-color: orange; color: rgb(255,255,255);"',
+	'pink': 'style="background-color: pink; color: rgb(255,255,255);"',
+	'purple': 'style="background-color: purple; color: rgb(255,255,255);"',
+	'red': 'style="background-color: red; color: rgb(255,255,255);"',
+	'yellow': 'style="background-color: yellow; color: rgb(0,0,0);"'
 };
 
 var availableTags = null;
 
 var rect, origX, origY, textVal, activeObj, overObj;
-var prevQuery=[];
+var prevQuery = [];
 
 var isDrawing = false;
 var draggedLabel = '';
@@ -84,32 +84,32 @@ var canvases;
 var prevIs43 = false;
 var prevIs169 = false;
 var prevIsColor = [];
-var prevIsGray =[];
+var prevIsGray = [];
 
 var results = null;
 var resultsSortedByVideo = null;
 var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
-var textualMode =  ["all", "all"];
+var textualMode = ["all", "all"];
 var simreorder = false;
 
 //var qbeUrl = ''
 var is43 = false;
 var is169 = false;
 
-var urlBSService ='' ;
-var thumbnailUrl ='' ;
-var keyFramesUrl ='';
+var urlBSService = '';
+var thumbnailUrl = '';
+var keyFramesUrl = '';
 var activeCanvasIdx = 0;
 var activeCanvas = "";
 var isCanvasEnabled = [true, true];
 var prevIsCanvasEnabled = [];
 var prevSimreorder = false;
-var prevOccur=['and', 'and'];
-var prevTextualMode=["clip", "clip"];
+var prevOccur = ['and', 'and'];
+var prevTextualMode = ["clip", "clip"];
 
-var prevQBE="";
+var prevQBE = "";
 
 var tempSearchForms = 2
 var dataset = "v3c";
@@ -118,24 +118,24 @@ var setDisplayTo = "block";
 var isAdvanced = false
 
 function handler() {
-	  if (this.readyState == 4 && this.status == 200) {
-		  console.log(this.responseText)
-	    var myObj = JSON.parse(this.responseText);
-		  urlBSService = myObj.serviceUrl;
-		  speech2TextService = myObj.speech2Text;
-		  thumbnailUrl= myObj.thumbnailUrl;
-		  keyFramesUrl=myObj.keyFramesUrl;
-		  videoUrlPrefix=myObj.videoUrl;
-		  videoshrinkUrl=myObj.videoshrinkUrl;
-	
-	  }
-  
+	if (this.readyState == 4 && this.status == 200) {
+		console.log(this.responseText)
+		var myObj = JSON.parse(this.responseText);
+		urlBSService = myObj.serviceUrl;
+		speech2TextService = myObj.speech2Text;
+		thumbnailUrl = myObj.thumbnailUrl;
+		keyFramesUrl = myObj.keyFramesUrl;
+		videoUrlPrefix = myObj.videoUrl;
+		videoshrinkUrl = myObj.videoshrinkUrl;
+
+	}
+
 }
 
 function setCollection(collection) {
 	confFile = "conf.json"
-	dataset="v3c"
-	var client  = new XMLHttpRequest();
+	dataset = "v3c"
+	var client = new XMLHttpRequest();
 	client.onload = handler;
 	if (collection == "mvk") {
 		dataset = "mvk"
@@ -143,33 +143,31 @@ function setCollection(collection) {
 
 	}
 	client.open("GET", "js/" + confFile, false);
-	client.send(); 
-} 
+	client.send();
+}
 
-var client  = new XMLHttpRequest();
+var client = new XMLHttpRequest();
 client.onload = handler;
 client.open("GET", "js/conf.json", false);
-client.send(); 
+client.send();
 
 function mvkTab() {
 	//if (confirm('Switching to Marine Dataset?')) {
-		dataset = "mvk";
-		window.location.href = 'index_MVK.html';
-		setCollection("mvk")
+	dataset = "mvk";
+	window.location.href = 'index_MVK.html';
+	setCollection("mvk")
 
 	//}
 }
 
 function v3cTab() {
 	//if (confirm('Switching to V3C Dataset?')) {
-		dataset = "v3c";
-		window.location.href = 'index_V3C.html';
-		setCollection("v3c")
+	dataset = "v3c";
+	window.location.href = 'index_V3C.html';
+	setCollection("v3c")
 	//}
 }
 
-//messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
-	
 function setSpeech(speechRes, idx) {
 	if (speechRes == null) {
 		console.log("Warning, speechRes is " + speechRes);
@@ -182,8 +180,8 @@ function setSpeech(speechRes, idx) {
 		let jsonSpeech = JSON.parse(speechRes)
 
 		$("#textual" + idx).val(jsonSpeech.translation);
-			searchByForm();
-			idx = Math.floor(Math.random() * 3);
+		searchByForm();
+		idx = Math.floor(Math.random() * 3);
 		if (jsonSpeech.translation.length > 50) {
 			prevTextual[idx] = $("#textual" + idx).val();
 			//jsonRes = JSON.parse(speechRes);
@@ -209,7 +207,7 @@ function extractprev(term) {
 	return split(term).pop();
 }
 
-$.get($('meta[name=dataset]').attr('content') +'_objects_doc_freq.csv', function(data) {
+$.get($('meta[name=dataset]').attr('content') + '_objects_doc_freq.csv', function (data) {
 	availableTags = data.split("\n");
 	//availableTags = [];
 });
@@ -222,63 +220,63 @@ function drag(ev) {
 	draggedLabel = ev.target.title;
 }
 
-function getText(id, field, collection="v3c") {
+function getText(id, field, collection = "v3c") {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getText?id="+ id + "&field=" + field+ "&dataset=" + collection,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getText?id=" + id + "&field=" + field + "&dataset=" + collection,
+			async: false
+		}).responseText
 }
 
 function getAllVideoKeyframes(videoId) {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getAllVideoKeyframes?videoId="+ videoId + "&dataset=" + collection,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getAllVideoKeyframes?videoId=" + videoId + "&dataset=" + collection,
+			async: false
+		}).responseText
 }
 
 function getField(id, field) {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getField?id="+ id + "&field=" + field + "&dataset=" + collection,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getField?id=" + id + "&field=" + field + "&dataset=" + collection,
+			async: false
+		}).responseText
 }
 
 function getStartTime(id) {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getStartTime?id="+ id + "&dataset=" + dataset,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getStartTime?id=" + id + "&dataset=" + dataset,
+			async: false
+		}).responseText
 }
 
 function getEndTime(id) {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getEndTime?id="+ id + "&dataset=" + dataset,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getEndTime?id=" + id + "&dataset=" + dataset,
+			async: false
+		}).responseText
 }
 
 function getMiddleTimestamp(id) {
 	return $
-			.ajax({
-				type : "GET",
-				url :  urlBSService+"/getMiddleTimestamp?id="+ id + "&dataset=" + dataset,
-				async : false
-			}).responseText
+		.ajax({
+			type: "GET",
+			url: urlBSService + "/getMiddleTimestamp?id=" + id + "&dataset=" + dataset,
+			async: false
+		}).responseText
 }
 
-function submitWithAlert(id,videoId,collection) {
+function submitWithAlert(id, videoId, collection) {
 	if (confirm('Are you sure you want to submit?')) {
-		res = submitResult(id, videoId,collection);
+		res = submitResult(id, videoId, collection);
 		console.log(res);
 		alert('Server response: ' + res);
 	}
@@ -289,82 +287,82 @@ function startNewSession() {
 	if (confirm('Are you sure you want to start a new session?')) {
 		location.reload();
 		$.ajax({
-			type : "GET",
-			async : false,
-			url : urlBSService+"/init"
+			type: "GET",
+			async: false,
+			url: urlBSService + "/init"
 		}).responseText
 	}
 }
 
 function startNewKISSession() {
 	//if (confirm('Starting a new KIS session?')) {
-		  location.href = "index_V3C.html";
-		$.ajax({
-			type : "GET",
-			async : false,
-			url : urlBSService+"/init"
-		}).responseText
-		setCollection("v3c")
+	location.href = "index_V3C.html";
+	$.ajax({
+		type: "GET",
+		async: false,
+		url: urlBSService + "/init"
+	}).responseText
+	setCollection("v3c")
 	//}
 }
 
 function startNewAVSSession() {
 	//if (confirm('Starting a new AVS session?')) {
-		location.href = "index_V3C_AVS.html";
-		$.ajax({
-			type : "GET",
-			async : false,
-			url : urlBSService+"/init"
-		}).responseText
-		setCollection("v3c")
+	location.href = "index_V3C_AVS.html";
+	$.ajax({
+		type: "GET",
+		async: false,
+		url: urlBSService + "/init"
+	}).responseText
+	setCollection("v3c")
 	//}
 }
 
 function startNewMVKAVSSession() {
 	//if (confirm('Starting a new AVS session?')) {
-		location.href = "index_MVK_AVS.html";
-		$.ajax({
-			type : "GET",
-			async : false,
-			url : urlBSService+"/init"
-		}).responseText
-		setCollection("mvk")
+	location.href = "index_MVK_AVS.html";
+	$.ajax({
+		type: "GET",
+		async: false,
+		url: urlBSService + "/init"
+	}).responseText
+	setCollection("mvk")
 	//}
 }
 
 function startNewMVKKISSession() {
 	//if (confirm('Starting a new KIS session?')) {
-		  location.href = "index_MVK.html";
-		$.ajax({
-			type : "GET",
-			async : false,
-			url : urlBSService+"/init"
-		}).responseText
-		setCollection("mvk")
+	location.href = "index_MVK.html";
+	$.ajax({
+		type: "GET",
+		async: false,
+		url: urlBSService + "/init"
+	}).responseText
+	setCollection("mvk")
 	//}
 }
 
-function submitResult(id,videoId,collection) {
+function submitResult(id, videoId, collection) {
 	return $.ajax({
-		type : "GET",
-		async : false,
-		url : urlBSService+"/submitResult?id="+ id+ "&videoid="+ videoId+"&dataset="+ collection,
+		type: "GET",
+		async: false,
+		url: urlBSService + "/submitResult?id=" + id + "&videoid=" + videoId + "&dataset=" + collection,
 	}).responseText;
 }
 
 function submitAtTime(videoId, time) {
 	return $.ajax({
-		type : "GET",
-		async : false,
-		url : urlBSService+"/submitResult?videoid="+ videoId+ "&time=" + time,
+		type: "GET",
+		async: false,
+		url: urlBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
 	}).responseText;
 }
 
 function log(query) {
 	return $.ajax({
-		type : "GET",
-		async : false,
-		url : urlBSService+"/log?query=" + query,
+		type: "GET",
+		async: false,
+		url: urlBSService + "/log?query=" + query,
 	}).responseText;
 }
 
@@ -388,21 +386,22 @@ function addDeleteBtn(label, rect) {
 	var labelTop = y - 30;
 
 	var deleteBtn = '<div id="'
-			+ id
-			+ '" title="'
-			+ label
-			+ '"><span style="color: DarkSlateGray; font-size: 1.3em; position:absolute;top:'
-			+ labelTop
-			+ 'px;left:'
-			+ labelLeft
-			+ 'px;">'
-			+ label
-			+ '</span><img id="'
-			+ id
-			+ '" src="img/Actions-dialog-close-icon.png" class="deleteBtn" style="position:absolute;top:'
-			+ btnTop + 'px;left:' + btnLeft
-			+ 'px;cursor:pointer;width:16px;height:16px;"/></div>';
-	$(".canvas-container").eq(activeCanvasIdx).append(deleteBtn);}
+		+ id
+		+ '" title="'
+		+ label
+		+ '"><span style="color: DarkSlateGray; font-size: 1.3em; position:absolute;top:'
+		+ labelTop
+		+ 'px;left:'
+		+ labelLeft
+		+ 'px;">'
+		+ label
+		+ '</span><img id="'
+		+ id
+		+ '" src="img/Actions-dialog-close-icon.png" class="deleteBtn" style="position:absolute;top:'
+		+ btnTop + 'px;left:' + btnLeft
+		+ 'px;cursor:pointer;width:16px;height:16px;"/></div>';
+	$(".canvas-container").eq(activeCanvasIdx).append(deleteBtn);
+}
 
 
 function cell2Text(idx) {
@@ -414,7 +413,7 @@ function cell2Text(idx) {
 	isGray[idx] = $("#isGray" + idx).is(":checked");
 	//occur = $('input[name="occur' + idx + '"]:checked').val();
 	//simreorder = $("#simreorder").is(":checked");
-	
+
 	var queryObj = new Object();
 	var queryParameters = {};
 
@@ -422,30 +421,30 @@ function cell2Text(idx) {
 	txt = '';
 	query = '';
 	colors = [];
-	
+
 	console.log(idx);
 	canvases[idx].getObjects().forEach(
-		function(o) {
+		function (o) {
 			if (o.get('type') == 'rect') {
 				if (o && o.oCoords) {
 					startCol = Math.floor(Math.max(0, o.oCoords.tl.x)
-							/ cellWidth);
+						/ cellWidth);
 					endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x)
-							/ cellWidth);	resultsSortedByVideo = [];
+						/ cellWidth); resultsSortedByVideo = [];
 
 
 					startRow = Math.floor(Math.max(0, o.oCoords.tr.y)
-							/ cellHeight);
+						/ cellHeight);
 					endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y)
-							/ cellHeight);
+						/ cellHeight);
 				} else {
 					startCol = Math.floor(Math.max(0, o.left) / cellWidth);
 					endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width))
-							/ cellWidth);
+						/ cellWidth);
 
 					startRow = Math.floor(Math.max(0, o.top) / cellHeight);
 					endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height))
-							/ cellHeight);
+						/ cellHeight);
 				}
 				label = $("#" + o.uuid).attr('title').trim();
 
@@ -460,7 +459,7 @@ function cell2Text(idx) {
 						// txt += col + String.fromCharCode(97 + row) +
 						// label + '%5E' + boost + ' ' ;
 						txt += row + String.fromCharCode(97 + col) + label
-								+ ' ';
+							+ ' ';
 					}
 				}
 			}
@@ -468,19 +467,19 @@ function cell2Text(idx) {
 	for (cIdx = 0; cIdx < colors.length; cIdx++) {
 		objects += colors[cIdx] + " ";
 	}
-	
+
 	if (isGray[idx]) {
 		objects += "graykeyframe ";
-	} else 	if (isColor[idx]) {
+	} else if (isColor[idx]) {
 		objects += "colorkeyframe ";
 	}
-	
+
 	if (is43) {
 		objects += "ratio43 ";
-	} else 	if (is169) {
+	} else if (is169) {
 		objects += "ratio169 ";
 	}
-	
+
 	//textualMode = $("#textualmode" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 	//clip = $("#clip" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 
@@ -516,27 +515,27 @@ function cell2Text(idx) {
 		// objects += groups;
 	} else if (notField != '')
 		objects = "*";
-	
-		objects += notField;
+
+	objects += notField;
 
 	if (objects != '' && isAdvanced)
 		queryObj.objects = objects.trim();
-	
+
 	if (textual != '') {
 		queryObj.textual = textual;
 		queryParameters['textualMode'] = textualMode[idx];
 	}
-		
-//	if (clip != '')
-//		queryObj.clip = clip;
 
-	if (txt != ''  && isAdvanced)
+	//	if (clip != '')
+	//		queryObj.clip = clip;
+
+	if (txt != '' && isAdvanced)
 		queryObj.txt = txt.trim();
-	if (Object.keys(queryObj).length > 0  && isAdvanced) {
+	if (Object.keys(queryObj).length > 0 && isAdvanced) {
 		queryParameters['occur'] = occur[idx];
 		queryParameters['simReorder'] = simreorder.toString();
-		}
-	
+	}
+
 	console.log("Query " + queryObj);
 	console.log("Query Parameters " + queryParameters);
 	if (Object.keys(queryObj).length == 0)
@@ -548,22 +547,22 @@ function cell2Text(idx) {
 function timestamp() {
 	time = Math.floor(new Date() / 1000);
 	console.log(" DATE " + time);
-	return ;
+	return;
 }
 
 function searchByLink(queryID) {
 	//prevQuery = query;
-	if(queryID != null) {
+	if (queryID != null) {
 		jsonString = JSON.stringify(queryID);
 		jsonString = '{"query":[' + jsonString + '], "parameters":[{"simReorder":"' + simreorder.toString() + '"}]}';
-//		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
+		//		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
 		//queryID = '{"query":[' + queryID + ']}';
 		search2(jsonString);
 
-		
+
 	}
-	else 
-		$("#imgtable").remove();
+	else
+		$("#imgGridResults").remove();
 }
 
 function searchByForm() {
@@ -576,15 +575,15 @@ function searchByForm() {
 			queriesArr.push(cellQuery[0])
 			parameteresArr.push(cellQuery[1])
 		}
-	}		
+	}
 	prevQuery = queriesArr;
-	if(queriesArr.length > 0) {
+	if (queriesArr.length > 0) {
 		jsonStringQuery = JSON.stringify(queriesArr);
 		jsonStringParameters = JSON.stringify(parameteresArr);
-		jsonString = '{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
+		jsonString = '{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters + '}';
 	}
-	else 
-		jsonString=""
+	else
+		jsonString = ""
 	search2(jsonString);
 }
 
@@ -593,7 +592,7 @@ function setResults(data) {
 	//results = sortByVideo(data);
 	resultsSortedByVideo = results;
 	groupResults(document.getElementById("group"));
-	 // history.pushState(JSON.stringify($(this)),'List',window.location.href);
+	// history.pushState(JSON.stringify($(this)),'List',window.location.href);
 }
 
 function search2(query) {
@@ -604,57 +603,57 @@ function search2(query) {
 		console.log(query);
 
 		$.ajax({
-		type : "POST",
-		async : true,
-		crossDomain: true,
-		data: {query: query, simreorder: simreorder, dataset: dataset},
-		dataType : "text",
-		url : urlBSService+"/search",
-		success : function(data) {
-			setResults(data)
-		},
-		error : function(data) {
-			setResults(data);
-		}
-	});
-		
+			type: "POST",
+			async: true,
+			crossDomain: true,
+			data: { query: query, simreorder: simreorder, dataset: dataset },
+			dataType: "text",
+			url: urlBSService + "/search",
+			success: function (data) {
+				setResults(data)
+			},
+			error: function (data) {
+				setResults(data);
+			}
+		});
+
 	}
 }
 
 function searchByALADINSimilarity(query) {
 	$.ajax({
-		type : "POST",
-		data: {query: query},
-		dataType : "text",
-		url : urlBSService+"/search",
-		success : function(data) {
+		type: "POST",
+		data: { query: query },
+		dataType: "text",
+		url: urlBSService + "/search",
+		success: function (data) {
 			results = data;
 			//results = sortByVideo(data);
 			resultsSortedByVideo = results;
 			groupResults(document.getElementById("group"));
-			 // history.pushState(JSON.stringify($(this)),'List',window.location.href);
+			// history.pushState(JSON.stringify($(this)),'List',window.location.href);
 		},
-		error : function(data) {
-			$("#imgtable").remove();
+		error: function (data) {
+			$("#imgGridResults").remove();
 		}
 	});
 }
 
 function searchByCLIPSimilarity(query) {
 	$.ajax({
-		type : "POST",
-		data: {query: query},
-		dataType : "text",
-		url : urlBSService+"/search",
-		success : function(data) {
+		type: "POST",
+		data: { query: query },
+		dataType: "text",
+		url: urlBSService + "/search",
+		success: function (data) {
 			results = data;
 			//results = sortByVideo(data);
 			resultsSortedByVideo = results;
 			groupResults(document.getElementById("group"));
-			 // history.pushState(JSON.stringify($(this)),'List',window.location.href);
+			// history.pushState(JSON.stringify($(this)),'List',window.location.href);
 		},
-		error : function(data) {
-			$("#imgtable").remove();
+		error: function (data) {
+			$("#imgGridResults").remove();
 		}
 	});
 }
@@ -664,35 +663,35 @@ function sortByVideo(data) {
 	if (data != null && data.trim() != "") {
 		var res = JSON.parse(data);
 
-		console.log("Sort By Video "+res.length);
-		if(res.length != 0){
-		dataDict = {};
-		
-		keys = [];
-		
-		for (i = 0; i < res.length; i++) {
-			imgId = res[i].imgId;
-			videoId = res[i].videoId;
-			score = res[i].score;
-			collection = res[i].collection;
-	
-			value = dataDict[videoId];
-			if (value == null) {
-				value = [];
-				keys[keys.length] = videoId;
+		console.log("Sort By Video " + res.length);
+		if (res.length != 0) {
+			dataDict = {};
+
+			keys = [];
+
+			for (i = 0; i < res.length; i++) {
+				imgId = res[i].imgId;
+				videoId = res[i].videoId;
+				score = res[i].score;
+				collection = res[i].collection;
+
+				value = dataDict[videoId];
+				if (value == null) {
+					value = [];
+					keys[keys.length] = videoId;
+				}
+				value.push(res[i]);
+				// console.log(res[i] + ' ' + res[i + 1] + ' ');
+				dataDict[videoId] = value;
 			}
-			value.push(res[i]);
-			// console.log(res[i] + ' ' + res[i + 1] + ' ');
-			dataDict[videoId] = value;
-		}
-		// console.log(keys);
-		for (i = 0; i < keys.length; i++) {
-			// console.log(i + " " + dataDict[keys[i]]);
-			resPerVideo =  dataDict[keys[i]];
-			for (j = 0; j < resPerVideo.length; j++) {
-				resultsSortedByVideo.push(resPerVideo[j]);
+			// console.log(keys);
+			for (i = 0; i < keys.length; i++) {
+				// console.log(i + " " + dataDict[keys[i]]);
+				resPerVideo = dataDict[keys[i]];
+				for (j = 0; j < resPerVideo.length; j++) {
+					resultsSortedByVideo.push(resPerVideo[j]);
+				}
 			}
-		}
 		}
 	}
 	resultsSortedByVideo = JSON.stringify(resultsSortedByVideo);
@@ -711,7 +710,7 @@ function groupResults(checkbox) {
 }
 
 function setGray(checkboxId) {
-	if(checkBox = document.getElementById("isGray" + checkboxId).checked) {
+	if (checkBox = document.getElementById("isGray" + checkboxId).checked) {
 		isGray[checkboxId] = true;
 		document.getElementById("isColor" + checkboxId).checked = false;
 		isColor[checkboxId] = false;
@@ -751,17 +750,17 @@ function setTextualMode(checkboxId) {
 }
 */
 function enableCanvas(canvasId, storePrev) {
-	 document.getElementById("overlay" + canvasId).style.display = "none";
-	$('input:radio[name=canvas' + canvasId +']')[0].checked = true;
+	document.getElementById("overlay" + canvasId).style.display = "none";
+	$('input:radio[name=canvas' + canvasId + ']')[0].checked = true;
 	if (storePrev)
 		prevIsCanvasEnabled[canvasId] = isCanvasEnabled[canvasId];
 	isCanvasEnabled[canvasId] = true
-	
+
 }
 
 function disableCanvas(canvasId, storePrev) {
 	document.getElementById("overlay" + canvasId).style.display = "block";
-	$('input:radio[name=canvas' + canvasId +']')[1].checked = true;
+	$('input:radio[name=canvas' + canvasId + ']')[1].checked = true;
 
 	if (storePrev)
 		prevIsCanvasEnabled[canvasId] = isCanvasEnabled[canvasId];
@@ -771,8 +770,8 @@ function disableCanvas(canvasId, storePrev) {
 
 function resetCanvas() {
 	enableCanvas(0, true);
-	enableCanvas(1, true);+
-	searchByForm();
+	enableCanvas(1, true); +
+		searchByForm();
 
 }
 
@@ -784,7 +783,7 @@ function undoCanvas() {
 	} else {
 		disableCanvas(0, true);
 	}
-	
+
 	if (prevIsCanvasEnabled[1]) {
 		enableCanvas(1, true);
 	} else {
@@ -802,7 +801,7 @@ function setCanvasState(canvasId) {
 	} else {
 		disableCanvas(0, true);
 	}
-	
+
 	if (canvas1State == "enabled") {
 		enableCanvas(1, true);
 	} else {
@@ -813,26 +812,26 @@ function setCanvasState(canvasId) {
 
 
 function setSimReorder(checkbox) {
-	if(checkBox = document.getElementById("simreorder").checked)
+	if (checkBox = document.getElementById("simreorder").checked)
 		simreorder = true;
 	else
 		simreorder = false;
 }
 
 function setColor(checkboxId) {
-	if(checkBox = document.getElementById("isColor" + checkboxId).checked) {
+	if (checkBox = document.getElementById("isColor" + checkboxId).checked) {
 		isColor[checkboxId] = true;
 		document.getElementById("isGray" + checkboxId).checked = false;
 		isGray[checkboxId] = false;
-		
+
 	}
-	else 
+	else
 		isColor[checkboxId] = false;
 	searchByForm();
 }
 
 function set43(checkbox) {
-	if(checkBox = document.getElementById("is43").checked) {
+	if (checkBox = document.getElementById("is43").checked) {
 		is43 = true;
 		document.getElementById("is169").checked = false;
 		is169 = false;
@@ -843,25 +842,25 @@ function set43(checkbox) {
 }
 
 function set169(checkbox) {
-	if(checkBox = document.getElementById("is169").checked) {
+	if (checkBox = document.getElementById("is169").checked) {
 		is169 = true;
 		document.getElementById("is43").checked = false;
 		is43 = false;
 
 	}
-	else 
+	else
 		is169 = false;
 	query = []
 	for (i = 0; i < tempSearchForms; i++) {
 		if (cell2Text(i) != null)
 			query.push(cell2Text(i));
-	}		
+	}
 	(query);
 }
 
 function queryByExample(imgUrl) {
 	var queryObj = new Object();
-	queryObj.qbe = imgUrl;	
+	queryObj.qbe = imgUrl;
 	searchByLink(queryObj);
 }
 
@@ -873,166 +872,155 @@ function queryByCLIP() {
 	searchByForm();
 }
 
-function fromIDtoColor(id, numberborderColors){ // FRANCA
-	var idH= id.hashCode();
+function fromIDtoColor(id, numberborderColors) { // FRANCA
+	var idH = id.hashCode();
 	borderColorsIdx = idH % numberborderColors;
 	return borderColorsIdx;
 }
 
 
-String.prototype.hashCode = function(){// FRANCA
+String.prototype.hashCode = function () {// FRANCA
 	var hash = 0;
 	if (this.length == 0) return hash;
 	for (j = 0; j < this.length; j++) {
 		char = this.charCodeAt(j);
-		hash = ((hash<<5)-hash)+char;
-		hash = hash & hash; 
+		hash = ((hash << 5) - hash) + char;
+		hash = hash & hash;
 	}
 	return hash;
 }
 
 function showResults(data) {
-	if($('meta[name=task]').attr('content') == "AVS") {
+	if ($('meta[name=task]').attr('content') == "AVS") {
 		avsCleanManualSelected();
 		avsRemoveAutoselected();
 	}
 	//empty avsFirstCol
 	avsAutoSelected.length = 0
 	$('html,body').scrollTop(0);
-	$("#imgtable").remove();
+	$("#imgGridResults").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
-	if((data == null || data == "") && latestQuery != "") {
-		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-		$("#results").append(imgtable);
+	if ((data == null || data == "") && latestQuery != "") {
+		imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+		$("#results").append(imgGridResults);
 		if (!isAdvanced) {
 			//document.getElementById('searchTab').className='simplifiedSearchBar'
 			//document.getElementById('block1').style.display='none';
-			
+
 
 		}
-	
 
-			//document.getElementById("textual0").className='simplifiedSearchBar'
+		//document.getElementById("textual0").className='simplifiedSearchBar'
 		console.log(document.getElementById("textual0"))
 
-	} else if((data == null || data == "")) {
+	} else if ((data == null || data == "")) {
 		if (!isAdvanced) {
 			//document.getElementById("textual0").className='simplifiedSearchBar'
 			//document.getElementById('block1').style.display='none';
 		}
 
-	} else if(data != null && data != "") {
+	} else if (data != null && data != "") {
 		//document.getElementById("textual0").className='ppp'
 		console.log(document.getElementById("textual0"))
 
-		if (!isAdvanced)	{
+		if (!isAdvanced) {
 
-			document.getElementById('sceneDes1').style.display='block';
-			document.getElementById('simplified1').style.display='block';
-			document.getElementById("simplified0").className='simplified0'
-			document.getElementById("visionelogo").className='visioneLogo'
-			document.getElementById("visionelogoImg").className='visionelogoImg'
-			document.getElementById("sceneDes0").className='fa fa-hourglass-start fa-2x'
+			document.getElementById('sceneDes1').style.display = 'block';
+			document.getElementById('simplified1').style.display = 'block';
+			document.getElementById("simplified0").className = 'simplified0'
+			document.getElementById("visionelogo").className = 'visioneLogo'
+			document.getElementById("visionelogoImg").className = 'visionelogoImg'
+			document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
 			document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
 			document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
-		}	
+		}
 
 		var res = JSON.parse(data);
 		//patch temporanea 20/07/20 per il merge
 		//if (res.length > 1200)
 		//	res = res.slice(0, 1200);
-		if(res.length == 0 ) {
-			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+		if (res.length == 0) {
+			imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 			if (!isAdvanced) {
 				//document.getElementById("textual0").className='simplifiedSearchBar'
 
 			}
 			console.log(document.getElementById("textual0"))
-		} 
-		else {
-			document.getElementById('block1').style.display='block';
-			document.getElementById('newsession').style.display='block';
-
-
-		borderColorsIdx = 0;
-		numberborderColors = borderColors.length;
-		imgtable = '<div><table id="imgtable" style="text-align: left; width: 1050px;">';
-		prevID = '';
-		
-		firstVideoID = res[0].imgId.split("/")[0];
-			
-		imgtable += ' <tr id="video_' + firstVideoID + '">';
-
-		itemPerRow = 0;
-		for (i = 0; i < res.length; i++) {
-			imgId = res[i].imgId;
-			videoId = res[i].videoId;
-
-			score = res[i].score;
-			collection = res[i].collection;
-	
-			imgIdTokens = imgId.split("/");
-			//videoId = imgIdTokens[0];
-			if (imgIdTokens.length > 1)
-				frameName = imgIdTokens[1];
-			else
-				frameName = imgId
-			path = collection + "/" + videoId + "/"+ frameName;
-
-			frameNameNoExt = frameName.split('\.')[0]
-			frameNumber = frameNameNoExt.split('_').pop();
-			if(i==0)
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a>';//LUcia
-			if (videoId == prevID && itemPerRow++ > 50)
-				continue;
-			if (itemPerRow >0 && itemPerRow%10==0) {
-				imgtable += '</tr><tr id="video_' + videoId + '">';
-				imgtable += '<td></td>';//LUcia
-			}
-			if (prevID != "" && videoId != prevID) {
-				imgtable += '</tr><tr id="video_' + prevID + '"><td class="hline" colspan=11></td><tr id="video_' + videoId + '">';
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection  + '&videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a></td>';//LUcia
-				itemPerRow = 0;
-			}
-			borderColorsIdx = fromIDtoColor(videoId,numberborderColors ); // FRANCA
-			prevID = videoId;
-			videoUrl = videoUrlPrefix + videoId+".mp4";
-			videoUrlPreview = videoshrinkUrl + videoId+".mp4";
-			//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-			avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl+ path)
-			resultData = getResultData(collection, videoId, imgId, thumbnailUrl+ path, frameName, frameNumber, score, videoUrl, videoUrlPreview)
-
-			if (itemPerRow == 0)
-				if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-					addToAutoSelected(avsObj)
-			
-			imgtable += '<td>'
-			imgtable += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
-			imgtable +='</td>'
-	
-					
 		}
+		else {
+			document.getElementById('block1').style.display = 'block';
+			document.getElementById('newsession').style.display = 'block';
+
+			borderColorsIdx = 0;
+			numberborderColors = borderColors.length;
+			imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
+			prevID = '';
+
+			itemPerRow = 0;
+			let columnIdx = 1;
+			for (i = 0; i < res.length; i++) {
+				imgId = res[i].imgId;
+				videoId = res[i].videoId;
+
+				score = res[i].score;
+				collection = res[i].collection;
+
+				path = collection + "/" + videoId + "/" + imgId;
+				frameNumber = imgId.split('_').pop();
+
+
+				if (i > 0 && videoId != prevID) {
+					spanVal = 11 - columnIdx;
+					columnIdx = 1;
+					if (spanVal > 0)
+						imgGridResults += '<div class="column-span-' + spanVal + '"></div>';
+					imgGridResults += '<div class="hline column-span-11"></div>';
+				}
+
+				if (videoId != prevID) {
+					//imgGridResults += '<div id="video_' + videoId + '">';
+					imgGridResults += '<div class="item column-span-1"><a href="showVideoKeyframes.html?collection=' + collection + '&videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+
+				}
+				borderColorsIdx = fromIDtoColor(videoId, numberborderColors); // FRANCA
+				prevID = videoId;
+				videoUrl = videoUrlPrefix + videoId + ".mp4";
+				videoUrlPreview = videoshrinkUrl + videoId + ".mp4";
+				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
+				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path)
+				resultData = getResultData(collection, videoId, imgId, thumbnailUrl + path, imgId, frameNumber, score, videoUrl, videoUrlPreview)
+
+				if (itemPerRow == 0)
+					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
+						addToAutoSelected(avsObj)
+
+				imgGridResults += '<div class="item column-span-1">'
+				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
+				imgGridResults += '</div>'
+				columnIdx++;
+
 			}
-		imgtable += '</table></div>';
-		$("#results").append(imgtable);
+		}
+		imgGridResults += '</div>';
+		$("#results").append(imgGridResults);
 		if (res.length > 1) {
-		for (i = 0; i < res.length; i++) {
-			imgId = res[i].imgId;
-			score = res[i].score;
-			collection = res[i].collection;
+			for (i = 0; i < res.length; i++) {
+				imgId = res[i].imgId;
+				score = res[i].score;
+				collection = res[i].collection;
 
 				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				var cip = $('#' + imgId4Regex).hover( hoverVideo, hideVideo );
-				
+				var cip = $('#' + imgId4Regex).hover(hoverVideo, hideVideo);
+
 				function hoverVideo(e) {
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-					$('#' + id4Regex).contextmenu(function() {
+					$('#' + id4Regex).contextmenu(function () {
 						imgId = 'img' + id4Regex;
 						langInfo = this.lang.split('|');
 						var collection = langInfo[0];
 						videoId = langInfo[1];
-						videourl=langInfo[2];
+						videourl = langInfo[2];
 						playerId = 'video' + videoId;
 
 						var elementExists = document.getElementById(playerId);
@@ -1040,31 +1028,31 @@ function showResults(data) {
 						//var startTime = getStartTime(this.id);
 						//var endTime = getEndTime(this.id);
 						var middleTime = getMiddleTimestamp(this.id);
-						var startTime = middleTime -2;
-						var endTime = middleTime+2;
+						var startTime = middleTime - 2;
+						var endTime = middleTime + 2;
 						if (elementExists != null) {
-							$('#'+ playerId).get(0).pause();
-						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
-						    $('#'+ playerId).get(0).load();
-							$('#'+ playerId).get(0).play();
+							$('#' + playerId).get(0).pause();
+							$('#' + playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
+							$('#' + playerId).get(0).load();
+							$('#' + playerId).get(0).play();
 							return;
 						}
-						backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ this.id + "')";
-					
-						//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
-						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+						backgroundImg = "background-image: url('" + thumbnailUrl + collection + '/' + this.id + "')";
+
+						//imgGridResults = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+						//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+						//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+						imgGridResults = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
 						$('#' + imgId).css("display", "none");
-						$('#' + id4Regex).append(imgtable);
+						$('#' + id4Regex).append(imgGridResults);
 						//$('#'+ playerId).get(0).currentTime = time-1;
 						//$('#'+ playerId).get(0).play();
 						return false;
 					});
 
-					
+
 				}
-				
+
 				function hideVideo(e) {
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
 
@@ -1072,19 +1060,19 @@ function showResults(data) {
 					langInfo = this.lang.split('|');
 					collection = langInfo[0];
 					videoId = langInfo[1];
-					videourl=langInfo[2];
+					videourl = langInfo[2];
 					playerId = 'video' + videoId;
 
 					var elementExists = document.getElementById(playerId);
-						if (elementExists != null) {
-							$('#' + playerId).remove();
-							$('#' + imgId).css("display", "block");
-						}
+					if (elementExists != null) {
+						$('#' + playerId).remove();
+						$('#' + imgId).css("display", "block");
+					}
 				}
-			}	
+			}
 		}
 	}
-	if($('meta[name=task]').attr('content') == "AVS") {
+	if ($('meta[name=task]').attr('content') == "AVS") {
 		avsHideSubmittedVideos();
 		avsReloadManualSelected();
 		avsAddAutoselected();
@@ -1093,7 +1081,7 @@ function showResults(data) {
 
 
 function getResultData(collection, videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
-	resultData=new Object();
+	resultData = new Object();
 	resultData.collection = collection;
 	resultData.videoId = videoId;
 	resultData.imgId = imgId;
@@ -1104,10 +1092,10 @@ function getResultData(collection, videoId, imgId, thumb, frameName, frameNumber
 	resultData.videoUrl = videoUrl;
 	resultData.videoUrlPreview = videoUrlPreview;
 	resultData.avsObj = avsObj;
-	return resultData 
+	return resultData
 }
 
-const imgResult = (res, borderColor, avsObj, isSimplified=false) => {
+const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 	if (isSimplified) {
 		return `
@@ -1116,7 +1104,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified=false) => {
 			<a href="showVideoKeyframes.html?collection=${res.collection}&videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
 			<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
-			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
+			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}','${res.collection}'); return false;"></i></span>'
 			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(avsObj)'>
 	
@@ -1133,7 +1121,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified=false) => {
 		<a href="showVideoKeyframes.html?collection=${res.collection}&videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
 		<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
 		<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
+		<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}','${res.collection}'); return false;"></i></span>'
@@ -1145,14 +1133,14 @@ const imgResult = (res, borderColor, avsObj, isSimplified=false) => {
 		`
 }
 
-function playVideoWindow(videoURL, videoId, imgId){
-  let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
-  //video = videoId.split(QUERY_SPLIT);
-  numTime = imgId;
-  var time = getStartTime(numTime);
-  //var time = getMiddleTimestamp(numTime);
-  //url = videoUrl + collection.toUpperCase() + "/videos/" +videoId+"/"+videoId+".mp4";
-  var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
+function playVideoWindow(videoURL, videoId, imgId) {
+	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
+	//video = videoId.split(QUERY_SPLIT);
+	numTime = imgId;
+	var time = getStartTime(numTime);
+	//var time = getMiddleTimestamp(numTime);
+	//url = videoUrl + collection.toUpperCase() + "/videos/" +videoId+"/"+videoId+".mp4";
+	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
 
 }
 
@@ -1162,30 +1150,30 @@ function generateUUID(color) {
 		d += performance.now(); // use high-precision timer if available
 	}
 	var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
-			function(c) {
-				var r = (d + Math.random() * 16) % 16 | 0;
-				d = Math.floor(d / 16);
-				return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-			});
+		function (c) {
+			var r = (d + Math.random() * 16) % 16 | 0;
+			d = Math.floor(d / 16);
+			return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+		});
 	if (color)
 		uuid = 'color_' + uuid;
 	return uuid;
 }
 
-		$(document).on('click',".deleteBtn",function(event){
-			console.log("active canvas: " + activeCanvasIdx);
-			activeCanvas.getObjects().forEach(function(o) {
-		        if(o.uuid === event.target.id) {
-		        	activeCanvas.discardActiveObject().renderAll();
-		        	activeCanvas.remove(o);
-		        }
-		    })
-		    $("#" + event.target.id).remove();
-			searchByForm();
-		});
+$(document).on('click', ".deleteBtn", function (event) {
+	console.log("active canvas: " + activeCanvasIdx);
+	activeCanvas.getObjects().forEach(function (o) {
+		if (o.uuid === event.target.id) {
+			activeCanvas.discardActiveObject().renderAll();
+			activeCanvas.remove(o);
+		}
+	})
+	$("#" + event.target.id).remove();
+	searchByForm();
+});
 
-dropImage = function(e) {
-	
+dropImage = function (e) {
+
 	activeCanvas = canvas0;
 	activeCanvasIdx = 0;
 	var pointer = canvas1.getPointer(event.e);
@@ -1195,7 +1183,7 @@ dropImage = function(e) {
 		activeCanvas = canvas1;
 		activeCanvasIdx = 1;
 	}
-	
+
 	if (draggedLabel != '') {
 		scale = 16;
 
@@ -1214,20 +1202,20 @@ dropImage = function(e) {
 			var imgElement = document.getElementById(draggedLabel);
 			color = imgElement.alt == 'color' ? true : false;
 			if (color) {
-				scale= 11;
+				scale = 11;
 			}
-			console.log(scale + "------------------ELEMENTO " +imgElement.src)
-			
+			console.log(scale + "------------------ELEMENTO " + imgElement.src)
+
 			rect = new fabric.Image(imgElement, {
-				left : origX - 25,
-				top : origY - 30,
-				fill : '',
-				stroke : 'black',
-				type : 'rect',
-				uuid : generateUUID(color),
-				strokeWidth : 1,
+				left: origX - 25,
+				top: origY - 30,
+				fill: '',
+				stroke: 'black',
+				type: 'rect',
+				uuid: generateUUID(color),
+				strokeWidth: 1,
 				scaleX: scale / imgElement.width,
-		        scaleY: scale / imgElement.height
+				scaleY: scale / imgElement.height
 			});
 			activeCanvas.add(rect);
 			activeCanvas.discardActiveObject();
@@ -1235,67 +1223,27 @@ dropImage = function(e) {
 			addDeleteBtn(draggedLabel, rect);
 			activeObj = rect;
 			rect = null;
-			
+
 			isCanvasClean[activeCanvasIdx] = false;
 			isReset = false;
-			
+
 			searchByForm();
-			
+
 			canvasObjects = activeCanvas.getObjects();
 			activeCanvas.on('object:scaling', (e) => {// FRANCA
 				var o = e.target;
 				if (!o.strokeWidthUnscaled && o.strokeWidth) {
-			  	o.strokeWidthUnscaled = o.strokeWidth;
-			  }
+					o.strokeWidthUnscaled = o.strokeWidth;
+				}
 				if (o.strokeWidthUnscaled) {
-			  	o.strokeWidth = o.strokeWidthUnscaled / o.scaleX;
-			  }
+					o.strokeWidth = o.strokeWidthUnscaled / o.scaleX;
+				}
 			});
 		}
 
 		isDragging = false;
 		draggedLabel = '';
 	}
-}
-
-function indexedCells(txt) {
-	console.log("indexedCells " + txt);
-	res = txt.trim().split(" ");
-	cellTxt = [];
-	for (i = 0; i < res.length; i++) {
-		txt = '';
-		key = res[i].substring(0, 2);
-		if (cellTxt[key])
-			txt = cellTxt[key];
-		style = colorMap[res[i].substring(2)] == null ? '<div>'
-				+ res[i].substring(2) + '</div>' : '<div '
-				+ colorMap[res[i].substring(2)] + '>' + res[i].substring(2)
-				+ '</div>';
-		txt += style;
-		cellTxt[key] = txt;
-		console.log(cellTxt[0]);
-
-	}
-	imgtable = '<table id="cellTable" style="width: 825px;">';
-	imgtable += '<tr><td align="center"></td><td align="center">a</td><td align="center">b</td><td align="center">c</td><td align="center">d</td><td align="center">e</td>	<td align="center">f</td><td align="center">g</td>';
-	counter = 0;
-	row = 0;
-	for (y = 0; y < CELL_ROWS; y++) {
-		for (x = 0; x < CELL_COLS; x++) {
-			if (counter % CELL_COLS == 0) {
-				imgtable += '<tr>';
-				imgtable += '<td style="width: 16px;">' + row++ + '</td>';
-
-			}
-			imgtable += '<td valign="top" style="border: 1px solid black; width: 115px;">'
-					+ cellTxt[y.toString() + String.fromCharCode(97 + x)]
-					+ '</td>';
-			counter++;
-		}
-	}
-	imgtable += '</table>'
-
-	$('#txt').append(imgtable);
 }
 
 function changeQueryBySampleMod(mode) {
@@ -1307,94 +1255,94 @@ function changeQueryBySampleMod(mode) {
 		document.getElementById("imageToUpload").style.display = 'none';
 		document.getElementById("urlToUpload").style.display = '';
 		document.getElementById("imageToUpload").value = '';
-		
-		document.getElementById("searchbar").enctype="";
-		document.getElementById("searchbar").method="GET";
+
+		document.getElementById("searchbar").enctype = "";
+		document.getElementById("searchbar").method = "GET";
 	} else {
 		document.getElementById("uploadText").style.display = '';
 		document.getElementById("uploadLink").style.display = 'none';
 		document.getElementById("urlText").style.display = 'none';
 		document.getElementById("urlLink").style.display = '';
-		
+
 		document.getElementById("urlToUpload").style.display = 'none';
 		document.getElementById("imageToUpload").style.display = '';
 		document.getElementById("urlToUpload").value = '';
-		
-		document.getElementById("searchbar").enctype="multipart/form-data";
-		document.getElementById("searchbar").method="POST";
+
+		document.getElementById("searchbar").enctype = "multipart/form-data";
+		document.getElementById("searchbar").method = "POST";
 	}
 }
 
 function includeHTML() {
-  var z, i, elmnt, file, xhttp;
-  /* Loop through a collection of all HTML elements: */
-  z = document.getElementsByTagName("*");
-  for (i = 0; i < z.length; i++) {
-    elmnt = z[i];
-    /*search for elements with a certain atrribute:*/
-    file = elmnt.getAttribute("w3-include-html");
-    if (file) {
-      /* Make an HTTP request using the attribute value as the file name: */
-      xhttp = new XMLHttpRequest();
-      xhttp.onreadystatechange = function() {
-        if (this.readyState == 4) {
-          if (this.status == 200) {elmnt.innerHTML = this.responseText;}
-          if (this.status == 404) {elmnt.innerHTML = "Page not found.";}
-          /* Remove the attribute, and call this function once more: */
-          elmnt.removeAttribute("w3-include-html");
-          includeHTML();
-        }
-      }
-      xhttp.open("GET", file, true);
-      xhttp.send();
-      /* Exit the function: */
-      return;
-    }
-  }
+	var z, i, elmnt, file, xhttp;
+	/* Loop through a collection of all HTML elements: */
+	z = document.getElementsByTagName("*");
+	for (i = 0; i < z.length; i++) {
+		elmnt = z[i];
+		/*search for elements with a certain atrribute:*/
+		file = elmnt.getAttribute("w3-include-html");
+		if (file) {
+			/* Make an HTTP request using the attribute value as the file name: */
+			xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function () {
+				if (this.readyState == 4) {
+					if (this.status == 200) { elmnt.innerHTML = this.responseText; }
+					if (this.status == 404) { elmnt.innerHTML = "Page not found."; }
+					/* Remove the attribute, and call this function once more: */
+					elmnt.removeAttribute("w3-include-html");
+					includeHTML();
+				}
+			}
+			xhttp.open("GET", file, true);
+			xhttp.send();
+			/* Exit the function: */
+			return;
+		}
+	}
 }
 
 function canvasClean(idx) {
-	prevOccur[idx] = $('#and'+ idx).is(':checked');
-	$('input:radio[name=occur' + idx +']')[0].checked = true;
-	
-	prevTextual[idx] = $("#textual"+ idx).val();
-	$("#textual"+ idx).val('');
-	
-	if ($('#textualMode'+idx).is(':checked')) {
+	prevOccur[idx] = $('#and' + idx).is(':checked');
+	$('input:radio[name=occur' + idx + ']')[0].checked = true;
+
+	prevTextual[idx] = $("#textual" + idx).val();
+	$("#textual" + idx).val('');
+
+	if ($('#textualMode' + idx).is(':checked')) {
 		prevTextualMode[idx] = "aladin";
 	}
 	else
 		prevTextualMode[idx] = "clip";
-	$('#textualMode'+idx).prop('checked', false);
+	$('#textualMode' + idx).prop('checked', false);
 
-	
+
 	prevNotField[idx] = $("#not" + idx).val();
 	$("#not" + idx).val('');
-	
-	if ($('#isColor'+idx).is(':checked')) {
+
+	if ($('#isColor' + idx).is(':checked')) {
 		prevIsColor[idx] = true;
 	}
 	else
 		prevIsColor[idx] = false;
-	$('#isColor'+idx).prop('checked', false);
-	
-	if ($('#isGray'+idx).is(':checked')) {
+	$('#isColor' + idx).prop('checked', false);
+
+	if ($('#isGray' + idx).is(':checked')) {
 		prevIsGray[idx] = true;
 	}
 	else
 		prevIsGray[idx] = false;
-	$('#isGray'+idx).prop('checked', false);
-	
-	prevCanvasObjects[idx] = canvases[idx].getObjects();		
-	
+	$('#isGray' + idx).prop('checked', false);
+
+	prevCanvasObjects[idx] = canvases[idx].getObjects();
+
 	canvases[idx].discardActiveObject().renderAll();
-	canvases[idx].getObjects().forEach(function(o) {
-		console.log("----> "+o.get('type'));
+	canvases[idx].getObjects().forEach(function (o) {
+		console.log("----> " + o.get('type'));
 		if (o.get('type') != 'line') {
-        	$("#" + o.get('uuid')).hide();
-        	canvases[idx].remove(o);
-		} 
-    })
+			$("#" + o.get('uuid')).hide();
+			canvases[idx].remove(o);
+		}
+	})
 }
 
 function reset() {
@@ -1416,27 +1364,27 @@ function undoReset() {
 
 function canvasCleanUndo(idx) {
 	if (prevOccur[idx] == false)
-		$('input:radio[name=occur' + idx +']')[1].checked = true;
+		$('input:radio[name=occur' + idx + ']')[1].checked = true;
 	$("#textual" + idx).val(prevTextual[idx]);
-	
+
 	if (prevTextualMode[idx] == "aladin")
-		$('#textualMode'+idx).prop('checked', true);
-	
+		$('#textualMode' + idx).prop('checked', true);
+
 	if (prevIsColor[idx] == true)
-		$('#isColor'+idx).prop('checked', true);
-		
+		$('#isColor' + idx).prop('checked', true);
+
 	if (prevIsGray[idx] == true)
-		$('#isGray'+idx).prop('checked', true);
-	
+		$('#isGray' + idx).prop('checked', true);
+
 	$('#or0').prop('checked', !prevOccur[0]);
-	
+
 	$("#not" + idx).val(prevNotField[idx]);
-	prevCanvasObjects[idx].forEach(function(o) {
+	prevCanvasObjects[idx].forEach(function (o) {
 		if (o.get('type') != 'line') {
-	        canvases[idx].add(o);
-        	$("#" + o.get('uuid')).show();
+			canvases[idx].add(o);
+			$("#" + o.get('uuid')).show();
 		}
-    })
+	})
 }
 
 function displayAdvancedToggle() {
@@ -1453,28 +1401,28 @@ function initLayout() {
 	document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
 	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
 	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
-	document.getElementById('newsession').style.display='none';
+	document.getElementById('newsession').style.display = 'none';
 }
 
 function displayAdvanced(isToDisplay) {
 	isAdvanced = isToDisplay
 
 	if (isAdvanced) {
-		document.getElementById('newsession').style.display='block';
-		setDisplayTo="block";
+		document.getElementById('newsession').style.display = 'block';
+		setDisplayTo = "block";
 		//document.getElementById('block0').style.position='relative';
-		document.getElementById('block0').style.display='block';
-		document.getElementById('block1').style.display='block';
+		document.getElementById('block0').style.display = 'block';
+		document.getElementById('block1').style.display = 'block';
 
 
-		document.getElementById('sceneDes1').style.display='block';
-		document.getElementById('simplified1').style.display='block';
-		document.getElementById("simplified0").className='simplified0'
-		document.getElementById("sceneDes0").className='fa fa-hourglass-start fa-2x'
+		document.getElementById('sceneDes1').style.display = 'block';
+		document.getElementById('simplified1').style.display = 'block';
+		document.getElementById("simplified0").className = 'simplified0'
+		document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
 		//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
 		//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
-		document.getElementById('textualOptions0').style.display='block'
-		document.getElementById('textualOptions1').style.display='block'
+		document.getElementById('textualOptions0').style.display = 'block'
+		document.getElementById('textualOptions1').style.display = 'block'
 
 
 		//document.getElementById('sceneDes0').style.display='none';
@@ -1484,17 +1432,17 @@ function displayAdvanced(isToDisplay) {
 		//$("#div_textual0").appendTo("#textual0_container");
 		//document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
 		//document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
-		document.getElementById("visionelogo").className='visioneLogo'
-		document.getElementById("visionelogoImg").className='visionelogoImg'
+		document.getElementById("visionelogo").className = 'visioneLogo'
+		document.getElementById("visionelogoImg").className = 'visionelogoImg'
 		//$('.sidebarGrid').css('width', '0px');
 	}
 	else {
-		setDisplayTo="none";
+		setDisplayTo = "none";
 		//document.getElementById('block0').style.position='static';
-		document.getElementById('block0').style.display='none';
-		document.getElementById('block1').style.display='none';
-		document.getElementById('textualOptions0').style.display='none'
-		document.getElementById('textualOptions1').style.display='none'
+		document.getElementById('block0').style.display = 'none';
+		document.getElementById('block1').style.display = 'none';
+		document.getElementById('textualOptions0').style.display = 'none'
+		document.getElementById('textualOptions1').style.display = 'none'
 		//document.getElementById('sceneDes0').style.display='block';
 		//document.getElementById('sceneDes1').style.display='block';
 
@@ -1507,34 +1455,34 @@ function displayAdvanced(isToDisplay) {
 
 		//$("#div_textual0").appendTo("#simplified0");
 
-		if (latestQuery == "")	{
-			document.getElementById('sceneDes1').style.display='none';
-			document.getElementById('simplified1').style.display='none';
-			document.getElementById("simplified0").className='simplifiedSearchBar'
-			document.getElementById("visionelogo").className='visioneLogo_bigger'
-			document.getElementById("visionelogoImg").className='visionelogoImg_bigger'
-			document.getElementById("sceneDes0").className='fa fa-hourglass-start_ppp fa-2x'
-			document.getElementById('textualOptions0').style.display='none'
-			document.getElementById('newsession').style.display='none';
+		if (latestQuery == "") {
+			document.getElementById('sceneDes1').style.display = 'none';
+			document.getElementById('simplified1').style.display = 'none';
+			document.getElementById("simplified0").className = 'simplifiedSearchBar'
+			document.getElementById("visionelogo").className = 'visioneLogo_bigger'
+			document.getElementById("visionelogoImg").className = 'visionelogoImg_bigger'
+			document.getElementById("sceneDes0").className = 'fa fa-hourglass-start_ppp fa-2x'
+			document.getElementById('textualOptions0').style.display = 'none'
+			document.getElementById('newsession').style.display = 'none';
 
-			
+
 			$('#sceneDes0').css('width', '530px');
 		} else {
-			document.getElementById('sceneDes1').style.display='block';
-			document.getElementById('simplified1').style.display='block';
-			document.getElementById("simplified0").className='simplified0'
-			document.getElementById("visionelogo").className='visioneLogo'
-			document.getElementById("visionelogoImg").className='visionelogoImg'
-			document.getElementById('newsession').style.display='block';
+			document.getElementById('sceneDes1').style.display = 'block';
+			document.getElementById('simplified1').style.display = 'block';
+			document.getElementById("simplified0").className = 'simplified0'
+			document.getElementById("visionelogo").className = 'visioneLogo'
+			document.getElementById("visionelogoImg").className = 'visionelogoImg'
+			document.getElementById('newsession').style.display = 'block';
 
-		}	
+		}
 
-		
+
 
 	}
 	var elements = document.getElementsByClassName("advanced");
-	for(var i=0; i<elements.length; i++) {
-		elements[i].style.display = setDisplayTo;		
+	for (var i = 0; i < elements.length; i++) {
+		elements[i].style.display = setDisplayTo;
 	}
 	searchByForm();
 }
