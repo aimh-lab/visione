@@ -1,7 +1,0 @@
-{
-"liveServer.settings.https": {
-"enable": true,
-"cert": "/media/data2/development/cert/bilioso_cert/cert.pem",
-"key": "/media/data2/development/cert/bilioso_cert/privkey.pem"
-}
-}
