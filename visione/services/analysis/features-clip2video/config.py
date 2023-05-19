@@ -9,7 +9,7 @@ class Config:
         self.data_path = 'data/msrvtt_data/MSRVTT_data.json'
         self.features_path = None
         self.num_thread_reader = 4
-        self.batch_size_val = 64
+        # self.batch_size_val = 64
         self.seed = 42
         self.max_words = 32
         self.max_frames = 36

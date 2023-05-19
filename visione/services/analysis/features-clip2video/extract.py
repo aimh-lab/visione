@@ -4,8 +4,6 @@ import os
 # from .preprocessing import preprocess_shots
 import importlib
 from pathlib import Path
-# preprocessing = importlib.import_module("visione.services.analysis.features-clip2video.preprocessing")
-# c2v = importlib.import_module("visione.services.analysis.features-clip2video")
 from preprocessing import preprocess_shots
 
 from visione.services.common.extractor import BaseVideoExtractor
@@ -22,13 +20,15 @@ import random
 import tqdm
 import h5py
 import sys
-modules_path = os.path.dirname(os.path.abspath(__file__)) + '/CLIP2Video'
-sys.path.insert(0, modules_path)
-from modules.modeling import CLIP2Video
 
 from config import Config
 from dataset import c2v_dataloader
 
+# This is required to consider the CLIP2Video repo like a set of packages that we can import (e.g., modules, utils)
+modules_path = os.path.dirname(os.path.abspath(__file__)) + '/CLIP2Video'
+sys.path.insert(0, modules_path)
+
+from modules.modeling import CLIP2Video
 from utils.utils import get_logger
 
 def set_seed_logger(args):
@@ -77,9 +77,9 @@ def init_device(args, local_rank):
     logger.info("device: {} n_gpu: {}".format(device, n_gpu))
     args.n_gpu = n_gpu
 
-    if args.batch_size_val % args.n_gpu != 0:
-        raise ValueError("Invalid batch_size/batch_size_val and n_gpu parameter: {}%{} and {}%{}, should be == 0".format(
-            args.batch_size, args.n_gpu, args.batch_size_val, args.n_gpu))
+    # if args.batch_size_val % args.n_gpu != 0:
+    #     raise ValueError("Invalid batch_size/batch_size_val and n_gpu parameter: {}%{} and {}%{}, should be == 0".format(
+    #         args.batch_size, args.n_gpu, args.batch_size_val, args.n_gpu))
 
     return device, n_gpu
 
@@ -118,7 +118,7 @@ def init_model(args, device):
     return model
 
 
-def extract_video_features(model, test_dataloader, device, n_gpu, logger, output_file):
+def extract_video_features(model, test_dataloader, device, n_gpu, logger):
     """run similarity in one single gpu
     Args:
         model: CLIP2Video
@@ -155,23 +155,19 @@ def extract_video_features(model, test_dataloader, device, n_gpu, logger, output
 
     model.eval()
 
-    with h5py.File(output_file, 'w') as f:
-        feats = f.create_dataset("features", (len(test_dataloader.dataset), 512), dtype=np.float32)
-        dt = h5py.string_dtype(encoding='utf-8')
-        img_ids = f.create_dataset('image_names', (len(test_dataloader.dataset), ), dtype=dt)
-        with torch.no_grad():
-            for bid, batch in enumerate(tqdm.tqdm(test_dataloader)):
-                batch = tuple(t.to(device) if isinstance(t, torch.Tensor) else t for t in batch)
-                video, video_mask, shot_ids, batch_id = batch
+    with torch.no_grad():
+        for bid, batch in enumerate(tqdm.tqdm(test_dataloader)):
+            assert bid == 0 # if everything is ok, we only perform 1 dataloader iteration (batch_size == num videos to process)
+            batch = tuple(t.to(device) if isinstance(t, torch.Tensor) else t for t in batch)
+            video, video_mask, shot_ids, batch_id = batch
 
-                batch_id, shot_ids = batch_id.tolist(), list(shot_ids)
+            batch_id, shot_ids = batch_id.tolist(), list(shot_ids)
 
-                visual_output = model.get_visual_output(video, video_mask)
-                visual_features = model.get_video_features(visual_output, video_mask)
+            visual_output = model.get_visual_output(video, video_mask)
+            visual_features = model.get_video_features(visual_output, video_mask)
 
-                feats[batch_id, :] = visual_features.cpu().numpy()
-                for image_name, idx in zip(shot_ids, batch_id):
-                    img_ids[idx] = np.array(image_name.encode("utf-8"), dtype=dt)
+            records = [{'feature_vector': f.tolist()} for f in visual_features.cpu().numpy()]
+            return records
 
 
 class CLIP2VideoExtractor(BaseVideoExtractor):
@@ -196,45 +192,46 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
             # create directory for temp videos
             self.temp_video_path.mkdir(exist_ok=True, parents=True)
 
-            conf = Config(
+            self.conf = Config(
                 video_path=self.temp_video_path,
                 checkpoint='/disks/workspace/Workspace/visione/visione/services/analysis/features-clip2video/checkpoints',
                 clip_path='/disks/workspace/Workspace/visione/visione/services/analysis/features-clip2video/checkpoints/ViT-B-32.pt'
             )
 
             # set the seed
-            conf = set_seed_logger(conf)
+            self.conf = set_seed_logger(self.conf)
 
             # setting the testing device
-            self.device, self.n_gpu = init_device(conf, conf.local_rank)
+            self.device, self.n_gpu = init_device(self.conf, self.conf.local_rank)
 
             # init model
-            self.model = init_model(conf, self.device)
-
-            # init test dataloader
-            self.test_dataloader, test_length = c2v_dataloader(conf)
+            self.model = init_model(self.conf, self.device)
 
             # print information for debugging
-            if conf.local_rank == 0:
-                logger.info("***** Running test *****")
-                logger.info("  Num examples = %d", test_length)
-                logger.info("  Batch size = %d", conf.batch_size_val)
-                logger.info("  Num steps = %d", len(self.test_dataloader))
+            # if self.conf.local_rank == 0:
+            #     logger.info("***** Running test *****")
+            #     logger.info("  Num examples = %d", test_length)
+            #     logger.info("  Batch size = %d", self.conf.batch_size_val)
+            #     logger.info("  Num steps = %d", len(self.test_dataloader))
 
     def extract(self, shot_paths_and_times):
         self.setup()  # lazy load model
+
+        # init test dataloader
+        _, _, shot_paths, *_ = zip(*shot_paths_and_times)
+        dataloader, _ = c2v_dataloader(self.conf, shot_paths)
 
         # preprocess shots using ffmpeg
         preprocess_shots(shot_paths_and_times)
 
         # extract
-        # extract_video_features(
-        #     self.model, 
-        #     self.test_dataloader, 
-        #     self.device, 
-        #     self.n_gpu, 
-        #     logger
-        # )
+        extract_video_features(
+            self.model, 
+            dataloader,
+            self.device, 
+            self.n_gpu, 
+            logger
+        )
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import torch
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 
 
-def c2v_dataloader(args):
+def c2v_dataloader(args, video_paths):
     """return dataloader for testing 1k-A protocol
     Args:
         args: hyper-parameters
@@ -28,7 +28,7 @@ def c2v_dataloader(args):
     ])
 
     vbs_dataset = Clip2VideoDataset(
-        video_path=args.video_path,
+        video_paths=video_paths,
         max_frames=args.max_frames,
         sample_framerate=args.feature_framerate,
         size=n_px,
@@ -37,7 +37,7 @@ def c2v_dataloader(args):
 
     dataloader = DataLoader(
         vbs_dataset,
-        batch_size=args.batch_size_val,
+        batch_size=len(video_paths),
         num_workers=args.num_thread_reader,
         shuffle=False,
         drop_last=False,
@@ -60,18 +60,18 @@ class Clip2VideoDataset(Dataset):
     """
     def __init__(
             self,
-            video_path,
+            video_paths,
             transform=None,
             max_frames=100,
             sample_framerate=2,
             size=224
     ):
-        file_list_path = os.path.join(video_path, 'shot_list.txt')
-        with open(file_list_path, 'r') as f:
-            self.data = f.read().splitlines()
-        if not os.path.isfile(os.path.join(video_path, self.data[0])):
-            raise ValueError('Probably the shot list contains wrong paths! For example: {}'.format(self.data[0]))
-        self.video_path = video_path
+        # file_list_path = os.path.join(video_path, 'shot_list.txt')
+        # with open(file_list_path, 'r') as f:
+        #     self.data = f.read().splitlines()
+        # if not os.path.isfile(os.path.join(video_path, self.data[0])):
+        #     raise ValueError('Probably the shot list contains wrong paths! For example: {}'.format(self.data[0]))
+        self.video_paths = video_paths
         self.max_frames = max_frames
         self.sample_framerate = sample_framerate
         self.transform = transform
@@ -84,7 +84,7 @@ class Clip2VideoDataset(Dataset):
             length: length of data loader
         """
 
-        length = len(self.data)
+        length = len(self.video_paths)
         return length
 
     def __getitem__(self, item_id):
@@ -104,15 +104,13 @@ class Clip2VideoDataset(Dataset):
         video = torch.zeros(1, self.max_frames, 1, 3, self.size, self.size)
 
         # video_path
-        shot_relative_path = self.data[item_id]
-        shot_path = os.path.join(self.video_path, shot_relative_path)
+        shot_path = self.shot_paths[item_id]
 
         # get the shot id from the shot path
-        shot_id = os.path.split(shot_relative_path)[1]
-        shot_id = os.path.splitext(shot_id)[0]
+        shot_id = shot_path.stem
 
         # get sampling frames
-        loaded_video, _, _ = torchvision.io.read_video(shot_path, pts_unit='sec')
+        loaded_video, _, _ = torchvision.io.read_video(shot_path.as_posix(), pts_unit='sec')
         if loaded_video.nelement() == 0:
             print('0 size! Possible corruption!')
         # raw_video_data = []
