@@ -2,8 +2,8 @@ import argparse
 import logging
 import os
 
-from visione.extractor import BaseExtractor
-
+from visione.services.common.extractor import BaseExtractor
+# from visione.extractor import BaseExtractor
 
 loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 for logger in loggers:
