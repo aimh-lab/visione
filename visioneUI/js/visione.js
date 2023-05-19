@@ -1423,6 +1423,8 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 		document.getElementById('textualOptions0').style.display = 'block'
 		document.getElementById('textualOptions1').style.display = 'block'
+		document.getElementById('textual0').style.width = '25vw'
+
 
 
 		//document.getElementById('sceneDes0').style.display='none';
@@ -1443,6 +1445,8 @@ function displayAdvanced(isToDisplay) {
 		document.getElementById('block1').style.display = 'none';
 		document.getElementById('textualOptions0').style.display = 'none'
 		document.getElementById('textualOptions1').style.display = 'none'
+		document.getElementById('textual0').style.width = '35vw'
+
 		//document.getElementById('sceneDes0').style.display='block';
 		//document.getElementById('sceneDes1').style.display='block';
 
@@ -1464,9 +1468,6 @@ function displayAdvanced(isToDisplay) {
 			document.getElementById("sceneDes0").className = 'fa fa-hourglass-start_ppp fa-2x'
 			document.getElementById('textualOptions0').style.display = 'none'
 			document.getElementById('newsession').style.display = 'none';
-
-
-			$('#sceneDes0').css('width', '530px');
 		} else {
 			document.getElementById('sceneDes1').style.display = 'block';
 			document.getElementById('simplified1').style.display = 'block';
