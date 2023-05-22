@@ -56,7 +56,7 @@
 }
 
 body{
-	font-size: 11px;
+	font-size: 10px;
 }
 
 
@@ -283,15 +283,23 @@ video::-webkit-media-controls {
 }
 
 .visioneLogo_bigger {
-    display: flex;
+  position: absolute;
+  left: 40vw;
+  top: 6vw;
+}
+
+.visioneLogo_biggerv2 {
+  position: absolute;
+    grid-template-columns: 1fr;
     justify-content: center;
     align-items: center;
     height: 25vh; /* Imposta l'altezza della pagina intera */
+
   }
 
 .visioneLogo_bigger img {
-    height: 60px;
-  }
+  width: 25vw;
+}
 
 .visionelogo {
   display: flex;
@@ -310,19 +318,19 @@ video::-webkit-media-controls {
 }
 
 .simplified0 {
-  width: 500px;
+  width: 25vw;
+  min-width: 200px;
   padding-top: 10px;
   height: 40px;
   color: #A7090E;
-  border: 1px solid #008b8b;
 
 }
 
 .simplified1 {
-  width: 500px;
+  width: 25vw;
+  min-width: 360px;
   height: 40px;
   color: #008b8b;
-  border: 1px solid #008b8b;
 
 }
 
@@ -401,10 +409,15 @@ video::-webkit-media-controls {
  }
 
  .scene0 {
+align-items: center;
   color: #a41318;
   border-color: #a41318;
   border: 1px;
   border-style: solid;
+
+  border-radius: 15px; 
+  padding: 5px;
+  margin-top: 5px;
  }
 
  .scene1 {
@@ -412,6 +425,14 @@ video::-webkit-media-controls {
   border-color: #13a0a0;
   border: 1px;
   border-style: solid;
+
+  border-radius: 15px; 
+  padding: 5px;
+  margin-top: 5px;
+ }
+
+ .palette {
+  padding: 5px;
  }
 
  ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -474,4 +495,22 @@ video::-webkit-media-controls {
 
 .column-span-11 {
   grid-column: span 11;
+}
+
+.canvasClean {
+  display: grid;
+  grid-template-columns: 100px 60px 70px;
+  /* Dimensioni delle colonne */
+  grid-gap: 1px;
+  vertical-align: middle;
+}
+
+.canvasCleanItem {
+  padding: 1px;
+}
+
+.colorCheckbox {
+  background: linear-gradient(to right, #FF0000 0%, #00FF00 100%); 
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent;
 }

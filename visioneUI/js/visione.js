@@ -1423,7 +1423,6 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 		document.getElementById('textualOptions0').style.display = 'block'
 		document.getElementById('textualOptions1').style.display = 'block'
-		document.getElementById('textual0').style.width = '25vw'
 
 
 
@@ -1436,6 +1435,8 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
 		document.getElementById("visionelogo").className = 'visioneLogo'
 		document.getElementById("visionelogoImg").className = 'visionelogoImg'
+		document.getElementById('textual0').style.width = '25vw'
+
 		//$('.sidebarGrid').css('width', '0px');
 	}
 	else {
