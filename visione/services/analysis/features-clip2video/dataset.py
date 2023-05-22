@@ -104,7 +104,7 @@ class Clip2VideoDataset(Dataset):
         video = torch.zeros(1, self.max_frames, 1, 3, self.size, self.size)
 
         # video_path
-        shot_path = self.shot_paths[item_id]
+        shot_path = self.video_paths[item_id]
 
         # get the shot id from the shot path
         shot_id = shot_path.stem

@@ -8,7 +8,7 @@ RUN git clone --recursive https://github.com/CryhanFang/CLIP2Video
 RUN pip install -r CLIP2Video/requirements.txt
 
 # Install other dependencies
-RUN pip install gdown more_itertools
+RUN pip install gdown more_itertools av
 
 # Download CLIP and CLIP2Video models
 RUN mkdir -p checkpoint && \

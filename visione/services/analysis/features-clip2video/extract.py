@@ -23,12 +23,12 @@ import sys
 
 from config import Config
 from dataset import c2v_dataloader
+from model import CLIP2VideoWrapped
 
 # This is required to consider the CLIP2Video repo like a set of packages that we can import (e.g., modules, utils)
 modules_path = os.path.dirname(os.path.abspath(__file__)) + '/CLIP2Video'
 sys.path.insert(0, modules_path)
 
-from modules.modeling import CLIP2Video
 from utils.utils import get_logger
 
 def set_seed_logger(args):
@@ -111,7 +111,7 @@ def init_model(args, device):
             logger.info("Model loaded fail %s", model_file)
 
     # Prepare model
-    model = CLIP2Video.from_pretrained(args.cross_model, cache_dir=None, state_dict=model_state_dict,
+    model = CLIP2VideoWrapped.from_pretrained(args.cross_model, cache_dir=None, state_dict=model_state_dict,
                                        task_config=args)
     model.to(device)
 
@@ -217,21 +217,22 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     def extract(self, shot_paths_and_times):
         self.setup()  # lazy load model
 
+        # preprocess shots using ffmpeg
+        shot_paths = preprocess_shots(shot_paths_and_times, out_folder=self.temp_video_path)
+
         # init test dataloader
-        _, _, shot_paths, *_ = zip(*shot_paths_and_times)
         dataloader, _ = c2v_dataloader(self.conf, shot_paths)
 
-        # preprocess shots using ffmpeg
-        preprocess_shots(shot_paths_and_times)
-
         # extract
-        extract_video_features(
+        features = extract_video_features(
             self.model, 
             dataloader,
             self.device, 
             self.n_gpu, 
             logger
         )
+
+        return features
 
 
 if __name__ == "__main__":

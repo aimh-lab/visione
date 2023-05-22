@@ -57,10 +57,13 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Pat
         else:
             skip = False
         # out_video_ext = '.mp4' # os.path.splitext(mp4_file)[1]
-        out_file = out_folder / '{}_{}.mp4'.format(video_id, shot_id_visione) # os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
+        out_file = out_folder / f'{shot_id_visione}.mp4' # out_folder / '{}_{}.mp4'.format(video_id, shot_id_visione) # os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
         lines.append((video_path, start_time, end_time, out_file))
 
     # starting parallel ffmpeg processing, multi-threaded
     with Pool(processes=num_threads) as p:
         for _ in tqdm.tqdm(p.imap_unordered(process, lines), total=len(lines)):
             pass
+
+    shot_paths = [l[3] for l in lines]
+    return shot_paths

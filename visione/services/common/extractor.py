@@ -180,7 +180,7 @@ class BaseVideoExtractor(object):
             assert num_cols == 10
 
             # parse the rest of the file
-            parse_row = lambda row: (video_id, row[0], video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
+            parse_row = lambda row: (video_id, f'{video_id}-{int(row[0]):03}', video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
 
             next(reader)    # skips the header
             shot_paths_and_times = [parse_row(row) for row in reader]
