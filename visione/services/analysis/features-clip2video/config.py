@@ -8,7 +8,7 @@ class Config:
         self.video_path = video_path
         self.data_path = 'data/msrvtt_data/MSRVTT_data.json'
         self.features_path = None
-        self.num_thread_reader = 4
+        self.num_thread_reader = 0
         # self.batch_size_val = 64
         self.seed = 42
         self.max_words = 32
@@ -35,3 +35,4 @@ class Config:
         self.center_weight = 0.5
         self.center_proj = 'TAB_TDB'
         self.clip_path = clip_path
+        self.gpu = True

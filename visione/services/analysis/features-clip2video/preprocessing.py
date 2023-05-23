@@ -28,7 +28,7 @@ def process(line):
     mp4_name, start_time, end_time, out_folder = line
     extract_frames(mp4_name.as_posix(), start_time, end_time, out_folder.as_posix())
 
-def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Path("video_feat_extraction")):
+def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Path("video_feat_extraction"), parallel=True):
     """
     Preprocesses the shot metadata and performs ffmpeg processing.
     It includes merging together the shots if they are too short, if needed.
@@ -60,10 +60,14 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Pat
         out_file = out_folder / f'{shot_id_visione}.mp4' # out_folder / '{}_{}.mp4'.format(video_id, shot_id_visione) # os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
         lines.append((video_path, start_time, end_time, out_file))
 
-    # starting parallel ffmpeg processing, multi-threaded
-    with Pool(processes=num_threads) as p:
-        for _ in tqdm.tqdm(p.imap_unordered(process, lines), total=len(lines)):
-            pass
+    if parallel:
+        # starting parallel ffmpeg processing, multi-threaded
+        with Pool(processes=num_threads) as p:
+            for _ in tqdm.tqdm(p.imap_unordered(process, lines), total=len(lines)):
+                pass
+    else:
+        for line in tqdm.tqdm(lines):
+            process(line)
 
     shot_paths = [l[3] for l in lines]
     return shot_paths

@@ -19,6 +19,9 @@ services:
 
   features-clip-laion:
     volumes: ["./analysis/features-clip:/usr/src/app"]
+  
+  features-clip2video:
+    volumes: ["./analysis/features-clip2video:/usr/src/app"]
 
   features-gem:
     volumes:

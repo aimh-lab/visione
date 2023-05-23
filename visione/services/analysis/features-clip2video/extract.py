@@ -2,12 +2,11 @@ import argparse
 import os
 
 # from .preprocessing import preprocess_shots
-import importlib
 from pathlib import Path
 from preprocessing import preprocess_shots
 
-from visione.services.common.extractor import BaseVideoExtractor
-# from visione.extractor import BaseExtractor
+# from visione.services.common.extractor import BaseVideoExtractor
+from visione.extractor import BaseVideoExtractor
 
 # loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 # for logger in loggers:
@@ -72,7 +71,7 @@ def init_device(args, local_rank):
 
      """
     global logger
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu", local_rank)
+    device = torch.device("cuda" if args.gpu and torch.cuda.is_available() else "cpu", local_rank)
     n_gpu = torch.cuda.device_count()
     logger.info("device: {} n_gpu: {}".format(device, n_gpu))
     args.n_gpu = n_gpu
@@ -176,7 +175,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     def add_arguments(cls, parser):
         # parser.add_argument('--model-handle', default=os.environ['MODEL_HANDLE'], help='hugging face handle of the CLIP model')
         super(CLIP2VideoExtractor, cls).add_arguments(parser)
-        parser.add_argument('--temp_video_path', default=Path("videotemp/"), help="Where to store pre-processed videos for features extraction")
+        parser.add_argument('--temp_video_path', type=Path, default=Path("/data/temp-videos-for-video-extraction/"), help="Where to store pre-processed videos for features extraction")
 
     def __init__(self, args):
         super(CLIP2VideoExtractor, self).__init__(args)
@@ -194,12 +193,14 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
 
             self.conf = Config(
                 video_path=self.temp_video_path,
-                checkpoint='/disks/workspace/Workspace/visione/visione/services/analysis/features-clip2video/checkpoints',
-                clip_path='/disks/workspace/Workspace/visione/visione/services/analysis/features-clip2video/checkpoints/ViT-B-32.pt'
+                checkpoint='checkpoint', # 'visione/services/analysis/features-clip2video/checkpoint',
+                clip_path='checkpoint/ViT-B-32.pt' # 'visione/services/analysis/features-clip2video/checkpoint/ViT-B-32.pt'
             )
 
             # set the seed
             self.conf = set_seed_logger(self.conf)
+
+            self.conf.gpu = args.gpu
 
             # setting the testing device
             self.device, self.n_gpu = init_device(self.conf, self.conf.local_rank)

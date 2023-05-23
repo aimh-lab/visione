@@ -161,29 +161,58 @@ class BaseVideoExtractor(object):
         """ Parses the input file and returns a list of 
         (video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time) tuples. """
         input_shots = self.args.input_shots
+
+        # FIXME: these two if branches can be merged together using the code in the else branch (bulk processing)
         if input_shots.is_dir():
+            # inputs_shots is the directory of a single video
             video_id = input_shots.stem
             scenes_file = self.args.input_shots / f'{video_id}-scenes.csv'
             assert scenes_file.is_file()  # input should be a file, parse it
             video_path = input_shots.parents[1] / 'videos' / f'{video_id}.mp4'
+
+            with scenes_file.open() as f:
+                reader = csv.reader(f)
+
+                # peek at the first line to determine the number of columns
+                peek, reader = itertools.tee(reader)
+                num_cols = len(next(peek))
+                del peek
+
+                assert num_cols == 10
+
+                # parse the rest of the file
+                parse_row = lambda row: (video_id, f'{video_id}-{int(row[0]):03}', video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
+
+                next(reader)    # skips the header
+                shot_paths_and_times = [parse_row(row) for row in reader]
+
         else:
-            raise ValueError()
+            # input_shots is a tsv file containing (video_id, frame_id, frame_path)
+            with input_shots.open() as image_list:
+                bulk_reader = csv.reader(image_list, delimiter='\t')
 
-        with scenes_file.open() as f:
-            reader = csv.reader(f)
+                shot_paths_and_times = []
 
-            # peek at the first line to determine the number of columns
-            peek, reader = itertools.tee(reader)
-            num_cols = len(next(peek))
-            del peek
+                # for each video, read the scenes.csv to get the time information
+                for video_id, group in itertools.groupby(bulk_reader, key=lambda x: x[0]):
 
-            assert num_cols == 10
+                    # get scenes file and video path from the frame path
+                    group = [(vid, fid, Path(fpath)) for vid, fid, fpath in group]
+                    scenes_file = group[0][2].parent / f'{video_id}-scenes.csv'
+                    video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
 
-            # parse the rest of the file
-            parse_row = lambda row: (video_id, f'{video_id}-{int(row[0]):03}', video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
+                    # read the scenes.csv file
+                    with scenes_file.open() as scenes:
+                        scenes_reader = csv.reader(scenes)
 
-            next(reader)    # skips the header
-            shot_paths_and_times = [parse_row(row) for row in reader]
+                        # skips the header
+                        next(scenes_reader)
+
+                        frame_id_to_timeinfo_dict = {int(row[0]): (int(row[1]), float(row[3]), int(row[4]), float(row[6])) for row in scenes_reader}
+
+                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(g[2].stem.split('-')[1])]) for g in group]
+                    shot_paths_and_times.extend(rows)
+
 
         return shot_paths_and_times
 
@@ -224,6 +253,8 @@ class BaseVideoExtractor(object):
 
         if not self.args.force:
             shot_paths_and_times = self.skip_existing(shot_paths_and_times, progress)
+
+        # shot_paths_and_times = zip(more_itertools.padded(more_itertools.unzip(shot_paths_and_times), fillvalue=(), n=7))
 
         # process images in batches
         batched_image_paths = more_itertools.chunked(shot_paths_and_times, self.args.batch_size)

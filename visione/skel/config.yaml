@@ -43,6 +43,7 @@ analysis:
     - aladin
     - clip-openai
     - clip-laion
+    - clip2video
 
   frame_cluster:
     feature: gem  # Which feature vector to employ in frames clustering.
@@ -252,6 +253,10 @@ index:
         dim_multiplier: 2
 
     clip-openai:
+      index_engine: faiss
+      index_type: Flat
+
+    clip2video:
       index_engine: faiss
       index_type: Flat
 

@@ -80,6 +80,13 @@ services:
     profiles: ["analysis", "features-clip-laion"]
     deploy: *needs_gpu
 
+  features-clip2video:
+    build: ./analysis/features-clip2video
+    image: visione/features-clip2video
+    volumes: *common_volumes
+    profiles: ["analysis", "features-clip2video"]
+    deploy: *needs_gpu
+
   features-aladin:
     build: ./analysis/features-aladin
     image: visione/features-aladin
