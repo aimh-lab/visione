@@ -210,7 +210,7 @@ class BaseVideoExtractor(object):
 
                         frame_id_to_timeinfo_dict = {int(row[0]): (int(row[1]), float(row[3]), int(row[4]), float(row[6])) for row in scenes_reader}
 
-                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(g[2].stem.split('-')[1])]) for g in group]
+                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(g[2].stem.split('-')[-1])]) for g in group]
                     shot_paths_and_times.extend(rows)
 
 
@@ -234,16 +234,16 @@ class BaseVideoExtractor(object):
 
     def skip_existing(self, shot_paths_and_times, progress=None):
         """ Skips shots that have already been processed. """
+        to_be_processed = []
         for video_id, group in itertools.groupby(shot_paths_and_times, key=lambda x: x[0]):
             with self.get_saver(video_id) as saver:
-                to_be_processed = []
                 for video_id, shot_id, image_path, *other in group:
                     if shot_id not in saver:
                         to_be_processed.append((video_id, shot_id, image_path, *other))
                     elif progress:
                         progress.initial += 1
-            # ensure saver is closed before yielding from group
-            yield from to_be_processed
+                        
+        return to_be_processed
 
     def run(self):
         shot_paths_and_times = self.parse_input()
@@ -253,8 +253,8 @@ class BaseVideoExtractor(object):
 
         if not self.args.force:
             shot_paths_and_times = self.skip_existing(shot_paths_and_times, progress)
-
-        # shot_paths_and_times = zip(more_itertools.padded(more_itertools.unzip(shot_paths_and_times), fillvalue=(), n=7))
+            if len(shot_paths_and_times) == 0:
+                return None
 
         # process images in batches
         batched_image_paths = more_itertools.chunked(shot_paths_and_times, self.args.batch_size)

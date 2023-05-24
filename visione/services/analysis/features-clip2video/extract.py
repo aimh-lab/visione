@@ -218,7 +218,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     def extract(self, shot_paths_and_times):
         self.setup()  # lazy load model
 
-        # preprocess shots using ffmpeg
+        # preprocess shots using ffmpeg and return their paths
         shot_paths = preprocess_shots(shot_paths_and_times, out_folder=self.temp_video_path)
 
         # init test dataloader
