@@ -1,395 +1,89 @@
 <!DOCTYPE html>
 <html>
 
-<head>
-	<meta charset="UTF-8">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="task" content="KIS">
 
-	<meta name="task" content="KIS">
-	<meta name="dataset" content="v3c">
+		<title>Episode IV-A New VISIONE</title>
+		<link rel="stylesheet" href="css/jquery-ui.min.css">
+		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+		<link rel="stylesheet" href="css/bootstrap.css">
+		<link rel="stylesheet" href="css/visione.css">
+		<link rel="stylesheet" href="css/toggle.css">
+		<script src="js/jquery-3.3.1.min.js"></script>
+		<script src="js/jquery-ui.min.js"></script>
+		<script src="js/fabric.js"></script>
+		<script src="js/visione.js"></script>
+		<script src="js/visioneAVS.js"></script>
+		<script src="js/canvas.js"></script>
+		<script src="js/search_bar_templates.js"></script>
+	</head>
 
+	<body oncontextmenu="return true;">
+		<div id="content" class="containerGrid">
+			<div class="headerGrid">
+				<div class="headerItem">
+					<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session"
+						onclick="startNewKISSession()">
+						<i class="fas fa-sync-alt"></i> Restart</i>
+					</button>
 
-	<title>Episode IV-A New VISIONE</title>
-	<link rel="stylesheet" href="css/jquery-ui.min.css">
-	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
-	<link rel="stylesheet" href="css/bootstrap.css">
-	<link rel="stylesheet" href="css/visione.css">
-	<link rel="stylesheet" href="css/toggle.css">
-	<script src="js/jquery-3.3.1.min.js"></script>
-	<script src="js/jquery-ui.min.js"></script>
-	<script src="js/fabric.js"></script>
-	<script src="js/visione.js"></script>
-	<script src="js/visioneAVS.js"></script>
-	<script src="js/canvas.js"></script>
-	<script src="js/search_bar_templates.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/@viselect/vanilla/lib/viselect.cjs.js"></script>
+					<div id="qbe" w3-include-html="filters.html"></div>
 
-
-	<style>
-		body {
-			overflow: auto;
-		}
-
-		.containerGrid {
-			height: 100vh;
-			width: 100vw;
-			display: grid;
-			grid-template-columns: 1fr;
-			grid-template-rows:  1fr 10fr 0fr;
-		}
-
-		.headerGrid {
-			display: grid;
-			grid-template-columns: 130px 130px 110px 4fr 4fr 1fr;
-			/* Dimensioni delle colonne */
-			grid-gap: 10px;
-			height: 120px;
-		}
-
-		.headerItem {
-			padding: 10px;
-		}
-
-		.sidebarGrid {
-			border: 0px solid lightgrey;
-			max-width: 310px;
-			overflow-y: auto;
-			padding: 5px;
-			align-items: center;
-		}
-
-		.footerGrid {
-			border-top: 0px solid lightgrey;
-		}
-
-		.bodyGrid {
-			display: grid;
-			grid-template-columns: 1fr 4.2fr;
-			overflow: hidden;
-		}
-
-		.contentGrid {
-			overflow-y: auto;
-			border-left: 0px solid green;
-		}
-	</style>
-
-</head>
-
-<body oncontextmenu="return false;">
-
-	<div id="content" class="containerGrid">
-		<div class="headerGrid">
-			<div class="headerItem" style="padding-right: 4%;">
-				<button id="newsession" class="btn btn-warning btn-sm" style="border-radius: 10px;"
-					title="Start a new Session" onclick="startNewKISSession()">
-					<i class="fas fa-sync-alt"></i> Restart</i>
-				</button>
-				<div class="advanced" style="margin-top: 10px;">
-					<b style="font-size: 140%;"><input id='simreorder' type="checkbox"
-							onchange="setSimReorder(this)">&nbsp;Sim Reorder</b>
+					<div id="dialog" title="Tag Name">
+						<label>tag</label> <input id="tag" name="tag" type="text">
+					</div>
 				</div>
-				<div id="dialog" title="Tag Name">
-					<label>tag</label> <input id="tag" name="tag" type="text">
+				<div class="headerItem" id="advancedMode">ADVANCED</div>
+
+				<div class="headerItem tg-list-item advancedToggle">
+					<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
+					<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
+				</div>
+				<div class="headerItem">
+					<div class="headerItem advanced simreorder">
+						<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
+					</div>
+				</div>
+
+				<div class="headerItem" id="simplified0">
+					<i id="sceneDes0" aria-hidden="true"> Describe the scene</i>
+				</div>
+				<div class="headerItem" id="simplified1">
+					<i id="sceneDes1" class="fa fa-hourglass-end fa-2x" aria-hidden="true"> Describe
+						the next scene (optional)</i>
+				</div>
+				<div id="visionelogo" class="headerItem">
+					<img id="visionelogoImg" src="img/logoVISIONE.png" alt="">
+					<!--<img
+						src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+						style="border-radius: 20px 20px 20px 20px;" alt="">-->
+				</div>
+
+
+			</div>
+			<div class="bodyGrid">
+				<div class="sidebarGrid" id="searchSidebar">
+					<div w3-include-html="palette.html" class="palette"></div>
+					<div id='searchTab'></div>
+
+				</div>
+
+				<div class="contentGrid" id="content">
+					<div id='results'></div>
+					<ol id="recordingsList"></ol>
 				</div>
 			</div>
-			<div class="headerItem" style="font-size: larger; font-weight: bold;">ADVANCED MODE</div>
-			<div class="headerItem tg-list-item">
-				<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
-				<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
-			</div>
-			<div class="headerItem simplified0" id="simplified0">
-				<i id="sceneDes0" aria-hidden="true" style="color: #a41318;"> Describe the scene</i>
-			</div>
-			<div class="headerItem simplified1" id="simplified1">
-				<i id="sceneDes1" class="fa fa-hourglass-end fa-2x" aria-hidden="true" style="color: #13a0a0;"> Describe
-					the next scene (optional)</i>
-			</div>
-			<div id="visionelogo" class="headerItem visionelogo">
-				<img id="visionelogoImg" src="img/logoVISIONE.png" alt="">
-				<!--<img
-					src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-					style="border-radius: 20px 20px 20px 20px;" alt="">-->
-			</div>
 		</div>
-		<div class="bodyGrid">
-			<div class="sidebarGrid" id="searchSidebar">
-				<div w3-include-html="palette.html" class="palette"></div>
-				<div id='searchTab'></div>
-				<hr class="advanced">
-				<div w3-include-html="filters.html"></div>
 
-			</div>
+		<script>
+			$(document).ready(init());
+		</script>
 
-			<div class="contentGrid" id="content">
-				<div id='results'></div>
-				<ol id="recordingsList"></ol>
-			</div>
-		</div>
-	</div>
-
-	<script>
-		$(document)
-			.ready(
-				function () {
-
-					$(function () {
-						$("#dialog").dialog({
-							autoOpen: false
-						});
-					});
-					includeHTML();
-					setCollection("v3c")
-
-					$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', "fa fa-hourglass-start fa-1x"));
-					//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
-					//$("#searchTab").append(addButton);
-					$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', "fa fa-hourglass-end fa-1x"));
-					//$("#searchTab").append(addButton);
-
-					canvas0 = get_canvas('canvas0', 'annotations0',
-						'not0');
-					canvas1 = get_canvas('canvas1', 'annotations1',
-						'not1');
-					canvases = [canvas0, canvas1];
-
-					$('#content').on('drop', dropImage);
-
-					$("#clean0").on('click', function (e) {
-						if (!isCanvasClean[0]) {
-							isCanvasClean[0] = true;
-							canvasClean(0);
-							searchByForm();
-							//performSearch(cell2Text(0), cell2Text(1));
-						}
-					});
-
-					$("#clean1").on('click', function (e) {
-						if (!isCanvasClean[1]) {
-							isCanvasClean[1] = true;
-							canvasClean(1);
-							//performSearch(cell2Text(0), cell2Text(1));
-							searchByForm();
-						}
-					});
-
-					$("#reset").on('click', function (e) {
-						if (!isReset) {
-							isReset = true;
-							reset();
-							//performSearch(cell2Text(0), cell2Text(1));
-							searchByForm();
-						}
-					});
-
-					$("#textual0")
-						.keyup(
-							function (event) {
-								if (event.keyCode === 13) {
-									$("#textual0")
-										.val(
-											$(
-												"#textual0")
-												.val()
-												.replace(
-													/(\r\n|\n|\r)/gm,
-													""));
-									queryByTextual();
-								}
-								if ($("#textual0").val() == "")
-									document.getElementById('cancelText0').style.display = 'none'
-								else
-									document.getElementById('cancelText0').style.display = 'block'
-							});
-
-					$("#textual1")
-						.keyup(
-							function (event) {
-								if (event.keyCode === 13) {
-									$("#textual1")
-										.val(
-											$(
-												"#textual1")
-												.val()
-												.replace(
-													/(\r\n|\n|\r)/gm,
-													""));
-									queryByTextual();
-								}
-								if ($("#textual1").val() == "")
-									document.getElementById('cancelText1').style.display = 'none'
-								else
-									document.getElementById('cancelText1').style.display = 'block'
-							})
-
-					$("#undo0").on('click', function (e) {
-						if (isCanvasClean[0]) {
-							isCanvasClean[0] = false;
-							canvasCleanUndo(0);
-							//performSearch(cell2Text(0), cell2Text(1));
-							searchByForm();
-						}
-					});
-
-					$("#undo1").on('click', function (e) {
-						if (isCanvasClean[1]) {
-							isCanvasClean[1] = false;
-							canvasCleanUndo(1);
-							//performSearch(cell2Text(0), cell2Text(1));
-							searchByForm();
-						}
-					});
-
-					$("#undoReset").on('click', function (e) {
-						if (isReset) {
-							isReset = false;
-							undoReset();
-							//performSearch(cell2Text(0), cell2Text(1));
-							searchByForm();
-						}
-					});
-
-					var blink0 = null;
-					var blink1 = null;
-
-					$("#recordButton0")
-						.on(
-							'click',
-							function (e) {
-								if ($("#recordButton0").css('color') == "rgb(0, 128, 0)") {
-									document.getElementById('cancelText0').style.display = 'none'
-									$("#textual0").val("")
-									$("#recordButton0").css('color', 'red');
-									$("#recordButton0").css('font-size', 'xx-large');
-									blink0 = setInterval(() => {
-										$('#recordButton0').fadeIn();
-										$('#recordButton0').fadeOut();
-									}, 100);
-
-									startRecording(0);
-								}
-								else {
-									clearInterval(blink0);
-									$('#recordButton0').finish();
-									$('#recordButton0').show();
-									$("#recordButton0").css('color', 'green');
-									$("#recordButton0").css('font-size', 'medium');
-
-
-									stopRecording(0);
-
-								}
-							});
-
-					$("#recordButton1")
-						.on(
-							'click',
-							function (e) {
-								if ($("#recordButton1").css('color') == "rgb(0, 128, 0)") {
-									document.getElementById('cancelText1').style.display = 'none'
-									$("#textual1").val("")
-
-									$("#recordButton1").css('color', 'red');
-									$("#recordButton1").css('font-size', 'xx-large');
-
-									blink1 = setInterval(() => {
-										$('#recordButton1').fadeIn();
-										$('#recordButton1').fadeOut();
-									}, 100);
-									startRecording(1);
-								}
-								else {
-									clearInterval(blink1);
-									$('#recordButton1').finish();
-									$('#recordButton1').show();
-									$("#recordButton1").css('color', 'green');
-									$("#recordButton1").css('font-size', 'medium');
-
-									stopRecording(1);
-
-								}
-
-							});
-
-					$("#cancelText0")
-						.on(
-							'click',
-							function (e) {
-								$("#textual0").val('');
-								document.getElementById('cancelText0').style.display = 'none'
-								searchByForm();
-
-
-							});
-					$("#cancelText1")
-						.on(
-							'click',
-							function (e) {
-								$("#textual1").val('');
-								document.getElementById('cancelText1').style.display = 'none'
-								searchByForm();
-
-							});
-					/*
-												$("#stopButton0")
-														.on(
-																'click',
-																function(e) {
-																	document
-																			.getElementById("recordButton0").style.display = 'block';
-																	document
-																			.getElementById("stopButton0").style.display = 'none';
-																	stopRecording(0);
-																});
-					
-												$("#stopButton1")
-														.on(
-																'click',
-																function(e) {
-																	document
-																			.getElementById("recordButton1").style.display = 'block';
-																	document
-																			.getElementById("stopButton1").style.display = 'none';
-																	stopRecording(1);
-																});
-					*/
-					canvas0.renderAll();
-
-					initLayout();
-
-					displayAdvanced(false);
-
-
-					var script = document.createElement('script');
-					script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
-					document.head.appendChild(script)
-					script = document.createElement('script');
-					script.src = "js/WebAudioRecorder/audioRecorder.js";
-					document.head.appendChild(script);
-
-
-					/*var script = document.createElement('script');
-					script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
-					document.head.appendChild(script)
-					script = document.createElement('script');
-					script.src = "js/WebAudioRecorder/audioRecorder.js";
-					document.head.appendChild(script)
-
-					const microphoneIcon = document.querySelector('.microphone-icon');
-					const inputText = document.querySelector('input[type="text"]');
-				  
-					microphoneIcon.addEventListener('click', () => {
-					  // Avvia la registrazione audio
-					  console.log('Registrazione audio avviata');
-					});*/
-
-				});
-	</script>
-
-	<!-- inserting these scripts at the end to be able to use all the elements in the DOM 
-	<script src="js/WebAudioRecorder/WebAudioRecorder.min.js"></script>
-	<script src="js/WebAudioRecorder/audioRecorder.js"></script>-->
-
-
-</body>
+		<!-- inserting these scripts at the end to be able to use all the elements in the DOM 
+		<script src="js/WebAudioRecorder/WebAudioRecorder.min.js"></script>
+		<script src="js/WebAudioRecorder/audioRecorder.js"></script>-->
+	</body>
 
 </html>

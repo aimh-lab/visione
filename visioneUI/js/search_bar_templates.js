@@ -11,7 +11,7 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 	<div class="advanced scene${canvasID}" id='canvasTab'>
 		<div class="advanced">
 			<div id="description_objects${canvasID}">
-				<h6>${infoText} <i style="float:right" id="sceneDes${canvasID}" class="${css_class}"></i></h6>
+				<h6>${infoText} <i id="sceneDes${canvasID}" class="${css_class}"></i></h6>
 			</div>
 			<span >
 				<input type="radio" id="canvas${canvasID}_enabled" name="canvas${canvasID}" value="enabled" checked onchange="setCanvasState(0, this)">
@@ -48,6 +48,8 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 						<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
 						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
 						<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
+						<i class="fa fa-search fa-SM fa-fw" style="left:10px; color:gray;"></i>
+						<i id="cancelText${canvasID}" class="fa fa-magnifying fa-lg fa-fw" aria-hidden="true" style="left:10px; color:gray;"></i>
 					</div>
 				</div>
 			</div>

@@ -414,39 +414,31 @@ function cell2Text(idx) {
 	//occur = $('input[name="occur' + idx + '"]:checked').val();
 	//simreorder = $("#simreorder").is(":checked");
 
-	var queryObj = new Object();
-	var queryParameters = {};
+	let queryObj = new Object();
+	let queryParameters = {};
 
-	objects = '';
-	txt = '';
-	query = '';
-	colors = [];
+	let objects = '';
+	let txt = '';
+	let query = '';
+	let colors = [];
 
 	console.log(idx);
 	canvases[idx].getObjects().forEach(
 		function (o) {
 			if (o.get('type') == 'rect') {
 				if (o && o.oCoords) {
-					startCol = Math.floor(Math.max(0, o.oCoords.tl.x)
-						/ cellWidth);
-					endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x)
-						/ cellWidth); resultsSortedByVideo = [];
-
-
-					startRow = Math.floor(Math.max(0, o.oCoords.tr.y)
-						/ cellHeight);
-					endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y)
-						/ cellHeight);
+					var startCol = Math.floor(Math.max(0, o.oCoords.tl.x) / cellWidth);
+					var endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x) / cellWidth); resultsSortedByVideo = [];
+					var startRow = Math.floor(Math.max(0, o.oCoords.tr.y) / cellHeight);
+					var endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y) / cellHeight);
 				} else {
-					startCol = Math.floor(Math.max(0, o.left) / cellWidth);
-					endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width))
-						/ cellWidth);
+					var startCol = Math.floor(Math.max(0, o.left) / cellWidth);
+					var endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width)) / cellWidth);
 
-					startRow = Math.floor(Math.max(0, o.top) / cellHeight);
-					endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height))
-						/ cellHeight);
+					var startRow = Math.floor(Math.max(0, o.top) / cellHeight);
+					var endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height)) / cellHeight);
 				}
-				label = $("#" + o.uuid).attr('title').trim();
+				let label = $("#" + o.uuid).attr('title').trim();
 
 				if (o.uuid.startsWith('color_')) {
 					colors.push(label);
@@ -454,8 +446,8 @@ function cell2Text(idx) {
 					objects += label + " ";
 				}
 
-				for (row = startRow; row < endRow; row++) {
-					for (col = startCol; col < endCol; col++) {
+				for (let row = startRow; row < endRow; row++) {
+					for (let col = startCol; col < endCol; col++) {
 						// txt += col + String.fromCharCode(97 + row) +
 						// label + '%5E' + boost + ' ' ;
 						txt += row + String.fromCharCode(97 + col) + label
@@ -464,7 +456,7 @@ function cell2Text(idx) {
 				}
 			}
 		})
-	for (cIdx = 0; cIdx < colors.length; cIdx++) {
+	for (let cIdx = 0; cIdx < colors.length; cIdx++) {
 		objects += colors[cIdx] + " ";
 	}
 
@@ -483,15 +475,15 @@ function cell2Text(idx) {
 	//textualMode = $("#textualmode" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 	//clip = $("#clip" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 
-	notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-	textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	let notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	let textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 
 	if (notField != '') {
-		items = notField.split(" ");
-		parsedField = '';
-		for (i = 0; i < items.length; i++) {
+		let items = notField.split(" ");
+		let parsedField = '';
+		for (let i = 0; i < items.length; i++) {
 			if (!isNaN(items[i])) {
-				freq = Math.max((+items[i] + 1), 0);
+				let freq = Math.max((+items[i] + 1), 0);
 				i++;
 				parsedField += items[i] + freq + " ";
 			} else
@@ -501,19 +493,7 @@ function cell2Text(idx) {
 		notField = ' -' + notField.replace(new RegExp(" ", "g"), ' -');
 	}
 
-	if (objects != '') {
-		groups = '';
-		if ((group = objects.match('\\((.*?)\\)'))) {
-			objects = objects.replace("\\(" + group[1] + "\\)", '');
-			groups += group;
-		}
-
-		// console.log(a.match('\\((.*?)\\)')[1]);
-		// console.log(a.replace(new RegExp("\\((.*?)\\)", "g"), ''));
-
-		// or queries disabled
-		// objects += groups;
-	} else if (notField != '')
+	if (notField != '')
 		objects = "*";
 
 	objects += notField;
@@ -545,7 +525,7 @@ function cell2Text(idx) {
 }
 
 function timestamp() {
-	time = Math.floor(new Date() / 1000);
+	let time = Math.floor(new Date() / 1000);
 	console.log(" DATE " + time);
 	return;
 }
@@ -553,23 +533,22 @@ function timestamp() {
 function searchByLink(queryID) {
 	//prevQuery = query;
 	if (queryID != null) {
-		jsonString = JSON.stringify(queryID);
+		let jsonString = JSON.stringify(queryID);
 		jsonString = '{"query":[' + jsonString + '], "parameters":[{"simReorder":"' + simreorder.toString() + '"}]}';
 		//		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
 		//queryID = '{"query":[' + queryID + ']}';
 		search2(jsonString);
-
-
 	}
 	else
 		$("#imgGridResults").remove();
 }
 
 function searchByForm() {
-	jsonStringQuery = "";
-	queriesArr = []
-	parameteresArr = []
-	for (cellIndex = 0; cellIndex < tempSearchForms; cellIndex++) {
+	let queriesArr = []
+	let parameteresArr = []
+	let jsonString = ""
+
+	for (let cellIndex = 0; cellIndex < tempSearchForms; cellIndex++) {
 		cellQuery = cell2Text(cellIndex);
 		if (cellQuery != null) {
 			queriesArr.push(cellQuery[0])
@@ -578,12 +557,10 @@ function searchByForm() {
 	}
 	prevQuery = queriesArr;
 	if (queriesArr.length > 0) {
-		jsonStringQuery = JSON.stringify(queriesArr);
-		jsonStringParameters = JSON.stringify(parameteresArr);
+		let jsonStringQuery = JSON.stringify(queriesArr);
+		let jsonStringParameters = JSON.stringify(parameteresArr);
 		jsonString = '{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters + '}';
 	}
-	else
-		jsonString = ""
 	search2(jsonString);
 }
 
@@ -661,21 +638,21 @@ function searchByCLIPSimilarity(query) {
 function sortByVideo(data) {
 	resultsSortedByVideo = [];
 	if (data != null && data.trim() != "") {
-		var res = JSON.parse(data);
+		let res = JSON.parse(data);
 
 		console.log("Sort By Video " + res.length);
 		if (res.length != 0) {
-			dataDict = {};
+			let dataDict = {};
 
-			keys = [];
+			let keys = [];
 
 			for (i = 0; i < res.length; i++) {
-				imgId = res[i].imgId;
-				videoId = res[i].videoId;
-				score = res[i].score;
-				collection = res[i].collection;
+				let imgId = res[i].imgId;
+				let videoId = res[i].videoId;
+				let score = res[i].score;
+				let collection = res[i].collection;
 
-				value = dataDict[videoId];
+				let value = dataDict[videoId];
 				if (value == null) {
 					value = [];
 					keys[keys.length] = videoId;
@@ -687,7 +664,7 @@ function sortByVideo(data) {
 			// console.log(keys);
 			for (i = 0; i < keys.length; i++) {
 				// console.log(i + " " + dataDict[keys[i]]);
-				resPerVideo = dataDict[keys[i]];
+				let resPerVideo = dataDict[keys[i]];
 				for (j = 0; j < resPerVideo.length; j++) {
 					resultsSortedByVideo.push(resPerVideo[j]);
 				}
@@ -792,10 +769,9 @@ function undoCanvas() {
 	searchByForm();
 }
 
-
 function setCanvasState(canvasId) {
-	canvas0State = $('input[name="canvas0"]:checked').val();
-	canvas1State = $('input[name="canvas1"]:checked').val();
+	let canvas0State = $('input[name="canvas0"]:checked').val();
+	let canvas1State = $('input[name="canvas1"]:checked').val();
 	if (canvas0State == "enabled") {
 		enableCanvas(0, true);
 	} else {
@@ -859,7 +835,7 @@ function set169(checkbox) {
 }
 
 function queryByExample(imgUrl) {
-	var queryObj = new Object();
+	let queryObj = new Object();
 	queryObj.qbe = imgUrl;
 	searchByLink(queryObj);
 }
@@ -873,21 +849,30 @@ function queryByCLIP() {
 }
 
 function fromIDtoColor(id, numberborderColors) { // FRANCA
-	var idH = id.hashCode();
-	borderColorsIdx = idH % numberborderColors;
+	let borderColorsIdx = id.hashCode() % numberborderColors;
 	return borderColorsIdx;
 }
 
-
 String.prototype.hashCode = function () {// FRANCA
-	var hash = 0;
+	let hash = 0;
 	if (this.length == 0) return hash;
-	for (j = 0; j < this.length; j++) {
-		char = this.charCodeAt(j);
+	for (let j = 0; j < this.length; j++) {
+		let char = this.charCodeAt(j);
 		hash = ((hash << 5) - hash) + char;
 		hash = hash & hash;
 	}
 	return hash;
+}
+
+function displaySimplifiedUI() {
+	document.getElementById('sceneDes1').style.display = 'block';
+	document.getElementById('simplified1').style.display = 'block';
+	document.getElementById("simplified0").className = 'simplified0'
+	document.getElementById("visionelogo").className = 'visioneLogo'
+	document.getElementById("visionelogoImg").className = 'visionelogoImg'
+	document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
+	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 }
 
 function showResults(data) {
@@ -901,77 +886,39 @@ function showResults(data) {
 	$("#imgGridResults").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
+
+	var imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
+
 	if ((data == null || data == "") && latestQuery != "") {
 		imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 		$("#results").append(imgGridResults);
-		if (!isAdvanced) {
-			//document.getElementById('searchTab').className='simplifiedSearchBar'
-			//document.getElementById('block1').style.display='none';
-
-
-		}
-
-		//document.getElementById("textual0").className='simplifiedSearchBar'
-		console.log(document.getElementById("textual0"))
-
-	} else if ((data == null || data == "")) {
-		if (!isAdvanced) {
-			//document.getElementById("textual0").className='simplifiedSearchBar'
-			//document.getElementById('block1').style.display='none';
-		}
-
 	} else if (data != null && data != "") {
-		//document.getElementById("textual0").className='ppp'
-		console.log(document.getElementById("textual0"))
+		if (!isAdvanced)
+			displaySimplifiedUI();
 
-		if (!isAdvanced) {
-
-			document.getElementById('sceneDes1').style.display = 'block';
-			document.getElementById('simplified1').style.display = 'block';
-			document.getElementById("simplified0").className = 'simplified0'
-			document.getElementById("visionelogo").className = 'visioneLogo'
-			document.getElementById("visionelogoImg").className = 'visionelogoImg'
-			document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-			document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-			document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
-		}
-
-		var res = JSON.parse(data);
-		//patch temporanea 20/07/20 per il merge
-		//if (res.length > 1200)
-		//	res = res.slice(0, 1200);
-		if (res.length == 0) {
+		let res = JSON.parse(data);
+		if (res.length == 0)
 			imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-			if (!isAdvanced) {
-				//document.getElementById("textual0").className='simplifiedSearchBar'
-
-			}
-			console.log(document.getElementById("textual0"))
-		}
 		else {
 			document.getElementById('block1').style.display = 'block';
 			document.getElementById('newsession').style.display = 'block';
 
-			borderColorsIdx = 0;
-			numberborderColors = borderColors.length;
-			imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
-			prevID = '';
+			let prevID = '';
 
-			itemPerRow = 0;
+			let itemPerRow = 0;
 			let columnIdx = 1;
-			for (i = 0; i < res.length; i++) {
-				imgId = res[i].imgId;
-				videoId = res[i].videoId;
+			for (let i = 0; i < res.length; i++) {
+				let imgId = res[i].imgId;
+				let videoId = res[i].videoId;
 
-				score = res[i].score;
-				collection = res[i].collection;
+				let score = res[i].score;
+				let collection = res[i].collection;
 
-				path = collection + "/" + videoId + "/" + imgId;
-				frameNumber = imgId.split('_').pop();
-
+				let path = collection + "/" + videoId + "/" + imgId;
+				let frameNumber = imgId.split('_').pop();
 
 				if (i > 0 && videoId != prevID) {
-					spanVal = 11 - columnIdx;
+					let spanVal = 11 - columnIdx;
 					columnIdx = 1;
 					if (spanVal > 0)
 						imgGridResults += '<div class="column-span-' + spanVal + '"></div>';
@@ -983,9 +930,9 @@ function showResults(data) {
 					imgGridResults += '<div class="item column-span-1"><a href="showVideoKeyframes.html?collection=' + collection + '&videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
 
 				}
-				borderColorsIdx = fromIDtoColor(videoId, numberborderColors); // FRANCA
+				let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
 				prevID = videoId;
-				videoUrl = videoUrlPrefix + videoId + ".mp4";
+				let videoUrl = videoUrlPrefix + videoId + ".mp4";
 				videoUrlPreview = videoshrinkUrl + videoId + ".mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
 				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path)
@@ -1005,13 +952,13 @@ function showResults(data) {
 		imgGridResults += '</div>';
 		$("#results").append(imgGridResults);
 		if (res.length > 1) {
-			for (i = 0; i < res.length; i++) {
-				imgId = res[i].imgId;
-				score = res[i].score;
-				collection = res[i].collection;
+			for (let i = 0; i < res.length; i++) {
+				let imgId = res[i].imgId;
+				let score = res[i].score;
+				let collection = res[i].collection;
 
-				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				var cip = $('#' + imgId4Regex).hover(hoverVideo, hideVideo);
+				let imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
+				let cip = $('#' + imgId4Regex).hover(hoverVideo, hideVideo);
 
 				function hoverVideo(e) {
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
@@ -1050,7 +997,6 @@ function showResults(data) {
 						return false;
 					});
 
-
 				}
 
 				function hideVideo(e) {
@@ -1079,9 +1025,8 @@ function showResults(data) {
 	}
 }
 
-
 function getResultData(collection, videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
-	resultData = new Object();
+	let resultData = new Object();
 	resultData.collection = collection;
 	resultData.videoId = videoId;
 	resultData.imgId = imgId;
@@ -1135,13 +1080,8 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 function playVideoWindow(videoURL, videoId, imgId) {
 	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
-	//video = videoId.split(QUERY_SPLIT);
-	numTime = imgId;
-	var time = getStartTime(numTime);
-	//var time = getMiddleTimestamp(numTime);
-	//url = videoUrl + collection.toUpperCase() + "/videos/" +videoId+"/"+videoId+".mp4";
+	var time = getStartTime(imgId);
 	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
-
 }
 
 function generateUUID(color) {
@@ -1174,11 +1114,11 @@ $(document).on('click', ".deleteBtn", function (event) {
 
 dropImage = function (e) {
 
-	activeCanvas = canvas0;
-	activeCanvasIdx = 0;
+	let activeCanvas = canvas0;
+	let activeCanvasIdx = 0;
 	var pointer = canvas1.getPointer(event.e);
-	var posX = pointer.x;
-	var posY = pointer.y;
+	let posX = pointer.x;
+	let posY = pointer.y;
 	if ((posX >= 0 && posX <= canvasWidth) && (posY >= 0 && posY <= canvasHeight)) {
 		activeCanvas = canvas1;
 		activeCanvasIdx = 1;
@@ -1187,20 +1127,20 @@ dropImage = function (e) {
 	if (draggedLabel != '') {
 		scale = 16;
 
-		var dt = e.originalEvent.dataTransfer, files = dt.files;
+		let dt = e.originalEvent.dataTransfer, files = dt.files;
 		e = e || window.event;
 		e.preventDefault();
 		e.stopPropagation();
-		textVal = e.target.id;
+		let textVal = e.target.id;
 
 		$('.refs').removeClass('highlight');
 
 		if (e.target.nodeName == "CANVAS") {
-			var pointer = activeCanvas.getPointer(e);
-			origX = pointer.x;
-			origY = pointer.y;
-			var imgElement = document.getElementById(draggedLabel);
-			color = imgElement.alt == 'color' ? true : false;
+			let pointer = activeCanvas.getPointer(e);
+			let origX = pointer.x;
+			let origY = pointer.y;
+			let  imgElement = document.getElementById(draggedLabel);
+			let color = imgElement.alt == 'color' ? true : false;
 			if (color) {
 				scale = 11;
 			}
@@ -1274,10 +1214,10 @@ function changeQueryBySampleMod(mode) {
 }
 
 function includeHTML() {
-	var z, i, elmnt, file, xhttp;
+	let z, i, elmnt, file, xhttp;
 	/* Loop through a collection of all HTML elements: */
 	z = document.getElementsByTagName("*");
-	for (i = 0; i < z.length; i++) {
+	for (let i = 0; i < z.length; i++) {
 		elmnt = z[i];
 		/*search for elements with a certain atrribute:*/
 		file = elmnt.getAttribute("w3-include-html");
@@ -1314,7 +1254,6 @@ function canvasClean(idx) {
 	else
 		prevTextualMode[idx] = "clip";
 	$('#textualMode' + idx).prop('checked', false);
-
 
 	prevNotField[idx] = $("#not" + idx).val();
 	$("#not" + idx).val('');
@@ -1404,83 +1343,40 @@ function initLayout() {
 	document.getElementById('newsession').style.display = 'none';
 }
 
-function displayAdvanced(isToDisplay) {
-	isAdvanced = isToDisplay
+function displayAdvanced(isAdv) {
+	isAdvanced = isAdv;
 
 	if (isAdvanced) {
-		document.getElementById('newsession').style.display = 'block';
 		setDisplayTo = "block";
-		//document.getElementById('block0').style.position='relative';
 		document.getElementById('block0').style.display = 'block';
 		document.getElementById('block1').style.display = 'block';
-
-
-		document.getElementById('sceneDes1').style.display = 'block';
-		document.getElementById('simplified1').style.display = 'block';
-		document.getElementById("simplified0").className = 'simplified0'
-		document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-		//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-		//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 		document.getElementById('textualOptions0').style.display = 'block'
 		document.getElementById('textualOptions1').style.display = 'block'
-
-
-
-		//document.getElementById('sceneDes0').style.display='none';
-		//document.getElementById('sceneDes1').style.display='none';
-
-		//document.getElementById('collectionsTab').style.display='block';
-		//$("#div_textual0").appendTo("#textual0_container");
-		//document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
-		//document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
-		document.getElementById("visionelogo").className = 'visioneLogo'
-		document.getElementById("visionelogoImg").className = 'visionelogoImg'
-		document.getElementById('textual0').style.width = '25vw'
-
-		//$('.sidebarGrid').css('width', '0px');
-	}
-	else {
+	} else {
 		setDisplayTo = "none";
-		//document.getElementById('block0').style.position='static';
 		document.getElementById('block0').style.display = 'none';
 		document.getElementById('block1').style.display = 'none';
 		document.getElementById('textualOptions0').style.display = 'none'
 		document.getElementById('textualOptions1').style.display = 'none'
-		document.getElementById('textual0').style.width = '35vw'
+	}
 
-		//document.getElementById('sceneDes0').style.display='block';
-		//document.getElementById('sceneDes1').style.display='block';
-
-		//document.getElementById('collectionsTab').style.display='none';
-		//document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
-		//document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
-		$("#visionelogo").appendTo("#visionelogo_sidebar");
-		//$('.sidebarGrid').css('width', '330px');
-
-
-		//$("#div_textual0").appendTo("#simplified0");
-
-		if (latestQuery == "") {
-			document.getElementById('sceneDes1').style.display = 'none';
-			document.getElementById('simplified1').style.display = 'none';
-			document.getElementById("simplified0").className = 'simplifiedSearchBar'
-			document.getElementById("visionelogo").className = 'visioneLogo_bigger'
-			document.getElementById("visionelogoImg").className = 'visionelogoImg_bigger'
-			document.getElementById("sceneDes0").className = 'fa fa-hourglass-start_ppp fa-2x'
-			document.getElementById('textualOptions0').style.display = 'none'
-			document.getElementById('newsession').style.display = 'none';
-		} else {
-			document.getElementById('sceneDes1').style.display = 'block';
-			document.getElementById('simplified1').style.display = 'block';
-			document.getElementById("simplified0").className = 'simplified0'
-			document.getElementById("visionelogo").className = 'visioneLogo'
-			document.getElementById("visionelogoImg").className = 'visionelogoImg'
-			document.getElementById('newsession').style.display = 'block';
-
-		}
-
-
-
+	if (latestQuery != "" || isAdvanced) {
+		document.getElementById('sceneDes1').style.display = 'block';
+		document.getElementById('simplified1').style.display = 'block';
+		document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
+		document.getElementById("simplified0").className = 'simplified0'
+		document.getElementById("textual0").className = 'textualquery0'
+		document.getElementById("visionelogo").className = 'visioneLogo'
+		document.getElementById('newsession').style.display = 'block';
+	} else {
+		document.getElementById('sceneDes1').style.display = 'none';
+		document.getElementById('simplified1').style.display = 'none';
+		document.getElementById("simplified0").className = 'simplifiedSearchBar'
+		document.getElementById("textual0").className = 'textualquery0'
+		document.getElementById("textual0").className = 'simplifiedTextual0'
+		document.getElementById("visionelogo").className = 'visioneLogo_bigger'
+		document.getElementById('newsession').style.display = 'none';
+		document.getElementById("sceneDes0").className = 'fa fa-2x'
 	}
 	var elements = document.getElementsByClassName("advanced");
 	for (var i = 0; i < elements.length; i++) {
@@ -1504,6 +1400,261 @@ function createInputTextWithMic() {
 	inputText.appendChild(micIcon);
 	console.log(inputText);
 	return inputText;
+}
+
+
+function init() {
+
+	$(function () {
+		$("#dialog").dialog({
+			autoOpen: false
+		});
+	});
+	includeHTML();
+	setCollection("v3c")
+
+	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', "fa fa-hourglass-start fa-1x"));
+	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
+	//$("#searchTab").append(addButton);
+	$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', "fa fa-hourglass-end fa-1x"));
+	//$("#searchTab").append(addButton);
+
+	canvas0 = get_canvas('canvas0', 'annotations0',
+		'not0');
+	canvas1 = get_canvas('canvas1', 'annotations1',
+		'not1');
+	canvases = [canvas0, canvas1];
+
+	$('#content').on('drop', dropImage);
+
+	$("#clean0").on('click', function (e) {
+		if (!isCanvasClean[0]) {
+			isCanvasClean[0] = true;
+			canvasClean(0);
+			searchByForm();
+			//performSearch(cell2Text(0), cell2Text(1));
+		}
+	});
+
+	$("#clean1").on('click', function (e) {
+		if (!isCanvasClean[1]) {
+			isCanvasClean[1] = true;
+			canvasClean(1);
+			//performSearch(cell2Text(0), cell2Text(1));
+			searchByForm();
+		}
+	});
+
+	$("#reset").on('click', function (e) {
+		if (!isReset) {
+			isReset = true;
+			reset();
+			//performSearch(cell2Text(0), cell2Text(1));
+			searchByForm();
+		}
+	});
+
+	$("#textual0")
+		.keyup(
+			function (event) {
+				if (event.keyCode === 13) {
+					$("#textual0")
+						.val(
+							$(
+								"#textual0")
+								.val()
+								.replace(
+									/(\r\n|\n|\r)/gm,
+									""));
+					queryByTextual();
+				}
+				if ($("#textual0").val() == "")
+					document.getElementById('cancelText0').style.display = 'none'
+				else
+					document.getElementById('cancelText0').style.display = 'block'
+			});
+
+	$("#textual1")
+		.keyup(
+			function (event) {
+				if (event.keyCode === 13) {
+					$("#textual1")
+						.val(
+							$(
+								"#textual1")
+								.val()
+								.replace(
+									/(\r\n|\n|\r)/gm,
+									""));
+					queryByTextual();
+				}
+				if ($("#textual1").val() == "")
+					document.getElementById('cancelText1').style.display = 'none'
+				else
+					document.getElementById('cancelText1').style.display = 'block'
+			})
+
+	$("#undo0").on('click', function (e) {
+		if (isCanvasClean[0]) {
+			isCanvasClean[0] = false;
+			canvasCleanUndo(0);
+			//performSearch(cell2Text(0), cell2Text(1));
+			searchByForm();
+		}
+	});
+
+	$("#undo1").on('click', function (e) {
+		if (isCanvasClean[1]) {
+			isCanvasClean[1] = false;
+			canvasCleanUndo(1);
+			//performSearch(cell2Text(0), cell2Text(1));
+			searchByForm();
+		}
+	});
+
+	$("#undoReset").on('click', function (e) {
+		if (isReset) {
+			isReset = false;
+			undoReset();
+			//performSearch(cell2Text(0), cell2Text(1));
+			searchByForm();
+		}
+	});
+
+	var blink0 = null;
+	var blink1 = null;
+
+	$("#recordButton0")
+		.on(
+			'click',
+			function (e) {
+				if ($("#recordButton0").css('color') == "rgb(0, 128, 0)") {
+					document.getElementById('cancelText0').style.display = 'none'
+					$("#textual0").val("")
+					$("#recordButton0").css('color', 'red');
+					$("#recordButton0").css('font-size', 'xx-large');
+					blink0 = setInterval(() => {
+						$('#recordButton0').fadeIn();
+						$('#recordButton0').fadeOut();
+					}, 100);
+
+					startRecording(0);
+				}
+				else {
+					clearInterval(blink0);
+					$('#recordButton0').finish();
+					$('#recordButton0').show();
+					$("#recordButton0").css('color', 'green');
+					$("#recordButton0").css('font-size', 'medium');
+
+
+					stopRecording(0);
+
+				}
+			});
+
+	$("#recordButton1")
+		.on(
+			'click',
+			function (e) {
+				if ($("#recordButton1").css('color') == "rgb(0, 128, 0)") {
+					document.getElementById('cancelText1').style.display = 'none'
+					$("#textual1").val("")
+
+					$("#recordButton1").css('color', 'red');
+					$("#recordButton1").css('font-size', 'xx-large');
+
+					blink1 = setInterval(() => {
+						$('#recordButton1').fadeIn();
+						$('#recordButton1').fadeOut();
+					}, 100);
+					startRecording(1);
+				}
+				else {
+					clearInterval(blink1);
+					$('#recordButton1').finish();
+					$('#recordButton1').show();
+					$("#recordButton1").css('color', 'green');
+					$("#recordButton1").css('font-size', 'medium');
+
+					stopRecording(1);
+
+				}
+
+			});
+
+	$("#cancelText0")
+		.on(
+			'click',
+			function (e) {
+				$("#textual0").val('');
+				document.getElementById('cancelText0').style.display = 'none'
+				searchByForm();
+
+
+			});
+	$("#cancelText1")
+		.on(
+			'click',
+			function (e) {
+				$("#textual1").val('');
+				document.getElementById('cancelText1').style.display = 'none'
+				searchByForm();
+
+			});
+	/*
+								$("#stopButton0")
+										.on(
+												'click',
+												function(e) {
+													document
+															.getElementById("recordButton0").style.display = 'block';
+													document
+															.getElementById("stopButton0").style.display = 'none';
+													stopRecording(0);
+												});
+	
+								$("#stopButton1")
+										.on(
+												'click',
+												function(e) {
+													document
+															.getElementById("recordButton1").style.display = 'block';
+													document
+															.getElementById("stopButton1").style.display = 'none';
+													stopRecording(1);
+												});
+	*/
+	canvas0.renderAll();
+
+	initLayout();
+
+	displayAdvanced(false);
+
+
+	var script = document.createElement('script');
+	script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
+	document.head.appendChild(script)
+	script = document.createElement('script');
+	script.src = "js/WebAudioRecorder/audioRecorder.js";
+	document.head.appendChild(script);
+
+
+	/*var script = document.createElement('script');
+	script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
+	document.head.appendChild(script)
+	script = document.createElement('script');
+	script.src = "js/WebAudioRecorder/audioRecorder.js";
+	document.head.appendChild(script)
+
+	const microphoneIcon = document.querySelector('.microphone-icon');
+	const inputText = document.querySelector('input[type="text"]');
+  
+	microphoneIcon.addEventListener('click', () => {
+	  // Avvia la registrazione audio
+	  console.log('Registrazione audio avviata');
+	});*/
+
 }
 
 
