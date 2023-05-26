@@ -1139,7 +1139,7 @@ dropImage = function (e) {
 			let pointer = activeCanvas.getPointer(e);
 			let origX = pointer.x;
 			let origY = pointer.y;
-			let  imgElement = document.getElementById(draggedLabel);
+			let imgElement = document.getElementById(draggedLabel);
 			let color = imgElement.alt == 'color' ? true : false;
 			if (color) {
 				scale = 11;
@@ -1418,7 +1418,7 @@ function init() {
 	//$("#searchTab").append(addButton);
 	$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', "fa fa-hourglass-end fa-1x"));
 	//$("#searchTab").append(addButton);
-
+	loadPalette('palette.csv');
 	canvas0 = get_canvas('canvas0', 'annotations0',
 		'not0');
 	canvas1 = get_canvas('canvas1', 'annotations1',
@@ -1532,7 +1532,8 @@ function init() {
 					document.getElementById('cancelText0').style.display = 'none'
 					$("#textual0").val("")
 					$("#recordButton0").css('color', 'red');
-					$("#recordButton0").css('font-size', 'xx-large');
+					$("#recordButton0").css('padding-top', '12px');
+					$("#recordButton0").css('font-size', 'x-large');
 					blink0 = setInterval(() => {
 						$('#recordButton0').fadeIn();
 						$('#recordButton0').fadeOut();
@@ -1545,6 +1546,7 @@ function init() {
 					$('#recordButton0').finish();
 					$('#recordButton0').show();
 					$("#recordButton0").css('color', 'green');
+					$("#recordButton0").css('padding-top', '15px');
 					$("#recordButton0").css('font-size', 'medium');
 
 
@@ -1562,8 +1564,8 @@ function init() {
 					$("#textual1").val("")
 
 					$("#recordButton1").css('color', 'red');
-					$("#recordButton1").css('font-size', 'xx-large');
-
+					$("#recordButton1").css('padding-top', '12px');
+					$("#recordButton1").css('font-size', 'x-large');
 					blink1 = setInterval(() => {
 						$('#recordButton1').fadeIn();
 						$('#recordButton1').fadeOut();
@@ -1575,6 +1577,7 @@ function init() {
 					$('#recordButton1').finish();
 					$('#recordButton1').show();
 					$("#recordButton1").css('color', 'green');
+					$("#recordButton1").css('padding-top', '15px');
 					$("#recordButton1").css('font-size', 'medium');
 
 					stopRecording(1);
@@ -1658,3 +1661,50 @@ function init() {
 }
 
 
+function loadPalette(url) {
+	return fetch(url)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to fetch the file.');
+			}
+			return response.text();
+		})
+		.then(csvData => {
+			const rowsArray = csvData.split('\n');
+			const dataArray = rowsArray.map(row => row.split(','));
+			setPalette(dataArray);
+			return dataArray;
+		});
+}
+
+function setPalette(palette) {
+	const paletteElement = document.querySelector('.palette');
+	const computedStyle = window.getComputedStyle(paletteElement);
+	const gridTemplateColumns = computedStyle.getPropertyValue('grid-template-columns');
+
+	const match = gridTemplateColumns.match(/\d+/);
+	const gridColumns = match ? parseInt(match[0]) : null;
+
+
+	let html = '';
+	let idx = 0;
+	for (let i = 0; i < palette.length; i++) {
+		const line = palette[i];
+		if (line[0].startsWith("#") || line[0].trim() == "")
+			continue;
+
+		if (line[0].startsWith("-------")) {
+			span = gridColumns - idx % gridColumns;
+			html += '<div class="column-span-' + span + '">';
+			idx += span;
+
+		} else {
+			html += '<div>';
+			html += '<img draggable="true" ondragstart="drag(event)" id="' + line[0].trim() + '" title="' + line[0].trim() + '" src="' + line[1].trim() + '" />'
+			idx++;
+
+		}
+		html += '</div>';
+	}
+	$("#palette").append(html);
+}
