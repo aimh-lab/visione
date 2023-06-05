@@ -1,6 +1,6 @@
 class Config:
     def __init__(self, 
-        video_path,
+        video_path=None,
         checkpoint='checkpoints',
         clip_path='clip_models/ViT-B-32.pt'):
 

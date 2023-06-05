@@ -11,7 +11,7 @@ RUN git clone https://github.com/CryhanFang/CLIP2Video && \
 RUN pip install -r CLIP2Video/requirements.txt
 
 # Install other dependencies
-RUN pip install gdown more_itertools av
+RUN pip install gdown more_itertools av flask==2.2.3
 RUN conda install -c conda-forge ffmpeg
 
 # Download CLIP and CLIP2Video models
@@ -23,4 +23,4 @@ RUN mkdir -p checkpoint && \
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
 COPY . .
 
-# CMD ["conda", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]
+CMD ["python", "-u", "service.py"]
