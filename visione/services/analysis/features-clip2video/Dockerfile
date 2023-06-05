@@ -2,7 +2,10 @@ FROM docker.io/continuumio/anaconda3:2022.10
 
 WORKDIR /usr/src/app/
 
-RUN git clone https://github.com/CryhanFang/CLIP2Video
+# Clone repo and pin to specific version
+RUN git clone https://github.com/CryhanFang/CLIP2Video && \
+    cd CLIP2Video && \
+    git checkout e94131800a3a1434f6d00b89b7301d741db8ba06
 
 # Install CLIP2Video dependencies
 RUN pip install -r CLIP2Video/requirements.txt
