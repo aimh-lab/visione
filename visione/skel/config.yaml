@@ -28,6 +28,9 @@ services_urls:
   clip_internal_search_url:       null
   clip_laion_url:                 null
   clip_laion_internal_search_url: null
+  clip2video_url:                 null
+  clip2video_internal_search_url: null
+
 
 analysis:
   # List of object detectors to employ.

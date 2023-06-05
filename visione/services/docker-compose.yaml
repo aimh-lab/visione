@@ -13,6 +13,8 @@ services:
       - VISIONE_CLIP_INTERNAL_SEARCH_URL
       - VISIONE_CLIP_LAION_URL
       - VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL
+      - VISIONE_CLIP2VIDEO_URL
+      - VISIONE_CLIP2VIDEO_INTERNAL_SEARCH_URL
     volumes:
       - ./router:/etc/nginx/templates/
       - ./web-ui:/usr/share/nginx/html:ro
