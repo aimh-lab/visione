@@ -29,9 +29,9 @@ class CLIPExtractor(BaseExtractor):
             import torch
             from transformers import CLIPProcessor, CLIPModel
 
-            self.device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
-            self.model = CLIPModel.from_pretrained(args.model_handle).to(self.device)
-            self.processor = CLIPProcessor.from_pretrained(args.model_handle)
+            self.device = 'cuda' if self.args.gpu and torch.cuda.is_available() else 'cpu'
+            self.model = CLIPModel.from_pretrained(self.args.model_handle).to(self.device)
+            self.processor = CLIPProcessor.from_pretrained(self.args.model_handle)
 
     def extract(self, image_paths):
         self.setup()  # lazy load model
