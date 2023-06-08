@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
 import argparse
-import importlib.resources
 import os
 from pathlib import Path
 import sys
+
+try:
+    # Python < 3.9
+    import importlib_resources
+    def _get_compose_dir():
+        return importlib_resources.files("visione.services")._paths[0]
+
+except ImportError:
+    import importlib.resources
+    def _get_compose_dir():
+        return Path(importlib.resources.files("visione.services").joinpath(''))
 
 from . import commands
 
 
 def main():
-    compose_dir = Path(importlib.resources.files("visione.services").joinpath(''))  # directory containing services for docker compose
+    compose_dir = _get_compose_dir()  # directory containing services for docker compose
     collection_dir = Path.cwd()  # data dir of current collection
     cache_dir = os.environ.get("XDG_CACHE_HOME", None) or Path.home() / '.cache'
     cache_dir = Path(cache_dir, 'visione')
