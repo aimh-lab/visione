@@ -11,6 +11,21 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
 from .command import BaseCommand
 
+# TODO test supported video formats
+SUPPORTED_VIDEO_FORMATS = [
+    ".webm",
+    ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv"
+    ".ogg",
+    ".mp4", ".m4p", ".m4v",
+    ".avi",
+    ".wmv",
+    ".mov", ".qt",
+    ".flv", ".swf"
+    ".h264",
+    ".3g2", ".3gp",
+    ".m4v",
+]
+
 
 class ImportCommand(BaseCommand):
     """ Implements the 'import' CLI command. """
@@ -30,47 +45,68 @@ class ImportCommand(BaseCommand):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
         self.create_services_containers('analysis')
 
-        # TODO handle (video_path_or_url == None) case
+        assert not (video_id and video_path_or_url is None), "Cannot specify --id without video_path_or_url"
+
+        bulk_import = video_path_or_url is None
+        if bulk_import:
+            # import all videos in the collection 'videos' directory
+            videos_dir = self.collection_dir / 'videos'
+            video_paths = [v for v in videos_dir.glob('*') if v.suffix.lower() in SUPPORTED_VIDEO_FORMATS]
+            video_paths.sort()
+            assert len({v.stem for v in video_paths}) == len(video_paths), "Duplicate video IDs found in collection 'videos' directory."
+            video_paths = [str(v) for v in video_paths]
+        else:
+            # import a single video
+            video_paths = [video_path_or_url]
 
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
-        with Progress(*progress_cols, transient=True) as progress:
+        with Progress(*progress_cols, transient=not self.develop_mode) as progress:
 
             def show_progress(task_id):
                 return lambda completed, total: progress.update(task_id, completed=completed, total=total)
 
-            task = progress.add_task(f"Importing {video_id or video_path_or_url}", total=1)
-            subtasks = []
+            task = progress.add_task(f"Importing ...", total=len(video_paths))
 
-            # import video file
-            subtask = progress.add_task('- Copying video file')
-            video_id, video_path = self.copy_or_download_video(video_path_or_url, video_id, replace, show_progress(subtask))
-            subtasks.append(subtask)
+            for video_path in video_paths:
+                progress.update(task, description=f"Importing {video_id or video_path}")
+                video_id = None if bulk_import else video_id
+                subtasks = []
 
-            # create resized video files
-            subtask = progress.add_task('- Resizing video')
-            thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, gpu, show_progress(subtask)))
-            thread.start()
-            subtasks.append(subtask)
+                # import video file
+                subtask = progress.add_task('- Copying video file')
+                overwrite = replace if not bulk_import else False
+                video_id, video_path = self.copy_or_download_video(video_path, video_id, overwrite, show_progress(subtask))
+                subtasks.append(subtask)
 
-            # detect scenes and extract frames
-            subtask = progress.add_task('- Detect scenes', total=None)
-            self.detect_scenes_and_extract_frames(video_path, video_id, replace, show_progress(subtask))
-            subtasks.append(subtask)
+                # create resized video files
+                subtask = progress.add_task('- Resizing video')
+                thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, gpu, show_progress(subtask)))
+                thread.start()
+                subtasks.append(subtask)
 
-            # create frames thumbnails
-            subtask = progress.add_task('- Generating thumbs')
-            self.create_frames_thumbnails(video_id, replace, show_progress(subtask))
-            subtasks.append(subtask)
+                # detect scenes and extract frames
+                subtask = progress.add_task('- Detect scenes', total=None)
+                self.detect_scenes_and_extract_frames(video_path, video_id, replace, show_progress(subtask))
+                subtasks.append(subtask)
 
-            thread.join()
-            progress.console.log(f"- '{video_id}' imported.")
-            for subtask in subtasks:
-                progress.remove_task(subtask)
-            progress.update(task, advance=1)
+                # create frames thumbnails
+                subtask = progress.add_task('- Generating thumbs')
+                self.create_frames_thumbnails(video_id, replace, show_progress(subtask))
+                subtasks.append(subtask)
+
+                thread.join()
+                progress.console.log(f"- '{video_id}' imported.")
+                for subtask in subtasks:
+                    progress.remove_task(subtask)
+                progress.update(task, advance=1)
 
             progress.console.log('Import complete.')
 
-        return video_id
+        # if bulk import, return an empty list to represent all imported videos
+        # otherwise, return the video ID of the imported video
+        # XXX this is for supporting the 'add' cli command but the interface needs to be improved
+        ret = [] if bulk_import else [video_id]
+        return ret
 
     def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False, show_progress=None):
         """ Copies or downloads a video from a local path or URL and places it
