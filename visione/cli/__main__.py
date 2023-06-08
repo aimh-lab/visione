@@ -4,18 +4,16 @@ import os
 from pathlib import Path
 import sys
 
-try:
-    # Python < 3.9
-    import importlib_resources
-    def _get_compose_dir():
-        return importlib_resources.files("visione.services")._paths[0]
-
-except ImportError:
-    import importlib.resources
-    def _get_compose_dir():
-        return Path(importlib.resources.files("visione.services").joinpath(''))
-
 from . import commands
+
+
+def _get_compose_dir():
+    try:  # Python < 3.9
+        import importlib_resources
+        return importlib_resources.files("visione.services")._paths[0]
+    except ImportError:  # Python >= 3.9
+        import importlib.resources
+        return Path(importlib.resources.files("visione.services").joinpath(''))
 
 
 def main():
