@@ -13,6 +13,9 @@ from config import Config
 modules_path = os.path.dirname(os.path.abspath(__file__)) + '/CLIP2Video'
 sys.path.insert(0, modules_path)
 
+# disable GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = ""
+
 from modules.tokenization_clip import SimpleTokenizer as ClipTokenizer
 
 # setup logging
@@ -152,6 +155,7 @@ if __name__ == '__main__':
         checkpoint='checkpoint', # 'visione/services/analysis/features-clip2video/checkpoint',
         clip_path='checkpoint/ViT-B-32.pt' # 'visione/services/analysis/features-clip2video/checkpoint/ViT-B-32.pt'
     )
+    config.gpu = False
 
     # config = Config(
     #     video_path=None,

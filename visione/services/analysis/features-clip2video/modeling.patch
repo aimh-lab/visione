@@ -1,0 +1,12 @@
+--- CLIP2Video/modules/modeling.py	2023-06-08 09:18:58.900175153 +0200
++++ CLIP2Video/modules/modeling.py	2023-06-08 09:19:15.140203880 +0200
+@@ -187,7 +187,8 @@
+             image_resolution, vision_layers-cut_top_layer, vision_width, vision_patch_size,
+             context_length, vocab_size, transformer_width, transformer_heads, transformer_layers-cut_top_layer,
+         ).float()
+-        convert_weights(self.clip)
++        if torch.cuda.is_available():
++            convert_weights(self.clip)
+ 
+         # set the type of similarity calculator
+         self.sim_type = 'meanP'

@@ -23,4 +23,7 @@ RUN mkdir -p checkpoint && \
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
 COPY . .
 
+# Apply patch to run query service on CPU
+RUN patch -p0 < modeling.patch
+
 CMD ["python", "-u", "service.py"]
