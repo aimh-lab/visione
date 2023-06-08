@@ -1,6 +1,16 @@
-import importlib.resources
 from pathlib import Path
 import shutil
+
+try:
+    # Python < 3.9
+    import importlib_resources
+    def _get_skel_dir():
+        return importlib_resources.files("visione.skel")._paths[0]
+
+except ImportError:
+    import importlib.resources
+    def _get_skel_dir():
+        return Path(importlib.resources.files("visione.skel").joinpath(''))
 
 from .command import BaseCommand
 
@@ -20,7 +30,7 @@ class InitCommand(BaseCommand):
         # FIXME config loading is in common command setup, but must be skipped for 'init'
         # super(InitCommand, InitCommand).__call__(self, **kwargs)
 
-        skel = Path(importlib.resources.files('visione.skel').joinpath(''))
+        skel = _get_skel_dir()
         # TODO manage already existing collection
         shutil.copytree(skel, directory, dirs_exist_ok=True)
         print(f"Initialzed VISIONE collection in {directory.absolute()}")
