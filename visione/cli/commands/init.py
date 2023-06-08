@@ -1,18 +1,16 @@
 from pathlib import Path
 import shutil
 
-try:
-    # Python < 3.9
-    import importlib_resources
-    def _get_skel_dir():
-        return importlib_resources.files("visione.skel")._paths[0]
-
-except ImportError:
-    import importlib.resources
-    def _get_skel_dir():
-        return Path(importlib.resources.files("visione.skel").joinpath(''))
-
 from .command import BaseCommand
+
+
+def _get_skel_dir():
+    try:  # Python < 3.9
+        import importlib_resources
+        return importlib_resources.files("visione.skel")._paths[0]
+    except ImportError:  # Python >= 3.9
+        import importlib.resources
+        return Path(importlib.resources.files("visione.skel").joinpath(''))
 
 
 class InitCommand(BaseCommand):
