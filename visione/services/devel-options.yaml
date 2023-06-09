@@ -21,7 +21,9 @@ services:
     volumes: ["./analysis/features-clip:/usr/src/app"]
   
   features-clip2video:
-    volumes: ["./analysis/features-clip2video:/usr/src/app"]
+    volumes:
+      - ./analysis/features-clip2video/extract.py:/usr/src/app/extract.py
+      - ./analysis/features-clip2video/service.py:/usr/src/app/service.py
 
   features-gem:
     volumes:
