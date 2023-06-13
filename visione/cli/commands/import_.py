@@ -43,7 +43,7 @@ class ImportCommand(BaseCommand):
 
     def __call__(self, *, video_path_or_url, video_id, replace, gpu, **kwargs):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
-        self.create_services_containers('analysis')
+        self.create_services_containers()
 
         assert not (video_id and video_path_or_url is None), "Cannot specify --id without video_path_or_url"
 
