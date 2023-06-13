@@ -88,7 +88,9 @@ services:
     deploy: *needs_gpu
 
   features-aladin:
-    build: ./analysis/features-aladin
+    build:
+      context: ./analysis/features-aladin
+      secrets: ["asset_token"]
     image: visione/features-aladin
     volumes: *common_volumes
     profiles: ["analysis", "features-aladin"]

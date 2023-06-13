@@ -1,3 +1,7 @@
+secrets:
+  asset_token:
+    file: ${VISIONE_ROOT}/asset_token
+
 services:
   router:
     image: nginx:1.23.2

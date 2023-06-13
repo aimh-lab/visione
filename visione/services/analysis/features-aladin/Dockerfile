@@ -25,10 +25,14 @@ RUN conda create --name sg_benchmark python=3.7 -y && \
     conda run --no-capture-output -n sg_benchmark python setup.py build develop
 
 # Download weights and labelmaps
-RUN mkdir -p models/vinvl && \
-    wget -P models/vinvl https://penzhanwu2.blob.core.windows.net/sgg/sgg_benchmark/vinvl_model_zoo/vinvl_vg_x152c4.pth && \
-    wget -P models/vinvl https://penzhanwu2.blob.core.windows.net/sgg/sgg_benchmark/vinvl_model_zoo/VG-SGG-dicts-vgoi6-clipped.json
-
+RUN --mount=type=secret,id=asset_token,required \
+    mkdir -p models/vinvl && \
+    cd models/vinvl && \
+    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022853 && \
+    test -f vinvl_vg_x152c4.pth && \
+    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022837 && \
+    test -f VG-SGG-dicts-vgoi6-clipped.json
+    
 ###########################################
 # ----- Download and install ALADIN ----- #
 ###########################################
@@ -45,16 +49,18 @@ RUN conda create --name oscar python=3.7 && \
     conda run --no-capture-output -n oscar python setup.py build develop
 
 # Download weights
-RUN conda run pip install gdown
-RUN mkdir -p weights && \
+RUN --mount=type=secret,id=asset_token,required \
+    mkdir -p weights && \
     cd weights && \
-    gdown https://drive.google.com/uc?id=1PQvzOyuzDPgs9NO8rWkzzKFVE8ENnH93
+    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022681 && \
+    test -f best_model_align_and_distill.pth.tar
 
 # Download OSCAR checkpoints
-RUN wget https://azcopyvnext.azureedge.net/release20230123/azcopy_linux_amd64_10.17.0.tar.gz && \
-    tar -xvf azcopy_linux_amd64_10.17.0.tar.gz && \
-    mv azcopy_linux_amd64_10.17.0/azcopy .
-RUN ./azcopy copy 'https://biglmdiag.blob.core.windows.net/vinvl/model_ckpts/coco_ir/base/checkpoint-0132780/' . --recursive
+RUN --mount=type=secret,id=asset_token,required \
+    curl -L \
+    -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" \
+    -H "Accept:application/octet-stream" -o - https://api.github.com/repos/aimh-lab/visione/releases/assets/112024381 \
+    | tar -xvJf -
 
 # FIXME: use build-args to pass UID and GID to docker build to inject the host user id during image build
 RUN chmod -R a+rw /usr/src/app/
