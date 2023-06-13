@@ -26,7 +26,7 @@ class IndexCommand(BaseCommand):
 
     def __call__(self, *, video_ids, replace, **kwargs):
         super(IndexCommand, IndexCommand).__call__(self, **kwargs)
-        self.create_services_containers('index')
+        self.create_services_containers()
 
         # if video IDs are given, index only those
         if len(video_ids):

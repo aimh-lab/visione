@@ -155,14 +155,22 @@ class BaseCommand(ABC):
         except Exception:
             return False
     
-    def create_services_containers(self, profiles=None):
-        profiles = profiles or ()
-        profiles = profiles if isinstance(profiles, (list, tuple)) else (profiles,)
-
+    def create_services_containers(self):
         command = self.compose_cmd.copy()
+        # selects mandatory services needed to respond to queries
+        command  += ['--profile', 'query']
 
-        for profile in profiles:
-            command += ['--profile', profile]
+        # figure out which optional services are also needed;
+        # each optional service is contained in a profile named as the service
+        detectors_enabled = self.config.get('analysis', {}).get('detectors', [])
+        detectors_services = [f'objects-{d}' for d in detectors_enabled]
+
+        features_enabled = self.config.get('analysis', {}).get('features', [])
+        features_services = [f'features-{f}' for f in features_enabled]
+
+        optional_services = features_services + detectors_services
+        for service in optional_services:
+            command.extend(['--profile', service])
 
         command += [
             'up',

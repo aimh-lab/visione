@@ -21,7 +21,7 @@ class AnalyzeCommand(BaseCommand):
 
     def __call__(self, *, video_ids, replace, gpu, **kwargs):
         super(AnalyzeCommand, AnalyzeCommand).__call__(self, **kwargs)
-        self.create_services_containers('analysis')
+        self.create_services_containers()
 
         # if video IDs are given, analyze only those
         if len(video_ids):
