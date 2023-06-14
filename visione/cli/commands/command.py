@@ -168,7 +168,22 @@ class BaseCommand(ABC):
         features_enabled = self.config.get('analysis', {}).get('features', [])
         features_services = [f'features-{f}' for f in features_enabled]
 
-        optional_services = features_services + detectors_services
+        index_services = []
+        str_objects = self.config.get('index', {}).get('objects', {})
+        if str_objects:
+            index_services.append('lucene-index-manager')
+            index_services.append('str-object-encoder')
+
+        indexed_features = self.config.get('index', {}).get('features', {})
+        str_features = any(v['index_engine'] == 'str' for v in indexed_features.values())
+        faiss_features = any(v['index_engine'] == 'faiss' for v in indexed_features.values())
+
+        if str_features:
+            index_services.append('str-feature-encoder')
+        if faiss_features:
+            index_services.append('faiss-index-manager')
+
+        optional_services = features_services + detectors_services + index_services
         for service in optional_services:
             command.extend(['--profile', service])
 
