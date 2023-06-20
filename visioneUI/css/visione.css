@@ -15,10 +15,10 @@ body {
 
 .headerGrid {
   display: grid;
-  grid-template-columns: 90px 40px  70px 130px 4fr 4fr 1fr;
+  grid-template-columns: 90px 45px 70px 130px 4fr 4fr 1fr;
   /* Dimensioni delle colonne */
   grid-gap: 10px;
-  height: 120px;
+  height: 350px;
 }
 
 .headerItem {
@@ -39,7 +39,7 @@ body {
 
 .bodyGrid {
   display: grid;
-  grid-template-columns: 1fr 4.2fr;
+  grid-template-columns: 1fr 4.2fr 0.1fr;
   overflow: hidden;
 }
 
