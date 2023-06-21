@@ -62,8 +62,8 @@ def extract_video_features(model, test_dataloader, device, n_gpu, logger):
             visual_output = model.get_visual_output(video, video_mask)
             visual_features = model.get_video_features(visual_output, video_mask)
 
-            records = [{'feature_vector': f.tolist()} for f in visual_features.cpu().numpy()]
-            return records
+            feats = visual_features.cpu()
+            return feats
 
 
 class CLIP2VideoExtractor(BaseVideoExtractor):
@@ -122,10 +122,14 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         self.setup()  # lazy load model
 
         # preprocess shots using ffmpeg and return their paths
-        shot_paths = preprocess_shots(shot_paths_and_times, out_folder=self.temp_video_path)
+        shot_paths, errors = preprocess_shots(shot_paths_and_times, out_folder=self.temp_video_path)
+
+        # only process videos for which error is False
+        valid_shot_paths = [shot_path for shot_path, error in zip(shot_paths, errors) if not error]
+        valid_idxs = [idx for idx, error in enumerate(errors) if not error]
 
         # init test dataloader
-        dataloader, _ = c2v_dataloader(self.conf, shot_paths)
+        dataloader, _ = c2v_dataloader(self.conf, valid_shot_paths)
 
         # extract
         features = extract_video_features(
@@ -136,7 +140,13 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
             self.logger
         )
 
-        return features
+        # FIXME: maybe there is a better way, but as of now features of corrupted videos are set to all zeros
+        all_features = torch.zeros((len(shot_paths), features.shape[1]))
+        # put valid features in the right place in all_features depending on valid_idxs
+        all_features[valid_idxs] = features
+        
+        records = [{'feature_vector': f.tolist()} for f in all_features.cpu().numpy()]
+        return records
 
 
 if __name__ == "__main__":
