@@ -46,17 +46,7 @@ public float queryNorm(float arg0) {
 	return 1f;
 }
 */
-@Override
-public float scorePayload(int arg0, int arg1, int arg2, BytesRef arg3) {
-	// TODO Auto-generated method stub
-	return 1f;
-}
 
-@Override
-public float sloppyFreq(int arg0) {
-	// TODO Auto-generated method stub
-	return 1f;
-}
 
 @Override
 public float tf(float arg0) {

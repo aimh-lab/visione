@@ -9,42 +9,34 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import javax.ws.rs.QueryParam;
 
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCache;
-import org.apache.lucene.search.QueryCachingPolicy;
 import org.apache.lucene.search.QueryRescorer;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.UsageTrackingQueryCachingPolicy;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.BytesRef;
 
@@ -71,7 +63,6 @@ public class LucTextSearch {
 	private Similarity bm25Similarity = new BM25Similarity();
 	private Similarity dotProductRescaled = new DotProductRescaled();
 
-	private double rescorerWeight = 1;
 	private double similarityRescorerWeight = 10000;
 	private HashMap<String, Similarity> fieldSimilaties = new HashMap<>();
 //	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
@@ -108,7 +99,7 @@ public class LucTextSearch {
 		fieldSimilaties.put("TFIDF", classicSimilarity);
 		fieldSimilaties.put("DotProductRescaled", dotProductRescaled);
 
-		BooleanQuery.setMaxClauseCount(30000);
+		IndexSearcher.setMaxClauseCount(30000);
 
 		parser = new QueryParser(Fields.TXT, new WhitespaceAnalyzer());
 	}
@@ -206,27 +197,28 @@ public class LucTextSearch {
 						time = -System.currentTimeMillis();
 						// System.out.println(luceneQuery);
 						hits = s.search(luceneQuery, kQuery);
-						hits.totalHits = hits.scoreDocs.length;
+						hits.totalHits = new TotalHits(hits.scoreDocs.length, hits.totalHits.relation);
 						time += System.currentTimeMillis();
 						System.out.println("\t **Search " + fieldName + " (k: " + kQuery + ")" + ":\t" + time + " ms"
-								+ "\t\t(nHits " + hits.totalHits + "---maxScore " + hits.getMaxScore() + ")");
+								+ "\t\t(nHits " + hits.totalHits.value + "---maxScore " + hits.scoreDocs[0].score + ")");
 					} else {
 	
-						if (hits.totalHits > 0) {
+						if (hits.totalHits.value > 0) {
 	//						System.out.println(luceneQuery.toString() + ": " + field.getWeight() + " k: " + kQuery);
 							time = -System.currentTimeMillis();
 							float firstPassScore = 1.0f;
 							if (fieldName.equals(Fields.ALADIN)) {
-								firstPassScore /= hits.getMaxScore();
+								firstPassScore /= hits.scoreDocs[0].score;
 								// kQuery = k;
 							}
 							hits = myrescore(s, hits, luceneQuery, firstPassScore, field.getWeight(), kQuery);
 							// QueryRescorer.rescore(s, hits, luceneQuery, field.getWeight(), kQuery);//
-							hits.totalHits = hits.scoreDocs.length;
+							hits.totalHits = new TotalHits(hits.scoreDocs.length, hits.totalHits.relation);
+
 							time += System.currentTimeMillis();
 							System.out.println("\t \t**Rescore " + fieldName + " (" + "weight:" + field.getWeight() + " k: "
-									+ kQuery + "):\t" + time + " ms" + "\t\t(nHits " + hits.totalHits + "---maxScore "
-									+ hits.getMaxScore() + ")");
+									+ kQuery + "):\t" + time + " ms" + "\t\t(nHits " + hits.totalHits.value + "---maxScore "
+									+ hits.scoreDocs[0].score + ")");
 	
 						} else {
 							System.out.println("no query result!");
@@ -254,7 +246,8 @@ public class LucTextSearch {
 		}
 		//ScoreDoc[] scoreDocClone = Arrays.asList(topdocs.scoreDocs).stream().collect(Collectors.toList()).toArray(new ScoreDoc[topdocs.scoreDocs.length]);
 
-		TopDocs clone = new TopDocs(totalHits, scoreDocsClone, topdocs.getMaxScore());
+		//TopDocs clone = new TopDocs(totalHits, scoreDocsClone, topdocs.getMaxScore());
+		TopDocs clone = new TopDocs(new TotalHits(totalHits, topdocs.totalHits.relation), scoreDocsClone);
 
 		return clone;
 	}
@@ -278,10 +271,10 @@ public class LucTextSearch {
 		for (int i = 0; i < hits.scoreDocs.length && i < k; i++) {
 			int doc = hits.scoreDocs[i].doc;
 			float score = hits.scoreDocs[i].score;
-			String collection = s.doc(doc).get(Fields.COLLECTION);
-			String imgID = s.doc(doc).get(Fields.IMG_ID);
-			String videoID = s.doc(doc).get(Fields.VIDEO_ID);
-			Integer middleFrame = Integer.parseInt(s.doc(doc).get(Fields.MIDDLE_FRAME));
+			String collection = s.storedFields().document(doc).get(Fields.COLLECTION);
+			String imgID = s.storedFields().document(doc).get(Fields.IMG_ID);
+			String videoID = s.storedFields().document(doc).get(Fields.VIDEO_ID);
+			Integer middleFrame = Integer.parseInt(s.storedFields().document(doc).get(Fields.MIDDLE_FRAME));
 			results.add(new SearchResults(imgID, videoID, collection, score, middleFrame));
 			// System.out.println(score + ", " + imgID);
 		}
@@ -339,8 +332,9 @@ public class LucTextSearch {
 			for (int i = 0; i < hits.scoreDocs.length; i++) {
 				scoredocs[i] = new ScoreDoc(hits.scoreDocs[i].doc, 0);
 			}
-//			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery, similarityRescorerWeight, k);
-			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs, hits.getMaxScore()), luceneQuery,
+//			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits.value, scoredocs), luceneQuery, similarityRescorerWeight, k);
+
+			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery,
 					similarityRescorerWeight, k);
 //			simHits = QueryRescorer.rescore(s, hits, luceneQuery, similarityRescorerWeight, k);
 		}
@@ -369,7 +363,7 @@ public class LucTextSearch {
 				scoredocs[i] = new ScoreDoc(hits.scoreDocs[i].doc, 0);
 			}
 //			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery, similarityRescorerWeight, k);
-			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs, hits.getMaxScore()), luceneQuery,
+			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery,
 					similarityRescorerWeight, k);
 
 			// simHits = QueryRescorer.rescore(s, hits, luceneQuery,
@@ -386,10 +380,12 @@ public class LucTextSearch {
 		String terms = null;
 		TopDocs td = s.search(q, 1);
 //			if (td.totalHits.value > 0) {
-		if (td.totalHits > 0) {
-			terms = s.doc(td.scoreDocs[0].doc).get(field);
+		if (td.totalHits.value > 0) {
+			 TermVectors termVectors = ir.termVectors();
+
+			terms = s.storedFields().document(td.scoreDocs[0].doc).get(field);
 			if (terms == null)
-				terms = getTerms(ir.getTermVector(td.scoreDocs[0].doc, field), boosting);
+				terms = getTerms(termVectors.get(td.scoreDocs[0].doc, field), boosting);
 		}
 		return terms;
 	}
@@ -400,8 +396,8 @@ public class LucTextSearch {
 		String data = null;
 		TopDocs td = s.search(q, 1);
 //			if (td.totalHits.value > 0) {
-		if (td.totalHits > 0) {
-			data = s.doc(td.scoreDocs[0].doc).get(field);
+		if (td.totalHits.value > 0) {
+			data = s.storedFields().document(td.scoreDocs[0].doc).get(field);
 		}
 		return data;
 	}
@@ -416,7 +412,7 @@ public class LucTextSearch {
 		List<String> response = new ArrayList<>();
 		List<String[]> keyframes = new ArrayList<>();
 		for (int i = 0; i <= hits.scoreDocs.length-1; i++) {
-			Document document = s.doc(hits.scoreDocs[i].doc);
+			Document document = s.storedFields().document(hits.scoreDocs[i].doc);
 			String imgID = document.get(Fields.IMG_ID);
 			String middleTime = document.get(Fields.MIDDLE_TIME);
 			String[] res = {imgID, middleTime};
@@ -433,7 +429,7 @@ public class LucTextSearch {
 	}
 
 	public String get(int docID, String field) throws IOException {
-		return s.doc(docID).get(field);
+		return s.storedFields().document(docID).get(field);
 	}
 
 	private String getTerms(Terms terms, boolean boosting) throws IOException {
@@ -592,8 +588,8 @@ public class LucTextSearch {
 				try {
 					float score = hits.scoreDocs[iO].score;
 					ScoreDoc scoredoc = new ScoreDoc(hits.scoreDocs[iO].doc, score);
-					Document document = s.doc(scoredoc.doc);
-					String imgID = document.get(Fields.IMG_ID);
+					Document document = s.storedFields().document(scoredoc.doc);
+//					String imgID = document.get(Fields.IMG_ID);
 					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
 					String videoId = document.get(Fields.VIDEO_ID);
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
@@ -649,8 +645,8 @@ public class LucTextSearch {
 					float score = hits.scoreDocs[iO].score;
 					ScoreDoc scoredoc = new ScoreDoc(hits.scoreDocs[iO].doc, score);
 
-					Document document = s.doc(scoredoc.doc);
-					String imgID = document.get(Fields.IMG_ID);
+					Document document = s.storedFields().document(scoredoc.doc);
+//					String imgID = document.get(Fields.IMG_ID);
 					String videoId = document.get(Fields.VIDEO_ID);
 					if (!video_keys.contains(videoId))
 						continue;
@@ -714,7 +710,7 @@ public class LucTextSearch {
 				try {
 					float score = hits.scoreDocs[iO].score;
 					ScoreDoc scoredoc = new ScoreDoc(hits.scoreDocs[iO].doc, score);
-					Document document = s.doc(scoredoc.doc);
+					Document document = s.storedFields().document(scoredoc.doc);
 					String imgID = document.get(Fields.IMG_ID);
 					String videoID = document.get(Fields.VIDEO_ID);
 					String collection = document.get(Fields.COLLECTION);
@@ -845,7 +841,7 @@ public class LucTextSearch {
 																									// lower that the
 																									// one measured in
 																									// hits
-		float[] maxscores = { td0.getMaxScore(), td1.getMaxScore() };
+		float[] maxscores = { td0.scoreDocs[0].score, td1.scoreDocs[0].score };
 		// for(int i=0; i<200; i++) {
 		// float test0=nomalize_score(hits0[i].score, minscores[0], maxscores[0],1);
 		// float test1=nomalize_score(hits1[i].score, minscores[1], maxscores[1],1);
@@ -913,7 +909,7 @@ public class LucTextSearch {
 		total_time += System.currentTimeMillis();
 		System.out.println("combining 2 hits time:" + total_time + "ms");
 
-		return new TopDocs(firstKscoreDocs.length, firstKscoreDocs, firstKscoreDocs[0].score);
+		return new TopDocs(new TotalHits(firstKscoreDocs.length, TotalHits.Relation.EQUAL_TO), firstKscoreDocs);
 
 	}
 
@@ -926,7 +922,7 @@ public class LucTextSearch {
 		if (nHitsToMerge >= 1) { 
 			if (nHitsToMerge == 1) {//only one topDocs hits
 				TopDocs td = topDocsList.get(0);
-				if (td.totalHits > topK) {
+				if (td.totalHits.value > topK) {
 					td.scoreDocs = Arrays.copyOf(td.scoreDocs, topK);
 				}
 				res = td;
@@ -962,7 +958,7 @@ public class LucTextSearch {
 		Collections.sort(topDocsList, new Comparator<TopDocs>() {
 			@Override
 			public int compare(TopDocs o1, TopDocs o2) {
-				return Long.compare(o1.totalHits, o2.totalHits);
+				return Long.compare(o1.totalHits.value, o2.totalHits.value);
 			}
 		});
 
@@ -978,7 +974,7 @@ public class LucTextSearch {
 			else
 				videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
 			//videoIds.addAll(shmap[i].keySet()); //video ids is the union 
-			max_scores[i] = hits_i.getMaxScore();
+			max_scores[i] = hits_i.scoreDocs[0].score;
 		}
 		time += System.currentTimeMillis();
 		System.out.print("*[hashing:" + time + "ms]\t");
@@ -1041,7 +1037,7 @@ public class LucTextSearch {
 				if (best_sr[nHitsToMerge - 1] != null) { // we have a match
 					for (int i = 0; i < nHitsToMerge; i++) {
 						int doc = best_sr[i].doc;
-						String imgID = s.doc(doc).get(Fields.IMG_ID);
+						String imgID = s.storedFields().document(doc).get(Fields.IMG_ID);
 						if (idResKeyframe.contains(imgID)) {
 							continue;
 						}
@@ -1077,8 +1073,7 @@ public class LucTextSearch {
 				.toArray(new ScoreDoc[nHits]);
 		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
 
-		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
-
+		return new TopDocs(new TotalHits(nHits, TotalHits.Relation.EQUAL_TO), firstKscoreDocs);
 	}
 
 	private TopDocs combineResults(List<TopDocs> topDocsList, int k)
@@ -1094,7 +1089,7 @@ public class LucTextSearch {
 		Collections.sort(topDocsList, new Comparator<TopDocs>() {
 			@Override
 			public int compare(TopDocs o1, TopDocs o2) {
-				return Long.compare(o1.totalHits, o2.totalHits);
+				return Long.compare(o1.totalHits.value, o2.totalHits.value);
 			}
 		});
 
@@ -1108,8 +1103,8 @@ public class LucTextSearch {
 			TopDocs hits_i = topDocsList.get(i);
 			if(hits_i==null)
 				continue;
-			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits);
-			float max_score= hits_i.getMaxScore();			
+			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits.value);
+			float max_score= hits_i.scoreDocs[0].score;			
 			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
 			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
 			//boost first 10 results and normalize the others (up to max_res_each_hits)
@@ -1120,7 +1115,8 @@ public class LucTextSearch {
 					score *= nHitsToMerge;
 				scoreDocs[r]=new ScoreDoc(sd.doc, score);
 			}
-			TopDocs modified_hits_i=new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
+			TopDocs modified_hits_i = new TopDocs(new TotalHits(scoreDocs.length, TotalHits.Relation.EQUAL_TO), scoreDocs);
+
 			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i
 			videoIds.addAll(shmap[i].keySet()); //videoIds is the union of all the videos in the topDocsList 
 
@@ -1190,13 +1186,8 @@ public class LucTextSearch {
 				.toArray(new ScoreDoc[nHits]);
 		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
 
-		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
-
+		return new TopDocs(new TotalHits(nHits, TotalHits.Relation.EQUAL_TO), firstKscoreDocs);
 	}
-	
-	
-	
-	
 	
 	class MaxValue {
 		public int row;
@@ -1213,7 +1204,7 @@ public class LucTextSearch {
 					continue;
 				// if (rowCounter++ > 100 && maxValue > 0)
 				// return;
-				int colCounter = 0;
+//				int colCounter = 0;
 				for (int j : cols) {
 					if (j == -1)
 						continue;
@@ -1244,7 +1235,7 @@ public class LucTextSearch {
 			
 			Query q = new TermQuery(new Term(Fields.IMG_ID, imageId));
 			TopDocs td = s.search(q, 1);
-			if (td.totalHits > 0) {
+			if (td.totalHits.value > 0) {
 				ScoreDoc sc = td.scoreDocs[0];
 				float score = (results[i].score + 1);// LUCIA aggiunto +1 per evitare i negativi manon dovrebe succedere
 														// mai
@@ -1256,7 +1247,8 @@ public class LucTextSearch {
 		}
 		// System.out.println(res);
 		int nHits = scoredocs.size();
-		TopDocs res = new TopDocs(nHits, scoredocs.toArray(new ScoreDoc[nHits]), maxScore);
+		TopDocs res = new TopDocs(new TotalHits(nHits, TotalHits.Relation.EQUAL_TO), scoredocs.toArray(new ScoreDoc[nHits]));
+		
 		return res;
 	}
 
