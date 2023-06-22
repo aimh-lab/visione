@@ -2,6 +2,9 @@ import csv
 from pathlib import Path
 import itertools
 import more_itertools
+import re
+
+import tqdm
 
 # from visione import CliProgress
 # from visione.savers import GzipJsonlFile, HDF5File
@@ -158,7 +161,7 @@ class BaseVideoExtractor(object):
         self.args.batch_size = self.args.batch_size or self.args.save_every
 
     def parse_input(self):
-        """ Parses the input file and returns a list of 
+        """ Parses the input file and returns a list of
         (video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time) tuples. """
         input_shots = self.args.input_shots
 
@@ -168,7 +171,12 @@ class BaseVideoExtractor(object):
             video_id = input_shots.stem
             scenes_file = self.args.input_shots / f'{video_id}-scenes.csv'
             assert scenes_file.is_file()  # input should be a file, parse it
-            video_path = input_shots.parents[1] / 'videos' / f'{video_id}.mp4'
+
+            # find the video file (it can have any extension)
+            # video_path = input_shots.parents[1] / 'videos' / f'{video_id}.mp4'
+            escaped_video_id = re.escape(video_id)
+            candidates = (input_shots.parents[1] / 'videos').glob(f'{video_id}.*')
+            video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
 
             with scenes_file.open() as f:
                 reader = csv.reader(f)
@@ -190,6 +198,7 @@ class BaseVideoExtractor(object):
             # input_shots is a tsv file containing (video_id, frame_id, frame_path)
             with input_shots.open() as image_list:
                 bulk_reader = csv.reader(image_list, delimiter='\t')
+                bulk_reader = tqdm.tqdm(bulk_reader)
 
                 shot_paths_and_times = []
 
@@ -199,7 +208,14 @@ class BaseVideoExtractor(object):
                     # get scenes file and video path from the frame path
                     group = [(vid, fid, Path(fpath)) for vid, fid, fpath in group]
                     scenes_file = group[0][2].parent / f'{video_id}-scenes.csv'
-                    video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
+
+                    # find the video file (it can have any extension)
+                    # video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
+                    escaped_video_id = re.escape(video_id)
+                    candidates = (group[0][2].parents[2] / 'videos').glob(f'{video_id}.*')
+                    # candidates = list(candidates)
+                    # print(video_id, group[0][2], candidates)
+                    video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
 
                     # read the scenes.csv file
                     with scenes_file.open() as scenes:
@@ -210,7 +226,7 @@ class BaseVideoExtractor(object):
 
                         frame_id_to_timeinfo_dict = {int(row[0]): (int(row[1]), float(row[3]), int(row[4]), float(row[6])) for row in scenes_reader}
 
-                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(g[2].stem.split('-')[-1])]) for g in group]
+                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(re.split('-|_', g[2].stem)[-1])]) for g in group]
                     shot_paths_and_times.extend(rows)
 
 
@@ -242,7 +258,7 @@ class BaseVideoExtractor(object):
                         to_be_processed.append((video_id, shot_id, image_path, *other))
                     elif progress:
                         progress.initial += 1
-                        
+
         return to_be_processed
 
     def run(self):
