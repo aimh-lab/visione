@@ -181,7 +181,17 @@ public class VBSService {
 			if (queryObj.getQuery().size() == 0)
 				continue;
 			try {
-				if (queryObj.getQuery().containsKey("vf")) {
+				if (queryObj.getQuery().containsKey("comboVisualSim")) {
+					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
+
+					hits_tmp.add(datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
+					hits_tmp.add(datasetSearcher.get(dataset).searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
+					hits_tmp.add(datasetSearcher.get(dataset).searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k, dataset));//search by Clip4Video
+					TopDocs res = datasetSearcher.get(dataset).mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
+					log(res, query, logQueries, simReorder, dataset);
+					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row, maxRes));
+				}
+				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = datasetSearcher.get(dataset).searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder, dataset);
 					return gson.toJson(datasetSearcher.get(dataset).sortByVideo(res, n_frames_per_row, maxRes));

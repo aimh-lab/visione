@@ -1257,6 +1257,8 @@ public class LucTextSearch {
 
 	private LRUCache<Integer, TopDocs> clipCache = new LRUCache<>(10);
 	private LRUCache<Integer, TopDocs> clipponeCache = new LRUCache<>(10);
+	
+	
 
 	public TopDocs searchByCLIP(String textQuery, String collection) throws IOException, org.apache.hc.core5.http.ParseException {
 		TopDocs res = null;
@@ -1285,6 +1287,168 @@ public class LucTextSearch {
 	public TopDocs searchByCLIPID(String queryId, int k, String collection) throws org.apache.hc.core5.http.ParseException, IOException {
 		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId, collection), collection));
 	}
+	
+	
+	
+	
+	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, int time_quantizer, boolean temporalquery)
+			throws NumberFormatException, IOException {
+		topDocsList = topDocsList.stream().filter(x -> x != null).collect(Collectors.toList());
+		int nHitsToMerge = topDocsList.size();
+		TopDocs res = null;
+		
+		if (nHitsToMerge >= 1) { 
+			if (nHitsToMerge == 1) {//only one topDocs hits
+				TopDocs td = topDocsList.get(0);
+				if (td.totalHits.value > topK) {
+					td.scoreDocs = Arrays.copyOf(td.scoreDocs, topK);
+				}
+				res = td;
+			}	
+			else { //two or more topDocs
+				if (temporalquery)
+					res = combineResults_temporal(topDocsList, topK, time_quantizer, 12);
+				else {
+					res =combineResults(topDocsList, topK, time_quantizer);
+//					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
+//						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
+//					else
+//						res = combineResults_temporal(topDocsList, topK, 2, 4);// qui entra se ci sono >=3 topDocs																// arrivarci mai ma da controllare!
+//					
+				
+				}
+				}
+		}
+		return res; //case nHitsToMerge <1, i.e. res=null
+	}
+	
+//	private LRUCache<Integer, ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, ScoreDoc>>> mergeCache = new LRUCache<>(10);
+
+
+
+	private TopDocs combineResults(List<TopDocs> topDocsList, int k, int time_quantizer)
+			throws NumberFormatException, IOException {
+		long total_time = -System.currentTimeMillis();	
+		int nHitsToMerge = topDocsList.size();
+		
+		
+	
+
+		long time = -System.currentTimeMillis();
+		Collections.sort(topDocsList, new Comparator<TopDocs>() {
+			@Override
+			public int compare(TopDocs o1, TopDocs o2) {
+				return Long.compare(o1.totalHits.value, o2.totalHits.value);
+			}
+		});
+
+
+		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
+		Set<String> videoIds = new HashSet<String> ();
+		float lambda= 10.0f/nHitsToMerge; //I used 10 to avoid  too small number (e.g. 10^-6)
+		
+		
+		for (int i = 0; i < nHitsToMerge; i++) {
+			TopDocs hits_i = topDocsList.get(i);
+			if(hits_i==null)
+				continue;
+			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits.value);
+			float max_score= hits_i.scoreDocs[0].score;			
+			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
+			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
+			//boost first 10 results and normalize the others (up to max_res_each_hits)
+			for (int r=0; r< max_res_each_hits; r++) {
+				ScoreDoc sd=hits_i.scoreDocs[r];
+				float score=nomalize_score(sd.score, min_score, max_score, lambda);
+				if(r<10)
+					score *= nHitsToMerge;
+				scoreDocs[r]=new ScoreDoc(sd.doc, score);
+			}
+			//TopDocs modified_hits_i= new TopDocs()         (scoreDocs.length, scoreDocs);
+			TopDocs modified_hits_i= new TopDocs(new TotalHits(scoreDocs.length, TotalHits.Relation.EQUAL_TO), scoreDocs);
+			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i
+			videoIds.addAll(shmap[i].keySet()); //videoIds is the union of all the videos in the topDocsList 
+
+		}
+		time += System.currentTimeMillis();
+		System.out.print("[hashing:" + time + "ms]\t");
+
+		// matching
+		time = -System.currentTimeMillis();
+		ArrayList<ScoreDoc> resultsSD = new ArrayList<>();
+
+		for (String videoId : videoIds) {
+			ConcurrentHashMap<Integer, HashSet<Integer>> hm_docs = new ConcurrentHashMap<Integer, HashSet<Integer>>();
+			ConcurrentHashMap<Integer, Float> hm_score = new ConcurrentHashMap<Integer, Float>();
+			for (int i = 0; i < nHitsToMerge; i++) {
+				ConcurrentHashMap<Integer, ScoreDoc> hm_i=shmap[i].get(videoId);
+				if(hm_i==null)
+					continue;
+				//List<Entry<Integer, ScoreDoc>> listOfEntries = new ArrayList(hm_i.entrySet());
+				for (Entry<Integer, ScoreDoc> entry : hm_i.entrySet()) {
+					Integer id_t = entry.getKey();
+					ScoreDoc sd=entry.getValue();
+					float aggregated_score=sd.score;
+					HashSet docSet=hm_docs.getOrDefault(id_t,new HashSet<Integer>());
+					aggregated_score+=hm_score.getOrDefault(id_t, 0.0f);
+					docSet.add(sd.doc);
+					hm_docs.put(id_t, docSet);
+					hm_score.put(id_t, aggregated_score);
+
+				}
+			}
+			//save merged results of the considered video
+			
+			for(Entry<Integer, HashSet<Integer>> entry_docs:hm_docs.entrySet()) {
+				Integer id_t = entry_docs.getKey();
+				HashSet<Integer> docSet=entry_docs.getValue();
+				float agg_score=hm_score.get(id_t);
+				for( int doc: docSet) {
+
+					ScoreDoc ssi = new ScoreDoc(doc, agg_score);
+					resultsSD.add(ssi);
+
+				}
+
+			}
+
+		}
+
+		time += System.currentTimeMillis();
+		System.out.print("[matching time:" + time + "ms]\t");
+
+		time = -System.currentTimeMillis();
+		Collections.sort(resultsSD, new ScoreDocsComparator());
+		time += System.currentTimeMillis();
+		System.out.print("[sorting time:" + time + "ms]\t");
+
+		total_time += System.currentTimeMillis();
+		System.out.print("total HITS COMBINE time:" + total_time + "ms\t");
+
+		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
+
+		int nHits = Math.min(k, resultsSD.size());
+		if (nHits < 1)
+			return null;
+
+		ScoreDoc[] firstKscoreDocs = resultsSD.stream().limit(nHits).collect(Collectors.toList())
+				.toArray(new ScoreDoc[nHits]);
+		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
+
+		//return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
+		return new TopDocs(new TotalHits(nHits, TotalHits.Relation.EQUAL_TO), firstKscoreDocs);
+
+
+	}
+	
+	
+	
+	
+	
+
+	
+	
+	
 
 	public static void main(String[] args) throws NumberFormatException, IOException {
 		String res1 = "6.567852 03551/shot03551_83.png 6.3930883 07053/shot07053_41.png 6.3930883 01009/shot01009_24.png 6.1475897 05709/shot05709_1205.png 6.1475897 02254/shot02254_6.png 6.1475897 07053/shot07053_109.png 6.1475897 06853/shot06853_46.png 6.1475897 05565/shot05565_167.png 6.09558 03249/shot03249_63.png 6.09558 03119/shot03119_160.png 6.09558 02218/shot02218_178.png";
