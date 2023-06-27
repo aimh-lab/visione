@@ -5,8 +5,8 @@ const avsManualByVideoID = new Map();
 const avsSubmitted = new Map();
 const avsManualRemoved = new Map();
 
-avsAutoSelected = []
-maxAutoSelected = 9
+//avsAutoSelected = []
+//maxAutoSelected = 9
 
 
 function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
@@ -18,15 +18,15 @@ function getAvsObj(collection, videoId, imgId, avsTagId, thumb) {
 	avsObj.thumb = thumb;
 	return JSON.stringify(avsObj) 
 }
-
+/*
 function addToAutoSelected(avsJSON) {
 	const avsObj = JSON.parse(avsJSON);
 	avsAutoSelected.push(avsObj);
 }
-
+*/
 function submitAVS() {
 	$('#submitted_bar').css("display", "block");
-	for (let [key, selectedItem] of avsAuto) {
+	/*for (let [key, selectedItem] of avsAuto) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
 		res = submitToServer(selectedItem);
 		avsRemoveSelected(selectedItem)
@@ -34,7 +34,7 @@ function submitAVS() {
 		avsSubmitted.set(selectedItem.videoId,selectedItem);
 		avsSubmittedTab(selectedItem);
 
-	}
+	}*/
 
 	for (let [key, selectedItem] of avsManual) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
@@ -48,7 +48,7 @@ function submitAVS() {
 	$( "#submitted_num" ).text(avsSubmitted.size)
 	updateAVSInfo();
 	avsHideSubmittedVideos();
-	avsAddAutoselected();
+	//avsAddAutoselected();
 }
 
 function submitToServer(selectedItem) {
@@ -195,7 +195,9 @@ function updateAVSTab(selectedItem) {
 	updateAVSInfo();
 }
 
-function avsToggle(selectedItem) {
+function avsToggle(avsJSON, event) {
+	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
+
 	//selectedItem = JSON.parse(avsJSON);
 	let avsItem = document.getElementById(selectedItem.avsTagId);
 	if (avsItem == null || !avsItem.checked) {
@@ -216,8 +218,6 @@ function avsToggle(selectedItem) {
 			avsManualByVideoID.set(selectedItem.videoId, selectedItem);
 			avsManualRemoved.delete(selectedItem.imgId)
 		}
-
-
 	}
 	else {
 		if (avsManual.has(selectedItem.imgId)) {
@@ -232,6 +232,9 @@ function avsToggle(selectedItem) {
 		avsManualRemoved.set(selectedItem.imgId, selectedItem)
 	}
 	updateAVSTab(selectedItem);
+	if (event.ctrlKey) {
+		submitAVS();
+	}
 }
 
 function avsRemoveSelected(selectedItem) {
@@ -246,7 +249,7 @@ function avsRemoveSelected(selectedItem) {
 		}
 	}
 }
-
+/*
 function avsAddAutoselected() {
 	selectedCounter = 0;
 	for (avsIDX = 0; avsIDX < avsAutoSelected.length && selectedCounter < maxAutoSelected; avsIDX++) {
@@ -269,7 +272,7 @@ function avsRemoveAutoselected() {
 		updateAVSTab(selectedItem)
 	}
 }
-
+*/
 function avsSubmittedTab(selectedItem) {
 	videoUrl = videoUrlPrefix + selectedItem.videoId+".mp4";
 	

@@ -42,11 +42,11 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 				<input id='annotations${canvasID}' type="text" size="0" style="display: none;">
 			</div>
 			<div class="advanced" colspan="13" title="Max Objects Number">
-				<textarea id='not${canvasID}' cols="38" rows="2" style="font-size:12px;   border-radius: 6px;" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea>
+				<textarea id='not${canvasID}' cols="38" rows="2" style="font-size:12px; border-radius: 6px;" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea>
 				<div id="textual${canvasID}_container" colspan="12" title="Scene Description">
 
 					<div id="div_textual${canvasID}">
-						<i id="sceneDes${canvasID}" aria-hidden="true">${txtSearchTitle}</i>	
+						<i id="sceneDes${canvasID}" aria-hidden="true"  class="fa fa-2x ${css_class}">${txtSearchTitle}</i>	
 
 						<div  class="Icon-inside">
 							<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
