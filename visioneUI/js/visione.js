@@ -962,14 +962,14 @@ function showResults(data) {
 				let videoUrl = videoUrlPrefix + videoId + ".mp4";
 				videoUrlPreview = videoshrinkUrl + videoId + ".mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path)
+				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path, keyFramesUrl + path)
 				resultData = getResultData(collection, videoId, imgId, thumbnailUrl + path, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
 				/*if (itemPerRow == 0)
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
 						addToAutoSelected(avsObj)*/
 
-				imgGridResults += '<div class="item column-span-1">'
+				imgGridResults += '<div id="res_' + imgId + '" class="item column-span-1">'
 				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
 				imgGridResults += '</div>'
 				resMatrix[rowIdx][columnIdx -1] = res[i];
@@ -1505,19 +1505,94 @@ function createInputTextWithMic() {
 }
 
 colIdx = 0;
+selectContentOffsetY = 106;
+selectContentOffsetX = 310;
+gridOffsetY = -selectContentOffsetY;
+gridOffsetX = -selectContentOffsetX;
+lastSelected = null;
+prevSelected = null;
+
 
 function checkKey(e) {
 
 	e = e || window.event;
+	console.log(e.keyCode)
 
-	if (e.keyCode == '38') {
+	if (e.keyCode == '65') {
+
+		//var mouseOverEvent = new Event('mouseenter');
+
+		let imgId4Regex = lastSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+		/*if (prevSelected != null) {
+			let prevImgId4Regex = prevSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+			$('#' + prevImgId4Regex).off("contextmenu");
+		}*/
+
+		//$('#' + imgId4Regex).off("contextmenu")
+		//$('#' + imgId4Regex).trigger( "contextmenu" );
+		/*var testElement = $('#' + imgId4Regex);
+
+		console.log(testElement);
+		var rightClickEvent = $.Event("contextmenu");
+		
+		testElement.trigger(rightClickEvent);*/
+
+		if (prevSelected != null) {
+			var prevSel = document.getElementById(prevSelected.id);
+			var mouseOutEvent = new MouseEvent("mouseout", {
+  				bubbles: true,
+  				cancelable: true,
+			});
+
+			prevSel.dispatchEvent(mouseOutEvent);
+		}
+
+		var testDiv = document.getElementById(lastSelected.id);
+
+		var mouseOverEvent = new MouseEvent("mouseover", {
+			bubbles: true,
+			cancelable: true,
+		  });
+		  
+		  testDiv.dispatchEvent(mouseOverEvent);
+
+
+		var rightClickEvent = new MouseEvent("contextmenu", {
+			bubbles: true,
+			cancelable: true,
+			view: window,
+		  });
+		  
+		  testDiv.dispatchEvent(rightClickEvent);
+
+/*
+
+		testDiv.addEventListener("contextmenu", function(event) {
+			event.preventDefault(); // Opzionale: previene il menu contestuale predefinito
+			// Inserisci qui il tuo codice per l'evento click del tasto destro del mouse
+		  });
+*/
+
+		//testDiv.dispatchEvent(mouseOverEvent);
+	}
+	else if (e.keyCode == '38') {
 		colIdx = 0;
-		resCursor--;
+		resCursor = Math.max(0, resCursor -1);
 		//$("#" + res[resCursor--].imgId).click();
 		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		if (lastSelected != null) {
+			lastSelected.click();
+		}
+		prevSelected = lastSelected;
+		lastSelected = element;
 
 		// Chiamare l'evento onclick
 		element.click();
+
+		gridOffsetY = Math.max(0, gridOffsetY - selectContentOffsetY);
+		var gridContent = $("#content").find(".contentGrid");
+		gridContent.animate({ scrollTop: gridOffsetY }, 100);
+
 		console.log("up arrow")
 	}
 	else if (e.keyCode == '40') {
@@ -1525,23 +1600,60 @@ function checkKey(e) {
 		resCursor++;
 		//$("#" + res[resCursor++].imgId).click();
 		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		if (lastSelected != null) {
+			lastSelected.click();
+		}
+		prevSelected = lastSelected;
+		lastSelected = element;
 
 		// Chiamare l'evento onclick
 		element.click();
+
+		gridOffsetY = gridOffsetY + selectContentOffsetY
+		var gridContent = $("#content").find(".contentGrid");
+		gridContent.animate({ scrollTop: gridOffsetY }, 100);
+
+
 		console.log("down arrow")
 	}
 	else if (e.keyCode == '37') {
-		--colIdx
+		colIdx = Math.max(0, colIdx -1);
 		//$("#" + res[resCursor--].imgId).click();
 		var element = document.getElementById(resMatrix[resCursor][Math.max(0,colIdx)].imgId);
+		if (lastSelected != null) {
+			lastSelected.click();
+			//lastSelected.style.display = 'block'
+
+		}
+		prevSelected = lastSelected;
+		lastSelected = element;
 		element.click();
+		/*gridOffsetX = Math.max(0, gridOffsetX - selectContentOffsetX);
+		var gridContent = $("#content").find(".contentGrid");*/
+
+
 		console.log("left arrow")
 	}
 	else if (e.keyCode == '39') {
 		++colIdx
 		//$("#" + res[resCursor++].imgId).click();
-		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		try {
+			var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		} catch (error) {
+			--colIdx;
+			return;
+		}
+		if (lastSelected != null) {
+			lastSelected.click();
+			//document.getElementById("res_" + lastSelected.id).style.display = 'none'
+		}
+		prevSelected = lastSelected;
+		lastSelected = element;
 		element.click();
+		/*$("#content.gridItem:nth-child(" + colIdx + ")").addClass("hideColumn");
+		gridOffsetX = gridOffsetX + selectContentOffsetX;
+		var gridContent = $("#content").find(".contentGrid");
+		gridContent.animate({ scrollLeft: gridOffsetX }, 100);*/
 		console.log("right arrow")
 	}
 
