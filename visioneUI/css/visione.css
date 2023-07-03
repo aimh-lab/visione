@@ -50,6 +50,27 @@ body {
   border-left: 0px solid green;
 }
 
+.sticky-row {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  overflow: hidden;
+  grid-column: 1 / -1; /* Occupa tutte le colonne */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-row {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 1); /* Opacity set to 0.5 (adjust as needed) */
+  pointer-events: all; /* Allow interaction with elements beneath the overlay */
+  z-index: 2; /* Ensure the overlay is on top */
+}
+
 .hideColumn {
   display: none;
 }

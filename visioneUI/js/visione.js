@@ -1080,7 +1080,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}','${res.collection}'); return false;"></i></span>'
-			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(${avsObj}, event)'>
+			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManualSelected(); avsToggle(${avsObj}, event)'>
 	
 	
 			<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
@@ -1099,7 +1099,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}','${res.collection}'); return false;"></i></span>'
-		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}collection|${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(${avsObj}, event)'>
+		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}collection|${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManualSelected(); avsToggle(${avsObj}, event)'>
 
 
 		<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
@@ -1504,14 +1504,17 @@ function createInputTextWithMic() {
 	return inputText;
 }
 
-colIdx = 0;
-selectContentOffsetY = 106;
-selectContentOffsetX = 310;
-gridOffsetY = -selectContentOffsetY;
-gridOffsetX = -selectContentOffsetX;
-lastSelected = null;
-prevSelected = null;
-
+var colIdx = 0;
+var selectContentOffsetY = 0;
+var selectContentOffsetX = 0;
+var gridOffsetY = -selectContentOffsetY;
+var gridOffsetX = -selectContentOffsetX;
+var gridOffsetY = -selectContentOffsetY;
+var gridOffsetX = -selectContentOffsetX;
+var lastSelected = null;
+var prevSelected = null;
+var scrollOffset = -1.5;
+var rowHeight = 0;
 
 function checkKey(e) {
 
@@ -1578,6 +1581,7 @@ function checkKey(e) {
 	else if (e.keyCode == '38') {
 		colIdx = 0;
 		resCursor = Math.max(0, resCursor -1);
+		console.log(resCursor)
 		//$("#" + res[resCursor--].imgId).click();
 		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
 		if (lastSelected != null) {
@@ -1589,15 +1593,20 @@ function checkKey(e) {
 		// Chiamare l'evento onclick
 		element.click();
 
-		gridOffsetY = Math.max(0, gridOffsetY - selectContentOffsetY);
+
+		gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
 		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollTop: gridOffsetY }, 100);
+		gridContent.animate({ scrollTop: gridOffsetY }, 0);
+		rowHeight = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId).offsetHeight + scrollOffset;
+
 
 		console.log("up arrow")
 	}
 	else if (e.keyCode == '40') {
 		colIdx = 0;
 		resCursor++;
+		console.log(resCursor)
+
 		//$("#" + res[resCursor++].imgId).click();
 		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
 		if (lastSelected != null) {
@@ -1609,9 +1618,12 @@ function checkKey(e) {
 		// Chiamare l'evento onclick
 		element.click();
 
-		gridOffsetY = gridOffsetY + selectContentOffsetY
+		gridOffsetY = gridOffsetY + rowHeight ;
 		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollTop: gridOffsetY }, 100);
+		gridContent.animate({ scrollTop: gridOffsetY }, 0);
+
+		resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
+		rowHeight = resRow.offsetHeight - scrollOffset
 
 
 		console.log("down arrow")
@@ -1630,6 +1642,8 @@ function checkKey(e) {
 		element.click();
 		/*gridOffsetX = Math.max(0, gridOffsetX - selectContentOffsetX);
 		var gridContent = $("#content").find(".contentGrid");*/
+		var gridContent = $("#content").find(".contentGrid");
+		gridContent.animate({ scrollLeft: 0 }, 0);
 
 
 		console.log("left arrow")
@@ -1654,7 +1668,10 @@ function checkKey(e) {
 		gridOffsetX = gridOffsetX + selectContentOffsetX;
 		var gridContent = $("#content").find(".contentGrid");
 		gridContent.animate({ scrollLeft: gridOffsetX }, 100);*/
+		var gridContent = $("#content").find(".contentGrid");
+		gridContent.animate({ scrollLeft: 0 }, 0);
 		console.log("right arrow")
+
 	}
 
 }
