@@ -38,16 +38,27 @@ body {
   border-top: 0px solid lightgrey;
 }
 
+.avsGrid {
+  border-top: 0px solid lightgrey;
+}
+
 .bodyGrid {
   display: grid;
   grid-template-columns: 1fr 4.2fr 0.1fr;
   overflow: hidden;
+
 }
 
 .contentGrid {
   overflow-y: auto;
   overflow-x: auto;
   border-left: 0px solid green;
+}
+
+
+.contentGrid-item {
+  background-color: #f1f1f1;
+  padding: 20px;
 }
 
 .sticky-row {
