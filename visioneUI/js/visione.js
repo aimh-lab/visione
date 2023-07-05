@@ -119,6 +119,8 @@ var setDisplayTo = "block";
 var isAdvanced = false
 var resCursor = 0;
 var resMatrix = [];
+var colIdx = 1;
+var rowIdx = 0;
 
 
 function handler() {
@@ -899,6 +901,9 @@ function displaySimplifiedUI() {
 }
 
 function showResults(data) {
+	//temporary!!!!!!!!!!!
+	avsCleanManualSelected();
+
 	if ($('meta[name=task]').attr('content') == "AVS") {
 		avsCleanManualSelected();
 		avsRemoveAutoselected();
@@ -909,8 +914,12 @@ function showResults(data) {
 	$("#imgGridResults").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
-	resCursor = -1;
 	resMatrix = [];
+	colIdx = 1;
+	rowIdx = -1;
+	let resColIdx = 1;
+	let resrowIdx = 0;
+	
 	var imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
 
 	if ((data == null || data == "") && latestQuery != "") {
@@ -930,9 +939,8 @@ function showResults(data) {
 			let prevID = '';
 
 			let itemPerRow = 0;
-			let columnIdx = 1;
-			let rowIdx = 0;
-			resMatrix[rowIdx] = [];
+
+			resMatrix[resrowIdx] = [];
 			for (let i = 0; i < res.length; i++) {
 				let imgId = res[i].imgId;
 				let videoId = res[i].videoId;
@@ -944,9 +952,9 @@ function showResults(data) {
 				let frameNumber = imgId.split('_').pop();
 
 				if (i > 0 && videoId != prevID) {
-					resMatrix[++rowIdx] = [];
-					let spanVal = 11 - columnIdx;
-					columnIdx = 1;
+					resMatrix[++resrowIdx] = [];
+					let spanVal = 11 - resColIdx;
+					resColIdx = 1;
 					if (spanVal > 0)
 						imgGridResults += '<div class="contentGrid-item column-span-' + spanVal + '"></div>';
 					imgGridResults += '<div class="hline column-span-11"></div>';
@@ -962,19 +970,19 @@ function showResults(data) {
 				let videoUrl = videoUrlPrefix + videoId + ".mp4";
 				videoUrlPreview = videoshrinkUrl + videoId + ".mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path, keyFramesUrl + path)
+				avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path, keyFramesUrl + path, resrowIdx, resColIdx - 1)
 				resultData = getResultData(collection, videoId, imgId, thumbnailUrl + path, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
 				/*if (itemPerRow == 0)
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
 						addToAutoSelected(avsObj)*/
 
-				imgGridResults += '<div id="res_' + imgId + '" data-row="' + rowIdx + '" data-col="' + (columnIdx-1) + '" class="item column-span-1">'
+				imgGridResults += '<div id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx-1) + '" class="item column-span-1">'
 				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
 				imgGridResults += '</div>'
-				resMatrix[rowIdx][columnIdx -1] = res[i];
+				resMatrix[resrowIdx][resColIdx -1] = res[i];
 
-				columnIdx++;
+				resColIdx++;
 
 			}
 		}
@@ -1052,6 +1060,7 @@ function showResults(data) {
 		avsReloadManualSelected();
 		avsAddAutoselected();
 	}
+	updateAVSInfo();
 }
 
 function getResultData(collection, videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
@@ -1504,7 +1513,7 @@ function createInputTextWithMic() {
 	return inputText;
 }
 
-var colIdx = 0;
+//var colIdx = 0;
 var selectContentOffsetY = 0;
 var selectContentOffsetX = 0;
 var gridOffsetY = -selectContentOffsetY;
@@ -1581,10 +1590,10 @@ function checkKey(e) {
 	}
 	else if (e.keyCode == '38') {
 		colIdx = 0;
-		resCursor = Math.max(0, resCursor -1);
+		rowIdx = Math.max(0, rowIdx -1);
 		console.log(resCursor)
 		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 		}
@@ -1596,7 +1605,7 @@ function checkKey(e) {
 
 
 
-		var container = document.querySelector('.contentGrid');
+		var container = document.querySelector('.resGrid2');
 
 		var containerTop = container.getBoundingClientRect().top;
 		var containerBottom = containerTop + container.offsetHeight;
@@ -1605,18 +1614,19 @@ function checkKey(e) {
 		var elementBottom = elementTop + element.offsetHeight;
 
 		var percentVisible = 0;
-		if (elementTop >= containerTop && elementTop <= containerBottom) {
-		  var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-		  var elementHeight = element.offsetHeight;
-		  percentVisible = (visibleHeight / elementHeight) * 100;
-		}
-		if (percentVisible < 100) {
-			var gridContent = $("#content").find(".contentGrid");
-			scrollingOffset = Math.max(0, scrollingOffset-250)
-			gridContent.animate({ scrollTop: scrollingOffset }, 0);
-		}
+			if (elementTop >= containerTop && elementTop <= containerBottom) {
+			var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+			var elementHeight = element.offsetHeight;
+			percentVisible = (visibleHeight / elementHeight) * 100;
+			}
+			if (percentVisible < 100) {
+				var gridContent = $("#content").find(".resGrid2");
+				scrollingOffset = Math.max(0, scrollingOffset-250)
+				gridContent.animate({ scrollTop: scrollingOffset }, 0);
+			}
+			console.log("percentVisible: " + percentVisible);
 
-		console.log("percentVisible: " + percentVisible);
+
 
 		/*gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
 		var gridContent = $("#content").find(".contentGrid");
@@ -1628,11 +1638,11 @@ function checkKey(e) {
 	}
 	else if (e.keyCode == '40') {
 		colIdx = 0;
-		resCursor++;
-		console.log(resCursor)
+		rowIdx++;
+		console.log(rowIdx)
 
 		//$("#" + res[resCursor++].imgId).click();
-		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 		}
@@ -1646,7 +1656,7 @@ function checkKey(e) {
 
 
 
-		var container = document.querySelector('.contentGrid');
+		var container = document.querySelector('.resGrid2');
 
 		var containerTop = container.getBoundingClientRect().top;
 		var containerBottom = containerTop + container.offsetHeight;
@@ -1655,18 +1665,19 @@ function checkKey(e) {
 		var elementBottom = elementTop + element.offsetHeight;
 
 		var percentVisible = 0;
-		if (elementTop >= containerTop && elementTop <= containerBottom) {
-		  var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-		  var elementHeight = element.offsetHeight;
-		  percentVisible = (visibleHeight / elementHeight) * 100;
-		}
-		if (percentVisible < 100) {
-			var gridContent = $("#content").find(".contentGrid");
-			scrollingOffset += 250
-			gridContent.animate({ scrollTop: scrollingOffset }, 0);
-		}
 
-		console.log("percentVisible: " + percentVisible);
+			if (elementTop >= containerTop && elementTop <= containerBottom) {
+				var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+				var elementHeight = element.offsetHeight;
+				percentVisible = (visibleHeight / elementHeight) * 100;
+			}
+			if (percentVisible < 100) {
+				var gridContent = $("#content").find(".resGrid2");
+				scrollingOffset += 250
+				gridContent.animate({ scrollTop: scrollingOffset }, 0);
+			}
+
+			console.log("percentVisible: " + percentVisible);
 
 /*
 
@@ -1696,7 +1707,7 @@ function checkKey(e) {
 	else if (e.keyCode == '37') {
 		colIdx = Math.max(0, colIdx -1);
 		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById(resMatrix[resCursor][Math.max(0,colIdx)].imgId);
+		var element = document.getElementById(resMatrix[rowIdx][Math.max(0,colIdx)].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 			//lastSelected.style.display = 'block'
@@ -1707,8 +1718,8 @@ function checkKey(e) {
 		element.click();
 		/*gridOffsetX = Math.max(0, gridOffsetX - selectContentOffsetX);
 		var gridContent = $("#content").find(".contentGrid");*/
-		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollLeft: 0 }, 0);
+		//var gridContent = $("#content").find(".contentGrid");
+		//gridContent.animate({ scrollLeft: 0 }, 0);
 
 
 		console.log("left arrow")
@@ -1717,7 +1728,7 @@ function checkKey(e) {
 		++colIdx
 		//$("#" + res[resCursor++].imgId).click();
 		try {
-			var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+			var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
 		} catch (error) {
 			--colIdx;
 			return;
@@ -1733,8 +1744,8 @@ function checkKey(e) {
 		gridOffsetX = gridOffsetX + selectContentOffsetX;
 		var gridContent = $("#content").find(".contentGrid");
 		gridContent.animate({ scrollLeft: gridOffsetX }, 100);*/
-		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollLeft: 0 }, 0);
+		//var gridContent = $("#content").find(".contentGrid");
+		//gridContent.animate({ scrollLeft: 0 }, 0);
 		console.log("right arrow")
 
 	}

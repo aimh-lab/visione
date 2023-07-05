@@ -9,7 +9,7 @@ const avsManualRemoved = new Map();
 //maxAutoSelected = 9
 
 
-function getAvsObj(collection, videoId, imgId, avsTagId, thumb, keyframe) {
+function getAvsObj(collection, videoId, imgId, avsTagId, thumb, keyframe, rowIdx, colIdx) {
 	avsObj=new Object();
 	avsObj.collection = collection;
 	avsObj.videoId = videoId;
@@ -17,6 +17,8 @@ function getAvsObj(collection, videoId, imgId, avsTagId, thumb, keyframe) {
 	avsObj.avsTagId = avsTagId;
 	avsObj.thumb = thumb;
 	avsObj.keyframe = keyframe;
+	avsObj.rowIdx = rowIdx;
+	avsObj.colIdx = colIdx;
 	return JSON.stringify(avsObj) 
 }
 /*
@@ -80,15 +82,16 @@ function selectImg(selectedItem) {
 			
 	$("#avsTab").append(img);
 
-
-	if (document.getElementById(selectedItem.avsTagId) != null)
-		document.getElementById(selectedItem.avsTagId).checked = true;
-	if (document.getElementById(selectedItem.imgId) != null) {
+	let avsTagId = document.getElementById(selectedItem.avsTagId);
+	if (avsTagId != null)
+		avsTagId.checked = true;
+	
+	let selImgId = document.getElementById(selectedItem.imgId)
+	if (selImgId != null) {
 		//document.getElementById(selectedItem.imgId).style.width = "550px";
 		//document.getElementById("img" + selectedItem.imgId).src = selectedItem.keyframe;
-		document.getElementById(selectedItem.imgId).style.borderWidth = "6px";
-
-		document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
+		selImgId.style.borderWidth = "6px";
+		selImgId.style.borderStyle = "dashed";
 	}
 	//console.log(document.getElementById("img" + selectedItem.imgId).src)		
 
@@ -162,6 +165,7 @@ function selectImg(selectedItem) {
 }
 
 function unselectImg(selectedItem) {
+	
 	if (document.getElementById("avsList_" + selectedItem.imgId) != null) {
 		document.getElementById("avsList_" + selectedItem.imgId).remove();
 		unselectImg(selectedItem)
@@ -300,6 +304,11 @@ function updateAVSInfo() {
 		}
 		$("#avsTab").prepend(avsText);
 	}*/
+	var divAvsSelected = document.getElementById('avsSelected');
+	var divResGrid = document.getElementById('resGrid');
+	var divAvsSelectedHeight = divAvsSelected.offsetHeight;
+
+	divResGrid.style.height = "calc(100% - " + divAvsSelectedHeight + "px)";
 }
 
 function updateAVSTab(selectedItem) {
@@ -317,6 +326,8 @@ function updateAVSTab(selectedItem) {
 
 function avsToggle(avsJSON, event) {
 	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
+	rowIdx = selectedItem.rowIdx
+	colIdx = selectedItem.colIdx
 
 	//selectedItem = JSON.parse(avsJSON);
 	let avsItem = document.getElementById(selectedItem.avsTagId);
