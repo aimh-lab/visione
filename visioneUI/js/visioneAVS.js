@@ -73,7 +73,7 @@ function selectImg(selectedItem) {
 			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
 			+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
-			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
+			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsRemoveSelected(' + JSON.stringify(selectedItem)  + '); updateAVSTab(' + JSON.stringify(selectedItem) + ')\'>'
 
 			+'<br>'
 			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
@@ -455,9 +455,9 @@ function avsSubmittedTab(selectedItem) {
 
 function avsHideSubmittedVideos() {
 	for (let [videoId, selectedItem] of avsSubmitted) {
-		tmp = $("[id^=video_" + videoId + "]");
+		tmp = $("[data-videoid^=" + videoId + "]");
 		tmp2 = document.getElementById("video_" + videoId);
-		$("[id^=video_" + videoId + "]").remove();
+		$("[data-videoid^=" + videoId + "]").remove();
 		//document.getElementById("video_" + videoId).style.display = 'none';
 		
 	}
