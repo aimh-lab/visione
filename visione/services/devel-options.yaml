@@ -19,9 +19,10 @@ services:
 
   features-clip-laion:
     volumes: ["./analysis/features-clip:/usr/src/app"]
-  
+
   features-clip2video:
     volumes:
+      - ./analysis/features-clip2video/preprocessing.py:/usr/src/app/preprocessing.py
       - ./analysis/features-clip2video/extract.py:/usr/src/app/extract.py
       - ./analysis/features-clip2video/service.py:/usr/src/app/service.py
 

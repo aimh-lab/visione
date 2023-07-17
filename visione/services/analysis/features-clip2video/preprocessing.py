@@ -1,9 +1,11 @@
 import os
 import subprocess
+import sys
 from multiprocessing import Pool
 import csv
 import tqdm
 import sys
+import shlex
 import json
 from pathlib import Path
 
@@ -15,8 +17,9 @@ def extract_frames(video_name, start_time, end_time, out_file, fps=5):
     dur = end_time - start_time
     cmd = 'ffmpeg -y -v 0 -ss %.02f -i %s -t %.02f -r %d -q 0 -vf scale=320x240 -preset faster %s' % (start_time, video_name, dur, fps, out_file)
 
-    ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
-    out, err = ffmpeg.communicate()
+    cmd = shlex.split(cmd)
+    ffmpeg = subprocess.Popen(cmd) #, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+    ffmpeg.communicate()
     retcode = ffmpeg.returncode
     if retcode != 0:
         print("Error in processing video {}".format(video_name), file=sys.stderr)
@@ -28,7 +31,7 @@ def process(line):
     ret = extract_frames(mp4_name.as_posix(), start_time, end_time, out_folder.as_posix())
     return ret
 
-def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Path("video_feat_extraction"), parallel=True):
+def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Path("video_feat_extraction"), parallel=False):
     """
     Preprocesses the shot metadata and performs ffmpeg processing.
     It includes merging together the shots if they are too short, if needed.
@@ -67,8 +70,9 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Pat
             ret_values = tqdm.tqdm(ret_values, total=len(lines))
             ret_values = list(ret_values)
     else:
+        ret_values = []
         for line in tqdm.tqdm(lines):
-            process(line)
+            ret_values.append(process(line))
 
     errors = [r != 0 for r in ret_values]
     shot_paths = [l[3] for l in lines]

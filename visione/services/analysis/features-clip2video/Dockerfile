@@ -8,6 +8,9 @@ RUN git clone https://github.com/CryhanFang/CLIP2Video && \
     git checkout e94131800a3a1434f6d00b89b7301d741db8ba06
 
 # Install CLIP2Video dependencies
+RUN pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
+# remove torch from original requirements.txt
+RUN sed -i '/torch/d' CLIP2Video/requirements.txt
 RUN pip install -r CLIP2Video/requirements.txt
 
 # Install other dependencies
