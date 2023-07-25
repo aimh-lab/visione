@@ -394,8 +394,7 @@ video::-webkit-media-controls {
 }
 
 .visioneLogo img {
-  max-height: 40%;
-  height: 30px;
+  height: 25px;
 }
 
 .advanced {

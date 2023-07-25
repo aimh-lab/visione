@@ -911,7 +911,7 @@ function showResults(data) {
 	//empty avsFirstCol
 	//avsAutoSelected.length = 0
 	$('html,body').scrollTop(0);
-	$("#imgGridResults").remove();
+	$("#imgGridResults").empty();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
 	resMatrix = [];
@@ -920,18 +920,15 @@ function showResults(data) {
 	let resColIdx = 1;
 	let resrowIdx = 0;
 
-	var imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
-
 	if ((data == null || data == "") && latestQuery != "") {
-		imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-		$("#results").append(imgGridResults);
+		noResultsOutput();
 	} else if (data != null && data != "") {
 		if (!isAdvanced)
 			displaySimplifiedUI();
 
 		res = JSON.parse(data);
 		if (res.length == 0)
-			imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+			noResultsOutput();
 		else {
 			document.getElementById('block1').style.display = 'block';
 			document.getElementById('newsession').style.display = 'block';
@@ -942,6 +939,7 @@ function showResults(data) {
 
 			resMatrix[resrowIdx] = [];
 			for (let i = 0; i < res.length; i++) {
+				var imgGridResults = ""
 				let imgId = res[i].imgId;
 				let videoId = res[i].videoId;
 
@@ -983,11 +981,11 @@ function showResults(data) {
 				resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
 				resColIdx++;
+				$("#imgGridResults").append(imgGridResults);
+
 
 			}
 		}
-		imgGridResults += '</div>';
-		$("#results").append(imgGridResults);
 		if (res.length > 1) {
 			for (let i = 0; i < res.length; i++) {
 				let imgId = res[i].imgId;
@@ -1063,6 +1061,7 @@ function showResults(data) {
 	//}
 	updateAVSInfo();
 }
+
 
 function getResultData(collection, videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
 	let resultData = new Object();
@@ -1515,26 +1514,42 @@ function createInputTextWithMic() {
 }
 
 function scrollToRow(rowNumber) {
-	var container = document.getElementById("container");
-	var grid = document.getElementById("grid");
-	var rows = grid.getElementsByClassName("row");
-  
-	var row = rows[rowNumber - 1]; // Sottrai 1 perché l'indice parte da 0
-  
-	var containerTop = container.scrollTop;
+	var colIdx = 0;
+
+	var container = document.querySelector('.resGrid2');
+
+	var containerTop = 0;
 	var containerHeight = container.offsetHeight;
-  
+	var containerBottom = containerTop + containerHeight;
+
+	
+	var row = document.getElementById(resMatrix[rowNumber][colIdx].imgId);
+
 	var rowTop = row.offsetTop;
 	var rowHeight = row.offsetHeight;
-  
+
 	if (rowTop < containerTop) {
-	  // La riga è sopra la parte correntemente visibile
-	  container.scrollTop = rowTop;
+		// La riga è sopra la parte correntemente visibile
+		container.scrollTop = rowTop;
 	} else if (rowTop + rowHeight > containerTop + containerHeight) {
-	  // La riga è sotto la parte correntemente visibile
-	  container.scrollTop = rowTop + rowHeight - containerHeight;
+		// La riga è sotto la parte correntemente visibile
+		container.scrollTop = rowTop - rowHeight - containerHeight;
 	}
-  }
+}
+
+function unscrollToRow(rowNumber) {
+	var colIdx = 0;
+
+	var container = document.querySelector('.resGrid2');
+	var row = document.getElementById(resMatrix[rowNumber][colIdx].imgId);
+
+	var rowTop = row.offsetTop;
+
+		// La riga è sopra la parte correntemente visibile
+		//valore hardcoded. Bisognerebbe calcolare l'altezza dell'immagine selezionata
+	container.scrollTop = rowTop - 600;
+	
+}
 
 //var colIdx = 0;
 var selectContentOffsetY = 0;
@@ -1638,8 +1653,10 @@ function checkKey(e) {
 		// Chiamare l'evento onclick
 		element.click();
 
+		//scrollToRow(rowIdx);
 
 
+/*
 		var container = document.querySelector('.resGrid2');
 
 		var containerTop = container.getBoundingClientRect().top;
@@ -1663,7 +1680,7 @@ function checkKey(e) {
 			}
 			console.log("percentVisible: " + percentVisible);
 		}
-
+*/
 
 
 		/*gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
@@ -1691,8 +1708,9 @@ function checkKey(e) {
 		element.click();
 
 
+		//scrollToRow(rowIdx);
 
-
+/*
 
 		var container = document.querySelector('.resGrid2');
 
@@ -2104,4 +2122,12 @@ function setPalette(palette) {
 		html += '</div>';
 	}
 	$("#palette").append(html);
+}
+
+function noResultsOutput() {
+	var elemento = $('#imgGridResults');
+	elemento.removeClass('gridcontainer');
+	elemento.addClass('alert alert-danger');
+	elemento.attr('role', 'alert');
+	elemento.html('<strong>Ops!</strong> No results.');
 }
