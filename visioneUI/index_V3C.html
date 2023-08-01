@@ -25,26 +25,40 @@
 	<body oncontextmenu="return true;">
 		<div id="content" class="containerGrid">
 			<div class="headerGrid">
-				<div class="headerItem">
-					<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session"
-						onclick="startNewKISSession()">
-						<i class="fas fa-sync-alt"></i> Restart
-					</button>
+				<div class="headerItem column-span-4">
+					<div class="dashboardGrid">
+						<div class="dashboardGrid-item">
+							<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session" onclick="startNewKISSession()">
+								<i class="fas fa-sync-alt"></i> Restart
+							</button>
+							<div id="dialog" title="Tag Name">
+								<label>tag</label> <input id="tag" name="tag" type="text">
+							</div>
+						</div>
+						<div class="dashboardGrid-item" id="advancedMode">ADVANCED</div>
 
-					<div id="dialog" title="Tag Name">
-						<label>tag</label> <input id="tag" name="tag" type="text">
-					</div>
-				</div>
-				<div class="headerItem" id="advancedMode">ADVANCED</div>
 
-				<div class="headerItem tg-list-item advancedToggle">
-					<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
-					<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
-				</div>
-				<div class="headerItem">
-					<div class="headerItem advanced simreorder">
-						<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
+						<div class="dashboardGrid-item tg-list-item advancedToggle">
+							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
+							<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
+						</div>
+						<div class="dashboardGrid-item advanced simreorder column-span-2">
+							<div class="bounding-box">
+								<div class="top-line"></div>
+								<span class="task-text">Task</span>
+								<label class="radio-label">
+								  <input type="radio" name="option" value="KIS"> KIS
+								</label>
+								<label class="radio-label">
+								  <input type="radio" name="option" value="AVS"> AVS
+								</label>
+							  </div>
+						</div>
+						<div class="dashboardGrid-item advanced simreorder column-span-2">
+							<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
+						</div>
 					</div>
+
 				</div>
 
 				<div class="headerItem" id="simplified0"></div>

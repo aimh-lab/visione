@@ -2,13 +2,12 @@
 .qbeGrid {
   display: grid;
   grid-template-columns: 110px 85px 85px 150px;
-  vertical-align: baseline;
   /* Dimensioni delle colonne */
 
 }
 
 .qbeItem {
-  padding: 2px;
+  padding: 0px;
   align-self: end; /* Allinea gli elementi in basso */
 }
 
@@ -25,5 +24,5 @@
 }
 
 #qbe {
-  padding-top: 30px;
+  padding: 5px;
 }

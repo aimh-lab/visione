@@ -121,6 +121,7 @@ var resCursor = 0;
 var resMatrix = [];
 var colIdx = 1;
 var rowIdx = 0;
+var isAVS = false;
 
 
 function handler() {
@@ -947,7 +948,7 @@ function showResults(data) {
 				let collection = res[i].collection;
 
 				let path = collection + "/" + videoId + "/" + imgId;
-				let frameNumber = imgId.split('_').pop();
+				let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
 
 				if (i > 0 && videoId != prevID) {
 					resMatrix[++resrowIdx] = [];
@@ -1152,8 +1153,8 @@ $(document).on('click', ".deleteBtn", function (event) {
 
 dropImage = function (e) {
 
-	let activeCanvas = canvas0;
-	let activeCanvasIdx = 0;
+	activeCanvas = canvas0;
+	activeCanvasIdx = 0;
 	var pointer = canvas1.getPointer(event.e);
 	let posX = pointer.x;
 	let posY = pointer.y;
