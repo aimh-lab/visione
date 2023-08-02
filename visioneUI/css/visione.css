@@ -1,9 +1,7 @@
 @charset "UTF-8";
 body {
   overflow: auto;
-  font-size: 12px;
-
-
+  font-size: 11px;
 }
 
 .containerGrid {
@@ -16,10 +14,10 @@ body {
 
 .headerGrid {
   display: grid;
-  grid-template-columns: 90px 45px 70px 130px 4fr 4fr 1fr;
+  grid-template-columns: 70px 30px 70px 130px 15px 4fr 15px 4fr 1fr;
   /* Dimensioni delle colonne */
   grid-gap: 1px;
-  height: 160px;
+  height: 95px;
 }
 
 .headerItem {
@@ -63,7 +61,7 @@ body {
 
 .dashboardGrid {
   display: grid;
-  grid-template-columns:  90px 45px 70px 130px;
+  grid-template-columns:  110px 30px 70px 130px;
   /* Dimensioni delle colonne */
   grid-gap: 10px;
 }
@@ -72,15 +70,15 @@ body {
   padding: 5px;
 }
 
-.bounding-box {
+.task_bounding-box {
   border: 1px solid #880718;
   border-radius: 10px;
   position: relative;
   padding: 10px;
   text-align: center;
-  font-size: 12px;
-  width: 120px;
-  height: 32px;
+  /*font-size: 12px;*/
+  width: 9em;
+  height: 3em
 }
 
 .task-text {
@@ -89,7 +87,7 @@ body {
   left: 50%;
   background-color: #fff;
   color: #880718;
-  font-size: 14px;
+  /*font-size: 14px;*/
   transform: translateX(-50%);
 }
 
@@ -213,7 +211,7 @@ body {
   z-index: 2;
   cursor: pointer;
 }
-
+/*
 #text0 {
   position: relative;
   top: 35%;
@@ -223,7 +221,7 @@ body {
   transform: translate(-50%,-50%);
   -ms-transform: translate(-50%,-50%);
 }
-
+*/
 #overlay1 {
   position: absolute;
   display: none;
@@ -237,7 +235,7 @@ body {
   z-index: 2;
   cursor: pointer;
 }
-
+/*
 #text1 {
   position: relative;
   top: 35%;
@@ -247,7 +245,7 @@ body {
   transform: translate(-50%,-50%);
   -ms-transform: translate(-50%,-50%);
 }
-
+*/
 input.checkboxAvs {
     width : 16px;
     height : 16px;
@@ -324,7 +322,7 @@ h4{
   -webkit-transform: scale(1.5); /* Safari 3-8 */
   transform: scale(1.5); 
 }
-
+/*
 .flex-container {
   display: flex;
   flex-wrap: nowrap;
@@ -338,7 +336,7 @@ h4{
   line-height: 75px;
   font-size: 30px;
   }
-
+*/
 /* Hide Play button + controls on iOS */
 video::-webkit-media-controls {
     display:none !important;
@@ -386,13 +384,13 @@ video::-webkit-media-controls {
   padding: 5px;
   text-decoration: none;
   font-weight: bold;
-  font-size: larger;
+ /* font-size: larger;*/
 }
 .dropdown-content a:hover {
   color: #FFFFFF;
   background-color: #00A4BD;
 }
-
+/*
 .task {
   font-weight: bold;
   font-size: x-large;
@@ -409,7 +407,7 @@ video::-webkit-media-controls {
 	  color: navy;
 	  font-size: large;
 }
-
+*/
 .visioneLogo_bigger {
   position: absolute;
   left: 41vw;
@@ -434,10 +432,10 @@ video::-webkit-media-controls {
 .advanced {
   display: none;
 }
-
+/*
 #simplified0 {
   width: 25vw;
-  min-width: 200px;
+  width: 200px;
   padding-top: 5px;
   height: 40px;
   color: #A7090E;
@@ -446,14 +444,14 @@ video::-webkit-media-controls {
 
 #simplified1 {
   width: 25vw;
-  min-width: 360px;
+  width: 360px;
   height: 40px;
   color: #008b8b;
 }
-
+*/
 .simplifiedSearchBar {
   position: absolute;
-  font-size: 12px;
+  /*font-size: 12px;*/
   left: 35vw;
   top: 15vw;
   width: 35vw;
@@ -479,12 +477,12 @@ video::-webkit-media-controls {
 }
 
  .textualquery0 {
-  width: 25vw;
+  width: 28vw;
   margin:4px;
   padding: 10px;
   padding-right: 55px;
   padding-left: 30px;
-  font-size:14px;
+  /*font-size:12px;*/
   border-radius: 16px;
   border-color: #A7070C;
 
@@ -493,23 +491,22 @@ video::-webkit-media-controls {
  .simplifiedTextual0 {
   width: 35vw;
   margin:4px;
-  padding: 10px;
   padding-right: 55px;
   padding-left: 30px;
 
-  font-size:14px;
+  /*font-size:14px;*/
   border-radius: 16px;
   border-color: #A7070C;
 
 }
 
  .textualquery1 {
-  width: 25vw;
+  width: 28vw;
   margin:4px;
   padding: 10px;
   padding-right: 55px;
   padding-left: 30px;
-  font-size:14px;
+ /* font-size:12px;*/
   border-radius: 16px;
   border-color: #13a0a0;
 
@@ -517,13 +514,13 @@ video::-webkit-media-controls {
 
  .textualOptions0 {
   position:relative;
-  top:40px;
+  top:52px;
   padding:15px 20px 10px 30px;
  }
 
  .textualOptions1 {
   position:relative;
-  top:40px;
+  top:52px;
   padding:15px 20px 10px 30px;
  }
 
@@ -593,11 +590,11 @@ video::-webkit-media-controls {
 }
 
  ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
-  font-size: 12px;
+  /*font-size: 12px;*/
 }
 
 ::-ms-input-placeholder { /* Microsoft Edge */
-  font-size: 12px;
+ /* font-size: 12px;*/
 }
 
 .gridcontainer {
@@ -674,13 +671,13 @@ video::-webkit-media-controls {
 
 .simreorder {
   font-weight: bold;
-  font-size: 13px;
+  /*font-size: 13px;*/
 } 
 
 #advancedMode {
   padding-top: 10px;
 
-  font-size: larger; 
+ /* font-size: larger; */
   font-weight: bold;
 }
 
@@ -691,4 +688,33 @@ video::-webkit-media-controls {
 #newsession {
 
   border-radius: 10px;
+}
+
+.font-tiny {
+  font-size: 10px;
+}
+
+.font-small {
+  font-size: 11px;
+}
+
+.font-normal {
+  font-size: 12px;
+}
+
+.font-large {
+  font-size: 14px;
+}
+
+.font-huge {
+  font-size: 16px;
+}
+
+.font-bold {
+  font-weight: bold
+}
+
+
+textarea::placeholder {
+  font-size: 12px; /* Change this value to your desired font size */
 }
