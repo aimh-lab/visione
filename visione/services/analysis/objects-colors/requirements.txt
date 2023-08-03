@@ -3,3 +3,4 @@ more_itertools
 pandas
 pyyaml
 scikit-image==0.19.3
+tqdm
