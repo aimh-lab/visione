@@ -189,7 +189,7 @@ class ColorExtractor(BaseExtractor):
         parser.add_argument('--associated-threshold', type=float, default=0.15)
         parser.add_argument('--quotient-threshold', type=float, default=0.30)
         parser.add_argument('--dominant-only', action='store_true', default=False)
-        parser.add_argument('--discard-duplicates', dest='keep_duplicates', action='store_true', default=True)
+        parser.add_argument('--keep-duplicates', action='store_true', default=False)
         super(ColorExtractor, cls).add_arguments(parser)
 
     def __init__(self, args):
