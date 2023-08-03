@@ -22,18 +22,19 @@ class IndexCommand(BaseCommand):
         parser = subparsers.add_parser('index', help='Create index entries for analyzed videos.')
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
+        parser.add_argument('--bulk', default=False, action='store_true', help='Bulk index when given multiple video ids.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace, **kwargs):
+    def __call__(self, *, video_ids, replace, bulk, **kwargs):
         super(IndexCommand, IndexCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
         # if video IDs are given, index only those
-        if len(video_ids):
+        if len(video_ids) and not bulk:
             return self.index_videos(video_ids, replace=replace)
 
         # otherwise, bulk index all videos in the collection
-        return self.bulk_index_videos(replace=replace)
+        return self.bulk_index_videos(video_ids=video_ids, replace=replace)
 
     def index_videos(self, video_ids, replace=False):
         """ Indexes the given video IDs sequentially.
