@@ -7,6 +7,8 @@ import faiss
 from flask import Flask, request, jsonify
 import numpy as np
 
+from visione import load_config
+
 
 # setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -101,9 +103,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not args.lazy_load:
-        features_indices = Path('/data').glob('faiss-index_*.faiss')
-        features_types = map(lambda x: x.name[len('faiss-index_'):len('.faiss')], features_indices)
+        config = load_config('/data/config.yaml')
+
+        enabled_features = config.get('analysis', []).get('features', [])
+        features_types = config.get('index', []).get('features', [])
+        features_types = [k for k, v in features_types.items() if v.get('index_engine', '') == 'faiss' and k in enabled_features]
+
         for features_type in features_types:
+            logging.info(f'Loading: {features_type}')
             load_index(features_type)
 
     # run the flask app
