@@ -2,6 +2,7 @@ import argparse
 import collections
 import itertools
 import logging
+import multiprocessing
 
 import numpy as np
 import pandas as pd
@@ -239,8 +240,9 @@ class ColorExtractor(BaseExtractor):
 
     def extract(self, image_paths):
         self.setup()  # lazy loading extractor
-        records = map(self.extract_one, image_paths)
-        records = list(records)
+        with multiprocessing.Pool() as pool:
+            records = pool.map(self.extract_one, image_paths)
+            records = list(records)
         return records
 
 
