@@ -45,5 +45,5 @@ class CliProgress(object):
         self.print_fn(f'progress: {self.initial}/{self.total}', flush=True)
 
 
-def cli_progress(iterable, initial=0, total=-1):
-    return CliProgress(initial, total)(iterable)
+def cli_progress(iterable, initial=0, total=-1, print_fn=print):
+    return CliProgress(initial, total, print_fn)(iterable)

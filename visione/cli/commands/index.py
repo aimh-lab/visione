@@ -1,4 +1,5 @@
 import collections
+import concurrent.futures
 import csv
 import gzip
 import json
@@ -9,7 +10,7 @@ import threading
 from rich.progress import Progress, SpinnerColumn, MofNCompleteColumn, TimeElapsedColumn
 
 from .command import BaseCommand
-from ...services.common import CliProgress
+from ...services.common import CliProgress, cli_progress
 
 
 class IndexCommand(BaseCommand):
@@ -285,13 +286,12 @@ class IndexCommand(BaseCommand):
 
         return self.compose_run(service, command, **run_kws)
 
-    def prepare_lucene_doc(self, video_id, force=False, progress=None):
+    def prepare_lucene_doc(self, video_id, force=False):
         """ Merges jsonl.gz document into a unique doc ready to be indexed by Lucene.
 
         Args:
             video_id (str): Input Video ID.
             force (bool, optional): Whether to replace existing output in the index or skip insertion. Defaults to False.
-            progress (callback, optional): Callback function to report progress. Defaults to None.
         """
         lucene_documents_dir = self.collection_dir / 'lucene-documents' / video_id
         lucene_documents_dir.mkdir(parents=True, exist_ok=True)
@@ -301,16 +301,8 @@ class IndexCommand(BaseCommand):
         with scenes_file.open('r') as f:
             num_scenes = sum(1 for _ in f) - 1
 
-        if progress:
-            progress.total += num_scenes + (progress.total < 0)
-            progress.print()
-
         if not force and lucene_documents_file.exists():
             print(f'Skipping Lucene document creation, using existing file:', lucene_documents_file.name)
-            if progress:
-                progress.initial += num_scenes
-                progress.print()
-
             return 0
 
         # prepare scene fields of records
@@ -400,9 +392,6 @@ class IndexCommand(BaseCommand):
 
         records = map(fix_fieldnames, records)
 
-        if progress:
-            records = progress(records)
-
         # save merged jsonl.gz file
         with gzip.open(lucene_documents_file, 'wt') as out:
             for record in records:
@@ -434,13 +423,15 @@ class IndexCommand(BaseCommand):
             with open(video_list, 'r') as f:
                 video_ids = [line.strip() for line in f.readlines()]
 
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            tasks = [executor.submit(self.prepare_lucene_doc, video_id, force=force, **run_kws) for video_id in video_ids]
+            futures = concurrent.futures.as_completed(tasks)
 
-        progress_obj = CliProgress(print_fn=progress) if progress else None
+            if progress:
+                futures = cli_progress(futures, total=len(video_ids), print_fn=progress)
 
-        for video_id in video_ids:
-            self.prepare_lucene_doc(video_id, force=force, progress=progress_obj, **run_kws)
-        
-        return 0
+            collections.deque(futures, maxlen=0)  # consume iterator
+            return 0
 
     def add_to_lucene_index(self, video_list=None, video_id=None, force=False, **run_kws):
         """ Adds the analyzed frames of a video to the collection index.
