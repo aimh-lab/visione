@@ -30,8 +30,6 @@ class ServeCommand(BaseCommand):
             profile_options.extend(['--profile', service])
 
         command = self.compose_cmd + profile_options + ['up']
-        if self.develop_mode:
-            command += ['--build']
 
         if port:
             self.compose_env['VISIONE_PORT'] = str(port)
