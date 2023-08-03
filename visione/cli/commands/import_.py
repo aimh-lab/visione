@@ -26,6 +26,22 @@ SUPPORTED_VIDEO_FORMATS = [
     ".m4v",
 ]
 
+DEFAULT_SCENE_LENGTH_PARAMS = [
+    '--min-scene-len', '1',
+    '--drop-short-scenes',  # ensures that every scene has at least one frame
+]
+DEFAULT_DETECTION_PARAMS = [
+    'detect-adaptive',
+    'detect-threshold',
+]
+DEFAULT_SCENE_FRAMES_PAARMS = [
+    '--num-images', '1',
+    '--png', '--compression', '9',
+]
+
+def str2list(string):
+    return string.split(' ')
+
 
 class ImportCommand(BaseCommand):
     """ Implements the 'import' CLI command. """
@@ -38,10 +54,25 @@ class ImportCommand(BaseCommand):
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing video with the given Video ID.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
+
+        parser.add_argument('--scene-length-params', default=DEFAULT_SCENE_LENGTH_PARAMS, type=str2list, help='A string (use quotes) with scenedetect option parameters (see https://www.scenedetect.com/docs/latest/cli.html#options)')
+        parser.add_argument('--scene-detection-params', default=DEFAULT_DETECTION_PARAMS, type=str2list, help='A string (use quotes) with scenedetect detection parameters (see https://www.scenedetect.com/docs/latest/cli.html#detectors)')
+        parser.add_argument('--scene-frames-params', default=DEFAULT_SCENE_FRAMES_PAARMS, type=str2list, help='A string (use quotes) with scenedetect save-image parameters (see https://www.scenedetect.com/docs/latest/cli.html#save-images)')
+
         parser.add_argument('video_path_or_url', nargs='?', default=None, help='Path or URL to video file to be imported. If not given, resumes importing of existing videos.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_path_or_url, video_id, replace, gpu, **kwargs):
+    def __call__(
+        self, *,
+        video_path_or_url,
+        video_id,
+        replace,
+        gpu,
+        scene_length_params,
+        scene_detection_params,
+        scene_frames_params,
+        **kwargs,
+        ):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
@@ -58,6 +89,12 @@ class ImportCommand(BaseCommand):
         else:
             # import a single video
             video_paths = [video_path_or_url]
+        
+        scene_params = [
+            scene_length_params,
+            scene_detection_params,
+            scene_frames_params,
+        ]
 
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress:
@@ -86,7 +123,7 @@ class ImportCommand(BaseCommand):
 
                 # detect scenes and extract frames
                 subtask = progress.add_task('- Detect scenes', total=None)
-                self.detect_scenes_and_extract_frames(video_path, video_id, replace, show_progress(subtask))
+                self.detect_scenes_and_extract_frames(video_path, video_id, *scene_params, force=replace, show_progress=show_progress(subtask))
                 subtasks.append(subtask)
 
                 # create frames thumbnails
@@ -233,7 +270,16 @@ class ImportCommand(BaseCommand):
 
         return self.compose_run(service, command, stdout_callback=stdout_callback)
 
-    def detect_scenes_and_extract_frames(self, video_path, video_id, force=False, show_progress=None):
+    def detect_scenes_and_extract_frames(
+        self,
+        video_path,
+        video_id,
+        scene_length_params,
+        scene_detection_params,
+        scene_frames_params,
+        force=False,
+        show_progress=None,
+    ):
         """ Detect scenes from a video file and extract the middle frame of every scene.
 
         Args:
@@ -259,20 +305,32 @@ class ImportCommand(BaseCommand):
         output_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
 
         service = 'scene-detection'
+
+        scene_length_params = [
+            '--min-scene-len', '1',
+            '--drop-short-scenes',  # ensures that every scene has at least one frame
+        ]
+        detection_params = [
+            'detect-adaptive',
+            'detect-threshold',
+        ]
+        saved_frames_params = [
+            '--num-images', '1',
+            '--png', '--compression', '9',
+        ]
+
         command = [
             '--quiet',
             '--input', str(input_file),
             '--output', str(output_dir),
-            '--min-scene-len', '1', '--drop-short-scenes',  #  ensure that every scene has at least one frame
-            'detect-adaptive',
-            'detect-threshold',
+        ] + scene_length_params + [
+        ] + detection_params + [
             'list-scenes', # '--quiet',
             '--skip-cuts',
             '--filename', f"{video_id}-scenes",
             'save-images',
             '--filename', f"{video_id}-$SCENE_NUMBER",
-            '--num-images', '1',
-            '--png', '--compression', '9',
+        ] + saved_frames_params + [
         ]
 
         ret = self.compose_run(service, command)
