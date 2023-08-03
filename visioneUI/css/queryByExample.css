@@ -1,7 +1,7 @@
 @charset "UTF-8";
 .qbeGrid {
   display: grid;
-  grid-template-columns: 130px 105px 5px 150px;
+  grid-template-columns: 100px 145px 2px 25px;
   padding-top: 10px;;
   /* Dimensioni delle colonne */
 

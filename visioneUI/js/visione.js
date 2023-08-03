@@ -1,7 +1,7 @@
 
 var cells = 49;
-var canvasWidth = 288;
-var canvasHeight = 160;
+var canvasWidth = 275;
+var canvasHeight = 154;
 
 CELL_COLS = 7;
 CELL_ROWS = 7;
@@ -291,6 +291,22 @@ function submitWithAlert(id, videoId, collection) {
 	}
 }
 
+function submitWithAlert(selectedItem, isConfirm) {
+	if (isConfirm) {
+		if (confirm('Are you sure you want to submit?')) {
+			res = submitResult(selectedItem.imageId, selectedItem.videoId, selectedItem.collection);
+			console.log(res);
+			alert('Server response: ' + res);
+		}
+	} else {
+		res = submitResult(selectedItem.imageId, selectedItem.videoId, selectedItem.collection);
+		console.log(res);
+	}
+	avsSubmitted.set(selectedItem.videoId, selectedItem);
+	avsSubmittedTab(selectedItem);
+}
+
+
 //to remove
 function startNewSession() {
 	if (confirm('Are you sure you want to start a new session?')) {
@@ -389,10 +405,10 @@ function addDeleteBtn(label, rect) {
 		left = rect.group.left;
 	}
 
-	var btnLeft = x - 3;
-	var btnTop = y - 9;
+	var btnLeft = x - 7;
+	var btnTop = y - 5;
 	var labelLeft = rect.left;
-	var labelTop = y - 30;
+	var labelTop = y - 22;
 
 	var deleteBtn = '<div id="'
 		+ id
@@ -1167,7 +1183,7 @@ dropImage = function (e) {
 	}
 
 	if (draggedLabel != '') {
-		scale = 16;
+		scale = 14;
 
 		let dt = e.originalEvent.dataTransfer, files = dt.files;
 		e = e || window.event;
@@ -1183,9 +1199,6 @@ dropImage = function (e) {
 			let origY = pointer.y;
 			let imgElement = document.getElementById(draggedLabel);
 			let color = imgElement.alt == 'color' ? true : false;
-			if (color) {
-				scale = 11;
-			}
 			console.log(scale + "------------------ELEMENTO " + imgElement.src)
 
 			rect = new fabric.Image(imgElement, {
