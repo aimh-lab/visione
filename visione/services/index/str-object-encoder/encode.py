@@ -1,5 +1,6 @@
 import argparse
 import collections
+import concurrent.futures
 import copy
 from functools import reduce
 import gzip
@@ -325,17 +326,11 @@ def process_video_id(
     hypersets,
     force,
     save_every,
-    progress,
     video_id=None,
 ):
 
     if not force and str_output_file.exists() and count_output_file.exists():
         print(f'Skipping STR object encoding, using existing file:', str_output_file.name, count_output_file.name)
-        # TODO ugly hack.. should be done in a better way
-        n_frames = int(subprocess.check_output([f'zcat "{str_output_file}" | wc -l'] , shell=True))
-        progress.total += n_frames + (progress.total < 0)
-        progress.initial += n_frames
-        progress.print()
         return
     
     assert all(i.exists() for i in objects_input_files), f"Analysis files missing for '{video_id}'. Have you run 'analyze' on it?"
@@ -353,18 +348,13 @@ def process_video_id(
     if force and str_output_file.exists():
         str_output_file.unlink()
 
-    n_frames = None  # TODO
     object_counter = collections.Counter()
 
     str_output_file.parent.mkdir(parents=True, exist_ok=True)
     with GzipJsonlFile(str_output_file, flush_every=save_every) as saver:
-        for count, record in progress(counts_and_records):
+        for count, record in counts_and_records:
             saver.add(record)
             object_counter += count
-
-    if progress.total < progress.initial:
-        progress.total = progress.initial
-        progress.print()
 
     count_output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(count_output_file, 'w') as f:
@@ -384,20 +374,25 @@ def main(args):
     if args.video_ids:
         video_ids = args.video_ids
 
-    progress = CliProgress()
-
-    common_args = (config, hypersets, args.force, args.save_every, progress)
+    common_args = (config, hypersets, args.force, args.save_every)
     
     if not video_ids:  # process only given files, do not use video_id in file names
         process_video_id(args.objects_input_templates, args.str_output_template, args.count_output_template, *common_args)
         return
     
-    for video_id in video_ids:  # process all files with given video_id
-        object_input_files = [Path(str(t).format(video_id=video_id)) for t in args.objects_input_templates]
-        str_output_file = Path(str(args.str_output_template).format(video_id=video_id))
-        count_output_file = Path(str(args.count_output_template).format(video_id=video_id))
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        tasks = []
+        for video_id in video_ids:  # process all files with given video_id
+            object_input_files = [Path(str(t).format(video_id=video_id)) for t in args.objects_input_templates]
+            str_output_file = Path(str(args.str_output_template).format(video_id=video_id))
+            count_output_file = Path(str(args.count_output_template).format(video_id=video_id))
 
-        process_video_id(object_input_files, str_output_file, count_output_file, *common_args, video_id=video_id)
+            task = executor.submit(process_video_id, object_input_files, str_output_file, count_output_file, *common_args, video_id=video_id)
+            tasks.append(task)
+        
+        futures = concurrent.futures.as_completed(tasks)
+        futures = cli_progress(futures, total=len(video_ids))
+        collections.deque(futures, maxlen=0)  # consume iterator
 
 
 if __name__ == "__main__":
