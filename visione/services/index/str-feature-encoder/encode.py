@@ -10,7 +10,7 @@ import h5py
 import more_itertools
 import surrogate
 
-from visione import load_config, CliProgress
+from visione import load_config, CliProgress, cli_progress
 from visione.savers import GzipJsonlFile
 
 
@@ -86,20 +86,14 @@ def load_or_build_encoder(encoder_filename, encoder_config, dim, features, n_tra
     return encoder
 
 
-def process_video_id(features_input_file, str_output_file, encoder, force, save_every, progress):
+def process_video_id(features_input_file, str_output_file, encoder, force, save_every):
 
     with h5py.File(features_input_file, 'r') as f:
-        n_images = f['data'].shape[0]
-        progress.total += n_images + (progress.total < 0)
-        progress.print()
-
         if str_output_file.exists():
             if force:  # if forced, delete old file
                 str_output_file.unlink()
             else:
                 print(f'Skipping STR features encoding, using existing file:', str_output_file.name)
-                progress.initial += n_images
-                progress.print()
                 return
 
         # get ids and features matrix
@@ -114,8 +108,6 @@ def process_video_id(features_input_file, str_output_file, encoder, force, save_
         features = features[skip_mask]
 
         n_rem = len(ids)
-        initial = n_images - n_rem
-        progress.initial += initial
         bs = args.batch_size
 
         # create batches of features
@@ -129,8 +121,6 @@ def process_video_id(features_input_file, str_output_file, encoder, force, save_
 
         # generate records
         records = ({'_id': _id, 'feature_str': surrogate_text} for _id, surrogate_text in zip(ids, str_encodings))
-
-        records = progress(records)
         saver.add_many(records)
 
 
@@ -151,12 +141,10 @@ def main(args):
     encoder_config = load_config(args.config_file)['index']['features'][features_name]
     encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features_dim, features, args.train_size, args.force_encoder)
 
-    progress = CliProgress()
-
-    for video_id in video_ids:
+    for video_id in cli_progress(video_ids, total=len(video_ids)):
         features_input_file = Path(str(args.features_input_template).format(video_id=video_id))
         str_output_file = Path(str(args.str_output_template).format(video_id=video_id))
-        process_video_id(features_input_file, str_output_file, encoder, args.force, args.save_every, progress)
+        process_video_id(features_input_file, str_output_file, encoder, args.force, args.save_every)
 
 
 if __name__ == "__main__":
