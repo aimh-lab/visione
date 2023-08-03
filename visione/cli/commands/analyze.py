@@ -98,15 +98,25 @@ class AnalyzeCommand(BaseCommand):
             # generate image list
             n_frames = 0
             video_ids = []
-            for video_dir in video_dirs:
-                video_id = video_dir.name
-                video_frames = sorted(p for p in video_dir.iterdir() if p.name.endswith('.png'))
-                for video_frame in video_frames:
-                    frame_id = video_frame.stem
-                    frame_path = '/data' / video_frame.relative_to(self.collection_dir)
-                    image_list.write(f'{video_id}\t{frame_id}\t{frame_path}\n')
-                    n_frames += 1
-                video_ids.append(video_id)
+            with Progress('[progress.description]{task.description}') as progress:
+                task = progress.add_task('Collecting...')
+
+                for video_dir in video_dirs:
+                    video_id = video_dir.name
+                    video_frames = sorted(
+                        frame_name for frame_name in video_dir.iterdir()
+                        if frame_name.name.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))
+                    )
+
+                    for video_frame in video_frames:
+                        frame_id = video_frame.stem
+                        frame_path = '/data' / video_frame.relative_to(self.collection_dir)
+                        image_list.write(f'{video_id}\t{frame_id}\t{frame_path}\n')
+                        n_frames += 1
+
+                    video_ids.append(video_id)
+
+                    progress.update(task, description=f'Collecting... Videos: {len(video_ids):7d} Frames: {n_frames:7d}')
 
             image_list.flush()
             image_list.seek(0)
