@@ -284,14 +284,18 @@ function getMiddleTimestamp(id) {
 }
 
 function submitWithAlert(id, videoId, collection) {
-	if (confirm('Are you sure you want to submit?')) {
+	if (!isAVS) {
+		if (confirm('Are you sure you want to submit?')) {
+			res = submitResult(id, videoId, collection);
+			console.log(res);
+			alert('Server response: ' + res);
+		}
+	} else {
 		res = submitResult(id, videoId, collection);
-		console.log(res);
-		alert('Server response: ' + res);
 	}
 }
 
-function submitWithAlert(selectedItem, isConfirm) {
+function submitWithAlert2(selectedItem, isConfirm) {
 	if (isConfirm) {
 		if (confirm('Are you sure you want to submit?')) {
 			res = submitResult(selectedItem.imageId, selectedItem.videoId, selectedItem.collection);
