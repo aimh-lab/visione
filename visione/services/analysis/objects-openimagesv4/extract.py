@@ -1,6 +1,13 @@
 import argparse
+from functools import partial
 import logging
+import multiprocessing
 import sys
+
+from PIL import Image
+import numpy as np
+import tensorflow as tf
+import tensorflow_hub as hub
 
 from visione.extractor import BaseExtractor
 
@@ -20,9 +27,6 @@ log = logging.getLogger(__name__)
 
 
 def load_image_pil(image_path):
-    from PIL import Image
-    import numpy as np
-
     try:
         with Image.open(image_path) as image_pil:
             image_np = np.array(image_pil.convert('RGB'))               # convert PIL image to numpy
@@ -39,25 +43,50 @@ def load_image_pil(image_path):
     return image_np
 
 
-def apply_detector(detector, x):
-    import tensorflow as tf
+def load_image_tf(image_path):
+    image = tf.io.read_file(image_path)
+    image = tf.io.decode_png(image, channels=3)
+    image = tf.image.convert_image_dtype(image, tf.float32)
+    image = image[tf.newaxis, ...]
+    return image
 
+
+def output_to_record(y, is_numpy=False):
+    if not is_numpy:
+        y = {k: v.numpy() for k, v in y.items()}
+    
+    y = {k: v.tolist() for k, v in y.items()}
+    
+    for i in ('detection_class_names', 'detection_class_entities'):
+        y[i] = [l.decode('utf8') for l in y[i]]
+    
+    record = {
+        'object_class_labels': y['detection_class_labels'],
+        'object_class_names': y['detection_class_entities'],  # fixes a swap in tensorflow model output
+        'object_class_entities': y['detection_class_names'],  # fixes a swap in tensorflow model output
+        'object_scores': y['detection_scores'],
+        'object_boxes_yxyx': y['detection_boxes'],
+        'detector': 'frcnn-oiv4',
+    }
+
+    return record
+
+
+def apply_detector(detector, x):
     if x is None:
         return None
 
     try:
         x = tf.convert_to_tensor(x)    # from numpy to tf.Tensor
         y = detector(x)
-        y = {k: v.numpy().tolist() for k, v in y.items()}
-        for i in ('detection_class_names', 'detection_class_entities'):
-            y[i] = [l.decode('utf8') for l in y[i]]
+        record = output_to_record(y)
     except KeyboardInterrupt as e:
         raise e
     except Exception as e:
         log.warning(f'Error applying detector: {e}')
         return None
 
-    return y
+    return record
 
 
 class ObjectOIV4Extractor(BaseExtractor):
@@ -76,10 +105,7 @@ class ObjectOIV4Extractor(BaseExtractor):
         if self.detector is not None:
             return
 
-        # lazy load libraries and models
-        import tensorflow as tf
-        import tensorflow_hub as hub
-
+        # lazy load model
         if not self.args.gpu:
             tf.config.set_visible_devices([], 'GPU')
 
@@ -91,20 +117,30 @@ class ObjectOIV4Extractor(BaseExtractor):
         self.setup()  # lazy load model
         image = load_image_pil(image_path)
         det = apply_detector(self.detector, image)
-        det = {
-            'object_class_labels': det['detection_class_labels'],
-            'object_class_names': det['detection_class_entities'],  # fixes a swap in tensorflow model output
-            'object_class_entities': det['detection_class_names'],  # fixes a swap in tensorflow model output
-            'object_scores': det['detection_scores'],
-            'object_boxes_yxyx': det['detection_boxes'],
-            'detector': 'frcnn-oiv4',
-        } if det else None
         return det
 
     def extract(self, image_paths):
         records = map(self.extract_one, image_paths)
         records = list(records)
         return records
+
+    def extract_iterable(self, image_paths, batch_size=2):
+        self.setup()
+
+        def generate_paths():
+            for p in image_paths:
+                yield str(p)
+
+        # prefetch images
+        paths = tf.data.Dataset.from_generator(generate_paths, output_signature=tf.TensorSpec(shape=(), dtype=tf.string))
+        images = paths.map(load_image_tf, num_parallel_calls=tf.data.AUTOTUNE)
+        images = images.prefetch(10)
+
+        for image in images:
+            out = self.detector(image)
+            out = {k: tf.squeeze(v) for k, v in out.items()}
+            record = output_to_record(out)
+            yield record
 
 
 if __name__ == "__main__":
