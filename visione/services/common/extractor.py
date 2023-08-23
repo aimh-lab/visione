@@ -4,8 +4,6 @@ import itertools
 import more_itertools
 import re
 
-import tqdm
-
 # from visione import CliProgress
 # from visione.savers import GzipJsonlFile, HDF5File
 from . import CliProgress
@@ -198,7 +196,6 @@ class BaseVideoExtractor(object):
             # input_shots is a tsv file containing (video_id, frame_id, frame_path)
             with input_shots.open() as image_list:
                 bulk_reader = csv.reader(image_list, delimiter='\t')
-                bulk_reader = tqdm.tqdm(bulk_reader)
 
                 shot_paths_and_times = []
 
