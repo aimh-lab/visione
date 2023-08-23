@@ -83,6 +83,16 @@ class BaseExtractor(object):
         """ Loads a batch of images and extracts features. """
         raise NotImplementedError()
 
+    def extract_iterable(self, image_paths, batch_size=1):
+        """ Consumes an iterable and returns an iterable of records.
+            This method contains a fallback implementation using chunked processing,
+            but subclasses can implement optimized solutions here.
+        """
+        batched_image_paths = more_itertools.chunked(image_paths, batch_size)
+        batched_records = map(self.extract, batched_image_paths)
+        records = itertools.chain.from_iterable(batched_records)
+        return records
+
     def skip_existing(self, ids_and_paths, progress=None):
         """ Skips images that have already been processed. """
         for video_id, group in itertools.groupby(ids_and_paths, key=lambda x: x[0]):
@@ -110,10 +120,7 @@ class BaseExtractor(object):
         video_ids, image_ids, image_paths = more_itertools.padded(ids_and_paths, fillvalue=(), n=3)
 
         # process images in batches
-        batched_image_paths = more_itertools.chunked(image_paths, self.args.batch_size)
-        batched_records = map(self.extract, batched_image_paths)
-        records = itertools.chain.from_iterable(batched_records)
-
+        records = self.extract_iterable(image_paths, self.args.batch_size)
         ids_and_records = zip(video_ids, image_ids, records)
         ids_and_records = progress(ids_and_records)
 
