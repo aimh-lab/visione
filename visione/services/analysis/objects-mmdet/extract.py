@@ -1,14 +1,43 @@
 import argparse
 import itertools
+import multiprocessing
 import os
 from pathlib import Path
+
+import mmcv
+from mmdet.apis import init_detector, inference_detector
+import numpy as np
+import torch
 
 from visione.extractor import BaseExtractor
 
 
-def detection2record(detection, detector, classes, image_hw):
-    import numpy as np
+def buffered_imap(func, iterable, buffer_size):
+    # Create a multiprocessing.Queue to act as a buffer
+    queue = multiprocessing.Queue(maxsize=buffer_size)
 
+    def worker(queue):
+        for item in iterable:
+            result = func(item)
+            queue.put(result)
+
+        # Put the sentinel value to signal the end of processing
+        queue.put(None)
+
+    # Start the worker process
+    worker_process = multiprocessing.Process(target=worker, args=(queue,))
+    worker_process.start()
+
+    while True:
+        result = queue.get()
+        if result is None:
+            break
+        yield result
+
+    worker_process.join()
+
+
+def detection2record(detection, detector, classes, image_hw):
     if detector == 'mrcnn-lvis':
         boxes_and_scores = detection[0]
     elif detector.startswith('vfnet'):
@@ -67,10 +96,7 @@ class ObjectsMMDetExtractor(BaseExtractor):
         if self.model is not None:
             return
 
-        # lazy load libraries and models
-        from mmdet.apis import init_detector
-        import torch
-
+        # lazy load models
         config_file = str(self.DETECTORS[self.detector]['config'])
         checkpoint_file = str(self.DETECTORS[self.detector]['checkpoint'])
         device = 'cuda' if args.gpu and torch.cuda.is_available() else 'cpu'
@@ -78,10 +104,6 @@ class ObjectsMMDetExtractor(BaseExtractor):
 
     def extract_one(self, image_path):
         self.setup()
-
-        import mmcv
-        from mmdet.apis import inference_detector
-        import torch
 
         with torch.no_grad():
             image = mmcv.imread(image_path)
@@ -94,6 +116,16 @@ class ObjectsMMDetExtractor(BaseExtractor):
         records = map(self.extract_one, image_paths)
         records = list(records)
         return records
+
+    def extract_iterable(self, image_paths, batch_size=2):
+        self.setup()
+
+        with torch.no_grad():
+            for image in buffered_imap(mmcv.imread, image_paths, buffer_size=2):
+                image_hw = image.shape[:2]
+                detection = inference_detector(self.model, image)
+                record = detection2record(detection, self.detector, self.model.CLASSES, image_hw)
+                yield record
 
 
 if __name__ == "__main__":
