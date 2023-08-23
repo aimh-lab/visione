@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 from pathlib import Path
@@ -7,7 +8,7 @@ import threading
 import urllib.parse
 import urllib.request
 
-from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn, MofNCompleteColumn
 
 from .command import BaseCommand
 
@@ -54,6 +55,7 @@ class ImportCommand(BaseCommand):
         parser.add_argument('--id', dest='video_id', help='Video ID. If None, take the filename without extension as ID.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing video with the given Video ID.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
+        parser.add_argument('--bulk', default=False, action='store_true', help='Apply processing step-wise instead of video-wise.')
 
         parser.add_argument('--scene-length-params', default=DEFAULT_SCENE_LENGTH_PARAMS, type=str2list, help='A string (use quotes) with scenedetect option parameters (see https://www.scenedetect.com/docs/latest/cli.html#options)')
         parser.add_argument('--scene-detection-params', default=DEFAULT_DETECTION_PARAMS, type=str2list, help='A string (use quotes) with scenedetect detection parameters (see https://www.scenedetect.com/docs/latest/cli.html#detectors)')
@@ -71,6 +73,7 @@ class ImportCommand(BaseCommand):
         scene_length_params,
         scene_detection_params,
         scene_frames_params,
+        bulk=False,
         **kwargs,
         ):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
@@ -78,8 +81,8 @@ class ImportCommand(BaseCommand):
 
         assert not (video_id and video_path_or_url is None), "Cannot specify --id without video_path_or_url"
 
-        bulk_import = video_path_or_url is None
-        if bulk_import:
+        multi_import = video_path_or_url is None
+        if multi_import:
             # import all videos in the collection 'videos' directory
             videos_dir = self.collection_dir / 'videos'
             video_paths = [v for v in videos_dir.glob('*') if v.suffix.lower() in SUPPORTED_VIDEO_FORMATS]
@@ -96,6 +99,13 @@ class ImportCommand(BaseCommand):
             scene_frames_params,
         ]
 
+        if bulk and multi_import:
+           return self._import_bulk(video_paths, replace, gpu, scene_params)
+        
+        return self._import_sequential(video_paths, multi_import, video_id, replace, gpu, scene_params)
+
+
+    def _import_sequential(self, video_paths, multi_import, video_id, replace, gpu, scene_params):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress:
 
@@ -106,12 +116,12 @@ class ImportCommand(BaseCommand):
 
             for video_path in video_paths:
                 progress.update(task, description=f"Importing {video_id or video_path}")
-                video_id = None if bulk_import else video_id
+                video_id = None if multi_import else video_id
                 subtasks = []
 
                 # import video file
                 subtask = progress.add_task('- Copying video file')
-                overwrite = replace if not bulk_import else False
+                overwrite = replace if not multi_import else False
                 video_id, video_path = self.copy_or_download_video(video_path, video_id, overwrite, show_progress(subtask))
                 subtasks.append(subtask)
 
@@ -142,8 +152,47 @@ class ImportCommand(BaseCommand):
         # if bulk import, return an empty list to represent all imported videos
         # otherwise, return the video ID of the imported video
         # XXX this is for supporting the 'add' cli command but the interface needs to be improved
-        ret = [] if bulk_import else [video_id]
+        ret = [] if multi_import else [video_id]
         return ret
+
+    def _import_bulk(self, video_paths, replace, gpu, scene_params):
+        progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), MofNCompleteColumn(), TimeElapsedColumn()]
+        with Progress(*progress_cols, transient=not self.develop_mode) as progress, \
+             concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as executor:
+            
+            def map_with_progress(func, iterable, description=None, total=None):
+                total = total if total else len(iterable) if hasattr(iterable, '__len__') else None
+                task = progress.add_task(description, total=total)
+
+                futures = [executor.submit(func, it) for it in iterable]
+                results = []
+                for future in concurrent.futures.as_completed(futures):
+                    results.append(future.result())
+                    progress.advance(task)
+
+                return results
+
+            # copy all video files
+            video_ids_and_paths = map_with_progress(self.copy_or_download_video, video_paths, description='Copying video files')
+
+            # create all resized videos
+            func = lambda x: self.create_resized_videos(x[1], x[0], replace, gpu)
+            map_with_progress(func, video_ids_and_paths, description='Resizing videos')
+
+            # detect scenes and extract frames
+            func = lambda x: self.detect_scenes_and_extract_frames(x[1], x[0], *scene_params, force=replace)
+            map_with_progress(func, video_ids_and_paths, description='Detecting scenes')
+
+            # create frames thumbnails
+            func = lambda x: self.create_frames_thumbnails(x[0], replace)
+            map_with_progress(func, video_ids_and_paths, description='Generating thumbs')
+
+            progress.console.log('Import complete.')
+
+        # if bulk import, return an empty list to represent all imported videos
+        # otherwise, return the video ID of the imported video
+        # XXX this is for supporting the 'add' cli command but the interface needs to be improved
+        return []
 
     def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False, show_progress=None):
         """ Copies or downloads a video from a local path or URL and places it
