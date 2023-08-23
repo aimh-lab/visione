@@ -245,6 +245,12 @@ class ColorExtractor(BaseExtractor):
             records = list(records)
         return records
 
+    def extract_iterable(self, image_paths, chunk_size=50):
+        self.setup()  # lazy loading extractor
+        # FIXME: on slow I/O, imap() could saturate memory
+        with multiprocessing.Pool() as pool:
+            yield from pool.imap(self.extract_one, image_paths)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract color annotations.')
