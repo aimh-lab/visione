@@ -217,7 +217,7 @@ class ImportCommand(BaseCommand):
         video_ext = str(video_filename.suffix)
 
         video_out = self.collection_dir / 'videos' / f'{video_id}{video_ext}'
-        if video_out.exists() and not replace:
+        if video_out.exists() and (not replace or video_out.samefile(video_path_or_url)):
             print(f'Using existing video file: {video_out.name}')
             if show_progress:
                 show_progress(1, 1)  # set as completed
