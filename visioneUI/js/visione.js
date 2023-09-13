@@ -182,6 +182,7 @@ function setSpeech(speechRes, idx) {
 		console.log("Warning, speechRes is " + speechRes);
 		prevTextual[idx] = $("#textual" + idx).val();
 		$("#textual" + idx).val('');
+		document.getElementById('cancelText' + idx).style.display = 'none'
 	}
 
 	else {
@@ -189,6 +190,8 @@ function setSpeech(speechRes, idx) {
 		let jsonSpeech = JSON.parse(speechRes)
 
 		$("#textual" + idx).val(jsonSpeech.translation);
+		document.getElementById('cancelText' + idx).style.display = 'block'
+
 		searchByForm();
 		idx = Math.floor(Math.random() * 3);
 		if (jsonSpeech.translation.length > 50) {
@@ -1008,7 +1011,7 @@ function showResults(data) {
 						addToAutoSelected(avsObj)*/
 
 				imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
+				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), true)
 				imgGridResults += '</div>'
 				resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
@@ -1131,6 +1134,23 @@ function unifiedSubmit(avsObj, ev) {
 
 }
 
+function unifiedTabSubmit(avsObj, ev) {
+	if (!submitAlert()) 
+		return false; 
+
+	currentSelected =  null;
+
+	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
+		currentSelected = avsManuallyByVideoID.entries().next().value[1];
+		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
+	}
+
+	avsCleanManuallySelected(); 
+	avsToggle(avsObj, ev);
+	submitAVS();
+
+}
+
 const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 	if (isSimplified) {
@@ -1145,7 +1165,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.collection}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 	
 	
-			<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
+			<img id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
 			</div>
 
 		`
