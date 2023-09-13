@@ -27,17 +27,9 @@ SUPPORTED_VIDEO_FORMATS = [
     ".m4v",
 ]
 
-DEFAULT_SCENE_LENGTH_PARAMS = [
-    '--min-scene-len', '1',
-    '--drop-short-scenes',  # ensures that every scene has at least one frame
-]
 DEFAULT_DETECTION_PARAMS = [
     'detect-adaptive',
     'detect-threshold',
-]
-DEFAULT_SCENE_FRAMES_PAARMS = [
-    '--num-images', '1',
-    '--png', '--compression', '9',
 ]
 
 def str2list(string):
@@ -57,9 +49,8 @@ class ImportCommand(BaseCommand):
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
         parser.add_argument('--bulk', default=False, action='store_true', help='Apply processing step-wise instead of video-wise.')
 
-        parser.add_argument('--scene-length-params', default=DEFAULT_SCENE_LENGTH_PARAMS, type=str2list, help='A string (use quotes) with scenedetect option parameters (see https://www.scenedetect.com/docs/latest/cli.html#options)')
         parser.add_argument('--scene-detection-params', default=DEFAULT_DETECTION_PARAMS, type=str2list, help='A string (use quotes) with scenedetect detection parameters (see https://www.scenedetect.com/docs/latest/cli.html#detectors)')
-        parser.add_argument('--scene-frames-params', default=DEFAULT_SCENE_FRAMES_PAARMS, type=str2list, help='A string (use quotes) with scenedetect save-image parameters (see https://www.scenedetect.com/docs/latest/cli.html#save-images)')
+        parser.add_argument('--scene-max-length', default=0, type=float, help='Maximum length in seconds of a scene. Longer scenes will be splitted. 0 = no maximum length.')
 
         parser.add_argument('video_path_or_url', nargs='?', default=None, help='Path or URL to video file to be imported. If not given, resumes importing of existing videos.')
         parser.set_defaults(func=self)
@@ -70,9 +61,8 @@ class ImportCommand(BaseCommand):
         video_id,
         replace,
         gpu,
-        scene_length_params,
         scene_detection_params,
-        scene_frames_params,
+        scene_max_length,
         bulk=False,
         **kwargs,
         ):
@@ -92,20 +82,14 @@ class ImportCommand(BaseCommand):
         else:
             # import a single video
             video_paths = [video_path_or_url]
-        
-        scene_params = [
-            scene_length_params,
-            scene_detection_params,
-            scene_frames_params,
-        ]
 
         if bulk and multi_import:
-           return self._import_bulk(video_paths, replace, gpu, scene_params)
+           return self._import_bulk(video_paths, replace, gpu, scene_detection_params, scene_max_length)
         
-        return self._import_sequential(video_paths, multi_import, video_id, replace, gpu, scene_params)
+        return self._import_sequential(video_paths, multi_import, video_id, replace, gpu, scene_detection_params, scene_max_length)
 
 
-    def _import_sequential(self, video_paths, multi_import, video_id, replace, gpu, scene_params):
+    def _import_sequential(self, video_paths, multi_import, video_id, replace, gpu, scene_detection_params, scene_max_length):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress:
 
@@ -131,9 +115,14 @@ class ImportCommand(BaseCommand):
                 thread.start()
                 subtasks.append(subtask)
 
-                # detect scenes and extract frames
+                # detect scenes
                 subtask = progress.add_task('- Detect scenes', total=None)
-                self.detect_scenes_and_extract_frames(video_path, video_id, *scene_params, force=replace, show_progress=show_progress(subtask))
+                self.detect_scenes(video_path, video_id, scene_detection_params, scene_max_length, force=replace, show_progress=show_progress(subtask))
+                subtasks.append(subtask)
+
+                # extract frames
+                subtask = progress.add_task('- Extract frames', total=None)
+                self.extract_frames(video_path, video_id, force=replace, show_progress=show_progress(subtask))
                 subtasks.append(subtask)
 
                 # create frames thumbnails
@@ -155,7 +144,7 @@ class ImportCommand(BaseCommand):
         ret = [] if multi_import else [video_id]
         return ret
 
-    def _import_bulk(self, video_paths, replace, gpu, scene_params):
+    def _import_bulk(self, video_paths, replace, gpu, scene_detection_params, scene_max_length):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), MofNCompleteColumn(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress, \
              concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as executor:
@@ -180,8 +169,11 @@ class ImportCommand(BaseCommand):
             map_with_progress(func, video_ids_and_paths, description='Resizing videos')
 
             # detect scenes and extract frames
-            func = lambda x: self.detect_scenes_and_extract_frames(x[1], x[0], *scene_params, force=replace)
+            func = lambda x: self.detect_scenes(x[1], x[0], scene_detection_params, scene_max_length, force=replace)
             map_with_progress(func, video_ids_and_paths, description='Detecting scenes')
+
+            func = lambda x: self.extract_frames(x[1], x[0], force=replace)
+            map_with_progress(func, video_ids_and_paths, description='Extracting frames')
 
             # create frames thumbnails
             func = lambda x: self.create_frames_thumbnails(x[0], replace)
@@ -319,16 +311,7 @@ class ImportCommand(BaseCommand):
 
         return self.compose_run(service, command, stdout_callback=stdout_callback)
 
-    def detect_scenes_and_extract_frames(
-        self,
-        video_path,
-        video_id,
-        scene_length_params,
-        scene_detection_params,
-        scene_frames_params,
-        force=False,
-        show_progress=None,
-    ):
+    def detect_scenes(self, video_path, video_id, detection_params, max_length, force=False, show_progress=None):
         """ Detect scenes from a video file and extract the middle frame of every scene.
 
         Args:
@@ -355,31 +338,77 @@ class ImportCommand(BaseCommand):
 
         service = 'scene-detection'
 
-        scene_length_params = [
-            '--min-scene-len', '1',
-            '--drop-short-scenes',  # ensures that every scene has at least one frame
-        ]
-        detection_params = [
-            'detect-adaptive',
-            'detect-threshold',
-        ]
-        saved_frames_params = [
-            '--num-images', '1',
-            '--png', '--compression', '9',
-        ]
-
         command = [
+            'scenedetect',
             '--quiet',
+            '--config', '/data/scenedetect.cfg',
             '--input', str(input_file),
             '--output', str(output_dir),
-        ] + scene_length_params + [
         ] + detection_params + [
             'list-scenes', # '--quiet',
-            '--skip-cuts',
             '--filename', f"{video_id}-scenes",
+        ]
+
+        ret = self.compose_run(service, command)
+
+        # post-process detected scenes
+        if max_length:
+            scene_file = '/data' / scene_file.relative_to(self.collection_dir)
+
+            command = [
+                'python',
+                '/usr/src/app/post_process_scenes.py',
+                str(scene_file),
+                '--max-length', str(max_length),
+            ]
+
+            ret = self.compose_run(service, command)
+
+        if show_progress:
+            show_progress(1, 1)  # set as completed
+
+        return ret
+
+    def extract_frames(self, video_path, video_id, force=False, show_progress=None):
+        """ Extract the middle frame of every scene.
+
+        Args:
+            video_path (pathlib.Path): Path to input video.
+            video_id (str): Input Video ID.
+            force (bool, optional): Whether to replace existing output or skip computation. Defaults to False.
+            show_progress (func, optional): Callback to show progress.
+
+        Returns:
+            int: Return code of the scene frame extraction command.
+        """
+
+        selected_frames_dir = self.collection_dir / 'selected-frames' / video_id
+
+        scene_file = selected_frames_dir / f'{video_id}-scenes.csv'
+        selected_frames_files = selected_frames_dir.glob('*.png')
+
+        if not force and any(selected_frames_files):
+            print('Skipping frame generation, using existing files:', selected_frames_dir / '*.png')
+            if show_progress:
+                show_progress(1, 1)  # set as completed
+            return 0
+
+        input_file = '/data' / video_path.relative_to(self.collection_dir)
+        output_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        scene_file = '/data' / scene_file.relative_to(self.collection_dir)
+
+        service = 'scene-detection'
+
+        command = [
+            'scenedetect',
+            '--quiet',
+            '--config', '/data/scenedetect.cfg',
+            '--input', str(input_file),
+            '--output', str(output_dir),
+            'load-scenes', # '--quiet',
+            '--input', str(scene_file),
             'save-images',
             '--filename', f"{video_id}-$SCENE_NUMBER",
-        ] + saved_frames_params + [
         ]
 
         ret = self.compose_run(service, command)
