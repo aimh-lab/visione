@@ -32,9 +32,13 @@ class GzipJsonlFile(Saver):
         self._to_be_flushed = 0
 
         if self.path.exists():
-            with gzip.open(str(self.path), 'r') as f:
-                self._ids = {json.loads(line)['_id'] for line in f.read().splitlines()}
-            log.info(f'Found {len(self._ids)} results')
+            try:
+                with gzip.open(str(self.path), 'r') as f:
+                    self._ids = {json.loads(line)['_id'] for line in f.read().splitlines()}
+                log.info(f'Found {len(self._ids)} results')
+            except EOFError:
+                log.warning(f'{self.path} seems corrupt, removing and reprocessing.')
+                self.path.unlink()
 
     def __enter__(self):
         self.file = gzip.open(str(self.path), 'at')
