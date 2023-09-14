@@ -17,7 +17,7 @@ body {
   grid-template-columns: 70px 30px 70px 130px 15px 4fr 15px 4fr 1fr;
   /* Dimensioni delle colonne */
   grid-gap: 1px;
-  height: 95px;
+  height: 100px;
 }
 
 .headerItem {

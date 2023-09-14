@@ -41,7 +41,11 @@ function submitAVS() {
 	}*/
 	for (let [key, selectedItem] of avsManually) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
-		let res = submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
+		let res = null;
+		if (!isAVS)
+			res = submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
+		else
+			submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
 		avsRemoveSelected(selectedItem)
 		updateAVSTab(selectedItem)
 		avsSubmitted.set(selectedItem.videoId, selectedItem);
