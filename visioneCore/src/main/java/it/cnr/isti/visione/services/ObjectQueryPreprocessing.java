@@ -103,7 +103,7 @@ public class ObjectQueryPreprocessing {
 		String[] ssplit = objectTxt.split("\\s+");
 		HashMap<String, Integer> hmObjCount = new HashMap<String, Integer>();
 		for (String obj : ssplit) {
-			if (obj.isBlank())
+			if (obj.isEmpty())
 				continue;
 			if (ignore.contains(obj)) {
 				res.append(prefix).append(obj);
@@ -151,7 +151,7 @@ public class ObjectQueryPreprocessing {
 		String[] ssplit = objectTxt.split("\\s+");
 		HashMap<String, Integer> hmObjCount = new HashMap<String, Integer>();
 		for (String obj : ssplit) {
-			if (obj.isBlank())
+			if (obj.isEmpty())
 				continue;
 			if (ignore.contains(obj)) {
 				res.append(" 4wc").append(obj);

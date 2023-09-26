@@ -66,6 +66,7 @@ public class Settings {
 	public static FieldParameters IMG_SIM_PARAMETERS;
 	
 	private static HashMap<String, FieldParameters> FIELD_MAP;
+	public static File HYPERSET_FILE;
 	
 	public static void init(InputStream is) {
 		props = new Properties();
@@ -121,6 +122,8 @@ public class Settings {
 			for (int i = 0; i < RESCORER_PIPELINE.length; i++) {
 				RESCORER_PIPELINE_FIELDS[i] = FIELD_MAP.get(RESCORER_PIPELINE[i]);
 			}
+			HYPERSET_FILE = new File(props.getProperty("HYPERSET"));
+
 			
 
 		} catch (IOException e) {

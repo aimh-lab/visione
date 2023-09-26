@@ -1,6 +1,7 @@
 package it.cnr.isti.visione.services;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.hc.core5.http.ParseException;
@@ -32,6 +33,8 @@ public class AladinSearchThreaded implements Runnable {
 		System.out.println("ALADIN");
 		try {
 			String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
+			//String[] split = features.split(" ");
+			//features = String.join(" ", Arrays.copyOfRange(split, 0, 30));
 			queryObj.getQuery().put(Fields.ALADIN, features);
 			hits_tmp.add(searcher.search(queryObj, k));// adding OBJECT and ALADIN (if applicable)
 		} catch (ParseException | IOException | org.apache.lucene.queryparser.classic.ParseException e) {
