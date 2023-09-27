@@ -26,7 +26,7 @@
 
 	<style>
 		body {
-			overflow: hidden;
+			overflow: auto;
 		}
 
 		.containerGrid {
@@ -34,17 +34,15 @@
 			width: 100vw;
 			display: grid;
 			grid-template-columns: 1fr;
+			grid-template-rows:  1fr 10fr 0fr;
 		}
 
 		.headerGrid {
 			display: grid;
-
-
 			grid-template-columns: 130px 130px 110px 4fr 4fr 1fr;
 			/* Dimensioni delle colonne */
 			grid-gap: 10px;
-			padding-bottom: 50px;
-
+			height: 120px;
 		}
 
 		.headerItem {
@@ -53,9 +51,10 @@
 
 		.sidebarGrid {
 			border: 0px solid lightgrey;
-			max-width: 330px;
+			max-width: 310px;
 			overflow-y: auto;
 			padding: 5px;
+			align-items: center;
 		}
 
 		.footerGrid {
@@ -114,10 +113,10 @@
 		</div>
 		<div class="bodyGrid">
 			<div class="sidebarGrid" id="searchSidebar">
-				<div w3-include-html="palette.html" class="headerItem"></div>
+				<div w3-include-html="palette.html" class="palette"></div>
 				<div id='searchTab'></div>
 				<hr class="advanced">
-				<div w3-include-html="filters.html" style="padding-left: 5px;"></div>
+				<div w3-include-html="filters.html"></div>
 
 			</div>
 
