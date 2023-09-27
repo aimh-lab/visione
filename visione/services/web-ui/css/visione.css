@@ -1,6 +1,8 @@
 @charset "UTF-8";
 body {
   overflow: auto;
+  font-size: 12px;
+
 }
 
 .containerGrid {
@@ -101,10 +103,6 @@ body {
     display: block;
     margin: 0 auto;
     border-style: none;
-}
-
-body{
-	font-size: 10px;
 }
 
 
@@ -466,7 +464,7 @@ video::-webkit-media-controls {
   border: 1px;
   border-style: solid;
 
-  border-radius: 15px; 
+  border-radius: 10px; 
   padding: 5px;
   margin-top: 5px;
  }
@@ -477,7 +475,7 @@ video::-webkit-media-controls {
   border: 1px;
   border-style: solid;
 
-  border-radius: 15px; 
+  border-radius: 10px; 
   padding: 5px;
   margin-top: 5px;
  }
@@ -491,8 +489,15 @@ video::-webkit-media-controls {
  }
 
  .palette {
-  padding: 5px;
- }
+  display: grid;
+  grid-template-columns: repeat(11, auto); /* Maximum 10+1 columns */
+  grid-gap: 1px; /* Adjust the gap between grid cells as needed */
+}
+
+.palette img {
+  margin: auto;
+  width:24px;
+}
 
  ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
   font-size: 12px;
