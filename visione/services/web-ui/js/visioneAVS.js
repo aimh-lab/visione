@@ -69,10 +69,11 @@ function selectImg(selectedItem) {
 	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
+			+'<img id="remove_' + selectedItem.imgId + '"  style="padding: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
+
 			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
 			+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
-			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsRemoveSelected(' + JSON.stringify(selectedItem)  + '); updateAVSTab(' + JSON.stringify(selectedItem) + ')\'>'
 
 			+'<br>'
 			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
@@ -80,6 +81,8 @@ function selectImg(selectedItem) {
 			+'</div></div></span>'
 			
 	$("#avsTab").append(img);
+	//$('#remove_' + selectedItem.imgId).css("display", "block");
+
 
 	let avsTagId = document.getElementById(selectedItem.avsTagId);
 	if (avsTagId != null)
@@ -323,8 +326,7 @@ function avsToggle(avsJSON, event) {
 	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
 	rowIdx = selectedItem.rowIdx
 	colIdx = selectedItem.colIdx
-	avsManuallyByVideoID.clear();
-	avsManually.clear();
+
 
 	//selectedItem = JSON.parse(avsJSON);
 	//var avsItem = document.getElementById(selectedItem.avsTagId);
@@ -337,14 +339,23 @@ function avsToggle(avsJSON, event) {
 
 		//updateAVSTab(manuallySelectedToRemove);
 	} else {
+		avsManuallyByVideoID.clear();
+		avsManually.clear();
 		avsManually.set(selectedItem.imgId, selectedItem);
 		avsManuallyByVideoID.set(selectedItem.videoId, selectedItem);
 		//avsManuallyRemoved.delete(selectedItem.imgId)
 	}
 	updateAVSTab(selectedItem);
-	if (event.ctrlKey) {
+	if (avsManuallyByVideoID.has(selectedItem.videoId))
+		scrollToRow(rowIdx);
+	else
+		unscrollToRow(rowIdx);
+
+
+	if (event && event.ctrlKey) {
 		submitAVS();
 	}
+
 }
 
 /*
@@ -449,9 +460,9 @@ function avsSubmittedTab(selectedItem) {
 
 function avsHideSubmittedVideos() {
 	for (let [videoId, selectedItem] of avsSubmitted) {
-		tmp = $("[data-videoid^=" + videoId + "]");
+		tmp = $("[id^=video_" + videoId + "]");
 		tmp2 = document.getElementById("video_" + videoId);
-		$("[data-videoid^=" + videoId + "]").remove();
+		$("[id^=video_" + videoId + "]").remove();
 		//document.getElementById("video_" + videoId).style.display = 'none';
 		
 	}
