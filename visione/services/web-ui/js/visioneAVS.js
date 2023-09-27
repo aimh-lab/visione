@@ -73,8 +73,8 @@ function selectImg(selectedItem) {
 			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
 
 			+'<br>'
-			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '">'
-			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px;" width="145" height= "90" src="' + selectedItem.thumb + '">'
+			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
+			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 350px;" src="' + selectedItem.keyframe + '">'
 			+'</div></div></span>'
 			
 	$("#avsTab").append(img);
@@ -83,12 +83,81 @@ function selectImg(selectedItem) {
 	if (document.getElementById(selectedItem.avsTagId) != null)
 		document.getElementById(selectedItem.avsTagId).checked = true;
 	if (document.getElementById(selectedItem.imgId) != null) {
-		document.getElementById(selectedItem.imgId).style.width = "550px";
-		document.getElementById("img" + selectedItem.imgId).src = selectedItem.keyframe;
+		//document.getElementById(selectedItem.imgId).style.width = "550px";
+		//document.getElementById("img" + selectedItem.imgId).src = selectedItem.keyframe;
+		document.getElementById(selectedItem.imgId).style.borderWidth = "6px";
 
-		//document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
+		document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
 	}
-	console.log(document.getElementById("img" + selectedItem.imgId).src)		
+	//console.log(document.getElementById("img" + selectedItem.imgId).src)		
+
+	let imgId4Regex = selectedItem.imgId.replaceAll(".", "\\.")
+			
+	var cip = $("#avsdiv_" + imgId4Regex).hover( hoverVideoAVS, hideVideoAVS );
+	
+	function hoverVideoAVS(e) {
+		let avsdivNoRegex = this.id
+		let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
+		let imgIdNoRegex = avsdivNoRegex.replaceAll("avsdiv_", "selected_avs_")
+		let imgId = imgIdNoRegex.replaceAll(".", "\\.")
+		let imgIdAVS = avsdivNoRegex.replaceAll("avsdiv_", "")
+
+		//imgId = this.id.replaceAll("selected_avs_", "")
+
+		$('#' + imgId).contextmenu(function() {
+			//langInfo = this.lang.split('|');
+			let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
+
+			let collection = langInfo[0];
+			let videoId = langInfo[1];
+			let videourl = langInfo[2];
+			let playerId = 'video' + videoId;
+
+			var elementExists = document.getElementById(playerId);
+
+			//var startTime = getStartTime(imgIdNoRegex);
+			//var endTime = getEndTime(imgIdNoRegex);
+			var middleTime = getMiddleTimestamp(imgIdAVS);
+			var startTime = middleTime -2;
+			var endTime = middleTime+2;
+			if (elementExists != null) {
+				$('#'+ playerId).get(0).pause();
+				$('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
+				$('#'+ playerId).get(0).load();
+				$('#'+ playerId).get(0).play();
+				return;
+			}
+			let backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ imgIdNoRegex + "')";
+		
+			//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+			//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+			//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+			let imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+			$('#' + avsdiv).append(imgtable);
+			$('#' + imgId).css("display", "none");
+
+			//$('#'+ playerId).get(0).currentTime = time-1;
+			//$('#'+ playerId).get(0).play();
+			return false;
+		});	
+	}	
+
+	function hideVideoAVS(e) {
+		let avsdivNoRegex = this.id
+		let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
+		let imgId = avsdiv.replaceAll("avsdiv_", "selected_avs_")
+		let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
+		let collection = langInfo[0];
+		let videoId = langInfo[1];
+		let videourl=langInfo[2];
+		let playerId = 'video' + videoId;
+
+		var elementExists = document.getElementById(playerId);
+		if (elementExists != null) {
+			$('#' + playerId).remove();
+			$('#' + imgId).css("display", "block");
+		}
+	}
 }
 
 function unselectImg(selectedItem) {
@@ -99,11 +168,13 @@ function unselectImg(selectedItem) {
 	if (document.getElementById(selectedItem.avsTagId) != null)
 		document.getElementById(selectedItem.avsTagId).checked = false;
 	if (document.getElementById(selectedItem.imgId) != null) {
-		document.getElementById(selectedItem.imgId).style.width = "146px";
-		document.getElementById("img" + selectedItem.imgId).src = selectedItem.thumb;
+		//document.getElementById(selectedItem.imgId).style.width = "146px";
+		document.getElementById(selectedItem.imgId).style.borderWidth = "3px";
+		document.getElementById(selectedItem.imgId).style.borderStyle = "solid";
+		//document.getElementById("img" + selectedItem.imgId).src = selectedItem.thumb;
 
 	}
-	console.log(document.getElementById("img" + selectedItem.imgId).src)
+	//console.log(document.getElementById("img" + selectedItem.imgId).src)
 
 }
 
@@ -215,17 +286,17 @@ function unselectImgVisione4(selectedItem) {
 }
 
 function updateAVSInfo() {
-	$("#avsInfo").remove();
-	avsText = "";
+	//$("#avsInfo").remove();
+	/*avsText = "";
 	selectedSize = avsAuto.size + avsManual.size
 	if (avsAuto.size > 0 || avsSubmitted.size > 0 || avsManual.size > 0) {
-		avsText = '<div title="Selected images for AVS Tasks" id="avsInfo"><span style="float: right;color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span>';
+		//avsText = '<div title="Selected images for AVS Tasks" id="avsInfo"><span style="float: right;color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span>';
 		if (avsAuto.size > 0 || avsManual.size > 0) {
 			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: left; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span>';
 			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: right; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span></div>';
 		}
 		$("#avsTab").prepend(avsText);
-	}
+	}*/
 }
 
 function updateAVSTab(selectedItem) {
