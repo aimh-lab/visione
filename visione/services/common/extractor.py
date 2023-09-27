@@ -9,6 +9,7 @@ import re
 from . import CliProgress
 from .savers import GzipJsonlFile, HDF5File
 
+
 class BaseExtractor(object):
     """ Base class for all extractors. """
 
@@ -210,28 +211,36 @@ class BaseVideoExtractor(object):
                 for video_id, group in itertools.groupby(bulk_reader, key=lambda x: x[0]):
 
                     # get scenes file and video path from the frame path
-                    group = [(vid, fid, Path(fpath)) for vid, fid, fpath in group]
-                    scenes_file = group[0][2].parent / f'{video_id}-scenes.csv'
+                    frame_ids, frame_paths = zip(*((fid, Path(fpath)) for _, fid, fpath in group))
+                    scenes_file = frame_paths[0].parent / f'{video_id}-scenes.csv'
 
                     # find the video file (it can have any extension)
                     # video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
                     escaped_video_id = re.escape(video_id)
-                    candidates = (group[0][2].parents[2] / 'videos').glob(f'{video_id}.*')
+                    candidates = (scenes_file.parents[2] / 'videos').glob(f'{video_id}.*')
                     # candidates = list(candidates)
                     # print(video_id, group[0][2], candidates)
                     video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
 
                     # read the scenes.csv file
                     with scenes_file.open() as scenes:
-                        scenes_reader = csv.reader(scenes)
+                        scenes_reader = csv.DictReader(scenes)
+                        frame_id_to_timeinfo_dict = {
+                            int(row['Scene Number']): (
+                                int(row['Start Frame']), 
+                                float(row['Start Time (seconds)']),
+                                int(row['End Frame']),
+                                float(row['End Time (seconds)'])
+                            ) for row in scenes_reader}
 
-                        # skips the header
-                        next(scenes_reader)
-
-                        frame_id_to_timeinfo_dict = {int(row[0]): (int(row[1]), float(row[3]), int(row[4]), float(row[6])) for row in scenes_reader}
-
-                    rows = [(video_id, g[2].stem, video_path, *frame_id_to_timeinfo_dict[int(re.split('-|_', g[2].stem)[-1])]) for g in group]
-                    shot_paths_and_times.extend(rows)
+                    for frame_id, frame_path in zip(frame_ids, frame_paths):
+                        scene_id = int(re.split('-|_', frame_path.stem)[-1])
+                        if scene_id not in frame_id_to_timeinfo_dict:
+                            print(f'WARNING: scene {scene_id} not found in {scenes_file}')
+                            
+                        timeinfo = frame_id_to_timeinfo_dict[scene_id]
+                        row = (video_id, frame_id, video_path, *timeinfo)
+                        shot_paths_and_times.append(row)
 
 
         return shot_paths_and_times
