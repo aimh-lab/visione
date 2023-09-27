@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import torch
 import dinov2.data.transforms as T
+from torchvision import datasets
+
 
 os.environ['DB_ROOT'] = ''
 
@@ -41,15 +43,23 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
 
     iscuda = ops.torch_set_gpu([0])
     #TODO load model from filesystem
-    net = load_model('./Resnet-101-AP-GeM.pt', iscuda)
+    model = load_model('./Resnet-101-AP-GeM.pt', iscuda)
     transforms = T.make_classification_eval_transform()
 
 
     for paths in image_lists:
-
         with open(tmp_list_path, 'w') as tmp_txt:
             tmp_txt.write('\n'.join(paths))
 
+        #TODO load dataset
+        dataset = datasets.ImageFolder(tmp_list_path, transform=transforms)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=1)
+        features = model(dataloader)
+        yield features
+
+        '''
+
+        #Temporary? single img extraction
         for img_path in paths:
             img = Image.open(img_path)
             #check if img has just one channel
@@ -60,14 +70,13 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
                 img = img.to('cuda')
 
             with torch.no_grad():
-                features = net(img)
+                features = model(img)
             
             if iscuda:
                 features = features.cpu()
 
         yield features.numpy()
-
-
+'''
 def main(args):
 
     if args.output_type == 'mongo':
@@ -100,7 +109,7 @@ def main(args):
     
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Extract GeM features.')
+    parser = argparse.ArgumentParser(description='Extract DINOv2 features.')
 
     parser.add_argument('image_list', type=Path, help='path to TSV file containing image IDS and paths (one per line)')
     parser.add_argument('--image-root', type=Path, default=Path('/data'), help='path to prepend to image paths')
