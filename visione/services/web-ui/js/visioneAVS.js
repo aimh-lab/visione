@@ -37,29 +37,32 @@ function submitAVS() {
 		avsSubmittedTab(selectedItem);
 
 	}*/
-
 	for (let [key, selectedItem] of avsManually) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
-		res = submitToServer(selectedItem);
+		let res = submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
 		avsRemoveSelected(selectedItem)
 		updateAVSTab(selectedItem)
 		avsSubmitted.set(selectedItem.videoId, selectedItem);
 		avsSubmittedTab(selectedItem);
+		if (!isAVS) {
+			alert('Server response: ' + res);
+		}
 
 	}
 	$( "#submitted_num" ).text(avsSubmitted.size)
 	updateAVSInfo();
-	avsHideSubmittedVideos();
+	avsHilightlighSubmittedVideos();
 	//avsAddAutoselected();
-}
 
+}
+/*
 function submitToServer(selectedItem) {
 	return $.ajax({
 		type: "GET",
 		async: true,
 		url: urlBSService + "/submitResult?id=" + selectedItem.imgId + "&videoid=" + selectedItem.videoId + "&isAVS=true&simreorder=" + simreorder,
 	}).responseText;
-}
+}*/
 
 function selectImg(selectedItem) {		
 	let videoUrl = videoUrlPrefix +selectedItem.videoId+".mp4";
@@ -70,13 +73,13 @@ function selectImg(selectedItem) {
 	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
-			+'<img id="remove_' + selectedItem.imgId + '"  style="padding-left: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
+			+'<img id="remove_' + selectedItem.imgId + '"  style="padding-left: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ', null, true)\'>'
 
 			+'<a style="font-size:12px; padding-left: 5px;" title="View annotations of ' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ id+'</a>'
 			+'<a title="Video summary" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 5px;"></i></a>'
 			+'<i title="Play Video" class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 5px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="padding-left: 5px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 5px;" onclick=\'unifiedSubmit(' +  JSON.stringify(selectedItem) + ', null);\'></i>'
+			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 5px;" onclick=\'if (submitAlert()) {submitAVS();selectNextResult();}\'></i>'
 
 			+'<br>'
 			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 25em;">'
@@ -325,7 +328,7 @@ function updateAVSTab(selectedItem) {
 	updateAVSInfo();
 }
 
-function avsToggle(avsJSON, event) {
+function avsToggle(avsJSON, event, isRemoveButton = false) {
 	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
 	rowIdx = selectedItem.rowIdx
 	colIdx = selectedItem.colIdx
@@ -334,7 +337,7 @@ function avsToggle(avsJSON, event) {
 	//selectedItem = JSON.parse(avsJSON);
 	//var avsItem = document.getElementById(selectedItem.avsTagId);
 	//var isChecked = avsItem && avsItem.checked;
-	if (avsManuallyByVideoID.has(selectedItem.videoId)) {
+	if ((avsManuallyByVideoID.has(selectedItem.videoId) && event != null) || isRemoveButton) {
 		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
 		avsManually.delete(selectedItem.imgId);
 		avsManuallyByVideoID.delete(selectedItem.videoId);
@@ -473,6 +476,15 @@ function avsHideSubmittedVideos() {
 	}
 }
 
+function avsHilightlighSubmittedVideos() {
+	for (let [videoId, selectedItem] of avsSubmitted) {
+		tmp = $("[id^=video_" + videoId + "]");
+		tmp2 = document.getElementById("video_" + videoId);
+		$("[data-videoid^=" + videoId + "]").css("background-color", "#fff4e1");
+		//document.getElementById("video_" + videoId).style.display = 'none';
+		
+	}
+}
 
 
 function avsCleanManuallySelected() {

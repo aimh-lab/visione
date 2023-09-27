@@ -1582,7 +1582,7 @@ function checkKey(e) {
 	var goToNextResult = false;
 
 	var activeElement = document.activeElement;
-	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text") {
+	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0) {
 		console.log("Tasto premuto in un campo di input text");
 		return;
 	}
@@ -1705,20 +1705,7 @@ function checkKey(e) {
 		console.log("up arrow")
 	}
 	if (e.keyCode == '40' || goToNextResult) {
-		colIdx = 0;
-		rowIdx++;
-		console.log(rowIdx)
-
-		//$("#" + res[resCursor++].imgId).click();
-		var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
-		if (lastSelected != null) {
-			lastSelected.click();
-		}
-		prevSelected = lastSelected;
-		lastSelected = element;
-
-		// Chiamare l'evento onclick
-		element.click();
+		selectNextResult();
 
 
 		//scrollToRow(rowIdx);
@@ -1822,12 +1809,27 @@ function checkKey(e) {
 
 }
 
+function selectNextResult() {
+	colIdx = 0;
+	rowIdx++;
+	console.log(rowIdx)
+
+	//$("#" + res[resCursor++].imgId).click();
+	var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
+	if (lastSelected != null) {
+		lastSelected.click();
+	}
+	prevSelected = lastSelected;
+	lastSelected = element;
+
+	// Chiamare l'evento onclick
+	element.click();
+}
+
 
 function init() {
 
 	document.onkeydown = checkKey;
-
-
 
 	$(function () {
 		$("#dialog").dialog({
