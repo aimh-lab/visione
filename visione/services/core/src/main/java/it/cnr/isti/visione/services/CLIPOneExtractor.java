@@ -156,7 +156,7 @@ public class CLIPOneExtractor {
 		HashMap<String,Integer> hm_containsAtMost=new HashMap<String,Integer>();
 		for(String obj: splitObj) {
 			obj=obj.replaceAll("\\s+","");
-			if(obj.isBlank() || ignore.contains(obj))
+			if(obj.isEmpty() || ignore.contains(obj))
 				continue;
 			if(obj.startsWith("-")) {
 				//max objects
