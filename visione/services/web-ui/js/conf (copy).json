@@ -1,0 +1,8 @@
+{
+  "serviceUrl": "https://bilioso.isti.cnr.it:8443/Visione4/services/VBSService",
+  "speech2Text": "https://pc-vairo.isti.cnr.it:8443/whisper",
+  "thumbnailUrl": "https://visione.isti.cnr.it/frames/tiny/",
+  "videoUrl":"https://visione.isti.cnr.it/videos/",
+  "videoshrinkUrl":"https://visione.isti.cnr.it/videos/tiny/",
+  "keyFramesUrl":"https://visione.isti.cnr.it/frames/"
+}

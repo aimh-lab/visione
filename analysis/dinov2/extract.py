@@ -78,6 +78,7 @@ def extract_from_image_lists(image_lists, root='', tmp_list_path='/tmp/batch.txt
         yield features.numpy()
 '''
 
+
 def main(args):
 
     if args.output_type == 'mongo':
