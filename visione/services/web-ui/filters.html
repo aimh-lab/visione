@@ -1,43 +1,29 @@
 <div id="filter" class="advanced">
-	<table border="0">
-		<tr valign="top">
-			<td colspan="1">
-				<div>
-					<span id="urlText"><b>Paste image URL</b></span> <a href="#"
-						id="urlLink" onclick="changeQueryBySampleMod('url')"
-						style="display: none;">Paste image URL</a> <span id="uploadText"
-						style="display: none;"><b>Upload an image</b></span> <a href="#"
-						id="uploadLink" onclick="changeQueryBySampleMod('upload')">Upload
-						an image</a>
-					<form id="searchbar" method="POST" enctype="multipart/form-data"
-						name="form1" action="">
-						<div class='preview' id="qbeblock" style="display: none;">
-							<img src="" id="qbe" width="120" height="80">
-							<img id="removeqbe" title="remove" width="16" style="vertical-align: top;" src="img/Actions-dialog-close-icon.png" onclick="document.getElementById('qbe').src=''; document.getElementById('urlToUpload').value=''; document.getElementById('qbeblock').style.display = 'none'; showResults(null);"/></span>'
-							
-						</div>
-						<table cellspacing="1" cellpadding="1" border="0">
-							<tr>
-								<td valign="top"><input type="hidden" value="" name=""
-									id="objId"> <input id="urlToUpload" name="url"
-									type="text" size="40" onclick=""
-									onchange="if (document.getElementById('urlToUpload').value.trim() == '') document.getElementById('qbe').style.display = 'none'; document.getElementById('queryImage').value=''">
-									<input style="display: none;" id="imageToUpload" name="imgFile"
-									type="file" size="44" onclick=""
-									onchange="document.getElementById('queryImage').value=''">
-								</td>
-								<td valign="top">
-									<!-- 
-						<input type="image" src="img/Search.png" value="Search" title="Search" onclick="if (trim(document.getElementById('urlToUpload').value)=='' &&  trim(document.getElementById('imageToUpload').value)=='')return false;">
-					     --> <input type="image" src="img/Search.png" value="Search"
-									id='queryByExample' title="Search"
-									onclick="document.getElementById('qbe').src=document.getElementById('urlToUpload').value; document.getElementById('qbeblock').style.display = 'block'; queryByExample(document.getElementById('urlToUpload').value); return false;">
-								</td>
-							</tr>
-						</table>
-					</form>
+	<div class="qbeGrid" >
+		<div class="qbeItem" >
+			<b id="urlText">Paste image URL</b>
+			<a href="#"	id="urlLink" onclick="changeQueryBySampleMod('url')" style="display: none;">Paste image URL</a> 
+		</div>
+		<div  class="qbeItem column-span-2">
+			<b id="uploadText" style="display: none;">Upload an image</b>
+			<a href="#"	id="uploadLink" onclick="changeQueryBySampleMod('upload')">Upload an image</a>
+		</div>
+		<div  class="qbeItem">
+			<span class='preview' id="qbeblock" style="display: none;">
+				<img src="" id="qbeImg" width="80" height="40">
+				<img id="removeqbe" title="remove" width="16" style="vertical-align: top;" src="img/Actions-dialog-close-icon.png" onclick="resetQueryImg()"/>
+			</span>
+		</div>
+
+			<div  class="qbeItem column-span-3">
+
+				<input type="hidden" value="" id="objId"> 
+
+				<input id="urlToUpload" name="url" type="text" size="35">
+				<input style="display: none;" id="imageToUpload" name="imgFile"	type="file" size="35">
 				</div>
-			</td>
-		</tr>
-	</table>
+				<div  class="qbeItem column-span-1">
+					<input type="image" src="img/Search.png" value="Search"	id='queryByExample' title="Search" onclick="queryImg(); return false;">
+				</div>
+	</div>
 </div>

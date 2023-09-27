@@ -6,7 +6,7 @@ const searchFormID = {
 
 const addButton = `<button id="addNewCanvas" class="btn btn-outline-info btn-lg" title="add a new canvas"> <i class="fa fa-plus-circle"></i></button>`
 
-const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
+const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class = "") => {
 	return `
 	<div class="advanced scene${canvasID}" id='canvasTab'>
 		<div class="advanced">
@@ -44,12 +44,17 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 			<div class="advanced" colspan="13" title="Max Objects Number">
 				<textarea id='not${canvasID}' cols="38" rows="2" style="font-size:12px;   border-radius: 6px;" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea>
 				<div id="textual${canvasID}_container" colspan="12" title="Scene Description">
-					<div id="div_textual${canvasID}" class="Icon-inside">
-						<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
-						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
-						<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
-						<i class="fa fa-search fa-SM fa-fw" style="left:10px; color:gray;"></i>
-						<i id="cancelText${canvasID}" class="fa fa-magnifying fa-lg fa-fw" aria-hidden="true" style="left:10px; color:gray;"></i>
+
+					<div id="div_textual${canvasID}">
+						<i id="sceneDes${canvasID}" aria-hidden="true">${txtSearchTitle}</i>	
+
+						<div  class="Icon-inside">
+							<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
+							<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
+							<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
+							<i class="fa fa-search fa-SM fa-fw" style="left:10px; color:gray;"></i>
+							<i id="cancelText${canvasID}" class="fa fa-magnifying fa-lg fa-fw" aria-hidden="true" style="left:10px; color:gray;"></i>
+						</div>
 					</div>
 				</div>
 			</div>

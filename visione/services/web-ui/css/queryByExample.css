@@ -1,0 +1,29 @@
+@charset "UTF-8";
+.qbeGrid {
+  display: grid;
+  grid-template-columns: 110px 85px 85px 150px;
+  vertical-align: baseline;
+  /* Dimensioni delle colonne */
+
+}
+
+.qbeItem {
+  padding: 2px;
+  align-self: end; /* Allinea gli elementi in basso */
+}
+
+.column-span-1 {
+  grid-column: span 1;
+}
+
+.column-span-2 {
+  grid-column: span 2;
+}
+
+.column-span-3 {
+  grid-column: span 3;
+}
+
+#qbe {
+  padding-top: 30px;
+}

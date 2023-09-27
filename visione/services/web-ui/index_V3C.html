@@ -10,10 +10,12 @@
 		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
 		<link rel="stylesheet" href="css/bootstrap.css">
 		<link rel="stylesheet" href="css/visione.css">
+		<link rel="stylesheet" href="css/queryByExample.css">
 		<link rel="stylesheet" href="css/toggle.css">
 		<script src="js/jquery-3.3.1.min.js"></script>
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/fabric.js"></script>
+		<script src="js/queryByExample.js"></script>
 		<script src="js/visione.js"></script>
 		<script src="js/visioneAVS.js"></script>
 		<script src="js/canvas.js"></script>
@@ -28,8 +30,6 @@
 						onclick="startNewKISSession()">
 						<i class="fas fa-sync-alt"></i> Restart</i>
 					</button>
-
-					<div id="qbe" w3-include-html="filters.html"></div>
 
 					<div id="dialog" title="Tag Name">
 						<label>tag</label> <input id="tag" name="tag" type="text">
@@ -47,13 +47,10 @@
 					</div>
 				</div>
 
-				<div class="headerItem" id="simplified0">
-					<i id="sceneDes0" aria-hidden="true"> Describe the scene</i>
-				</div>
-				<div class="headerItem" id="simplified1">
-					<i id="sceneDes1" class="fa fa-hourglass-end fa-2x" aria-hidden="true"> Describe
-						the next scene (optional)</i>
-				</div>
+				<div class="headerItem" id="simplified0"></div>
+				<div class="headerItem" id="simplified1"></div>
+
+
 				<div id="visionelogo" class="headerItem">
 					<img id="visionelogoImg" src="img/logoVISIONE.png" alt="">
 					<!--<img
@@ -61,6 +58,10 @@
 						style="border-radius: 20px 20px 20px 20px;" alt="">-->
 				</div>
 
+				<div class="headerItem" id="simplified2">
+					<div id="qbe" w3-include-html="filters.html"></div>
+
+				</div>
 
 			</div>
 			<div class="bodyGrid">
@@ -69,12 +70,17 @@
 						<div id="palette" class="palette"></div>
 					</div>
 					<div id='searchTab'></div>
+					<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto; visibility: hidden;">AVS</div>
 
 				</div>
 
 				<div class="contentGrid" id="content">
 					<div id='results'></div>
 					<ol id="recordingsList"></ol>
+				</div>
+				<div class="rightSidebarGrid" id="submitted_bar" style="display:none;">
+					<div style="color:green; font-size: larger;"> Submitted: <b id="submitted_num" style="color: red; font-size:large;"></b></div>
+					<div id="avsSubmittedTab"></div>
 				</div>
 			</div>
 		</div>

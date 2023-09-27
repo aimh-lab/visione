@@ -413,9 +413,22 @@ function cell2Text(idx) {
 
 	//textualMode = $("#textualmode" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 	//clip = $("#clip" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	//let notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 
-	let notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-	let textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	let notField = '';
+	let element = $("#not" + idx);
+	if (element.length > 0) {
+		notField = element.val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	}
+
+
+	//let textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+
+	let textual = '';
+	element = $("#textual" + idx);
+	if (element.length > 0) {
+		textual = element.val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+	}
 
 	if (notField != '') {
 		let items = notField.split(" ");
@@ -1117,7 +1130,7 @@ dropImage = function (e) {
 		draggedLabel = '';
 	}
 }
-
+/*
 function changeQueryBySampleMod(mode) {
 	if (mode == "url") {
 		document.getElementById("uploadText").style.display = 'none';
@@ -1144,6 +1157,7 @@ function changeQueryBySampleMod(mode) {
 		document.getElementById("searchbar").method = "POST";
 	}
 }
+*/
 
 function includeHTML() {
 	let z, i, elmnt, file, xhttp;
@@ -1268,11 +1282,18 @@ function displayAdvancedToggle() {
 }
 
 function initLayout() {
-	document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
-	document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
-	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
-	document.getElementById('newsession').style.display = 'none';
+	//document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
+	//document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
+	//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+	//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+	$('#simplified0').append($('#div_textual0'));
+	$('#simplified1').append($('#div_textual1'));
+	$('#simplified0').append($('#textualOptions0'));
+	$('#simplified1').append($('#textualOptions1'));
+
+	//document.getElementById('newsession').style.display = 'none';
+	$('#newsession').css('display', 'none');
+
 }
 
 function displayAdvanced(isAdv) {
@@ -1280,34 +1301,61 @@ function displayAdvanced(isAdv) {
 
 	if (isAdvanced) {
 		setDisplayTo = "block";
-		document.getElementById('block0').style.display = 'block';
-		document.getElementById('block1').style.display = 'block';
-		document.getElementById('textualOptions0').style.display = 'block'
-		document.getElementById('textualOptions1').style.display = 'block'
+		$('#block0').css('display', 'block');
+		$('#block1').css('display', 'block');
+		$('#textualOptions0').css('display', 'block');
+		$('#textualOptions1').css('display', 'block');
 	} else {
 		setDisplayTo = "none";
-		document.getElementById('block0').style.display = 'none';
-		document.getElementById('block1').style.display = 'none';
-		document.getElementById('textualOptions0').style.display = 'none'
-		document.getElementById('textualOptions1').style.display = 'none'
+		$('#block0').css('display', 'none');
+		$('#block1').css('display', 'none');
+		$('#textualOptions0').css('display', 'none');
+		$('#textualOptions1').css('display', 'none');
 	}
 
 	if (latestQuery != "" || isAdvanced) {
-		document.getElementById('sceneDes1').style.display = 'block';
-		document.getElementById('simplified1').style.display = 'block';
-		document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-		document.getElementById("simplified0").className = 'simplified0'
-		document.getElementById("textual0").className = 'textualquery0'
-		document.getElementById("visionelogo").className = 'visioneLogo'
-		document.getElementById('newsession').style.display = 'block';
+		$('#sceneDes1').css('display', 'block');
+		if ($("#sceneDes1").length > 0)
+			$('#simplified1').css('display', 'block');
+
+
+		//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
+		//document.getElementById("simplified0").className = 'simplified0'
+		//document.getElementById("textual0").className = 'textualquery0'
+		//document.getElementById("visionelogo").className = 'visioneLogo'
+
+		$('#simplified0').removeClass('simplifiedSearchBar');
+		$('#textual0').removeClass('simplifiedTextual0');
+		$('#visionelogo').removeClass('visioneLogo_bigger');
+
+		$('#sceneDes0').addClass('fa fa-hourglass-start fa-2x');
+		$('#simplified0').addClass('simplified0');
+		$('#textual0').addClass('textualquery0');
+		$('#visionelogo').addClass('visioneLogo');
+
+		$('#newsession').css('display', 'block');
+
 	} else {
-		document.getElementById('sceneDes1').style.display = 'none';
-		document.getElementById('simplified1').style.display = 'none';
-		document.getElementById("simplified0").className = 'simplifiedSearchBar'
-		document.getElementById("textual0").className = 'textualquery0'
-		document.getElementById("textual0").className = 'simplifiedTextual0'
-		document.getElementById("visionelogo").className = 'visioneLogo_bigger'
-		document.getElementById('newsession').style.display = 'none';
+		$('#sceneDes1').css('display', 'none');
+		$('#simplified1').css('display', 'none');
+		//document.getElementById("simplified0").className = 'simplifiedSearchBar'
+		$('#sceneDes0').removeClass('fa fa-hourglass-start fa-2x');
+		$('#simplified0').removeClass('simplified0');
+		$('#textual0').removeClass('textualquery0');
+		$('#visionelogo').removeClass('visioneLogo');
+
+
+
+		$('#simplified0').addClass('simplifiedSearchBar');
+
+		//document.getElementById("textual0").className = 'textualquery0'
+		//document.getElementById("textual0").className = 'simplifiedTextual0'
+		//document.getElementById("visionelogo").className = 'visioneLogo_bigger'
+		$('#textual0').addClass('simplifiedTextual0');
+		$('#visionelogo').addClass('visioneLogo_bigger');
+
+		$('#newsession').css('display', 'none');
+
 		document.getElementById("sceneDes0").className = 'fa fa-2x'
 	}
 	var elements = document.getElementsByClassName("advanced");
@@ -1345,10 +1393,14 @@ function init() {
 	includeHTML();
 	setCollection("v3c")
 
-	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', "fa fa-hourglass-start fa-1x"));
+	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
-	$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', "fa fa-hourglass-end fa-1x"));
+	if ($('meta[name=task]').attr('content') == "KIS") {
+		$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', " Describe the next scene (optional)", "fa fa-hourglass-end fa-2x"));
+	} else {
+		document.getElementById('avsSubmittedTab').style.display = 'block'
+	}
 	//$("#searchTab").append(addButton);
 	loadPalette('palette.csv');
 	canvas0 = get_canvas('canvas0', 'annotations0',
