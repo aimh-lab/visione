@@ -195,7 +195,7 @@ public class LucTextSearch {
 				System.out.println(booleanQuery);
 				
 				query4Cache += booleanQuery;
-				if (false && luceneCache.containsKey(query4Cache.hashCode())) {
+				if (luceneCache.containsKey(query4Cache.hashCode())) {
 					hits = luceneCache.get(query4Cache.hashCode());
 					System.out.println("\t [lucene query from cache]");
 				} else {
@@ -878,7 +878,7 @@ public class LucTextSearch {
 
 	}
 
-	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, boolean temporalquery)
+	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, int time_quantizer, boolean temporalquery)
 			throws NumberFormatException, IOException {
 		topDocsList = topDocsList.stream().filter(x -> x != null).collect(Collectors.toList());
 		int nHitsToMerge = topDocsList.size();
@@ -894,9 +894,9 @@ public class LucTextSearch {
 			}	
 			else { //two or more topDocs
 				if (temporalquery)
-					res = combineResults_temporal(topDocsList, topK, 3, 12);
+					res = combineResults_temporal(topDocsList, topK, time_quantizer, 12);
 				else {
-					res =combineResults(topDocsList, topK);
+					res =combineResults(topDocsList, topK, time_quantizer);
 //					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
 //						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
 //					else
@@ -920,12 +920,12 @@ public class LucTextSearch {
 		float max_scores[] = new float[nHitsToMerge];
 
 		long time = -System.currentTimeMillis();
-		Collections.sort(topDocsList, new Comparator<TopDocs>() {
-			@Override
-			public int compare(TopDocs o1, TopDocs o2) {
-				return Long.compare(o1.totalHits, o2.totalHits);
-			}
-		});
+//		Collections.sort(topDocsList, new Comparator<TopDocs>() {
+//			@Override
+//			public int compare(TopDocs o1, TopDocs o2) {
+//				return Long.compare(o1.totalHits, o2.totalHits);
+//			}
+//		});
 
 		
 		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
@@ -973,7 +973,7 @@ public class LucTextSearch {
 					best_sr[i] = null;
 					float best_score = -1;
 
-					for (int interval = -qi; interval < qi + 1; interval++) {
+					for (int interval = 0; interval < qi + 1; interval++) {
 						// searching a match in the i-th list
 						Integer id_t_i = id_t0 + interval;
 						ScoreDoc sr_i = hm[i].get(id_t_i); // matching keyframe
@@ -1006,7 +1006,7 @@ public class LucTextSearch {
 						if (idResKeyframe.contains(imgID)) {
 							continue;
 						}
-						ScoreDoc ssi = new ScoreDoc(best_sr[i].doc, aggregated_score);
+						ScoreDoc ssi = new ScoreDoc(best_sr[i].doc, aggregated_score -i*0.00001f);
 
 						resultsSD.add(ssi);
 						idResKeyframe.add(imgID);
@@ -1042,10 +1042,9 @@ public class LucTextSearch {
 
 	}
 
-	private TopDocs combineResults(List<TopDocs> topDocsList, int k)
+	private TopDocs combineResults(List<TopDocs> topDocsList, int k, int time_quantizer)
 			throws NumberFormatException, IOException {
 		long total_time = -System.currentTimeMillis();	
-		int time_quantizer=3;
 		int nHitsToMerge = topDocsList.size();
 		
 		

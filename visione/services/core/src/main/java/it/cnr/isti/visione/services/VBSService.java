@@ -171,7 +171,17 @@ public class VBSService {
 			if (queryObj.getQuery().size() == 0)
 				continue;
 			try {
-				if (queryObj.getQuery().containsKey("vf")) {
+				if (queryObj.getQuery().containsKey("comboVisualSim")) {
+					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
+
+					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
+					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
+					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k, dataset));//search by Clip4Video
+					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
+					log(res, query, logQueries, simReorder, dataset);
+					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+				}
+				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder);
 					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
@@ -289,9 +299,6 @@ public class VBSService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		
-
 		System.out.println("--End Java--");
 		return response	;
 	}
