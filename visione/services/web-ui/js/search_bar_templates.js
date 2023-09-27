@@ -6,8 +6,8 @@ const searchFormID = {
 
 const addButton = `<button id="addNewCanvas" class="btn btn-outline-info btn-lg" title="add a new canvas"> <i class="fa fa-plus-circle"></i></button>`
 
-const searchForm = (canvasID = 0, infoText = '', css_class = "") => { 
-		return `
+const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
+	return `
 				<div class="advanced scene${canvasID}" id='canvasTab'
 		style="border-radius: 15px; padding: 13px;margin-top: 10px;">
 		<div class="advanced">
@@ -45,53 +45,22 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 						style="border: 1px solid #000000;"></canvas>
 				</div>
 			</div>
-			<table>
-
-				<tr>
-					<td colspan="13" title="Scene Description"><input
+					<div colspan="13" title="Scene Description"><input
 						id='annotations${canvasID}' type="text" size="0"
-						style="display: none;"></td>
-				</tr>
-				<tr class="advanced" valign="top">
-					<td colspan="13" title="Max Objects Number"><textarea
+						style="display: none;"></div>
+					<div class="advanced" colspan="13" title="Max Objects Number"><textarea
 							id='not${canvasID}' cols="38" rows="2" style="font-size:12px;   border-radius: 6px;"
 							placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea></td>
-				</tr>
-				<tr valign="top">
-					<td id="textual${canvasID}_container" colspan="12" title="Scene Description">
-						<!--<b>${infoText}<b>-->
+					<div id="textual${canvasID}_container" colspan="12" title="Scene Description">
 						<div id="div_textual${canvasID}" class="Icon-inside">
-						<!--<textarea id="textual${canvasID}" class="textualquery${canvasID}" cols="38" rows="3" placeholder="e.g.: A tennis player serving a ball on the court"></textarea>-->
 						<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
 						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
 						<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
 						</div>
-					</td>
-					<td>
-						<!--<button id="recordButton${canvasID}"
-							class="btn btn-outline-success btn-sm"
-							title="Speech to text and translate">
-							<i class="fa fa-microphone"></i>
-						</button>
-						<button id="stopButton${canvasID}"
-							class="btn btn-outline-danger btn-sm"
-							style="display:none"
-							title="Stop Record">
-							<i class="fa fa-microphone"></i>
-						</button>-->
-					</td>
-				</tr>
-				<!--<tr valign="top">
-					<td colspan="13" title="Scene Description"><textarea
-							id='clip${canvasID}' cols="39" rows="2"
-							placeholder="FOLS"></textarea></td>
-				</tr>-->
-			</table>
+					</div>
 
-			<table class="advanced" style="width: 98%;">
-				<tr>
-
-					<td align="left">
+			<div class="advanced">
+					<div>
 						<button id="clean${canvasID}"
 							class="btn btn-outline-danger btn-sm" title="clean canvas 1">
 							<i class="fa fa-trash"></i>
@@ -101,21 +70,20 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 							title="undo clean canvas 1">
 							<i class="fa fa-undo"></i>
 						</button>
-					</td>
-					<td><span style="vertical-align: top;"
+					</div>
+					<div><span
 						title="Black & White Keyframe"> <input
 							id='isGray${canvasID}' type="checkbox"
 							onchange="setGray(${canvasID})"></span> <span
-						style="vertical-align: top;" title="Black & White Keyframe">B/W</span>
+						title="Black & White Keyframe">B/W</span>
 						<div>
-							<span style="vertical-align: top;" title="Color Keyframe">
+							<span title="Color Keyframe">
 								<input id='isColor${canvasID}' type="checkbox"
 								onchange="setColor(${canvasID})">
 							</span> <span title="Color Keyframe"
-								style="vertical-align: top; background: linear-gradient(to right, #FF0000 0%, #00FF00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Color&nbsp;</span>
-						</div></td>
-						<td valign="right">
-						<div id="textualOptions${canvasID}" style="padding-left:30px;">
+								style="background: linear-gradient(to right, #FF0000 0%, #00FF00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Color&nbsp;</span>
+						</div></div>
+						<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
 							<span onclick="setTextualMode(${canvasID}, 'cv')">
 								<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
 								<label for="textualMode${canvasID}">ClipVideo</label>
@@ -132,11 +100,8 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 								<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
 								<label for="textualMode${canvasID}">use all</label>
 							</span>
+					</div>
 						</div>
-					</span>
-						</td>
-				</tr>
-			</table>
 
 
 
@@ -144,5 +109,5 @@ const searchForm = (canvasID = 0, infoText = '', css_class = "") => {
 	</div>
 					
 					`
-					}
+}
 
