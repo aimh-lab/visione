@@ -384,85 +384,8 @@ function addDeleteBtn(label, rect) {
 
 
 function cell2Text(idx) {
-	if (!isCanvasEnabled[idx])
-		return null;
-	//is43 = $("#is43").is(":checked");
-	//is169 = $("#is169").is(":checked");
-	isColor[idx] = $("#isColor" + idx).is(":checked");
-	isGray[idx] = $("#isGray" + idx).is(":checked");
-	//occur = $('input[name="occur' + idx + '"]:checked').val();
-	//simreorder = $("#simreorder").is(":checked");
-
 	let queryObj = new Object();
 	let queryParameters = {};
-
-	let objects = '';
-	let txt = '';
-	let query = '';
-	let colors = [];
-
-	console.log(idx);
-	canvases[idx].getObjects().forEach(
-		function (o) {
-			if (o.get('type') == 'rect') {
-				if (o && o.oCoords) {
-					var startCol = Math.floor(Math.max(0, o.oCoords.tl.x) / cellWidth);
-					var endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x) / cellWidth); resultsSortedByVideo = [];
-					var startRow = Math.floor(Math.max(0, o.oCoords.tr.y) / cellHeight);
-					var endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y) / cellHeight);
-				} else {
-					var startCol = Math.floor(Math.max(0, o.left) / cellWidth);
-					var endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width)) / cellWidth);
-
-					var startRow = Math.floor(Math.max(0, o.top) / cellHeight);
-					var endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height)) / cellHeight);
-				}
-				let label = $("#" + o.uuid).attr('title').trim();
-
-				if (o.uuid.startsWith('color_')) {
-					colors.push(label);
-				} else {
-					objects += label + " ";
-				}
-
-				for (let row = startRow; row < endRow; row++) {
-					for (let col = startCol; col < endCol; col++) {
-						// txt += col + String.fromCharCode(97 + row) +
-						// label + '%5E' + boost + ' ' ;
-						txt += row + String.fromCharCode(97 + col) + label
-							+ ' ';
-					}
-				}
-			}
-		})
-	for (let cIdx = 0; cIdx < colors.length; cIdx++) {
-		objects += colors[cIdx] + " ";
-	}
-
-	if (isGray[idx]) {
-		objects += "graykeyframe ";
-	} else if (isColor[idx]) {
-		objects += "colorkeyframe ";
-	}
-
-	if (is43) {
-		objects += "ratio43 ";
-	} else if (is169) {
-		objects += "ratio169 ";
-	}
-
-	//textualMode = $("#textualmode" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-	//clip = $("#clip" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-	//let notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-
-	let notField = '';
-	let element = $("#not" + idx);
-	if (element.length > 0) {
-		notField = element.val().trim().replace(/[^\x21-\x7E]+/g, ' ');
-	}
-
-
-	//let textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 
 	let textual = '';
 	element = $("#textual" + idx);
@@ -470,55 +393,131 @@ function cell2Text(idx) {
 		textual = element.val().trim().replace(/[^\x21-\x7E]+/g, ' ');
 	}
 
-	if (notField != '') {
-		let items = notField.split(" ");
-		let parsedField = '';
-		for (let i = 0; i < items.length; i++) {
-			if (!isNaN(items[i])) {
-				let freq = Math.max((+items[i] + 1), 0);
-				i++;
-				parsedField += items[i] + freq + " ";
-			} else
-				parsedField += items[i] + " ";
-		}
-		notField = parsedField.trim();
-		notField = ' -' + notField.replace(new RegExp(" ", "g"), ' -');
-	}
-
-	if (objects != '') {
-		groups = '';
-		if ((group = objects.match('\\((.*?)\\)'))) {
-			objects = objects.replace("\\(" + group[1] + "\\)", '');
-			groups += group;
-		}
-	} else if (notField != '')
-		objects = "*";
-
-	objects += notField;
-
-	if (objects != '' && isAdvanced)
-		queryObj.objects = objects.trim();
-
 	if (textual != '') {
 		queryObj.textual = textual;
 		queryParameters['textualMode'] = textualMode[idx];
 	}
 
-	//	if (clip != '')
-	//		queryObj.clip = clip;
+	if (isCanvasEnabled[idx]) {
+		//is43 = $("#is43").is(":checked");
+		//is169 = $("#is169").is(":checked");
+		isColor[idx] = $("#isColor" + idx).is(":checked");
+		isGray[idx] = $("#isGray" + idx).is(":checked");
+		//occur = $('input[name="occur' + idx + '"]:checked').val();
+		//simreorder = $("#simreorder").is(":checked");
 
-	if (txt != '' && isAdvanced)
-		queryObj.txt = txt.trim();
-	if (Object.keys(queryObj).length > 0 && isAdvanced) {
-		queryParameters['occur'] = occur[idx];
-		queryParameters['simReorder'] = simreorder.toString();
+		let objects = '';
+		let txt = '';
+		let query = '';
+		let colors = [];
+
+		console.log(idx);
+		canvases[idx].getObjects().forEach(
+			function (o) {
+				if (o.get('type') == 'rect') {
+					if (o && o.oCoords) {
+						var startCol = Math.floor(Math.max(0, o.oCoords.tl.x) / cellWidth);
+						var endCol = Math.ceil(Math.min(canvasWidth, o.oCoords.tr.x) / cellWidth); resultsSortedByVideo = [];
+						var startRow = Math.floor(Math.max(0, o.oCoords.tr.y) / cellHeight);
+						var endRow = Math.ceil(Math.min(canvasHeight, o.oCoords.br.y) / cellHeight);
+					} else {
+						var startCol = Math.floor(Math.max(0, o.left) / cellWidth);
+						var endCol = Math.ceil(Math.min(canvasWidth, (o.left + o.width)) / cellWidth);
+
+						var startRow = Math.floor(Math.max(0, o.top) / cellHeight);
+						var endRow = Math.ceil(Math.min(canvasHeight, (o.top + o.height)) / cellHeight);
+					}
+					let label = $("#" + o.uuid).attr('title').trim();
+
+					if (o.uuid.startsWith('color_')) {
+						colors.push(label);
+					} else {
+						objects += label + " ";
+					}
+
+					for (let row = startRow; row < endRow; row++) {
+						for (let col = startCol; col < endCol; col++) {
+							// txt += col + String.fromCharCode(97 + row) +
+							// label + '%5E' + boost + ' ' ;
+							txt += row + String.fromCharCode(97 + col) + label
+								+ ' ';
+						}
+					}
+				}
+			})
+		for (let cIdx = 0; cIdx < colors.length; cIdx++) {
+			objects += colors[cIdx] + " ";
+		}
+
+		if (isGray[idx]) {
+			objects += "graykeyframe ";
+		} else if (isColor[idx]) {
+			objects += "colorkeyframe ";
+		}
+
+		if (is43) {
+			objects += "ratio43 ";
+		} else if (is169) {
+			objects += "ratio169 ";
+		}
+
+		//textualMode = $("#textualmode" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+		//clip = $("#clip" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+		//let notField = $("#not" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+
+		let notField = '';
+		let element = $("#not" + idx);
+		if (element.length > 0) {
+			notField = element.val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+		}
+
+		//let textual = $("#textual" + idx).val().trim().replace(/[^\x21-\x7E]+/g, ' ');
+
+		if (notField != '') {
+			let items = notField.split(" ");
+			let parsedField = '';
+			for (let i = 0; i < items.length; i++) {
+				if (!isNaN(items[i])) {
+					let freq = Math.max((+items[i] + 1), 0);
+					i++;
+					parsedField += items[i] + freq + " ";
+				} else
+					parsedField += items[i] + " ";
+			}
+			notField = parsedField.trim();
+			notField = ' -' + notField.replace(new RegExp(" ", "g"), ' -');
+		}
+
+		if (objects != '') {
+			groups = '';
+			if ((group = objects.match('\\((.*?)\\)'))) {
+				objects = objects.replace("\\(" + group[1] + "\\)", '');
+				groups += group;
+			}
+		} else if (notField != '')
+			objects = "*";
+
+		objects += notField;
+
+		if (objects != '' && isAdvanced)
+			queryObj.objects = objects.trim();
+
+		//	if (clip != '')
+		//		queryObj.clip = clip;
+
+		if (txt != '' && isAdvanced)
+			queryObj.txt = txt.trim();
+		if (Object.keys(queryObj).length > 0 && isAdvanced) {
+			queryParameters['occur'] = occur[idx];
+			queryParameters['simReorder'] = simreorder.toString();
+		}
 	}
 
 	console.log("Query " + queryObj);
 	console.log("Query Parameters " + queryParameters);
-	if (Object.keys(queryObj).length == 0)
-		return null;
 
+	if (Object.keys(queryObj).length === 0)
+		return null;
 	return [queryObj, queryParameters];
 }
 
@@ -1308,7 +1307,7 @@ function includeHTML() {
 function canvasClean(idx) {
 	prevOccur[idx] = $('#and' + idx).is(':checked');
 	$('input:radio[name=occur' + idx + ']')[0].checked = true;
-
+/*
 	prevTextual[idx] = $("#textual" + idx).val();
 	$("#textual" + idx).val('');
 
@@ -1318,7 +1317,7 @@ function canvasClean(idx) {
 	else
 		prevTextualMode[idx] = "clip";
 	$('#textualMode' + idx).prop('checked', false);
-
+*/
 	prevNotField[idx] = $("#not" + idx).val();
 	$("#not" + idx).val('');
 
@@ -1368,10 +1367,10 @@ function undoReset() {
 function canvasCleanUndo(idx) {
 	if (prevOccur[idx] == false)
 		$('input:radio[name=occur' + idx + ']')[1].checked = true;
-	$("#textual" + idx).val(prevTextual[idx]);
+	/*$("#textual" + idx).val(prevTextual[idx]);
 
 	if (prevTextualMode[idx] == "aladin")
-		$('#textualMode' + idx).prop('checked', true);
+		$('#textualMode' + idx).prop('checked', true);*/
 
 	if (prevIsColor[idx] == true)
 		$('#isColor' + idx).prop('checked', true);
