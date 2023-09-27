@@ -883,7 +883,7 @@ function showResults(data) {
 					let spanVal = 11 - columnIdx;
 					columnIdx = 1;
 					if (spanVal > 0)
-						imgGridResults += '<div class="column-span-' + spanVal + '"></div>';
+						imgGridResults += '<div class="contentGrid-item column-span-' + spanVal + '"></div>';
 					imgGridResults += '<div class="hline column-span-11"></div>';
 				}
 
@@ -904,7 +904,7 @@ function showResults(data) {
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
 						addToAutoSelected(avsObj)*/
 
-				imgGridResults += '<div id="res_' + imgId + '" class="item column-span-1">'
+				imgGridResults += '<div id="res_' + imgId + '" data-row="' + rowIdx + '" data-col="' + (columnIdx-1) + '" class="item column-span-1">'
 				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
 				imgGridResults += '</div>'
 				resMatrix[rowIdx][columnIdx -1] = res[i];
@@ -1447,6 +1447,7 @@ var lastSelected = null;
 var prevSelected = null;
 var scrollOffset = -1.5;
 var rowHeight = 0;
+var scrollingOffset = 0;
 
 function checkKey(e) {
 
@@ -1526,10 +1527,33 @@ function checkKey(e) {
 		element.click();
 
 
-		gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
+
+		var container = document.querySelector('.contentGrid');
+
+		var containerTop = container.getBoundingClientRect().top;
+		var containerBottom = containerTop + container.offsetHeight;
+		var elementTop = element.getBoundingClientRect().top;
+		
+		var elementBottom = elementTop + element.offsetHeight;
+
+		var percentVisible = 0;
+		if (elementTop >= containerTop && elementTop <= containerBottom) {
+		  var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+		  var elementHeight = element.offsetHeight;
+		  percentVisible = (visibleHeight / elementHeight) * 100;
+		}
+		if (percentVisible < 100) {
+			var gridContent = $("#content").find(".contentGrid");
+			scrollingOffset = Math.max(0, scrollingOffset-250)
+			gridContent.animate({ scrollTop: scrollingOffset }, 0);
+		}
+
+		console.log("percentVisible: " + percentVisible);
+
+		/*gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
 		var gridContent = $("#content").find(".contentGrid");
 		gridContent.animate({ scrollTop: gridOffsetY }, 0);
-		rowHeight = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId).offsetHeight + scrollOffset;
+		rowHeight = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId).offsetHeight + scrollOffset;*/
 
 
 		console.log("up arrow")
@@ -1550,12 +1574,53 @@ function checkKey(e) {
 		// Chiamare l'evento onclick
 		element.click();
 
-		gridOffsetY = gridOffsetY + rowHeight ;
-		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollTop: gridOffsetY }, 0);
 
-		resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
-		rowHeight = resRow.offsetHeight - scrollOffset
+
+
+
+		var container = document.querySelector('.contentGrid');
+
+		var containerTop = container.getBoundingClientRect().top;
+		var containerBottom = containerTop + container.offsetHeight;
+		var elementTop = element.getBoundingClientRect().top;
+		
+		var elementBottom = elementTop + element.offsetHeight;
+
+		var percentVisible = 0;
+		if (elementTop >= containerTop && elementTop <= containerBottom) {
+		  var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+		  var elementHeight = element.offsetHeight;
+		  percentVisible = (visibleHeight / elementHeight) * 100;
+		}
+		if (percentVisible < 100) {
+			var gridContent = $("#content").find(".contentGrid");
+			scrollingOffset += 250
+			gridContent.animate({ scrollTop: scrollingOffset }, 0);
+		}
+
+		console.log("percentVisible: " + percentVisible);
+
+/*
+
+		var gridItems = container.querySelectorAll('.item');
+		var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
+
+		var containerTop = container.getBoundingClientRect().top;
+		var containerHeight = container.offsetHeight;
+		var selectedRowTop = selectedRow.getBoundingClientRect().top;
+
+		if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
+		console.log("La riga 25 è visibile");
+		} else {
+			console.log("La riga 25 è al di sotto dello scroll");
+			gridOffsetY = gridOffsetY + rowHeight ;
+			var gridContent = $("#content").find(".contentGrid");
+			//gridContent.animate({ scrollTop: gridOffsetY }, 0);
+			gridContent.animate({ scrollTop: 200 }, 0);
+
+			resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
+			rowHeight = resRow.offsetHeight - scrollOffset
+		}*/
 
 
 		console.log("down arrow")
