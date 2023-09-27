@@ -46,17 +46,41 @@ body {
   display: grid;
   grid-template-columns: 1fr 4.2fr 0.1fr;
   overflow: hidden;
-
 }
 
 .contentGrid {
-  overflow-y: auto;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  border-left: 0px solid green;
+  height: 99%;
+  width: 99%;
+
+}
+
+.contentGrid-item {
+  padding: 20px;
+}
+
+.avsSelected {
+  overflow-y: hidden;
+  overflow-x: hidden;
+  border-left: 0px solid green;
+}
+
+.resGrid {
+  height: 100%;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  border-left: 0px solid green;
+}
+
+.resGrid2 {
+  height: 100%;
   overflow-x: auto;
   border-left: 0px solid green;
 }
 
-
-.contentGrid-item {
+.resGrid-item {
   background-color: #f1f1f1;
   padding: 20px;
 }

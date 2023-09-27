@@ -9,13 +9,15 @@ const avsManualRemoved = new Map();
 //maxAutoSelected = 9
 
 
-function getAvsObj(videoId, imgId, avsTagId, thumb) {
+function getAvsObj(videoId, imgId, avsTagId, thumb, keyframe, rowIdx, colIdx) {
 	avsObj=new Object();
 	avsObj.videoId = videoId;
 	avsObj.imgId = imgId;
 	avsObj.avsTagId = avsTagId;
 	avsObj.thumb = thumb;
 	avsObj.keyframe = keyframe;
+	avsObj.rowIdx = rowIdx;
+	avsObj.colIdx = colIdx;
 	return JSON.stringify(avsObj) 
 }
 /*
@@ -67,27 +69,28 @@ function selectImg(selectedItem) {
 	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
-			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
-			+'<a href="showVideoKeyframes.html?collection=' + selectedItem.collection + '&videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
+			+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="float: right; padding: 1px;" title="remove ' + selectedItem.imgId + '" width="20" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
 
 			+'<br>'
-			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.collection + '|' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
+			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
 			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 350px;" src="' + selectedItem.keyframe + '">'
 			+'</div></div></span>'
 			
 	$("#avsTab").append(img);
 
-
-	if (document.getElementById(selectedItem.avsTagId) != null)
-		document.getElementById(selectedItem.avsTagId).checked = true;
-	if (document.getElementById(selectedItem.imgId) != null) {
+	let avsTagId = document.getElementById(selectedItem.avsTagId);
+	if (avsTagId != null)
+		avsTagId.checked = true;
+	
+	let selImgId = document.getElementById(selectedItem.imgId)
+	if (selImgId != null) {
 		//document.getElementById(selectedItem.imgId).style.width = "550px";
 		//document.getElementById("img" + selectedItem.imgId).src = selectedItem.keyframe;
-		document.getElementById(selectedItem.imgId).style.borderWidth = "6px";
-
-		document.getElementById(selectedItem.imgId).style.borderStyle = "dashed";
+		selImgId.style.borderWidth = "6px";
+		selImgId.style.borderStyle = "dashed";
 	}
 	//console.log(document.getElementById("img" + selectedItem.imgId).src)		
 
@@ -108,9 +111,8 @@ function selectImg(selectedItem) {
 			//langInfo = this.lang.split('|');
 			let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
 
-			let collection = langInfo[0];
-			let videoId = langInfo[1];
-			let videourl = langInfo[2];
+			let videoId = langInfo[0];
+			let videourl = langInfo[1];
 			let playerId = 'video' + videoId;
 
 			var elementExists = document.getElementById(playerId);
@@ -127,7 +129,7 @@ function selectImg(selectedItem) {
 				$('#'+ playerId).get(0).play();
 				return;
 			}
-			let backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ imgIdNoRegex + "')";
+			let backgroundImg = "background-image: url('" + thumbnailUrl + '/'+ imgIdNoRegex + "')";
 		
 			//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
 			//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
@@ -147,9 +149,8 @@ function selectImg(selectedItem) {
 		let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
 		let imgId = avsdiv.replaceAll("avsdiv_", "selected_avs_")
 		let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
-		let collection = langInfo[0];
-		let videoId = langInfo[1];
-		let videourl=langInfo[2];
+		let videoId = langInfo[0];
+		let videourl = langInfo[1];
 		let playerId = 'video' + videoId;
 
 		var elementExists = document.getElementById(playerId);
@@ -161,6 +162,7 @@ function selectImg(selectedItem) {
 }
 
 function unselectImg(selectedItem) {
+	
 	if (document.getElementById("avsList_" + selectedItem.imgId) != null) {
 		document.getElementById("avsList_" + selectedItem.imgId).remove();
 		unselectImg(selectedItem)
@@ -239,7 +241,7 @@ function selectImgVisione4(selectedItem) {
 				$('#'+ playerId).get(0).play();
 				return;
 			}
-			let backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ imgIdNoRegex + "')";
+			let backgroundImg = "background-image: url('" + thumbnailUrl + '/'+ imgIdNoRegex + "')";
 		
 			//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
 			//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
@@ -259,9 +261,8 @@ function selectImgVisione4(selectedItem) {
 		let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
 		let imgId = avsdiv.replaceAll("avsdiv_", "selected_avs_")
 		let langInfo = document.getElementById(avsdivNoRegex).lang.split('|');
-		let collection = langInfo[0];
-		let videoId = langInfo[1];
-		let videourl=langInfo[2];
+		let videoId = langInfo[0];
+		let videourl = langInfo[1];
 		let playerId = 'video' + videoId;
 
 		var elementExists = document.getElementById(playerId);
@@ -297,6 +298,11 @@ function updateAVSInfo() {
 		}
 		$("#avsTab").prepend(avsText);
 	}*/
+	var divAvsSelected = document.getElementById('avsSelected');
+	var divResGrid = document.getElementById('resGrid');
+	var divAvsSelectedHeight = divAvsSelected.offsetHeight;
+
+	divResGrid.style.height = "calc(100% - " + divAvsSelectedHeight + "px)";
 }
 
 function updateAVSTab(selectedItem) {
@@ -314,6 +320,8 @@ function updateAVSTab(selectedItem) {
 
 function avsToggle(avsJSON, event) {
 	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
+	rowIdx = selectedItem.rowIdx
+	colIdx = selectedItem.colIdx
 
 	//selectedItem = JSON.parse(avsJSON);
 	let avsItem = document.getElementById(selectedItem.avsTagId);
