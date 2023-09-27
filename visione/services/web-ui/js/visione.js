@@ -855,7 +855,7 @@ function showResults(data) {
 	rowIdx = -1;
 	let resColIdx = 1;
 	let resrowIdx = 0;
-	
+
 	var imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
 
 	if ((data == null || data == "") && latestQuery != "") {
@@ -891,13 +891,13 @@ function showResults(data) {
 					let spanVal = 11 - resColIdx;
 					resColIdx = 1;
 					if (spanVal > 0)
-						imgGridResults += '<div class="contentGrid-item column-span-' + spanVal + '"></div>';
-					imgGridResults += '<div class="hline column-span-11"></div>';
+						imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
+					imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
 				}
 
 				if (videoId != prevID) {
 					//imgGridResults += '<div id="video_' + videoId + '">';
-					imgGridResults += '<div class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+					imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
 
 				}
 				let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
@@ -912,10 +912,10 @@ function showResults(data) {
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
 						addToAutoSelected(avsObj)*/
 
-				imgGridResults += '<div id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx-1) + '" class="item column-span-1">'
+				imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
 				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
 				imgGridResults += '</div>'
-				resMatrix[resrowIdx][resColIdx -1] = res[i];
+				resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
 				resColIdx++;
 
@@ -988,11 +988,11 @@ function showResults(data) {
 			}
 		}
 	}
-	if ($('meta[name=task]').attr('content') == "AVS") {
-		avsHideSubmittedVideos();
-		avsReloadManuallySelected();
-		avsAddAutoselected();
-	}
+	//if ($('meta[name=task]').attr('content') == "AVS") {
+	avsHideSubmittedVideos();
+	//avsReloadManuallySelected();
+	//avsAddAutoselected();
+	//}
 	updateAVSInfo();
 }
 
@@ -1167,9 +1167,9 @@ function indexedCells(txt) {
 		if (cellTxt[key])
 			txt = cellTxt[key];
 		style = colorMap[res[i].substring(2)] == null ? '<div>'
-				+ res[i].substring(2) + '</div>' : '<div '
-				+ colorMap[res[i].substring(2)] + '>' + res[i].substring(2)
-				+ '</div>';
+			+ res[i].substring(2) + '</div>' : '<div '
+			+ colorMap[res[i].substring(2)] + '>' + res[i].substring(2)
+		+ '</div>';
 		txt += style;
 		cellTxt[key] = txt;
 		console.log(cellTxt[0]);
@@ -1187,8 +1187,8 @@ function indexedCells(txt) {
 
 			}
 			imgtable += '<td valign="top" style="border: 1px solid black; width: 115px;">'
-					+ cellTxt[y.toString() + String.fromCharCode(97 + x)]
-					+ '</td>';
+				+ cellTxt[y.toString() + String.fromCharCode(97 + x)]
+				+ '</td>';
 			counter++;
 		}
 	}
@@ -1446,6 +1446,28 @@ function createInputTextWithMic() {
 	return inputText;
 }
 
+function scrollToRow(rowNumber) {
+	var container = document.getElementById("container");
+	var grid = document.getElementById("grid");
+	var rows = grid.getElementsByClassName("row");
+  
+	var row = rows[rowNumber - 1]; // Sottrai 1 perché l'indice parte da 0
+  
+	var containerTop = container.scrollTop;
+	var containerHeight = container.offsetHeight;
+  
+	var rowTop = row.offsetTop;
+	var rowHeight = row.offsetHeight;
+  
+	if (rowTop < containerTop) {
+	  // La riga è sopra la parte correntemente visibile
+	  container.scrollTop = rowTop;
+	} else if (rowTop + rowHeight > containerTop + containerHeight) {
+	  // La riga è sotto la parte correntemente visibile
+	  container.scrollTop = rowTop + rowHeight - containerHeight;
+	}
+  }
+
 //var colIdx = 0;
 var selectContentOffsetY = 0;
 var selectContentOffsetX = 0;
@@ -1463,6 +1485,13 @@ function checkKey(e) {
 
 	e = e || window.event;
 	console.log(e.keyCode)
+	var goToNextResult = false;
+
+	var activeElement = document.activeElement;
+	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text") {
+		console.log("Tasto premuto in un campo di input text");
+		return;
+	}
 
 	if (e.keyCode == '65') {
 
@@ -1486,8 +1515,8 @@ function checkKey(e) {
 		if (prevSelected != null) {
 			var prevSel = document.getElementById(prevSelected.id);
 			var mouseOutEvent = new MouseEvent("mouseout", {
-  				bubbles: true,
-  				cancelable: true,
+				bubbles: true,
+				cancelable: true,
 			});
 
 			prevSel.dispatchEvent(mouseOutEvent);
@@ -1498,32 +1527,37 @@ function checkKey(e) {
 		var mouseOverEvent = new MouseEvent("mouseover", {
 			bubbles: true,
 			cancelable: true,
-		  });
-		  
-		  testDiv.dispatchEvent(mouseOverEvent);
+		});
+
+		testDiv.dispatchEvent(mouseOverEvent);
 
 
 		var rightClickEvent = new MouseEvent("contextmenu", {
 			bubbles: true,
 			cancelable: true,
 			view: window,
-		  });
-		  
-		  testDiv.dispatchEvent(rightClickEvent);
+		});
 
-/*
+		testDiv.dispatchEvent(rightClickEvent);
 
-		testDiv.addEventListener("contextmenu", function(event) {
-			event.preventDefault(); // Opzionale: previene il menu contestuale predefinito
-			// Inserisci qui il tuo codice per l'evento click del tasto destro del mouse
-		  });
-*/
+		/*
+		
+				testDiv.addEventListener("contextmenu", function(event) {
+					event.preventDefault(); // Opzionale: previene il menu contestuale predefinito
+					// Inserisci qui il tuo codice per l'evento click del tasto destro del mouse
+				  });
+		*/
 
 		//testDiv.dispatchEvent(mouseOverEvent);
 	}
+	else if (e.keyCode == '83') {
+		submitAVS();
+		goToNextResult = true;
+	}
+
 	else if (e.keyCode == '38') {
 		colIdx = 0;
-		rowIdx = Math.max(0, rowIdx -1);
+		rowIdx = Math.max(0, rowIdx - 1);
 		console.log(resCursor)
 		//$("#" + res[resCursor--].imgId).click();
 		var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
@@ -1542,22 +1576,25 @@ function checkKey(e) {
 
 		var containerTop = container.getBoundingClientRect().top;
 		var containerBottom = containerTop + container.offsetHeight;
-		var elementTop = element.getBoundingClientRect().top;
-		
-		var elementBottom = elementTop + element.offsetHeight;
 
 		var percentVisible = 0;
+		numCycle = 0;
+		while (percentVisible < 100 && numCycle++ < 10) {
+			var elementTop = element.getBoundingClientRect().top;
+			var elementBottom = elementTop + element.offsetHeight;
+
 			if (elementTop >= containerTop && elementTop <= containerBottom) {
-			var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-			var elementHeight = element.offsetHeight;
-			percentVisible = (visibleHeight / elementHeight) * 100;
+				var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+				var elementHeight = element.offsetHeight;
+				var percentVisible = (visibleHeight / elementHeight) * 100;
 			}
 			if (percentVisible < 100) {
 				var gridContent = $("#content").find(".resGrid2");
-				scrollingOffset = Math.max(0, scrollingOffset-250)
+				scrollingOffset = Math.max(0, scrollingOffset - 250)
 				gridContent.animate({ scrollTop: scrollingOffset }, 0);
 			}
 			console.log("percentVisible: " + percentVisible);
+		}
 
 
 
@@ -1569,7 +1606,7 @@ function checkKey(e) {
 
 		console.log("up arrow")
 	}
-	else if (e.keyCode == '40') {
+	if (e.keyCode == '40' || goToNextResult) {
 		colIdx = 0;
 		rowIdx++;
 		console.log(rowIdx)
@@ -1593,11 +1630,13 @@ function checkKey(e) {
 
 		var containerTop = container.getBoundingClientRect().top;
 		var containerBottom = containerTop + container.offsetHeight;
-		var elementTop = element.getBoundingClientRect().top;
-		
-		var elementBottom = elementTop + element.offsetHeight;
 
 		var percentVisible = 0;
+		numCycle = 0;
+		while (percentVisible < 100 && numCycle++ < 10) {
+
+			var elementTop = element.getBoundingClientRect().top;
+			var elementBottom = elementTop + element.offsetHeight;
 
 			if (elementTop >= containerTop && elementTop <= containerBottom) {
 				var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
@@ -1609,38 +1648,37 @@ function checkKey(e) {
 				scrollingOffset += 250
 				gridContent.animate({ scrollTop: scrollingOffset }, 0);
 			}
-
 			console.log("percentVisible: " + percentVisible);
-
-/*
-
-		var gridItems = container.querySelectorAll('.item');
-		var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
-
-		var containerTop = container.getBoundingClientRect().top;
-		var containerHeight = container.offsetHeight;
-		var selectedRowTop = selectedRow.getBoundingClientRect().top;
-
-		if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
-		console.log("La riga 25 è visibile");
-		} else {
-			console.log("La riga 25 è al di sotto dello scroll");
-			gridOffsetY = gridOffsetY + rowHeight ;
-			var gridContent = $("#content").find(".contentGrid");
-			//gridContent.animate({ scrollTop: gridOffsetY }, 0);
-			gridContent.animate({ scrollTop: 200 }, 0);
-
-			resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
-			rowHeight = resRow.offsetHeight - scrollOffset
-		}*/
+		}
+		/*
+		
+				var gridItems = container.querySelectorAll('.item');
+				var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
+		
+				var containerTop = container.getBoundingClientRect().top;
+				var containerHeight = container.offsetHeight;
+				var selectedRowTop = selectedRow.getBoundingClientRect().top;
+		
+				if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
+				console.log("La riga 25 è visibile");
+				} else {
+					console.log("La riga 25 è al di sotto dello scroll");
+					gridOffsetY = gridOffsetY + rowHeight ;
+					var gridContent = $("#content").find(".contentGrid");
+					//gridContent.animate({ scrollTop: gridOffsetY }, 0);
+					gridContent.animate({ scrollTop: 200 }, 0);
+		
+					resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
+					rowHeight = resRow.offsetHeight - scrollOffset
+				}*/
 
 
 		console.log("down arrow")
 	}
 	else if (e.keyCode == '37') {
-		colIdx = Math.max(0, colIdx -1);
+		colIdx = Math.max(0, colIdx - 1);
 		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById(resMatrix[rowIdx][Math.max(0,colIdx)].imgId);
+		var element = document.getElementById(resMatrix[rowIdx][Math.max(0, colIdx)].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 			//lastSelected.style.display = 'block'
