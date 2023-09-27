@@ -275,17 +275,3 @@ video::-webkit-media-controls {
 	
 }
   
-
-.advanced {
-  display: block;
-}
-
-.simplifiedSearchBar {
-  position: absolute;
-  font-size: 12px;
-  left: 35vw;
-  width: 570px;
-  height: 72px;
-  padding: 2em;
-  border-radius: 31px;
-}

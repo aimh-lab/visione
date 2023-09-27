@@ -91,7 +91,7 @@ var resultsSortedByVideo = null;
 var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
-var textualMode =  ["all", "all"];
+var textualMode =  ["clip", "clip"];
 var simreorder = false;
 
 //var qbeUrl = ''
@@ -111,27 +111,45 @@ var prevTextualMode=["clip", "clip"];
 
 var prevQBE="";
 
-var tempSearchForms = 2
-var latestQuery = "";
-var setDisplayTo = "block";
-var isAdvanced = true
+const avsAuto = new Map();
+const avsManual = new Map();
+const avsSubmitted = new Map();
+//const avsQueryLog = new Map();
 
-function handler(myObj) {
-	urlBSService = myObj.serviceUrl;
-	speech2TextService = myObj.speech2Text;
-	thumbnailUrl= myObj.thumbnailUrl;
-	keyFramesUrl=myObj.keyFramesUrl;
-	videoUrlPrefix=myObj.videoUrl;
-	videoshrinkUrl=myObj.videoshrinkUrl;
+var tempSearchForms = 2
+var dataset = "v3c";
+
+
+function handler() {
+	  if (this.readyState == 4 && this.status == 200) {
+		  console.log(this.responseText)
+	    var myObj = JSON.parse(this.responseText);
+		  urlBSService = myObj.serviceUrl;
+		  speech2TextService = myObj.speech2Text;
+		  thumbnailUrl= myObj.thumbnailUrl;
+		  keyFramesUrl=myObj.keyFramesUrl;
+		  videoUrl=myObj.videoUrl;
+		  videoshrinkUrl=myObj.videoshrinkUrl;
+	
+	  }
+  
+};
+
+function marineTab() {
+	if (confirm('Switching to Marine Dataset?')) {
+		dataset = "marine";
+		window.location.href = 'visioneMarine.html';
+	}
 }
 
-function loadConfig() {
-	return fetch("js/conf.json").then(response => response.json()).then(handler);
-} 
+function v3cTab() {
+	if (confirm('Switching to V3C Dataset?')) {
+		dataset = "v3c";
+		window.location.href = 'index.html';
+	}
+}
 
-loadConfig();
-
-//messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
+messages=["Lucia, guarda che ti tengo d'occhio. Prendi esempio dal Vairo!", "Lucia, non esagerare con queste query, che poi arrivi prima nei log anche quest'anno :-p", "La Lucia, mi sembra che ti sia fatta prendere un po' troppo la mano, stiamo esaurendo lo spazio disco!", "La Lucia, il prossimo anno utilizzeremo un modello che fa il resume delle tue query :-D :-D"]
 	
 function setSpeech(speechRes, idx) {
 	if (speechRes == null) {
@@ -142,18 +160,21 @@ function setSpeech(speechRes, idx) {
 
 	else {
 		console.log(speechRes);
-		let jsonSpeech = JSON.parse(speechRes)
-
-		$("#textual" + idx).val(jsonSpeech.translation);
+		$("#textual" + idx).val(speechRes.translation);
 			searchByForm();
 			idx = Math.floor(Math.random() * 3);
-		if (jsonSpeech.translation.length > 50) {
+		if (speechRes.translation.length > 50) {
 			prevTextual[idx] = $("#textual" + idx).val();
 			//jsonRes = JSON.parse(speechRes);
-			//alert(messages[idx]);
+			alert(messages[idx]);
 		}
 	}
 }
+	
+var client  = new XMLHttpRequest();
+client.onload = handler;
+client.open("GET", "js/conf.json", false);
+client.send(); 
 
 function playVideo(id) {
 	alert(id);
@@ -172,11 +193,11 @@ function extractprev(term) {
 	return split(term).pop();
 }
 
-// TODO generate csv in collection dir
-$.get($('meta[name=dataset]').attr('content') +'_objects_doc_freq.csv', function(data) {
+$.get('objects_doc_freq.csv', function(data) {
 	availableTags = data.split("\n");
 	//availableTags = [];
 });
+
 
 draggedLabel = '';
 
@@ -199,7 +220,7 @@ function getAllVideoKeyframes(videoId) {
 	return $
 			.ajax({
 				type : "GET",
-				url :  urlBSService+"/getAllVideoKeyframes?videoId="+ videoId,
+				url :  urlBSService+"/getAllVideoKeyframes?id="+ videoId,
 				async : false
 			}).responseText
 }
@@ -240,9 +261,9 @@ function getMiddleTimestamp(id) {
 			}).responseText
 }
 
-function submitWithAlert(id,videoId) {
+function submitWithAlert(id) {
 	if (confirm('Are you sure you want to submit?')) {
-		res = submitResult(id, videoId);
+		res = submitResult(id);
 		console.log(res);
 		alert('Server response: ' + res);
 	}
@@ -261,34 +282,56 @@ function startNewSession() {
 }
 
 function startNewKISSession() {
-	//if (confirm('Starting a new KIS session?')) {
-		  location.href = "index_V3C.html";
+	if (confirm('Starting a new KIS session?')) {
+		  location.href = "index.html";
 		$.ajax({
 			type : "GET",
 			async : false,
 			url : urlBSService+"/init"
 		}).responseText
-		loadConfig();
-	//}
+	}
 }
 
 function startNewAVSSession() {
-	//if (confirm('Starting a new AVS session?')) {
-		location.href = "index_V3C_AVS.html";
+	if (confirm('Starting a new AVS session?')) {
+		location.href = "indexAVS.html";
 		$.ajax({
 			type : "GET",
 			async : false,
 			url : urlBSService+"/init"
 		}).responseText
-		loadConfig();
-	//}
+	}
 }
 
-function submitResult(id,videoId) {
+function submitAVS() {
+	//if (confirm('Are you sure you want to submit AVS Images?')) {
+		for (let pair of avsAuto) {
+	    	var [keyframeId, id] = pair;
+			//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
+			res = submitResultAVS(keyframeId);
+			console.log(res);
+	
+			avsRemoveItem(id, keyframeId, false);
+			avsSubmitted.set(keyframeId, id);
+		}
+		updateAvsTitle();
+//	}
+}
+
+function submitResultAVS(id) {
+	return $.ajax({
+		type : "GET",
+		async : true,
+		url : urlBSService+"/submitResult?id="+ id + "&isAVS=true&simreorder=" + simreorder,
+	}).responseText;
+}
+
+
+function submitResult(id) {
 	return $.ajax({
 		type : "GET",
 		async : false,
-		url : urlBSService+"/submitResult?id="+ id+ "&videoid="+ videoId,
+		url : urlBSService+"/submitResult?id="+ id,
 	}).responseText;
 }
 
@@ -339,7 +382,7 @@ function addDeleteBtn(label, rect) {
 			+ label
 			+ '</span><img id="'
 			+ id
-			+ '" src="img/Actions-dialog-close-icon.png" class="deleteBtn" style="position:absolute;top:'
+			+ '" src="Actions-dialog-close-icon.png" class="deleteBtn" style="position:absolute;top:'
 			+ btnTop + 'px;left:' + btnLeft
 			+ 'px;cursor:pointer;width:16px;height:16px;"/></div>';
 	$(".canvas-container").eq(activeCanvasIdx).append(deleteBtn);}
@@ -405,6 +448,7 @@ function cell2Text(idx) {
 				}
 			}
 		})
+	console.log(colors);
 	for (cIdx = 0; cIdx < colors.length; cIdx++) {
 		objects += colors[cIdx] + " ";
 	}
@@ -444,8 +488,10 @@ function cell2Text(idx) {
 
 	if (objects != '') {
 		groups = '';
+		console.log(objects.match('\\((.*?)\\)'));
 		if ((group = objects.match('\\((.*?)\\)'))) {
 			objects = objects.replace("\\(" + group[1] + "\\)", '');
+			console.log("objects: " + objects);
 			groups += group;
 		}
 
@@ -459,7 +505,7 @@ function cell2Text(idx) {
 	
 		objects += notField;
 
-	if (objects != '' && isAdvanced)
+	if (objects != '')
 		queryObj.objects = objects.trim();
 	
 	if (textual != '') {
@@ -470,9 +516,9 @@ function cell2Text(idx) {
 //	if (clip != '')
 //		queryObj.clip = clip;
 
-	if (txt != ''  && isAdvanced)
+	if (txt != '')
 		queryObj.txt = txt.trim();
-	if (Object.keys(queryObj).length > 0  && isAdvanced) {
+	if (Object.keys(queryObj).length > 0) {
 		queryParameters['occur'] = occur[idx];
 		queryParameters['simReorder'] = simreorder.toString();
 		}
@@ -496,7 +542,7 @@ function searchByLink(queryID) {
 	if(queryID != null) {
 		jsonString = JSON.stringify(queryID);
 		jsonString = '{"query":[' + jsonString + '], "parameters":[{"simReorder":"' + simreorder.toString() + '"}]}';
-//		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
+		'{"query":' + jsonStringQuery + ', "parameters":' + jsonStringParameters +'}';
 		//queryID = '{"query":[' + queryID + ']}';
 		search2(jsonString);
 
@@ -537,7 +583,6 @@ function setResults(data) {
 }
 
 function search2(query) {
-	latestQuery = query
 	if (query == "") {
 		setResults(query)
 	} else {
@@ -546,7 +591,7 @@ function search2(query) {
 		$.ajax({
 		type : "POST",
 		async : true,
-		data: {query: query, simreorder: simreorder},
+		data: {query: query, simreorder: simreorder, dataset: dataset},
 		dataType : "text",
 		url : urlBSService+"/search",
 		success : function(data) {
@@ -558,9 +603,12 @@ function search2(query) {
 	});
 		
 	}
+
+
+
 }
 
-function searchByALADINSimilarity(query) {
+function searchByTERNSimilarity(query) {
 	$.ajax({
 		type : "POST",
 		data: {query: query},
@@ -611,17 +659,20 @@ function sortByVideo(data) {
 		
 		for (i = 0; i < res.length; i++) {
 			imgId = res[i].imgId;
-			videoId = res[i].videoId;
 			score = res[i].score;
+			collection = res[i].collection;
 	
-			value = dataDict[videoId];
+			resValues = imgId.split("/");
+			videoID = resValues[0];
+			idHref = resValues[1].split("\.")[0];
+			value = dataDict[videoID];
 			if (value == null) {
 				value = [];
-				keys[keys.length] = videoId;
+				keys[keys.length] = videoID;
 			}
 			value.push(res[i]);
 			// console.log(res[i] + ' ' + res[i + 1] + ' ');
-			dataDict[videoId] = value;
+			dataDict[videoID] = value;
 		}
 		// console.log(keys);
 		for (i = 0; i < keys.length; i++) {
@@ -666,29 +717,16 @@ function setOccur(radioButton, canvasId) {
 
 	searchByForm();
 }
-/*
-function setTextualMode(checkboxId, mode) {
-	if (textualMode[checkboxId].includes(mode))
-		textualMode[checkboxId] = textualMode[checkboxId].replace(mode, "")
-	else 
-		textualMode[checkboxId] += mode;
-	searchByForm();
-}*/
 
-function setTextualMode(checkboxId, mode) {
-	textualMode[checkboxId] = mode;
-	searchByForm();
-}
-/*
 function setTextualMode(checkboxId) {
 	if(checkBox = document.getElementById("textualMode" + checkboxId).checked) {
-		textualMode[checkboxId] = "aladin";
+		textualMode[checkboxId] = "tern";
 	}
 	else
 		textualMode[checkboxId] = "clip";
 	searchByForm();
 }
-*/
+
 function enableCanvas(canvasId, storePrev) {
 	 document.getElementById("overlay" + canvasId).style.display = "none";
 	$('input:radio[name=canvas' + canvasId +']')[0].checked = true;
@@ -830,218 +868,152 @@ String.prototype.hashCode = function(){// FRANCA
 	return hash;
 }
 
-function showResultsOrig(data) {
-	if($('meta[name=task]').attr('content') == "AVS") {
-		avsCleanManualSelected();
-		avsRemoveAutoselected();
+function avs(id, url, keyframeId, isToAdd) {
+	if (avsSubmitted.has(keyframeId)) {
+		$('#' + id).prop('checked', true);
+		return;
 	}
-	//empty avsFirstCol
-	avsAutoSelected.length = 0
-	$('html,body').scrollTop(0);
-	$("#imgtable").remove();
-	//$('#results').scrollTop(0);
-	$('#content').scrollTop(0);
-	if((data == null || data == "") && latestQuery != "") {
-		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-		$("#results").append(imgtable);
-	}
-	else if(data != null && data != "") {
-		var res = JSON.parse(data);
-		//patch temporanea 20/07/20 per il merge
-		//if (res.length > 1200)
-		//	res = res.slice(0, 1200);
-		if(res.length == 0 ) {
-			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-		} 
-		else {
-		borderColorsIdx = 0;
-		numberborderColors = borderColors.length;
-		imgtable = '<div><table id="imgtable" style="text-align: left; width: 1050px;">';
-		prevID = '';
+	$("#avsTitle").remove();
+	if (isToAdd) {
+		img = '<span id="avsList_' + id + '">';
+		img += '<img title="' + keyframeId + '"style="padding-bottom: 10px;" width="90" height="72" src="' + url + '">';
+		img += '<img title="remove ' + keyframeId + '" width="16" style="vertical-align: top;" src="Actions-dialog-close-icon.png" onclick="avsRemoveItem(\'' + id + '\', \'' + keyframeId + '\', true); updateAvsTitle()"/></span>'
+		//avsQueryLog.set(keyframeId, prevQuery);
+		$("#avsTab").append(img);
+		$("#" + id.split('avs_')[1]).css({"border-width":"12px", "border-style": "dashed"});
 		
-		firstVideoID = res[0].imgId.split("/")[0];
-			
-		imgtable += ' <tr id="video_' + firstVideoID + '">';
+	} else {
+		avsRemoveItem(id, keyframeId, true)
+		$("#" + id.split('avs_')[1]).css({"border-width":"3px", "border-style": "solid"});
 
-		itemPerRow = 0;
-		for (i = 0; i < res.length; i++) {
-			imgId = res[i].imgId;
-			videoId = res[i].videoId;
-
-			score = res[i].score;
-	
-			imgIdTokens = imgId.split("/");
-			//videoId = imgIdTokens[0];
-			if (imgIdTokens.length > 1)
-				frameName = imgIdTokens[1];
-			else
-				frameName = imgId
-			path = videoId + "/"+ frameName + ".jpg";
-
-			frameNameNoExt = frameName.split('\.')[0]
-			frameNumber = frameNameNoExt.split('_').pop();
-			if(i==0)
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a>';//LUcia
-			if (videoId == prevID && itemPerRow++ > 50)
-				continue;
-			if (itemPerRow >0 && itemPerRow%10==0) {
-				imgtable += '</tr><tr id="video_' + videoId + '">';
-				imgtable += '<td></td>';//LUcia
-			}
-			if (prevID != "" && videoId != prevID) {
-				imgtable += '</tr><tr id="video_' + prevID + '"><td class="hline" colspan=11></td><tr id="video_' + videoId + '">';
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a></td>';//LUcia
-				itemPerRow = 0;
-			}
-			borderColorsIdx = fromIDtoColor(videoId,numberborderColors ); // FRANCA
-			prevID = videoId;
-			videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-			videoUrlPreview = videoshrinkUrl + videoId+ "-tiny.mp4";
-			//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-			avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailUrl+ path)
-
-			if (itemPerRow == 0)
-				if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-					addToAutoSelected(avsObj)
-			
-			imgtable += '<td>'
-				//+'<div class="thumbnailButtons">'
-				+' <input style="display: none" class="checkboxAvs" id="avs_' + imgId + '" type="checkbox" title="select for AVS Task" onchange="updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">&nbsp;'
-				+'<a style="font-size:10px;" title="' + frameName + ' Score: '+ score + '" href="indexedData.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+ frameNumber+'</a>'
-				+'<a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId	+ '#'+ frameName +	'" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>'
-				+'<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+videoId+'\', \''+imgId+'\'); return false;"></i>'
-				+'<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				+'<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				+'<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-				//+'<span style="color:blue;" title="' + imgId + '" id="aladinSim' + imgId + '">aladin </span>'
-				//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
-				+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\'); return false;"></i></span>'
-
-				//backgroundImg = "background-image: url('" + thumbnailUrl+ path + "')";
-				//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + imgId + '" title="'+ imgId+ '" class="myimg-thumbnail" loop preload="none"><source src="' + videoUrlPreview + '" type="video/mp4"></video></div>'
-				//imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" title="Search similar. score: '+ score + '" lang="'+ imgId + '|' + videoUrlPreview  + '">'
-				//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ imgId + '|' + videoUrlPreview  + '" onclick="avsByImg(\'' + imgId +  '\'); updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">'
-				imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+  videoId + '|' + videoUrlPreview  + '"'
-				if($('meta[name=task]').attr('content') == "AVS")
-					imgtable += '" onclick=\'avsToggle(' + avsObj + ')\''
-				imgtable += '>'
-
-				//+'<img title="Search similar. score: '+ score + '" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
-				+'<img loading="lazy" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
-				+'</div></div></td>'
-	
-					
-		}
-			}
-		imgtable += '</table></div>';
-		$("#results").append(imgtable);
-		if (res.length > 1) {
-		for (i = 0; i < res.length; i++) {
-			imgId = res[i].imgId;
-			score = res[i].score;
-
-				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				var cip = $('#' + imgId4Regex).hover( hoverVideo, hideVideo );
-				
-				function hoverVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-					$('#' + id4Regex).contextmenu(function() {
-						imgId = 'img' + id4Regex;
-						langInfo = this.lang.split('|');
-						videoId = langInfo[0];
-						videourl=langInfo[1];
-						playerId = 'video' + videoId;
-
-						var elementExists = document.getElementById(playerId);
-
-						//var startTime = getStartTime(this.id);
-						//var endTime = getEndTime(this.id);
-						var middleTime = getMiddleTimestamp(this.id);
-						var startTime = middleTime -2;
-						var endTime = middleTime+2;
-						if (elementExists != null) {
-							$('#'+ playerId).get(0).pause();
-						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
-						    $('#'+ playerId).get(0).load();
-							$('#'+ playerId).get(0).play();
-							return;
-						}
-						backgroundImg = "background-image: url('" + thumbnailUrl+ '/'+ this.id + "')";
-					
-						//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
-						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
-						$('#' + imgId).css("display", "none");
-						$('#' + id4Regex).append(imgtable);
-						//$('#'+ playerId).get(0).currentTime = time-1;
-						//$('#'+ playerId).get(0).play();
-						return false;
-					});
-
-					
-				}
-				
-				function hideVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
-					imgId = 'img' + id4Regex;
-					langInfo = this.lang.split('|');
-					videoId = langInfo[0];
-					videourl=langInfo[1];
-					playerId = 'video' + videoId;
-
-					var elementExists = document.getElementById(playerId);
-						if (elementExists != null) {
-							$('#' + playerId).remove();
-							$('#' + imgId).css("display", "block");
-						}
-				}
-			}	
-		}
 	}
-	if($('meta[name=task]').attr('content') == "AVS") {
-		avsHideSubmittedVideos();
-		avsReloadManualSelected();
-		avsAddAutoselected();
+	updateAvsTitle();
+}
+
+function avsByImg(id) {
+	document.getElementById('avs_' + id).checked = !document.getElementById('avs_' + id).checked;
+}
+
+function avsRemoveItem(id, keyframeId, uncheck) {
+	$("#avsTitle").remove();
+	$("#avsList_" + id).remove();
+
+	if (uncheck) {
+		$('#' + id).prop('checked', false);
+		$("#" + id.split('avs_')[1]).css({"border-width":"1px", "border-style": "solid"});
+
+	}		
+}
+
+function avsManualReq(id, url, keyframeId) {
+	console.log('avsManual')
+	//document.getElementById('avs_' + id).checked = !document.getElementById('avs_' + id).checked;
+
+	isChecked = document.getElementById('avs_' + id).checked;
+	document.getElementById('avs_' + id).checked = !isChecked
+	if (!isChecked)
+		avsManual.set(keyframeId, id);
+	else
+		avsManual.delete(keyframeId);
+	avs('avs_' + id, url, keyframeId, !isChecked)
+
+}
+
+function avsRevoveManual(id, keyframeId) {
+	console.log('avsRevoveManual')
+	avsManual.delete(keyframeId);
+	avs(id, null, keyframeId, false)
+}
+
+function avsAddAutoselected() {
+	console.log('avsAddAutoselected ')
+	selectedCounter = 0;
+	for (avsIDX = 0; avsIDX < avsFirstCol.length && selectedCounter < maxAVSAutoSelected; avsIDX++) {
+		if (avsManual.has(avsFirstCol[avsIDX].visioneID))
+			continue;
+		document.getElementById(avsFirstCol[avsIDX].id).checked = true;
+		avsAuto.set(avsFirstCol[avsIDX].visioneID, avsFirstCol[avsIDX].id);
+		selectedCounter++;
+		avs(avsFirstCol[avsIDX].id, avsFirstCol[avsIDX].thumb, avsFirstCol[avsIDX].visioneID, true)
 	}
 }
 
+function avsRemoveAutoselected() {
+	console.log('avsRemoveAutoselected')
+	selectedCounter = 0;
+	for (let [keyframeId, id] of avsAuto) {
+		if (avsManual.has(keyframeId))
+			continue;
+		//document.getElementById(keyframeId).checked = false;
+		avsAuto.delete(keyframeId);
+		avs(id, null, keyframeId, false)
+	}
+}
 
+function updateAvsTitle() {
+	avsText = "";
+	selectedSize = avsAuto.size + avsManual.size
+	if (avsAuto.size > 0 || avsSubmitted.size > 0  || avsManual.size > 0) {
+		avsText = '<div title="Selected images for AVS Tasks" id="avsTitle"><span style="color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span><span style="color:green; font-size: larger;"> Submitted: <b style="color: red; font-size:large;">' + avsSubmitted.size + '</b></span>';
+	}
+	if (avsAuto.size > 0 || avsManual.size > 0) {
+		avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: left; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span></div>';
+	}
+	if (avsAuto.size > 0 || avsSubmitted.size > 0 || avsManual.size > 0) {
+		$("#avsTab").prepend(avsText);	
+	}
+}
+
+function avsSelectedCheckbox() {
+	for (let [keyframeId, id] of avsSubmitted) {
+		$('#' + id).prop('checked', true);
+		$("#" + id.split('avs_')[1]).css({"border-width":"12px", "border-style": "dashed"});
+	}
+	for (let [keyframeId, id] of avsManual) {
+		$('#' + id).prop('checked', true);
+		$("#" + id.split('avs_')[1]).css({"border-width":"12px", "border-style": "dashed"});
+	}
+}
+
+avsFirstCol = []
+maxAVSAutoSelected = 20
+
+function selectColToggle(i) {
+	console.log('selectColToggle ' + i)
+	value = "toremove";
+	if ($('#selectAll').is(':checked')) {
+		value = "toadd";
+	}
+	selectedCounter = 0;
+	for (avsIDX = 0; avsIDX < avsFirstCol.length && selectedCounter < maxAVSAutoSelected; avsIDX++) {
+		if (avsAuto.has(avsFirstCol[avsIDX].visioneID) && value == "toadd")
+			continue;
+		document.getElementById(avsFirstCol[avsIDX].id).checked = !document.getElementById(avsFirstCol[avsIDX].id).checked;
+		avs(avsFirstCol[avsIDX].id, avsFirstCol[avsIDX].thumb, avsFirstCol[avsIDX].visioneID, value)
+		selectedCounter++;
+	}
+}
+	
 function showResults(data) {
 	if($('meta[name=task]').attr('content') == "AVS") {
-		avsCleanManualSelected();
 		avsRemoveAutoselected();
 	}
-	//empty avsFirstCol
-	avsAutoSelected.length = 0
+	avsFirstCol = []
 	$('html,body').scrollTop(0);
 	$("#imgtable").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
-	if((data == null || data == "") && latestQuery != "") {
-		imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-		$("#results").append(imgtable);
-		if (!isAdvanced)
-			document.getElementById("textual0").className='simplifiedSearchBar'
-		console.log(document.getElementById("textual0"))
-
-	} else if((data == null || data == "")) {
-		if (!isAdvanced)
-		document.getElementById("textual0").className='simplifiedSearchBar'
-	} else if(data != null && data != "") {
-		document.getElementById("textual0").className='ppp'
-		console.log(document.getElementById("textual0"))
-
+	if(data == null || data == "") {
+			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
+			$("#results").append(imgtable);
+	}
+	else {
 		var res = JSON.parse(data);
 		//patch temporanea 20/07/20 per il merge
 		//if (res.length > 1200)
 		//	res = res.slice(0, 1200);
 		if(res.length == 0 ) {
 			imgtable = '<div id="imgtable" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
-			if (!isAdvanced)
-				document.getElementById("textual0").className='simplifiedSearchBar'
-			console.log(document.getElementById("textual0"))
 		} 
 		else {
 		borderColorsIdx = 0;
@@ -1049,55 +1021,78 @@ function showResults(data) {
 		imgtable = '<div><table id="imgtable" style="text-align: left; width: 1050px;">';
 		prevID = '';
 		
-		firstVideoID = res[0].imgId.split("/")[0];
-			
-		imgtable += ' <tr id="video_' + firstVideoID + '">';
+		imgtable += '<tr><td colspan=10><input id="selectAll" type="checkbox" onchange="selectColToggle(0)">AVS Select First Col</td></tr>';
+		
+		imgtable += ' <tr>';
 
 		itemPerRow = 0;
 		for (i = 0; i < res.length; i++) {
 			imgId = res[i].imgId;
-			videoId = res[i].videoId;
-
 			score = res[i].score;
+			collection = res[i].collection;
 	
-			imgIdTokens = imgId.split("/");
-			//videoId = imgIdTokens[0];
-			if (imgIdTokens.length > 1)
-				frameName = imgIdTokens[1];
-			else
-				frameName = imgId
-			path = videoId + "/"+ frameName + ".jpg";
+			resSplit = imgId.split("__");
+			for (splitIdx = 0; splitIdx < resSplit.length; splitIdx++) {
+				path = collection + "/" + resSplit[splitIdx];
+				visioneID = resSplit[splitIdx]; 
+				resValues = resSplit[splitIdx].split("/");
+				videoID = resValues[0];
+				if(i==0)
+					imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection + '&id='+ visioneID + '" target="_blank">'+videoID +'<a>';//LUcia
+				if (videoID == prevID && itemPerRow++ > 50)
+					continue;
+				if (itemPerRow >0 && itemPerRow%10==0) {
+					imgtable += '</tr><tr>';
+					imgtable += '<td></td>';//LUcia
+				}
+				if (prevID != "" && videoID != prevID) {
+					imgtable += '</tr><tr><td class="hline" colspan=11></td></tr><tr>';
+					imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?collection=' + collection + '&id='+ visioneID + '" target="_blank">'+videoID +'<a></td>';//LUcia
+					itemPerRow = 0;
+				}
+				idHref = resValues[1].split("\.")[0];
+				nameFrame = idHref;
+				borderColorsIdx = fromIDtoColor(videoID,numberborderColors ); // FRANCA
+				prevID = videoID;
+				urlPreview = videoshrinkUrl +"/" +videoID+".mp4";
+				//urlPreview = videoUrl + "videoshrink/"+videoID+".mp4";
+				nameFrame=nameFrame.replace(videoID+"_", "");  //Lucia
+				if (itemPerRow == 0) {
 
-			frameNameNoExt = frameName.split('\.')[0]
-			frameNumber = frameNameNoExt.split('_').pop();
-			if(i==0)
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a>';//LUcia
-			if (videoId == prevID && itemPerRow++ > 50)
-				continue;
-			if (itemPerRow >0 && itemPerRow%10==0) {
-				imgtable += '</tr><tr id="video_' + videoId + '">';
-				imgtable += '<td></td>';//LUcia
-			}
-			if (prevID != "" && videoId != prevID) {
-				imgtable += '</tr><tr id="video_' + prevID + '"><td class="hline" colspan=11></td><tr id="video_' + videoId + '">';
-				imgtable += '<td style="padding-right:5px"><a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+videoId +'<a></td>';//LUcia
-				itemPerRow = 0;
-			}
-			borderColorsIdx = fromIDtoColor(videoId,numberborderColors ); // FRANCA
-			prevID = videoId;
-			videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-			videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
-			//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-			avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailUrl+ path)
+					if (!avsAuto.has(visioneID) && !avsSubmitted.has(visioneID)) {
+							firstObj=new Object();
+							firstObj.id = 'avs_' + idHref;
+							firstObj.thumb = thumbnailUrl+ path;
+							firstObj.visioneID = visioneID;
+							avsFirstCol.push(firstObj);
+					}
 
-			if (itemPerRow == 0)
-				if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-					addToAutoSelected(avsObj)
-			
-			imgtable += '<td>'
-			imgtable += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
-			imgtable +='</td>'
+				}
+				
+				
+				imgtable += '<td>'
+					//+'<div class="thumbnailButtons">'
+					+' <input style="display: none" class="checkboxAvs" id="avs_' + idHref + '" type="checkbox" title="select for AVS Task" onchange="avs(\'avs_' + idHref + '\',\'' + thumbnailUrl+ path + '\',\'' + visioneID + '\')">&nbsp;'
+					+'<a style="font-size:12px;" title="' + nameFrame + ' Score: '+ score + '" href="indexedData.html?collection=' + collection + '&id='+ visioneID+ '" target="_blank">'+ nameFrame+'</a>'
+					+'<a href="showVideoKeyframes.html?collection=' + collection + '&id='+ visioneID	+ '#'+ resValues[1] +	'" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+					+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ collection+ '\', \''+ videoID+ '\', \''+visioneID+'\'); return false;"></i>'
+					+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + visioneID + '" id="gemSim' + idHref + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + visioneID + '\'; searchByLink(queryObj); return false;">'
+					+'<img style="padding: 2px;" src="img/tern_icon.svg" width=20 title="semantic similarity" alt="' + visioneID + '" id="ternSim' + idHref + '" onclick="var queryObj=new Object(); queryObj.ternSim=\'' + visioneID + '\'; searchByLink(queryObj); return false;">'
+					+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + visioneID + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + visioneID + '\'; searchByLink(queryObj); return false;">'
+					//+'<span style="color:blue;" title="' + visioneID + '" id="ternSim' + idHref + '">tern </span>'
+					//+'<span style="color:blue;" title="' + visioneID + '" id="clipSim' + idHref + '">fols </span>'
+					+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ visioneID+ '\'); return false;"></i></span>'
+
+					//backgroundImg = "background-image: url('" + thumbnailUrl+ path + "')";
+					//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + idHref + '" title="'+ visioneID+ '" class="myimg-thumbnail" loop preload="none"><source src="' + urlPreview + '" type="video/mp4"></video></div>'
+					//imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ idHref + '" title="Search similar. score: '+ score + '" lang="'+ visioneID + '|' + urlPreview  + '">'
+					//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ idHref + '" lang="'+ visioneID + '|' + urlPreview  + '" onclick="avsByImg(\'' + idHref +  '\'); avs(\'avs_' + idHref + '\',\'' + thumbnailUrl+ path + '\',\'' + visioneID + '\')">'
+					imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ idHref + '" lang="'+ visioneID + '|' + urlPreview  + '" onclick="avsManualReq(\'' + idHref + '\',\'' + thumbnailUrl+ path + '\',\'' + visioneID + '\')">'
+					//+'<img title="Search similar. score: '+ score + '" id="img' + idHref + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
+					+'<img id="img' + idHref + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
+					+'</div></div></td>'
 	
+			}
 					
 		}
 			}
@@ -1107,41 +1102,72 @@ function showResults(data) {
 		for (i = 0; i < res.length; i++) {
 			imgId = res[i].imgId;
 			score = res[i].score;
-
-				imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				var cip = $('#' + imgId4Regex).hover( hoverVideo, hideVideo );
+			collection = res[i].collection;
+	
+			resSplit = imgId.split("__");
+				for (splitIdx = 0; splitIdx < resSplit.length; splitIdx++) {
+					//console.log(res[i + 1]);
+					visioneID = resSplit[splitIdx]; 
+					idHref = visioneID.split("/")[1].split("\.")[0];
+					//console.log(idHref);
+					/*$('#' + idHref).click(function() {
+						console.log(this.id);
+						var queryObj = new Object();
+						queryObj.vf =  this.lang.split('|')[0];
+						searchByLink(queryObj);
+					});
+		
+					$('#ternSim' + idHref).click(function() {
+						console.log(this.id);
+						var queryObj = new Object();
+						queryObj.ternSim =  this.alt;	
+						searchByLink(queryObj);
+					});					
+					
+					/*$('#gemSim' + idHref).click(function() {
+						console.log(this.id);
+						var queryObj = new Object();
+						queryObj.vf =  this.alt;	
+						searchByLink(queryObj);
+					});
+					
+					$('#clipSim' + idHref).click(function() {
+						console.log(this.id);
+						var queryObj = new Object();
+						queryObj.clipSim =  this.alt;	
+						searchByLink(queryObj);
+					});*/
+						
+				var cip = $('#' + idHref).hover( hoverVideo, hideVideo );
 				
 				function hoverVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-					$('#' + id4Regex).contextmenu(function() {
-						imgId = 'img' + id4Regex;
-						langInfo = this.lang.split('|');
-						videoId = langInfo[0];
-						videourl=langInfo[1];
-						playerId = 'video' + videoId;
-
+					$('#' + this.id).contextmenu(function() {
+						imgId = 'img' + this.id;
+						playerId = 'video' + this.id;
 						var elementExists = document.getElementById(playerId);
-
-						//var startTime = getStartTime(this.id);
-						//var endTime = getEndTime(this.id);
-						var middleTime = getMiddleTimestamp(this.id);
-						var startTime = middleTime -2;
-						var endTime = middleTime+2;
+						collection = "v3c1";
+						videourl=this.lang.split('|')[1];
+						if (parseInt(this.id) > 7475)
+							collection = "v3c2";
+						docId = this.id.split("_")[0] + '/' + this.id + '.jpg';
+						var startTime = getStartTime(docId);
+						var endTime = getEndTime(docId);
 						if (elementExists != null) {
+							
 							$('#'+ playerId).get(0).pause();
 						    $('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
 						    $('#'+ playerId).get(0).load();
 							$('#'+ playerId).get(0).play();
 							return;
 						}
-						backgroundImg = "background-image: url('" + thumbnailUrl+ this.id + "')";
+						backgroundImg = "background-image: url('" + thumbnailUrl+ collection + '/'+ docId + "')";
 					
 						//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
 						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
 						//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
 						imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
 						$('#' + imgId).css("display", "none");
-						$('#' + id4Regex).append(imgtable);
+						$('#' + this.id).append(imgtable);
 						//$('#'+ playerId).get(0).currentTime = time-1;
 						//$('#'+ playerId).get(0).play();
 						return false;
@@ -1151,119 +1177,87 @@ function showResults(data) {
 				}
 				
 				function hideVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
-					imgId = 'img' + id4Regex;
-					langInfo = this.lang.split('|');
-					videoId = langInfo[0];
-					videourl=langInfo[1];
-					playerId = 'video' + videoId;
-
+					imgId = 'img' + this.id;
+					playerId = 'video' + this.id;
+					//$('#'+ playerId).get(0).pause(); 
 					var elementExists = document.getElementById(playerId);
 						if (elementExists != null) {
 							$('#' + playerId).remove();
 							$('#' + imgId).css("display", "block");
 						}
 				}
+				}
 			}	
 		}
+		if($('meta[name=task]').attr('content') == "AVS") {
+			avsSelectedCheckbox();
+			avsAddAutoselected();
+		}
 	}
-	if($('meta[name=task]').attr('content') == "AVS") {
-		avsHideSubmittedVideos();
-		avsReloadManualSelected();
-		avsAddAutoselected();
-	}
 }
-
-
-function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
-	resultData=new Object();
-	resultData.videoId = videoId;
-	resultData.imgId = imgId;
-	resultData.thumb = thumb;
-	resultData.frameName = frameName;
-	resultData.frameNumber = frameNumber;
-	resultData.score = score;
-	resultData.videoUrl = videoUrl;
-	resultData.videoUrlPreview = videoUrlPreview;
-	resultData.avsObj = avsObj;
-	return resultData 
-}
-
-
-
-function tmp() {
-	+' <input style="display: none" class="checkboxAvs" id="avs_' + imgId + '" type="checkbox" title="select for AVS Task" onchange="updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">&nbsp;'
-	+'<a style="font-size:10px;" title="' + frameName + ' Score: '+ score + '" href="indexedData.html?videoId='+ videoId + '&id='+ imgId + '" target="_blank">'+ frameNumber+'</a>'
-	+'<a href="showVideoKeyframes.html?videoId='+ videoId + '&id='+ imgId	+ '#'+ frameName +	'" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>'
-	+'<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+videoId+'\', \''+imgId+'\'); return false;"></i>'
-	+'<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + imgId + '" id="gemSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-	+'<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + imgId + '" id="aladinSim' + imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-	+'<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + imgId + '\'; searchByLink(queryObj); return false;">'
-	//+'<span style="color:blue;" title="' + imgId + '" id="aladinSim' + imgId + '">aladin </span>'
-	//+'<span style="color:blue;" title="' + imgId + '" id="clipSim' + imgId + '">fols </span>'
-	+'<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert(\''+ imgId+ '\',\''+ videoId+ '\'); return false;"></i></span>'
-
-	//backgroundImg = "background-image: url('" + thumbnailUrl+ path + "')";
-	//imgtable += '<div class="video" style="display:none"><video style="' + backgroundImg + '" id="videoPreview' + imgId + '" title="'+ imgId+ '" class="myimg-thumbnail" loop preload="none"><source src="' + videoUrlPreview + '" type="video/mp4"></video></div>'
-	//imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" title="Search similar. score: '+ score + '" lang="'+ imgId + '|' + videoUrlPreview  + '">'
-	//imgtable += '<div title="Left click to select, right click to play preview. Score: '+ score + '" class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="'+ imgId + '|' + videoUrlPreview  + '" onclick="avsByImg(\'' + imgId +  '\'); updateAVSTab(\'avs_' + imgId + '\',\'' + thumbnailUrl+ path + '\',\'' + imgId + '\')">'
-	imgtable += '<div class="myimg-thumbnail" style="border-color:' + borderColors[borderColorsIdx] + ';" id="'+ imgId + '" lang="' + videoId + '|' + videoUrlPreview  + '"'
-	if($('meta[name=task]').attr('content') == "AVS")
-		imgtable += '" onclick=\'avsToggle(' + avsObj + ')\''
-	imgtable += '>'
-
-	//+'<img title="Search similar. score: '+ score + '" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
-	+'<img loading="lazy" id="img' + imgId + '" class="myimg"  src="'+thumbnailUrl+ path + '"/>'
-
-}
-
-
-
-const imgResult = (res, borderColor, avsObj, isSimplified=false) => {
-
-	if (isSimplified) {
-		return `
-			<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-			<a style="font-size:10px;" title="${res.frameName}  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-			<a href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
-			<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
-			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(avsObj)'>
+/*
+function hoverVideo(id, videourl, backgroundImage) {
+	$('#' + id).contextmenu(function() {
+		imgId = 'img' + id;
+		playerId = 'video' + id;
+		var elementExists = document.getElementById(playerId);
+		if (elementExists != null) {
+			return
+		}
+		collection = "v3c1";
+		if (parseInt(id) > 7475)
+			collection = "v3c2";
+		docId = id.split("_")[0] + '/' + id + '.jpg';
+		var time = getStartTime(docId);
+		backgroundImg = "background-image: url('" + backgroundImage + "')";
 	
+		//imgtable = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+		//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+		//imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+		imgtable = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+		$('#' + imgId).css("display", "none");
+		$('#' + id).append(imgtable);
+		$('#'+ playerId).get(0).currentTime = time-1;
+		$('#'+ playerId).get(0).play();
+	});
+
 	
-			<img loading="lazy" id="imgcanvas${res.imgId}" class="myimg"  src="${res.thumb}"/>
-			</div>
-
-		`
-	}
-
-	return `
-		<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-		<a style="font-size:10px;" title="${res.frameName}  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-		<a href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
-		<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
-		<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(avsObj)'>
-
-
-		<img loading="lazy" id="imgcanvas${res.imgId}" class="myimg"  src="${res.thumb}"/>
-		</div>
-		`
 }
 
-function playVideoWindow(videoURL, videoId, imgId){
+function hideVideo(id) {
+	imgId = 'img' + id;
+	playerId = 'video' + id;
+	//$('#'+ playerId).get(0).pause(); 
+	var elementExists = document.getElementById(playerId);
+		if (elementExists != null) {
+			$('#' + playerId).remove();
+			$('#' + imgId).css("display", "block");
+		}
+}
+*/
+function playVideoWindowOld(collection, videoId, idHref){
+  let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=600,height=600,left=50,top=50`;
+  //video = videoId.split(QUERY_SPLIT);
+  numTime = idHref;
+  console.log("----" +videoId + " "+numTime);
+  var timestamp = getStartTime(numTime);
+  log("videoPlayer" + videoId + "_" + timestamp);
+  input_file = videoUrl + collection.toUpperCase() + "/videos/" +videoId+"/"+videoId+".mp4#t="+timestamp;
+  var myWindow = window.open(input_file, "playvideo",params);
+
+}
+
+function playVideoWindow(collection, videoId, idHref){
   let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
   //video = videoId.split(QUERY_SPLIT);
-  numTime = imgId;
+  numTime = idHref;
+  console.log("----" +videoId + " "+numTime);
   var time = getStartTime(numTime);
   //var time = getMiddleTimestamp(numTime);
-  //url = videoUrl + "/videos/" +videoId+"/"+videoId+".mp4";
-  var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
+  log("videoPlayer" + videoId + "_" + time);
+  //url = videoUrl + collection.toUpperCase() + "/videos/" +videoId+"/"+videoId+".mp4";
+  url = videoUrl + "video480/" + "/"+videoId+".mp4";
+  var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + url + "&t=" + time, "playvideo", params);
 
 }
 
@@ -1472,7 +1466,7 @@ function canvasClean(idx) {
 	$("#textual"+ idx).val('');
 	
 	if ($('#textualMode'+idx).is(':checked')) {
-		prevTextualMode[idx] = "aladin";
+		prevTextualMode[idx] = "tern";
 	}
 	else
 		prevTextualMode[idx] = "clip";
@@ -1509,12 +1503,59 @@ function canvasClean(idx) {
 }
 
 function reset() {
+
 	canvasClean(0);
 	canvasClean(1);
 	prevSimreorder = simreorder;
 	$('#simreorder').prop('checked', false);
 
 	resetCanvas();
+
+	/*
+	prevIs43 = $("#is43").is(":checked");
+	prevIs169 = $("#is169").is(":checked");
+	prevIsColor[0] = $("#isColor0").is(":checked");
+	prevIsColor[1] = $("#isColor1").is(":checked");
+	prevIsGray[0] = $("#isGray0").is(":checked");
+	prevIsGray[1] = $("#isGray1").is(":checked");
+	prevOccur[0] = $('#and0').is(':checked');
+	prevOccur[1] = $('#and1').is(':checked');
+	if ($('#textualMode0').is(':checked'))
+		prevTextualMode[0] = "tern";
+	else
+		prevTextualMode[0] = "clip";
+	if ($('#textualMode1').is(':checked'))
+		prevTextualMode[1] = "tern";
+	else
+		prevTextualMode[1] = "clip";
+	prevQBE = $("#urlToUpload").val();
+	console.log(prevQBE);
+
+	prevGrouped = $("#group").is(":checked");
+	prevIsCanvasEnabled[0] = isCanvasEnabled[0];
+	prevIsCanvasEnabled[1] = isCanvasEnabled[1];
+	prevSimreorder = simreorder;
+	console.log(prevIsCanvasEnabled);
+			
+	$('#is43').prop('checked', false);
+	$('#is169').prop('checked', false);
+	$('#isColor0').prop('checked', false);
+	$('#isColor1').prop('checked', false);
+	$('#isGray0').prop('checked', false);
+	$('#isGray1').prop('checked', false);
+	$("#and0").prop("checked", true);
+	$("#and1").prop("checked", true);
+	$('#group').prop('checked', false);
+	$('#is43').prop('checked', false);
+	$('#simreorder').prop('checked', false);
+	$('#urlToUpload').val('');
+	$('#qbe').removeAttr("style").hide();
+	
+	$('#isTern0').prop('checked', true);
+	$('#isTern1').prop('checked', true);
+
+*/
+	//setCanvasState(0);
 }
 
 function undoReset() {
@@ -1523,6 +1564,41 @@ function undoReset() {
 	$('#simreorder').prop('checked', prevSimreorder);
 
 	undoCanvas();
+
+	/*
+	$('#is43').prop('checked', prevIs43);
+	$('#is169').prop('checked', prevIs169);
+	$('#isColor0').prop('checked', prevIsColor[0]);				
+	$('#isColor1').prop('checked', prevIsColor[1]);				
+	$('#isGray0').prop('checked', prevIsGray[0]);
+	$('#isGray1').prop('checked', prevIsGray[1]);
+	$('#and0').prop('checked', prevOccur[0]);
+	$('#and1').prop('checked', prevOccur[1]);
+	if (prevTextualMode[0] == "tern")
+		$('#textualMode0').prop('checked', true);
+	else
+		$('#textualMode0').prop('checked', false);
+	if (prevTextualMode[1] == "tern")
+		$('#textualMode1').prop('checked', true);
+	else
+		$('#textualMode1').prop('checked', false);
+	$('#or0').prop('checked', !prevOccur[0]);
+	$('#or1').prop('checked', !prevOccur[1]);
+	$('#urlToUpload').val(prevQBE);
+	console.log(prevQBE);
+
+	$('#group').prop('checked', prevGrouped);
+	$('#simreorder').prop('checked', prevSimreorder);
+
+	console.log(prevIsCanvasEnabled);
+	if (!prevIsCanvasEnabled[0])
+		$('input:radio[name=canvas0]')[1].checked = true;
+	if (!prevIsCanvasEnabled[1])
+		$('input:radio[name=canvas1]')[1].checked = true;
+		*/
+	//setCanvasState(0);
+
+
 }
 
 function canvasCleanUndo(idx) {
@@ -1530,7 +1606,7 @@ function canvasCleanUndo(idx) {
 		$('input:radio[name=occur' + idx +']')[1].checked = true;
 	$("#textual" + idx).val(prevTextual[idx]);
 	
-	if (prevTextualMode[idx] == "aladin")
+	if (prevTextualMode[idx] == "tern")
 		$('#textualMode'+idx).prop('checked', true);
 	
 	if (prevIsColor[idx] == true)
@@ -1549,28 +1625,3 @@ function canvasCleanUndo(idx) {
 		}
     })
 }
-
-function displayAdvanced(isToDisplay) {
-	isAdvanced = isToDisplay
-
-	if (isAdvanced) {
-		setDisplayTo="block";
-		document.getElementById("advancedUIButton").className='btn btn-primary btn-sm';
-		document.getElementById("simplifiedUIButton").className='btn btn-outline-primary btn-sm';
-	}
-
-	else {
-		setDisplayTo="none";
-		document.getElementById("simplifiedUIButton").className='btn btn-primary btn-sm';
-		document.getElementById("advancedUIButton").className='btn btn-outline-primary btn-sm';
-	}
-	var elements = document.getElementsByClassName("advanced");
-	for(var i=0; i<elements.length; i++) {
-		elements[i].style.display = setDisplayTo;		
-	}
-	searchByForm();
-}
-
-
-
-
