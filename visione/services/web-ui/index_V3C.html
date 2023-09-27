@@ -86,7 +86,7 @@
 						<div id="palette" class="palette"></div>
 						<div id='searchTab'></div>
 						<div class="headerItem">
-							<div id="qbe" w3-include-html="filters.html" class="font-normal"></div>
+							<div id="qbe" w3-include-html="filters.html" class="font-normal" style="display: none;"></div>
 		
 						</div>
 					</div>
@@ -114,6 +114,24 @@
 
 		<script>
 			$(document).ready(init());
+			const channel = new BroadcastChannel('app-data');
+			channel.addEventListener ('message', (event) => {
+				window.focus();
+
+				let frameData = event.data.split(",");
+				let imgId = frameData[0];
+				let videoId = frameData[1];
+				let collection = frameData[2];
+
+				console.log(event.data);
+				let path = collection + "/" + videoId + "/" + imgId;
+
+
+				let avsObj = getAvsObj(collection, videoId, imgId, 'avs_' + imgId, thumbnailUrl + path, keyFramesUrl + path, null, null)
+				//avsObj = JSON.parse(avsObj);
+
+				unifiedSubmit(avsObj, null);
+			});
 		</script>
 
 		<!-- inserting these scripts at the end to be able to use all the elements in the DOM 

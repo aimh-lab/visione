@@ -18,7 +18,8 @@ function getAvsObj(videoId, imgId, avsTagId, thumb, keyframe, rowIdx, colIdx) {
 	avsObj.keyframe = keyframe;
 	avsObj.rowIdx = rowIdx;
 	avsObj.colIdx = colIdx;
-	return JSON.stringify(avsObj) 
+	//return JSON.stringify(avsObj) 
+	return avsObj 
 }
 /*
 function addToAutoSelected(avsJSON) {
@@ -316,10 +317,13 @@ function updateAVSInfo() {
 }
 
 function updateAVSTab(selectedItem) {
-	if (avsSubmitted.has(selectedItem.videoId)) {
+	//to skip already submitted videos
+	/*if (avsSubmitted.has(selectedItem.videoId)) {
 		return;
 	}
-	else if (avsManually.has(selectedItem.imgId) || avsAuto.has(selectedItem.imgId)) {
+	else*/ 
+
+	if (avsManually.has(selectedItem.imgId) || avsAuto.has(selectedItem.imgId)) {
 		selectImg(selectedItem)
 	}
 	else {
@@ -351,11 +355,16 @@ function avsToggle(avsJSON, event, isRemoveButton = false) {
 		avsManuallyByVideoID.set(selectedItem.videoId, selectedItem);
 		//avsManuallyRemoved.delete(selectedItem.imgId)
 	}
-	updateAVSTab(selectedItem);
-	if (avsManuallyByVideoID.has(selectedItem.videoId))
-		scrollToRow(rowIdx);
-	else
-		unscrollToRow(rowIdx);
+	try {
+		updateAVSTab(selectedItem);
+		if (avsManuallyByVideoID.has(selectedItem.videoId))
+			scrollToRow(rowIdx-1);
+		else
+			unscrollToRow(rowIdx-1);
+	} catch (error) {
+		console.log(error);
+	}
+
 
 
 	if (event && event.ctrlKey) {

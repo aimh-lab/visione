@@ -11,7 +11,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 	<div class="advanced scene${canvasID}" id='canvasTab'>
 		<div class="">
 			<div id="description_objects${canvasID}">
-				<div class="font-large font-bold">${infoText} <i id="sceneDes${canvasID}" class="${css_class}"></i></div>
+				<div class="font-large font-bold"><i id="sceneDes${canvasID}" class="${css_class}"> ${infoText}</i> </div>
 
 			</div>
 			<span class="font-tiny">

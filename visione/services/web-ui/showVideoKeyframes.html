@@ -1,48 +1,52 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
+
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Video Keyframes</title>
-<link rel="stylesheet" href="css/jquery-ui.min.css" >
-<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" >
-<link rel="stylesheet" href="css/bootstrap.css" >
-<link rel="stylesheet" href="css/visione.css" >
-<script src="js/jquery-3.3.1.min.js"></script>
-<script src="js/jquery-ui.min.js"></script>
-<script src="js/visione.js"></script>
-
-
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>Video Keyframes</title>
+	<link rel="stylesheet" href="css/jquery-ui.min.css">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/visione.css">
+	<script src="js/jquery-3.3.1.min.js"></script>
+	<script src="js/jquery-ui.min.js"></script>
+	<script src="js/visione.js"></script>
 </head>
+
 <body>
 	<div align="center" style="font-size: x-large; padding: 15px;">
 		<span style="color: navy;">Video</span> 
 		<span><a id="videoURL" style="color: red;" title='Play video' href=""></a></span>
-		<span style="color: navy;">- Keyframe</span> 
+		<span style="color: navy;">- Keyframe</span>
 		<span><a id="imgId" style="color: red;" title="go to keyframe" href=""></a></span>
 	</div>
-	<table align="center"><tr><td>
-	<div id="keyframes"></div>
-	</td></tr></table>
-	
+	<table align="center">
+		<tr>
+			<td>
+				<div id="keyframes"></div>
+			</td>
+		</tr>
+	</table>
+
 	<script>
 		function loadPage() {
 			$.urlParam = function(name) {
 				var results = new RegExp('[\?&]' + name + '=([^&#]*)')
-						.exec(window.location.href);
+				.exec(window.location.href);
 				return results[1] || 0;
 			}
-
-
+			
+			
 			imgId = $.urlParam('id');
 			id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
+			
 			videoId = $.urlParam('videoId');
-
+			
 			console.log('====ID' + imgId);
 			res = getAllVideoKeyframes(videoId);
 			var keyframes = JSON.parse(res);
 			
-			videoUrl = videoUrlPrefix + videoId + "-medium.mp4"
+			videoUrl = videoUrlPrefix + videoId + ".mp4"
 			$("#videoURL").attr("href", videoUrl)
 			$("#videoURL").text(videoId)
 			$("#imgId").attr("href", "#" + imgId)
@@ -50,21 +54,22 @@
 			table = ""
 			for (i = 0; i < keyframes.length; i++) {
 				frameName = keyframes[i]
-				path = videoId + "/"+ frameName + ".png";
-				
+				path = videoId + "/" + frameName;
+
 				if (i % 6 == 0) {
 					table += "<div class='row'>";
 				}
 				link = "<div class='myalign'> <a style='font-size:12px;' href='indexedData.html?videoId=" + videoId + "&id=" + keyframes[i]
-				+ "' title='Show Indexed Data' target='_blank' >" + keyframes[i] + "</a>"
-				+'<i class="fa fa-play" style="font-size:16px; color:#007bff;padding-left: 5px;padding-right: 5px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ videoId+ '\', \''+keyframes[i]+'\'); return false;"></i>'
+					+ "' title='Show Indexed Data' target='_blank' >" + keyframes[i] + "</a>"
+					+ '<i class="fa fa-play" style="font-size:16px; color:#007bff;padding-left: 5px;padding-right: 5px;" onclick="playVideoWindow(\'' + videoUrl + '\', \'' + videoId + '\', \'' + keyframes[i] + '\'); return false;"></i>'
 
-				+"<span class='pull-right'><i title='Submit result' class='fa fa-arrow-alt-circle-up' style='font-size:21px; float: right; color:#00AA00; padding-left: 0px;' "
-				+ "onclick=\"submitWithAlert('"+ frameName + "', '" + videoId + "'); return false;\"></i></span></div>";
-				
-				if (imgId == keyframes[i] ) {
+					+ "<span class='pull-right'><i title='Submit result' class='fa fa-arrow-alt-circle-up' style='font-size:21px; float: right; color:#00AA00; padding-left: 0px;' "
+					+ "onclick=\"submitWithAlert('"+ frameName + "', '" + videoId + "'); return false;\"></i></span></div>";
+					//+ "onclick=\"console.log('pppp'); const channel = new BroadcastChannel('app-data'); channel.postMessage('"+ frameName + "," + videoId + "'); \"></i></span></div>";
+
+				if (imgId == keyframes[i]) {
 					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
-							+ keyframes[i].split("\\.")[0] + "'/></div>";
+						+ keyframes[i].split("\\.")[0] + "'/></div>";
 				} else {
 					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
 				}
@@ -72,11 +77,12 @@
 					table += "</div>";
 				}
 			}
-			
+
 			$("#keyframes").append(table);
 		}
 
 		loadConfig().then(loadPage);
 	</script>
 </body>
+
 </html>
