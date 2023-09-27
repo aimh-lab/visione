@@ -387,7 +387,14 @@ class ImportCommand(BaseCommand):
         scene_file = selected_frames_dir / f'{video_id}-scenes.csv'
         selected_frames_files = selected_frames_dir.glob('*.png')
 
-        if not force and any(selected_frames_files):
+        def check_if_skippable(check_hard=False):
+            if check_hard:
+                with open(scene_file) as f:
+                    return len(f.readlines()) - 1 == len(list(selected_frames_files))
+
+            return scene_file.exists() and any(selected_frames_files)
+
+        if not force and check_if_skippable(check_hard=True):
             print('Skipping frame generation, using existing files:', selected_frames_dir / '*.png')
             if show_progress:
                 show_progress(1, 1)  # set as completed
