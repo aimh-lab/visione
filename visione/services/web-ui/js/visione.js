@@ -249,6 +249,15 @@ function getMiddleTimestamp(id) {
 		}).responseText
 }
 
+function submitAlert() {
+	if (!isAVS) {
+		if (!confirm('Are you sure you want to submit?')) {
+			return false;
+		}
+	}
+	return true;
+}
+
 function submitWithAlert(id, videoId) {
 	if (!isAVS) {
 		if (confirm('Are you sure you want to submit?')) {
@@ -264,12 +273,12 @@ function submitWithAlert(id, videoId) {
 function submitWithAlert2(selectedItem, isConfirm) {
 	if (isConfirm) {
 		if (confirm('Are you sure you want to submit?')) {
-			res = submitResult(selectedItem.imageId, selectedItem.videoId, selectedItem.collection);
+			res = submitResult(selectedItem.imageId, selectedItem.videoId);
 			console.log(res);
 			alert('Server response: ' + res);
 		}
 	} else {
-		res = submitResult(selectedItem.imageId, selectedItem.videoId, selectedItem.collection);
+		res = submitResult(selectedItem.imageId, selectedItem.videoId);
 		console.log(res);
 	}
 	avsSubmitted.set(selectedItem.videoId, selectedItem);
@@ -892,7 +901,7 @@ function showResults(data) {
 		if (res.length == 0)
 			noResultsOutput();
 		else {
-			document.getElementById('block1').style.display = 'block';
+			noResultsOutput(false);
 			//document.getElementById('newsession').style.display = 'block';
 
 			let prevID = '';
@@ -1035,6 +1044,27 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, vid
 	return resultData
 }
 
+function unifiedSubmit(avsObj, ev) {
+	if (!submitAlert()) 
+		return false; 
+
+	currentSelected =  null;
+
+	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
+		currentSelected = avsManuallyByVideoID.entries().next().value[1];
+		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
+	}
+
+	avsCleanManuallySelected(); 
+	avsToggle(avsObj, ev);
+	submitAVS();
+
+	if (currentSelected != null) {
+		avsToggle(currentSelected, ev);
+	}
+
+}
+
 const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 	if (isSimplified) {
@@ -1045,7 +1075,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 			<i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
+			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span>
 			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 	
 	
@@ -1520,13 +1550,15 @@ function unscrollToRow(rowNumber) {
 	var colIdx = 0;
 
 	var container = document.querySelector('.resGrid2');
+	var containerTop = container.offsetTop;
+
 	var row = document.getElementById(resMatrix[rowNumber][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 
 		// La riga è sopra la parte correntemente visibile
 		//valore hardcoded. Bisognerebbe calcolare l'altezza dell'immagine selezionata
-	container.scrollTop = rowTop - containerTop - rowHeight/2;
+	container.scrollTop = rowTop -   - rowHeight/2;
 	
 }
 
@@ -1613,8 +1645,10 @@ function checkKey(e) {
 		//testDiv.dispatchEvent(mouseOverEvent);
 	}
 	else if (e.keyCode == '83') {
-		submitAVS();
-		goToNextResult = true;
+		if (submitAlert()) {
+			submitAVS();
+			goToNextResult = true;
+		}
 	}
 
 	else if (e.keyCode == '38') {
@@ -2106,10 +2140,18 @@ function setPalette(palette) {
 	$("#palette").append(html);
 }
 
-function noResultsOutput() {
+function noResultsOutput(isNoResult=true) {
 	var elemento = $('#imgGridResults');
-	elemento.removeClass('gridcontainer');
-	elemento.addClass('alert alert-danger');
-	elemento.attr('role', 'alert');
-	elemento.html('<strong>Ops!</strong> No results.');
+	if (isNoResult) {
+		elemento.removeClass('gridcontainer');
+		elemento.addClass('alert alert-danger');
+		elemento.attr('role', 'alert');
+		elemento.html('<strong>Ops!</strong> No results.');
+	} else {
+		elemento.removeClass('alert alert-danger');
+		elemento.addClass('gridcontainer');
+		elemento.attr('role', '');
+	}
+
 }
+
