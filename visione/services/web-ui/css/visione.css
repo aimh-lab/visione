@@ -46,10 +46,13 @@ body {
 
 .contentGrid {
   overflow-y: auto;
+  overflow-x: auto;
   border-left: 0px solid green;
 }
 
-
+.hideColumn {
+  display: none;
+}
 
 .ui-autocomplete { position: absolute; cursor: default;z-index:30 !important;}
 
