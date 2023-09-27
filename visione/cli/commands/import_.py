@@ -328,7 +328,7 @@ class ImportCommand(BaseCommand):
 
         scene_file = selected_frames_dir / f'{video_id}-scenes.csv'
         if not force and scene_file.exists():
-            print('Skipping scene detection and frame generation, using existing files:', scene_file.name)
+            print('Skipping scene detection, using existing file:', scene_file.name)
             if show_progress:
                 show_progress(1, 1)  # set as completed
             return 0
