@@ -1049,6 +1049,11 @@ function showResults(data) {
 			document.getElementById("simplified0").className='simplified0'
 			document.getElementById("visionelogo").className='visioneLogo'
 			document.getElementById("visionelogoImg").className='visionelogoImg'
+			document.getElementById("sceneDes0").className='fa fa-hourglass-start fa-2x'
+			document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+			document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+			document.getElementById('textualOptions0').style.display='block'
+
 
 
 		}	
@@ -1591,13 +1596,25 @@ function displayAdvanced(isToDisplay) {
 		//document.getElementById('block0').style.position='relative';
 		document.getElementById('block0').style.display='block';
 		document.getElementById('block1').style.display='block';
-		document.getElementById('sceneDes0').style.display='none';
-		document.getElementById('sceneDes1').style.display='none';
+
+
+		document.getElementById('sceneDes1').style.display='block';
+		document.getElementById('simplified1').style.display='block';
+		document.getElementById("simplified0").className='simplified0'
+		document.getElementById("sceneDes0").className='fa fa-hourglass-start fa-2x'
+		document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+		document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+		document.getElementById('textualOptions0').style.display='block'
+
+
+
+		//document.getElementById('sceneDes0').style.display='none';
+		//document.getElementById('sceneDes1').style.display='none';
 
 		//document.getElementById('collectionsTab').style.display='block';
 		//$("#div_textual0").appendTo("#textual0_container");
-		document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
-		document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
+		//document.getElementById('textual0_container').appendChild(document.getElementById('div_textual0'));
+		//document.getElementById('textual1_container').appendChild(document.getElementById('div_textual1'));
 		document.getElementById("visionelogo").className='visioneLogo'
 		document.getElementById("visionelogoImg").className='visionelogoImg'
 		//$('.sidebarGrid').css('width', '0px');
@@ -1609,6 +1626,7 @@ function displayAdvanced(isToDisplay) {
 		document.getElementById('block1').style.display='none';
 		document.getElementById('sceneDes0').style.display='block';
 		document.getElementById('sceneDes1').style.display='block';
+
 		//document.getElementById('collectionsTab').style.display='none';
 		document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
 		document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
@@ -1624,6 +1642,9 @@ function displayAdvanced(isToDisplay) {
 			document.getElementById("simplified0").className='simplifiedSearchBar'
 			document.getElementById("visionelogo").className='visioneLogo_bigger'
 			document.getElementById("visionelogoImg").className='visionelogoImg_bigger'
+			document.getElementById("sceneDes0").className='fa fa-hourglass-start_ppp fa-2x'
+			document.getElementById('textualOptions0').style.display='none'
+			
 			$('#sceneDes0').css('width', '530px');
 		} else {
 			document.getElementById('sceneDes1').style.display='block';
@@ -1631,8 +1652,6 @@ function displayAdvanced(isToDisplay) {
 			document.getElementById("simplified0").className='simplified0'
 			document.getElementById("visionelogo").className='visioneLogo'
 			document.getElementById("visionelogoImg").className='visionelogoImg'
-
-
 		}	
 
 		
