@@ -838,10 +838,10 @@ function displaySimplifiedUI() {
 
 function showResults(data) {
 	//temporary!!!!!!!!!!!
-	avsCleanManualSelected();
+	avsCleanManuallySelected();
 
 	if ($('meta[name=task]').attr('content') == "AVS") {
-		avsCleanManualSelected();
+		avsCleanManuallySelected();
 		avsRemoveAutoselected();
 	}
 	//empty avsFirstCol
@@ -948,10 +948,11 @@ function showResults(data) {
 						var startTime = middleTime - 2;
 						var endTime = middleTime + 2;
 						if (elementExists != null) {
-							$('#' + playerId).get(0).pause();
-							$('#' + playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
-							$('#' + playerId).get(0).load();
-							$('#' + playerId).get(0).play();
+							var player = $('#' + playerId).get(0);
+							player.pause();
+							player.src = videourl + '#t=' + startTime + ',' + endTime;
+							player.load();
+							player.play();
 							return;
 						}
 						backgroundImg = "background-image: url('" + thumbnailUrl + '/' + this.id + "')";
@@ -989,7 +990,7 @@ function showResults(data) {
 	}
 	if ($('meta[name=task]').attr('content') == "AVS") {
 		avsHideSubmittedVideos();
-		avsReloadManualSelected();
+		avsReloadManuallySelected();
 		avsAddAutoselected();
 	}
 	updateAVSInfo();
@@ -1021,7 +1022,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManualSelected(); avsToggle(${avsObj}, event)'>
+			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 	
 	
 			<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
@@ -1040,7 +1041,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManualSelected(); avsToggle(${avsObj}, event)'>
+		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 
 
 		<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>

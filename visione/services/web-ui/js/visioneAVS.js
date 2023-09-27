@@ -1,9 +1,9 @@
 const avsAuto = new Map();
 const avsAutoByVideoID = new Map();
-const avsManual = new Map();
-const avsManualByVideoID = new Map();
+const avsManually = new Map();
+const avsManuallyByVideoID = new Map();
 const avsSubmitted = new Map();
-const avsManualRemoved = new Map();
+const avsManuallyRemoved = new Map();
 
 //avsAutoSelected = []
 //maxAutoSelected = 9
@@ -38,7 +38,7 @@ function submitAVS() {
 
 	}*/
 
-	for (let [key, selectedItem] of avsManual) {
+	for (let [key, selectedItem] of avsManually) {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
 		res = submitToServer(selectedItem);
 		avsRemoveSelected(selectedItem)
@@ -123,10 +123,11 @@ function selectImg(selectedItem) {
 			var startTime = middleTime -2;
 			var endTime = middleTime+2;
 			if (elementExists != null) {
-				$('#'+ playerId).get(0).pause();
-				$('#'+ playerId).attr('src', videourl + '#t=' + startTime + ',' + endTime);
-				$('#'+ playerId).get(0).load();
-				$('#'+ playerId).get(0).play();
+				var player = $('#' + playerId).get(0);
+				player.pause();
+				player.src = videourl + '#t=' + startTime + ',' + endTime;
+				player.load();
+				player.play();
 				return;
 			}
 			let backgroundImg = "background-image: url('" + thumbnailUrl + '/'+ imgIdNoRegex + "')";
@@ -162,22 +163,22 @@ function selectImg(selectedItem) {
 }
 
 function unselectImg(selectedItem) {
-	
-	if (document.getElementById("avsList_" + selectedItem.imgId) != null) {
-		document.getElementById("avsList_" + selectedItem.imgId).remove();
-		unselectImg(selectedItem)
+	var avsListElement = document.getElementById("avsList_" + selectedItem.imgId);
+	if (avsListElement) {
+	  avsListElement.remove();
 	}
-	if (document.getElementById(selectedItem.avsTagId) != null)
-		document.getElementById(selectedItem.avsTagId).checked = false;
-	if (document.getElementById(selectedItem.imgId) != null) {
-		//document.getElementById(selectedItem.imgId).style.width = "146px";
-		document.getElementById(selectedItem.imgId).style.borderWidth = "3px";
-		document.getElementById(selectedItem.imgId).style.borderStyle = "solid";
-		//document.getElementById("img" + selectedItem.imgId).src = selectedItem.thumb;
-
+	
+	var avsTagElement = document.getElementById(selectedItem.avsTagId);
+	if (avsTagElement) {
+	  avsTagElement.checked = false;
+	}
+	
+	var imgElement = document.getElementById(selectedItem.imgId);
+	if (imgElement) {
+	  imgElement.style.borderWidth = "3px";
+	  imgElement.style.borderStyle = "solid";
 	}
 	//console.log(document.getElementById("img" + selectedItem.imgId).src)
-
 }
 
 function selectImgVisione4(selectedItem) {
@@ -289,10 +290,10 @@ function unselectImgVisione4(selectedItem) {
 function updateAVSInfo() {
 	//$("#avsInfo").remove();
 	/*avsText = "";
-	selectedSize = avsAuto.size + avsManual.size
-	if (avsAuto.size > 0 || avsSubmitted.size > 0 || avsManual.size > 0) {
+	selectedSize = avsAuto.size + avsManually.size
+	if (avsAuto.size > 0 || avsSubmitted.size > 0 || avsManually.size > 0) {
 		//avsText = '<div title="Selected images for AVS Tasks" id="avsInfo"><span style="float: right;color:brown; font-size: larger;">Selected: <b style="color: Coral; font-size:large;">' + selectedSize + '</b></span>';
-		if (avsAuto.size > 0 || avsManual.size > 0) {
+		if (avsAuto.size > 0 || avsManually.size > 0) {
 			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: left; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span>';
 			avsText += '<span class="pull-left"><i title="Submit AVS image List" class="fa fa-arrow-alt-circle-up" style="font-size:36px; float: right; color:#00AA00; padding-right: 10px;" onclick="submitAVS(); return false;"></i></span></div>';
 		}
@@ -309,7 +310,7 @@ function updateAVSTab(selectedItem) {
 	if (avsSubmitted.has(selectedItem.videoId)) {
 		return;
 	}
-	else if (avsManual.has(selectedItem.imgId) || avsAuto.has(selectedItem.imgId)) {
+	else if (avsManually.has(selectedItem.imgId) || avsAuto.has(selectedItem.imgId)) {
 		selectImg(selectedItem)
 	}
 	else {
@@ -318,6 +319,35 @@ function updateAVSTab(selectedItem) {
 	updateAVSInfo();
 }
 
+function avsToggle(avsJSON, event) {
+	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
+	rowIdx = selectedItem.rowIdx
+	colIdx = selectedItem.colIdx
+	avsManuallyByVideoID.clear();
+	avsManually.clear();
+
+	//selectedItem = JSON.parse(avsJSON);
+	//var avsItem = document.getElementById(selectedItem.avsTagId);
+	//var isChecked = avsItem && avsItem.checked;
+	if (avsManuallyByVideoID.has(selectedItem.videoId)) {
+		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
+		avsManually.delete(selectedItem.imgId);
+		avsManuallyByVideoID.delete(selectedItem.videoId);
+		//avsManuallyRemoved.set(selectedItem.imgId, selectedItem)
+
+		//updateAVSTab(manuallySelectedToRemove);
+	} else {
+		avsManually.set(selectedItem.imgId, selectedItem);
+		avsManuallyByVideoID.set(selectedItem.videoId, selectedItem);
+		//avsManuallyRemoved.delete(selectedItem.imgId)
+	}
+	updateAVSTab(selectedItem);
+	if (event.ctrlKey) {
+		submitAVS();
+	}
+}
+
+/*
 function avsToggle(avsJSON, event) {
 	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
 	rowIdx = selectedItem.rowIdx
@@ -332,45 +362,45 @@ function avsToggle(avsJSON, event) {
 			avsAutoByVideoID.delete(selectedItem.videoId);
 			updateAVSTab(autoSelectedToRemove);
 		} 
-		else if (avsManualByVideoID.has(selectedItem.videoId)) {
-			let manualSelectedToRemove = avsManualByVideoID.get(selectedItem.videoId);
-			avsManual.delete(manualSelectedToRemove.imgId);
-			avsManualByVideoID.delete(selectedItem.videoId);
-			updateAVSTab(manualSelectedToRemove);
+		else if (avsManuallyByVideoID.has(selectedItem.videoId)) {
+			let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
+			avsManually.delete(manuallySelectedToRemove.imgId);
+			avsManuallyByVideoID.delete(selectedItem.videoId);
+			updateAVSTab(manuallySelectedToRemove);
 		}
 		if (avsItem != null) {
-			avsManual.set(selectedItem.imgId, selectedItem);
-			avsManualByVideoID.set(selectedItem.videoId, selectedItem);
-			avsManualRemoved.delete(selectedItem.imgId)
+			avsManually.set(selectedItem.imgId, selectedItem);
+			avsManuallyByVideoID.set(selectedItem.videoId, selectedItem);
+			avsManuallyRemoved.delete(selectedItem.imgId)
 		}
 	}
 	else {
-		if (avsManual.has(selectedItem.imgId)) {
-			avsManual.delete(selectedItem.imgId);
-			avsManualByVideoID.delete(selectedItem.videoId);
+		if (avsManually.has(selectedItem.imgId)) {
+			avsManually.delete(selectedItem.imgId);
+			avsManuallyByVideoID.delete(selectedItem.videoId);
 		}
 		else 
 			if (avsAuto.has(selectedItem.imgId)) {
 				avsAuto.delete(selectedItem.imgId);
 				avsAutoByVideoID.delete(selectedItem.videoId);
 			}
-		avsManualRemoved.set(selectedItem.imgId, selectedItem)
+		avsManuallyRemoved.set(selectedItem.imgId, selectedItem)
 	}
 	updateAVSTab(selectedItem);
 	if (event.ctrlKey) {
 		submitAVS();
 	}
 }
-
+*/
 function avsRemoveSelected(selectedItem) {
 	if (!avsSubmitted.has(selectedItem.videoId)) {
-		if (avsManual.has(selectedItem.imgId)) {
-			avsManual.delete(selectedItem.imgId);
-			avsManualByVideoID.delete(selectedItem.videoId);
+		if (avsManually.has(selectedItem.imgId)) {
+			avsManually.delete(selectedItem.imgId);
+			avsManuallyByVideoID.delete(selectedItem.videoId);
 		}
 		else if (avsAuto.has(selectedItem.imgId)) {
 			avsAuto.delete(selectedItem.imgId);
-			avsManualByVideoID.delete(selectedItem.videoId);
+			avsManuallyByVideoID.delete(selectedItem.videoId);
 		}
 	}
 }
@@ -378,7 +408,7 @@ function avsRemoveSelected(selectedItem) {
 function avsAddAutoselected() {
 	selectedCounter = 0;
 	for (avsIDX = 0; avsIDX < avsAutoSelected.length && selectedCounter < maxAutoSelected; avsIDX++) {
-		if (avsManual.has(avsAutoSelected[avsIDX].imgId) || avsManualByVideoID.has(avsAutoSelected[avsIDX].videoId) || avsSubmitted.has(avsAutoSelected[avsIDX].videoId) || avsManualRemoved.has(avsAutoSelected[avsIDX].imgId))
+		if (avsManually.has(avsAutoSelected[avsIDX].imgId) || avsManuallyByVideoID.has(avsAutoSelected[avsIDX].videoId) || avsSubmitted.has(avsAutoSelected[avsIDX].videoId) || avsManuallyRemoved.has(avsAutoSelected[avsIDX].imgId))
 			continue;
 		avsAuto.set(avsAutoSelected[avsIDX].imgId, avsAutoSelected[avsIDX]);
 		avsAutoByVideoID.set(avsAutoSelected[avsIDX].videoId, avsAutoSelected[avsIDX]);
@@ -390,7 +420,7 @@ function avsAddAutoselected() {
 function avsRemoveAutoselected() {
 	selectedCounter = 0;
 	for (let [key, selectedItem] of avsAuto) {
-		if (avsManual.has(selectedItem.imgId))
+		if (avsManually.has(selectedItem.imgId))
 			continue;
 		avsAuto.delete(selectedItem.imgId);
 		avsAutoByVideoID.delete(selectedItem.videoId);
@@ -419,6 +449,8 @@ function avsSubmittedTab(selectedItem) {
 
 function avsHideSubmittedVideos() {
 	for (let [videoId, selectedItem] of avsSubmitted) {
+		tmp = $("[id^=video_" + videoId + "]");
+		tmp2 = document.getElementById("video_" + videoId);
 		$("[id^=video_" + videoId + "]").remove();
 		//document.getElementById("video_" + videoId).style.display = 'none';
 		
@@ -427,15 +459,15 @@ function avsHideSubmittedVideos() {
 
 
 
-function avsCleanManualSelected() {
-	for (let [key, selectedItem] of avsManual) {
+function avsCleanManuallySelected() {
+	for (let [key, selectedItem] of avsManually) {
 		//updateAVSTab(id, null, keyframeId)
 		unselectImg(selectedItem)
 	}
 }
 
-function avsReloadManualSelected() {
-	for (let [key, selectedItem] of avsManual) {
+function avsReloadManuallySelected() {
+	for (let [key, selectedItem] of avsManually) {
 		try {
 			updateAVSTab(selectedItem)
 		} catch (error) {
