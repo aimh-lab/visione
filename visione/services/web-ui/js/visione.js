@@ -940,8 +940,10 @@ function showResults(data) {
 				let videoUrl = videoUrlPrefix + videoId + ".mp4";
 				videoUrlPreview = videoshrinkUrl + videoId + ".mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailUrl + path, keyFramesUrl + path, resrowIdx, resColIdx - 1)
-				resultData = getResultData(videoId, imgId, thumbnailUrl + path, imgId, frameNumber, score, videoUrl, videoUrlPreview)
+				let thumbnailPath = thumbnailUrl + path + ".jpg";
+				let keyframePath = keyFramesUrl + path + ".png";
+				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
+				resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
 				/*if (itemPerRow == 0)
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
@@ -1856,7 +1858,6 @@ function init() {
 		});
 	});
 	includeHTML();
-	setCollection("v3c")
 
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")

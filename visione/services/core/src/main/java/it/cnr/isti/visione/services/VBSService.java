@@ -177,9 +177,9 @@ public class VBSService {
 
 					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
 					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
-					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k, dataset));//search by Clip4Video
+					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k));//search by Clip4Video
 					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
-					log(res, query, logQueries, simReorder, dataset);
+					log(res, query, logQueries, simReorder);
 					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("vf")) {

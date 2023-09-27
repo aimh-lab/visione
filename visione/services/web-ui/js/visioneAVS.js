@@ -42,9 +42,9 @@ function submitAVS() {
 		//res = submitResultAVS(keyframeId, avsQueryLog.get(keyframeId));
 		let res = null;
 		if (!isAVS)
-			res = submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
+			res = submitResult(selectedItem.imgId, selectedItem.videoId);
 		else
-			submitResult(selectedItem.imgId, selectedItem.videoId, selectedItem.collection);
+			submitResult(selectedItem.imgId, selectedItem.videoId);
 		avsRemoveSelected(selectedItem)
 		updateAVSTab(selectedItem)
 		avsSubmitted.set(selectedItem.videoId, selectedItem);
@@ -88,7 +88,7 @@ function selectImg(selectedItem) {
 
 			+'<br>'
 			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 25em;">'
-			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 25em;" src="' + selectedItem.keyframe + '">'
+			+'<img id="selected_avs_' + selectedItem.imgId + '" title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 25em;" src="' + selectedItem.keyframe + '">'
 			+'</div></div></span>'
 			
 	$("#avsTab").append(img);

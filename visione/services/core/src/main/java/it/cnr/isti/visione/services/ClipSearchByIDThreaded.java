@@ -16,9 +16,8 @@ public class ClipSearchByIDThreaded implements Runnable {
 	private String queryId;
 	private String collection;
 
-	public ClipSearchByIDThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String queryId, int k, String collection) {
+	public ClipSearchByIDThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String queryId, int k) {
 		this.hits_tmp = hits_tmp;
-		this.collection = collection;
 		this.searcher = searcher;
 		this.k = k;
 		this.queryId = queryId;
@@ -28,7 +27,7 @@ public class ClipSearchByIDThreaded implements Runnable {
 	public void run() {
 		System.out.println("CLIP by ID");
 		try {
-			hits_tmp.add(searcher.searchByCLIPID(queryId, k, collection));// adding OBJECT and ALADIN (if applicable)
+			hits_tmp.add(searcher.searchByCLIPID(queryId, k));// adding OBJECT and ALADIN (if applicable)
 		} catch (IOException | ParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
