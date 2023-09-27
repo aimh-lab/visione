@@ -64,22 +64,23 @@ function submitToServer(selectedItem) {
 function selectImg(selectedItem) {		
 	let videoUrl = videoUrlPrefix +selectedItem.videoId+".mp4";
 	let videoUrlPreview = videoshrinkUrl + selectedItem.videoId+".mp4";
+	let id = selectedItem.imgId.replaceAll(".jpg", "");
 
 
 	let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
 	img += '<div style="float: left; padding: 2px;">'
-			+'<img id="remove_' + selectedItem.imgId + '"  style="padding: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
+			+'<img id="remove_' + selectedItem.imgId + '"  style="padding-left: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ')\'>'
 
-			+'<a style="font-size:12px; padding-left: 2px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
-			+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
-			+'<i class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
-			+'<img style="padding-left: 3px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 3px;" onclick="submitWithAlert(\'' + selectedItem.imgId + '\',\'' + selectedItem.videoId + '\',\'' + selectedItem.collection + '\'); return false;"></i>'
+			+'<a style="font-size:12px; padding-left: 5px;" title="View annotations of ' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ id+'</a>'
+			+'<a title="Video summary" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 5px;"></i></a>'
+			+'<i title="Play Video" class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 5px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
+			+'<img style="padding-left: 5px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 5px;" onclick="submitWithAlert(\'' + selectedItem.imgId + '\',\'' + selectedItem.videoId + '\'); return false;"></i>'
 
 			+'<br>'
-			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 350px;">'
-			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 350px;" src="' + selectedItem.keyframe + '">'
+			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 25em;">'
+			+'<img id="selected_avs_' + selectedItem.imgId + '" "title="' + selectedItem.imgId + '" style="padding-bottom: 10px; height: 25em;" src="' + selectedItem.keyframe + '">'
 			+'</div></div></span>'
 			
 	$("#avsTab").append(img);
@@ -443,16 +444,19 @@ function avsRemoveAutoselected() {
 */
 function avsSubmittedTab(selectedItem) {
 	videoUrl = videoUrlPrefix + selectedItem.videoId+".mp4";
-	
+	let id = selectedItem.imgId.replaceAll(".jpg", "");
+
 	img = '<div id="avsSubmittedList_' + selectedItem.imgId + '">';
 	
 	
-	img += '<a style="font-size:9px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ selectedItem.videoId+'</a>'
-			//+'<a href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
-			+'<i class="fa fa-play" style="font-size:10px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
-			+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="gemSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + selectedItem.imgId + '" id="aladinSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + selectedItem.imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+	img += '<a style="font-size:9px;" title="' + selectedItem.imgId  + '" href="indexedData.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId+ '" target="_blank">'+ id+'</a>'
+			+ '<a title="View annotations of ' + selectedItem.imgId  + '" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
+			+'<i title="Play Video" class="fa fa-play" style="font-size:10px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
+			+'<img style="padding-left: 5px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+
+			//+'<img style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="gemSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.vf=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+			//+'<img style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="' + selectedItem.imgId + '" id="aladinSim' + selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.aladinSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+			//+'<img style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video similarity" alt="' + selectedItem.imgId + '" id="clipSim' + '" onclick="var queryObj=new Object(); queryObj.clipSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
 			+'<br>'
 	
 	

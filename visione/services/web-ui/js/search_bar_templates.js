@@ -11,9 +11,10 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 	<div class="advanced scene${canvasID}" id='canvasTab'>
 		<div class="advanced">
 			<div id="description_objects${canvasID}">
-				<h6>${infoText} <i id="sceneDes${canvasID}" class="${css_class}"></i></h6>
+				<div class="font-large font-bold">${infoText} <i id="sceneDes${canvasID}" class="${css_class}"></i></div>
+
 			</div>
-			<span >
+			<span class="font-tiny">
 				<input type="radio" id="canvas${canvasID}_enabled" name="canvas${canvasID}" value="enabled" checked onchange="setCanvasState(0, this)">
 				<label for="canvas${canvasID}_enabled" style="color: green; font-weight: bold;">Enabled</label>
 				<input type="radio" id="canvas${canvasID}_disabled" name="canvas${canvasID}" value="disabled" onchange="setCanvasState(0, this)">
@@ -42,18 +43,18 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 				<input id='annotations${canvasID}' type="text" size="0" style="display: none;">
 			</div>
 			<div class="advanced" colspan="13" title="Max Objects Number">
-				<textarea id='not${canvasID}' cols="38" rows="2" style="font-size:12px; border-radius: 6px;" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea>
+				<textarea id='not${canvasID}' class="font-normal" cols="38" rows="2" style="border-radius: 6px;" placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea>
 				<div id="textual${canvasID}_container" colspan="12" title="Scene Description">
 
-					<div id="div_textual${canvasID}">
-						<i id="sceneDes${canvasID}" aria-hidden="true"  class="fa fa-2x ${css_class}">${txtSearchTitle}</i>	
 
+					<div id="div_textual${canvasID}">
+						<!--<i id="sceneDes${canvasID}" aria-hidden="true"></i>-->	
 						<div  class="Icon-inside">
-							<input id="textual${canvasID}" type="text" class="textualquery${canvasID}"  cols="40"  placeholder="e.g.: A tennis player serving a ball on the court">
+							<textarea id="textual${canvasID}" type="text" class="textualquery${canvasID} font-normal"  cols="40"  placeholder="${txtSearchTitle}"></textarea>
 							<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
-							<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
-							<i class="fa fa-search fa-SM fa-fw" style="left:10px; color:gray;"></i>
-							<i id="cancelText${canvasID}" class="fa fa-magnifying fa-lg fa-fw" aria-hidden="true" style="left:10px; color:gray;"></i>
+							<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; padding: 6px;color:gray; display:none"></i>
+							<i class="fa fa-search fa-SM fa-fw" style="left:10px; padding: 6px;  color:gray;"></i>
+							<i id="cancelText${canvasID}" class="fa fa-magnifying fa-2xl fa-fw" aria-hidden="true" style="left:10px; color:gray;"></i>
 						</div>
 					</div>
 				</div>
@@ -86,23 +87,24 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 						</div>
 					</div>
 				</div>
-			<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
-				<span onclick="setTextualMode(${canvasID}, 'cv')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}">ClipVideo</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'cl')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}">ClipLAION</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'aladin')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}">Aladin</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'all')">
-					<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}">use all</label>
-				</span>
+				<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
+					<span onclick="setTextualMode(${canvasID}, 'cv')">
+						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+						<label for="textualMode${canvasID}" class="font-tiny">ClipVideo</label>
+					</span>
+					<span onclick="setTextualMode(${canvasID}, 'cl')">
+						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+						<label for="textualMode${canvasID}" class="font-tiny">ClipLAION</label>
+					</span>
+					<span onclick="setTextualMode(${canvasID}, 'aladin')">
+						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+						<label for="textualMode${canvasID}" class="font-tiny">Aladin</label>
+					</span>
+					<span onclick="setTextualMode(${canvasID}, 'all')">
+						<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
+						<label for="textualMode${canvasID}" class="font-tiny">use all</label>
+					</span>
+				</div>
 			</div>
 		</div>
 	</div>

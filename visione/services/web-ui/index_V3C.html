@@ -5,7 +5,7 @@
 		<meta charset="UTF-8">
 		<meta name="task" content="KIS">
 
-		<title>Episode IV-A New VISIONE</title>
+		<title>Episode IV- VISIONE 4 Novices</title>
 		<link rel="stylesheet" href="css/jquery-ui.min.css">
 		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
 		<link rel="stylesheet" href="css/bootstrap.css">
@@ -28,9 +28,21 @@
 				<div class="headerItem column-span-4">
 					<div class="dashboardGrid">
 						<div class="dashboardGrid-item">
-							<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session" onclick="startNewKISSession()">
+							<!--<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session" onclick="startNewKISSession()">
 								<i class="fas fa-sync-alt"></i> Restart
-							</button>
+							</button>-->
+							<div class="dashboardGrid-item simreorder column-span-2">
+								<div class="task_bounding-box">
+									<div class="top-line"></div>
+									<span class="task-text">Task</span>
+									<label class="radio-label">
+									  <input type="radio" name="option" value="KIS" checked onclick="setAVS(false)"> KIS
+									</label>
+									<label class="radio-label">
+									  <input type="radio" name="option" value="AVS" onclick="setAVS(true)"> AVS
+									</label>
+								  </div>
+							</div>
 							<div id="dialog" title="Tag Name">
 								<label>tag</label> <input id="tag" name="tag" type="text">
 							</div>
@@ -42,40 +54,28 @@
 							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
 							<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
 						</div>
-						<div class="dashboardGrid-item advanced simreorder column-span-2">
-							<div class="bounding-box">
-								<div class="top-line"></div>
-								<span class="task-text">Task</span>
-								<label class="radio-label">
-								  <input type="radio" name="option" value="KIS"> KIS
-								</label>
-								<label class="radio-label">
-								  <input type="radio" name="option" value="AVS"> AVS
-								</label>
-							  </div>
-						</div>
+
 						<div class="dashboardGrid-item advanced simreorder column-span-2">
 							<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
 						</div>
 					</div>
 
 				</div>
-
+				<div id="hourglass-start" class="headerItem fa fa-hourglass-start fa-1x" style="color: #A7070C; font-size: 18px; padding-top: 20px; padding-right: 3px; display: none;"></div>
 				<div class="headerItem" id="simplified0"></div>
+				<div id="hourglass-end" class="headerItem fa fa-hourglass-end fa-1x" style="color: #13a0a0; font-size: 18px; padding-top: 20px; padding-right: 3px; display: none;"></div>
+
 				<div class="headerItem" id="simplified1"></div>
 
 
 				<div id="visionelogo" class="headerItem">
-					<img id="visionelogoImg" src="img/logoVISIONE.png" alt="">
+					<a href= ""><img id="visionelogoImg" src="img/logoVISIONE.png" alt="" title="Restart" onclick="startNewKISSession()"></a>
 					<!--<img
 						src="img/cropped-aimh_logo5-1024x372.png" height="28px"
 						style="border-radius: 20px 20px 20px 20px;" alt="">-->
 				</div>
 
-				<div class="headerItem" id="simplified2">
-					<div id="qbe" w3-include-html="filters.html"></div>
 
-				</div>
 
 
 			</div>
@@ -84,6 +84,10 @@
 					<div class="advanced">
 						<div id="palette" class="palette"></div>
 						<div id='searchTab'></div>
+						<div class="headerItem">
+							<div id="qbe" w3-include-html="filters.html" class="font-normal"></div>
+		
+						</div>
 					</div>
 
 
@@ -101,7 +105,7 @@
 						</div>
 				</div>
 				<div class="rightSidebarGrid" id="submitted_bar" style="display:none;">
-					<div style="color:green; font-size: larger;"> Submitted: <b id="submitted_num" style="color: red; font-size:large;"></b></div>
+					<div style="color:green;"> Submitted: <b id="submitted_num" style="color: red;"></b></div>
 					<div id="avsSubmittedTab"></div>
 				</div>
 			</div>

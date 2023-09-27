@@ -132,6 +132,10 @@ function handler(myObj) {
 	videoshrinkUrl=myObj.videoshrinkUrl;
 }
 
+function setAVS(isAvsSel) {
+	isAVS = isAvsSel;
+}
+
 function loadConfig() {
 	return fetch("js/conf.json").then(response => response.json()).then(handler);
 } 
@@ -832,12 +836,13 @@ function displaySimplifiedUI() {
 	document.getElementById("simplified0").className = 'simplified0'
 	document.getElementById("visionelogo").className = 'visioneLogo'
 	document.getElementById("visionelogoImg").className = 'visionelogoImg'
-	document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
+	//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
 	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
 	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 }
 
 function showResults(data) {
+	displayAdvanced(isAdvanced);
 	//temporary!!!!!!!!!!!
 	avsCleanManuallySelected();
 
@@ -868,7 +873,7 @@ function showResults(data) {
 			noResultsOutput();
 		else {
 			document.getElementById('block1').style.display = 'block';
-			document.getElementById('newsession').style.display = 'block';
+			//document.getElementById('newsession').style.display = 'block';
 
 			let prevID = '';
 
@@ -1015,12 +1020,12 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 	if (isSimplified) {
 		return `
 			<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-			<a style="font-size:10px;" title="${res.frameName}  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-			<a href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
-			<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
+			<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+			<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+			<i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
+			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
 			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 	
 	
@@ -1032,14 +1037,14 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 	return `
 		<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-		<a style="font-size:10px;" title="${res.frameName}  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-		<a href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th" style="font-size:13px;  padding-left: 3px;"></i></a>
-		<i class="fa fa-play" style="font-size:13px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
+		<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+		<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+		<i title="Play Video" class="fa fa-play  font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
 		<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
+		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
 		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
 
 
@@ -1357,9 +1362,18 @@ function initLayout() {
 	$('#simplified0').append($('#textualOptions0'));
 	$('#simplified1').append($('#textualOptions1'));
 
-	//document.getElementById('newsession').style.display = 'none';
-	$('#newsession').css('display', 'none');
+//------da settate all'inizio senza farlo da javascript
+	$('#simplified1').css('display', 'none');
+	$('#textual0').removeClass('textualquery0');
+	$('#visionelogo').removeClass('visioneLogo');
 
+	$('#simplified0').addClass('simplifiedSearchBar');
+	$('#visionelogo').addClass('visioneLogo_bigger');
+
+	$('#textual0').addClass('simplifiedTextual0');
+	$('#textualOptions0').css('display', 'none');
+	$('#textualOptions1').css('display', 'none');
+//-----
 }
 
 function displayAdvanced(isAdv) {
@@ -1379,10 +1393,10 @@ function displayAdvanced(isAdv) {
 		$('#textualOptions1').css('display', 'none');
 	}
 
-	if (latestQuery != "" || isAdvanced) {
-		$('#sceneDes1').css('display', 'block');
-		if ($("#sceneDes1").length > 0)
-			$('#simplified1').css('display', 'block');
+	//if (latestQuery != "" || isAdvanced) {
+		//$('#sceneDes1').css('display', 'block');
+		//if ($("#sceneDes1").length > 0)
+		$('#simplified1').css('display', 'block');
 
 		//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
 		//document.getElementById("simplified0").className = 'simplified0'
@@ -1393,39 +1407,42 @@ function displayAdvanced(isAdv) {
 		$('#textual0').removeClass('simplifiedTextual0');
 		$('#visionelogo').removeClass('visioneLogo_bigger');
 
-		$('#sceneDes0').addClass('fa-hourglass-start');
-		$('#simplified0').addClass('simplified0');
+		//$('#sceneDes0').addClass('fa-hourglass-start');
+		//$('#simplified0').addClass('simplified0');
 		$('#textual0').addClass('textualquery0');
 		$('#visionelogo').addClass('visioneLogo');
+		$('#hourglass-start').css('display', 'block');
+		$('#hourglass-end').css('display', 'block');
 
-		$('#newsession').css('display', 'block');
+		//$('#newsession').css('display', 'block');
 
-	} else {
-		$('#sceneDes1').css('display', 'none');
+	//} 
+	/*else {
+		//$('#sceneDes1').css('display', 'none');
 		$('#simplified1').css('display', 'none');
 		//document.getElementById("simplified0").className = 'simplifiedSearchBar'
-		$('#sceneDes0').removeClass('fa-hourglass-start');
-		$('#simplified0').removeClass('simplified0');
+		//$('#sceneDes0').removeClass('fa-hourglass-start');
+		//$('#simplified0').removeClass('simplified0');
 		$('#textual0').removeClass('textualquery0');
 		$('#visionelogo').removeClass('visioneLogo');
 
 		$('#simplified0').addClass('simplifiedSearchBar');
+		$('#visionelogo').addClass('visioneLogo_bigger');
 
 		//document.getElementById("textual0").className = 'textualquery0'
 		//document.getElementById("textual0").className = 'simplifiedTextual0'
 		//document.getElementById("visionelogo").className = 'visioneLogo_bigger'
 		$('#textual0').addClass('simplifiedTextual0');
-		$('#visionelogo').addClass('visioneLogo_bigger');
 
-		$('#newsession').css('display', 'none');
+		//$('#newsession').css('display', 'none');
 
 		//document.getElementById("sceneDes0").className = 'fa fa-2x'
-	}
+	}*/
 	var elements = document.getElementsByClassName("advanced");
 	for (var i = 0; i < elements.length; i++) {
 		elements[i].style.display = setDisplayTo;
 	}
-	searchByForm();
+	//searchByForm();
 }
 
 //create a function that create an input text with a microphone icon inside the input text
@@ -1450,7 +1467,7 @@ function scrollToRow(rowNumber) {
 
 	var container = document.querySelector('.resGrid2');
 
-	var containerTop = 0;
+	var containerTop = container.offsetTop;
 	var containerHeight = container.offsetHeight;
 	var containerBottom = containerTop + containerHeight;
 
@@ -1460,13 +1477,26 @@ function scrollToRow(rowNumber) {
 	var rowTop = row.offsetTop;
 	var rowHeight = row.offsetHeight;
 
+	container.scrollTop = rowTop - containerTop - rowHeight/2;
+
+
+/*
+	if (rowTop - t < containerTop) {
+		// La riga è sopra la parte correntemente visibile
+		container.scrollTop = rowTop;
+	} else if (rowTop -t > containerHeight) {
+		// La riga è sotto la parte correntemente visibile
+		container.scrollTop = rowTop - rowHeight - containerHeight;
+	}*/
+
+/*
 	if (rowTop < containerTop) {
 		// La riga è sopra la parte correntemente visibile
 		container.scrollTop = rowTop;
 	} else if (rowTop + rowHeight > containerTop + containerHeight) {
 		// La riga è sotto la parte correntemente visibile
 		container.scrollTop = rowTop - rowHeight - containerHeight;
-	}
+	}*/
 }
 
 function unscrollToRow(rowNumber) {
@@ -1479,7 +1509,7 @@ function unscrollToRow(rowNumber) {
 
 		// La riga è sopra la parte correntemente visibile
 		//valore hardcoded. Bisognerebbe calcolare l'altezza dell'immagine selezionata
-	container.scrollTop = rowTop - 600;
+	container.scrollTop = rowTop - containerTop - rowHeight/2;
 	
 }
 
@@ -1756,11 +1786,11 @@ function init() {
 	includeHTML();
 	setCollection("v3c")
 
-	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene", "fa fa-hourglass-start fa-1x"));
+	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
 	if ($('meta[name=task]').attr('content') == "KIS") {
-		$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', " Describe the next scene(optional)", "fa fa-hourglass-end fa-1x"));
+		$("#searchTab").append(searchForm(1, 'Objects & color next scene', " Describe the next scene (optional)...", "fa fa-hourglass-end fa-1x"));
 	} else {
 		document.getElementById('avsSubmittedTab').style.display = 'block'
 	}
@@ -1814,6 +1844,7 @@ function init() {
 									/(\r\n|\n|\r)/gm,
 									""));
 					queryByTextual();
+					$('#textual0').blur();
 				}
 				if ($("#textual0").val() == "")
 					document.getElementById('cancelText0').style.display = 'none'
@@ -1834,6 +1865,8 @@ function init() {
 									/(\r\n|\n|\r)/gm,
 									""));
 					queryByTextual();
+					$('#textual1').blur();
+
 				}
 				if ($("#textual1").val() == "")
 					document.getElementById('cancelText1').style.display = 'none'
@@ -1979,7 +2012,7 @@ function init() {
 
 	initLayout();
 
-	displayAdvanced(false);
+	//displayAdvanced(false);
 
 
 	var script = document.createElement('script');
