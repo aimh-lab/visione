@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 import sys
+import zlib
 
 import h5py
 
@@ -36,7 +37,7 @@ class GzipJsonlFile(Saver):
                 with gzip.open(str(self.path), 'r') as f:
                     self._ids = {json.loads(line)['_id'] for line in f.read().splitlines()}
                 log.info(f'Found {len(self._ids)} results')
-            except EOFError:
+            except (EOFError, zlib.error) as e:
                 log.warning(f'{self.path} seems corrupt, removing and reprocessing.')
                 self.path.unlink()
 
