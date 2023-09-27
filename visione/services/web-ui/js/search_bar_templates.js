@@ -60,8 +60,9 @@ const searchForm = (canvasID = 0, infoText = '') => {
 					<td id="textual${canvasID}_container" colspan="12" title="Scene Description">
 						<b>${infoText}<b>
 						<div id="div_textual${canvasID}" class="Icon-inside">
-						<textarea id="textual${canvasID}" class="textualquery"  cols="38" rows="3"  placeholder="${canvasID} Desc: e.g.: A tennis player serving a ball on the court"></textarea>
+						<textarea id="textual${canvasID}" class="textualquery"  cols="38" rows="3"  placeholder="${canvasID} e.g.: A tennis player serving a ball on the court"></textarea>
 						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
+						<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:20px; color:gray; display:none"></i>
 						</div>
 					</td>
 					<td>

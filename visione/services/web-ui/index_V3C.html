@@ -40,6 +40,7 @@ body {
 
 .headerGrid {
 	border-bottom: 0px solid lightgrey;
+	padding: 5px;;
 }
 
 .sidebarGrid {
@@ -72,15 +73,54 @@ body {
 
 	<div id="content" class="containerGrid">
 		<div class="headerGrid">
+			<div style="float: left; padding-right: 4%;">
+				<button id="newsession" class="btn btn-danger btn-sm" style="border-radius: 10px;"
+					title="Start a new Session" onclick="startNewKISSession()">
+					<i class="fa fa-times"> Clear all</i>
+				</button>
+			</div>
+			<div style="float: left; font-size: larger; font-weight: bold;">ADVANCED MODE </div>
+			<div  style="float: left;" class="tg-list-item">
+				<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();"/>
+				<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>	
+			</div>
 
-			<table border="0">
+			<div id="visionelogo" class="visionelogo" style="float: right; padding-right: 10px;">
+				<img id="visionelogoImg" class="visionelogoImg" src="img/logoVISIONE.png" alt="">
+				<!--<img
+					src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+					style="border-radius: 20px 20px 20px 20px;" alt="">-->
+			</div>
+
+			<div class="advanced" style="clear: both; padding: 10px;">
+				<b style="font-size: 140%;"><input id='simreorder'
+					type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim
+					Reorder</b>
+			</div>
+			<div id="dialog" title="Tag Name">
+				<label>tag</label> <input id="tag" name="tag" type="text">
+			</div> <br>
+			<div w3-include-html="palette.html" style="float:left; padding-left: 5px;"></div>
+
+				<div style="">
+					<div class="simplified0" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified0">
+						<h5 id="sceneDes0">Describe the scene</h5>
+					</div>
+					<div class="simplified1" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified1">
+						<h5 id="sceneDes1">Describe the next scene (optional)</h5>
+
+					</div>
+				</div>
+				<!--<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>-->
+
+
+
+
+			<!--<table border="1">
 				<tr>
 
 					<td>
-						<span id="visionelogo_sidebar"></span>
 
-					</td>
-					<td colspan="2">
 						<div  style="float: right;" class="tg-list-item">
 							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" checked/>
 
@@ -88,13 +128,20 @@ body {
 							
 						</div>
 						<div style="float: right; font-size: larger; font-weight: bold;">ADVANCED MODE </div>
-						<div style="float: right; padding-right: 4%;">
-							<button id="newsession" class="btn btn-warning btn-sm"
+						<div style="float: left; padding-right: 4%;">
+							<button id="newsession" class="btn btn-danger btn-sm"
 								title="Start a new Session" onclick="startNewKISSession()">
-								<i class="fa fa-play"> New Session</i>
+								<i class="fa fa-times"> Clear all</i>
 							</button>
 						</div>
-						
+
+					</td>
+					<td>
+						<span id="visionelogo_central">
+							<div id="visionelogo" style="float: right;">
+								<img src="img/logoVISIONE.png" height="25px" alt="">
+							</div>
+						</span>
 					</td>
 				</tr>
 				<tr>
@@ -125,6 +172,11 @@ body {
 									</div>
 									
 						</div>
+						<div class="advanced" style="float: left; padding: 10px;">
+							<b style="font-size: 140%;"><input id='simreorder'
+								type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim
+								Reorder</b>
+						</div>
 						<div id="dialog" title="Tag Name">
 							<label>tag</label> <input id="tag" name="tag" type="text">
 						</div> <br>
@@ -133,29 +185,20 @@ body {
 
 					</td>
 					<td>
-						<div class="advanced" style="float: left; padding-left: 30px; padding-top: 5px">
-							<b style="font-size: 140%;"><input id='simreorder'
-								type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim
-								Reorder</b>
-						</div>
-						<span id="visionelogo_central">
-							<div id="visionelogo" align="center" style="float: left; padding-left: 30%;">
-								<img src="img/logoVISIONE.png" height="28px"
-									style="border-radius: 20px 20px 20px 20px;" alt=""> <img
-									src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-									style="border-radius: 20px 20px 20px 20px;" alt="">
+
+						<div style="align-content: center;">
+							<div class="simplified0" style="float: left; padding-top: 5px" id="simplified0">
+								<h5>Describe the scene</h5>
 							</div>
-						</span>
+							<div class="simplified1" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified1">
+								<h5>Describe the next scene (optional)</h5>
 
-						<div class="simplified0" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified0"></div>
-						<div class="simplified1" style="float: right; padding-right: 50px; padding-top: 5px" id="simplified1"></div>
-
-						<div id="avsTab"
-							style="height: 15vh; width: 78vw; overflow: auto;"></div>
+							</div>
+						</div>
+						<div id="avsTab" style="height: 15vh; width: 78vw; overflow: auto;"></div>
 					</td>
-					<td></td>
 				</tr>
-			</table>
+			</table>-->
 		</div>
 		<div class="bodyGrid">
 			<div class="sidebarGrid" id="searchSidebar">
@@ -164,6 +207,7 @@ body {
 				<div w3-include-html="filters.html" style="padding-left: 5px;"></div>
 
 			</div>
+
 			<div class="contentGrid" id="content">
 				<div id='results'></div>
 				<ol id="recordingsList"></ol>
@@ -240,7 +284,12 @@ body {
 																					""));
 													queryByTextual();
 												}
+												if ($("#textual0").val() == "")
+												document.getElementById('cancelText0').style.display='none'
+											else
+												document.getElementById('cancelText0').style.display='block'
 											});
+
 							$("#textual1")
 									.keyup(
 											function(event) {
@@ -255,7 +304,11 @@ body {
 																					""));
 													queryByTextual();
 												}
-											})
+												if ($("#textual1").val() == "")
+													document.getElementById('cancelText1').style.display='none'
+												else
+													document.getElementById('cancelText1').style.display='block'
+												})
 
 							$("#undo0").on('click', function(e) {
 								if (isCanvasClean[0]) {
@@ -333,6 +386,26 @@ body {
 												}
 
 										});
+							
+							$("#cancelText0")
+									.on(
+											'click',
+											function(e) {
+												$("#textual0").val('');
+												document.getElementById('cancelText0').style.display='none'
+												searchByForm();
+
+
+										});
+							$("#cancelText1")
+									.on(
+											'click',
+											function(e) {
+												$("#textual1").val('');
+												document.getElementById('cancelText1').style.display='none'
+												searchByForm();
+
+										});
 /*
 							$("#stopButton0")
 									.on(
@@ -357,6 +430,9 @@ body {
 											});
 */
 							canvas0.renderAll();
+
+							displayAdvanced(false);
+
 
 							var script = document.createElement('script');
 							script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
