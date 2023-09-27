@@ -42,7 +42,7 @@ body {
 
 .bodyGrid {
   display: grid;
-  grid-template-columns: 1fr 4.2fr 0.1fr;
+  grid-template-columns: 1fr 4.2fr 0.3fr;
   overflow: hidden;
 }
 
@@ -57,6 +57,13 @@ body {
 
 .contentGrid-item {
   padding: 20px;
+}
+
+.rightSidebarGrid {
+	overflow-y: auto;
+	overflow-x: auto;
+	padding: 0px;
+	border-left: 0px solid green;
 }
 
 .dashboardGrid {

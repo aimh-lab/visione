@@ -8,21 +8,21 @@
 			<b id="uploadText" style="display: none;">Upload an image</b>
 			<a href="#"	id="uploadLink" onclick="changeQueryBySampleMod('upload')">Upload an image</a>
 		</div>
-			<div  class="qbeItem column-span-3">
 
-				<input type="hidden" value="" id="objId"> 
+		<div  class="qbeItem column-span-2">
+			<input type="hidden" value="" id="objId"> 
+			<input id="urlToUpload" name="url" type="text" size="34">
+			<input style="display: none;" id="imageToUpload" name="imgFile"	type="file" size="34">
+		</div>
+		<div  class="qbeItem column-span-1">
+			<input type="image" src="img/Search.png" style="height: 20px;" value="Search"	id='queryByExample' title="Search" onclick="queryImg(); return false;">
+		</div>
 
-				<input id="urlToUpload" name="url" type="text" size="30">
-				<input style="display: none;" id="imageToUpload" name="imgFile"	type="file" size="30">
+		<div  class="qbeItem column-span-3">
+			<div class='preview' id="qbeblock" style="display: none; padding-top: 10px;">
+				<img src="" id="qbeImg" width="100">
+				<img id="removeqbe" title="remove" width="16" style="vertical-align: top;" src="img/Actions-dialog-close-icon.png" onclick="resetQueryImg()"/>
 			</div>
-			<div  class="qbeItem column-span-1">
-				<input type="image" src="img/Search.png" style="height: 20px;" value="Search"	id='queryByExample' title="Search" onclick="queryImg(); return false;">
-			</div>
-			<div  class="qbeItem">
-				<div class='preview' id="qbeblock" style="display: none; padding-top: 10px;">
-					<img src="" id="qbeImg" width="100">
-					<img id="removeqbe" title="remove" width="16" style="vertical-align: top;" src="img/Actions-dialog-close-icon.png" onclick="resetQueryImg()"/>
-				</div>
-			</div>
+		</div>
 	</div>
 </div>
