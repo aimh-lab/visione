@@ -282,6 +282,7 @@ video::-webkit-media-controls {
 
 .simplifiedSearchBar {
   position: absolute;
+
   font-size: 12px;
   left: 35vw;
   width: 570px;
@@ -289,3 +290,39 @@ video::-webkit-media-controls {
   padding: 2em;
   border-radius: 31px;
 }
+
+.speechinput {
+  width: 25px;
+  height: 25px;
+  cursor:pointer;
+  border: none;
+  position: absolute;
+  margin-left: 5px;
+  outline: none;
+  background: transparent;
+}
+
+.mytextarea {
+  height: 300px;
+  width: 100px;
+}
+
+
+ .textualquery {
+  width: 100%;
+  margin:4px;
+  font-size:12px;
+  border-radius: 8px;
+ }
+
+ .Icon-inside {
+  position:relative;
+ }
+
+ .Icon-inside i {
+  position:absolute;
+  right:0;
+  top:10px;
+  padding:15px 0px 0px 5px;
+  color:green;
+ }

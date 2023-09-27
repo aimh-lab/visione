@@ -16,8 +16,8 @@ var encodingType = 'wav';
 
 function startRecording(idx) {
 	console.log("startRecording() called");
-	document.getElementById("recordButton" + idx).style.display = 'none';
-	document.getElementById("stopButton" + idx).style.display = 'block';
+	//document.getElementById("recordButton" + idx).style.display = 'none';
+	//document.getElementById("stopButton" + idx).style.display = 'block';
 
 
 	/*

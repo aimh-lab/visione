@@ -34,7 +34,7 @@ const searchForm = (canvasID = 0, infoText = '') => {
 			</span>
 		</div>
 
-		<div style="position: relative;">
+		<div id="block${canvasID}" style="position: relative;">
 			<div id="canvasBlock${canvasID}" class="advanced">
 				<div id="overlay${canvasID}">
 					<div align="center" id="text${canvasID}" style="color: gray;">Disabled</div>
@@ -58,13 +58,15 @@ const searchForm = (canvasID = 0, infoText = '') => {
 				</tr>
 				<tr valign="top">
 					<td colspan="12" title="Scene Description">
-					<b>${infoText}<b>
-					<textarea
-							id='textual${canvasID}' cols="38" rows="3" style="font-size:12px;" 
-							placeholder="Desc: e.g.: A tennis player serving a ball on the court"></textarea></td>
+						<b>${infoText}<b>
+						<div class="Icon-inside">
+						<textarea id="textual${canvasID}" class="textualquery"  cols="38" rows="3"  placeholder="Desc: e.g.: A tennis player serving a ball on the court"></textarea>
+						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
+						</div>
+					</td>
 					<td>
 						<br>						
-						<button id="recordButton${canvasID}"
+						<!--<button id="recordButton${canvasID}"
 							class="btn btn-outline-success btn-sm"
 							title="Speech to text and translate">
 							<i class="fa fa-microphone"></i>
@@ -74,7 +76,7 @@ const searchForm = (canvasID = 0, infoText = '') => {
 							style="display:none"
 							title="Stop Record">
 							<i class="fa fa-microphone"></i>
-						</button>
+						</button>-->
 					</td>
 				</tr>
 				<!--<tr valign="top">
