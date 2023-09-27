@@ -73,21 +73,29 @@ body {
 	<div id="content" class="containerGrid">
 		<div class="headerGrid">
 
-			<table>
+			<table border="0">
 				<tr>
+
 					<td>
-						<div class="tg-list-item">
+						<span id="visionelogo_sidebar"></span>
+
+					</td>
+					<td colspan="2">
+						<div  style="float: right;" class="tg-list-item">
 							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" checked/>
+
 							<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
 							
 						</div>
-						 
+						<div style="float: right; font-size: larger; font-weight: bold;">ADVANCED MODE </div>
+						<div style="float: right; padding-right: 4%;">
+							<button id="newsession" class="btn btn-warning btn-sm"
+								title="Start a new Session" onclick="startNewKISSession()">
+								<i class="fa fa-play"> New Session</i>
+							</button>
+						</div>
 						
 					</td>
-					<td>
-
-					</td>
-					<td></td>
 				</tr>
 				<tr>
 					<td colspan=1 valign="top" style="min-width: 350px;">
@@ -125,26 +133,27 @@ body {
 
 					</td>
 					<td>
-						<div style="float: left; padding-left: 30px; padding-top: 5px">
+						<div class="advanced" style="float: left; padding-left: 30px; padding-top: 5px">
 							<b style="font-size: 140%;"><input id='simreorder'
 								type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim
 								Reorder</b>
 						</div>
-						<div align="center" style="float: left; padding-left: 30%;">
-							<img src="img/logoVISIONE.png" height="28px"
-								style="border-radius: 20px 20px 20px 20px;" alt=""> <img
-								src="img/cropped-aimh_logo5-1024x372.png" height="28px"
-								style="border-radius: 20px 20px 20px 20px;" alt="">
-						</div>
-						<div style="float: right; padding-right: 4%;">
-							<button id="newsession" class="btn btn-warning btn-sm"
-								title="Start a new Session" onclick="startNewKISSession()">
-								<i class="fa fa-play"> New Session</i>
-							</button>
-						</div>
+						<span id="visionelogo_central">
+							<div id="visionelogo" align="center" style="float: left; padding-left: 30%;">
+								<img src="img/logoVISIONE.png" height="28px"
+									style="border-radius: 20px 20px 20px 20px;" alt=""> <img
+									src="img/cropped-aimh_logo5-1024x372.png" height="28px"
+									style="border-radius: 20px 20px 20px 20px;" alt="">
+							</div>
+						</span>
+
+						<div class="simplified0" style="float: left; padding-left: 50px; padding-top: 5px" id="simplified0"></div>
+						<div class="simplified1" style="float: right; padding-right: 50px; padding-top: 5px" id="simplified1"></div>
+
 						<div id="avsTab"
 							style="height: 15vh; width: 78vw; overflow: auto;"></div>
 					</td>
+					<td></td>
 				</tr>
 			</table>
 		</div>
@@ -152,7 +161,7 @@ body {
 			<div class="sidebarGrid" id="searchSidebar">
 				<div id='searchTab'></div>
 				<hr class="advanced">
-				<div w3-include-html="filters.html" style="padding-left: 5px;""></div>
+				<div w3-include-html="filters.html" style="padding-left: 5px;"></div>
 
 			</div>
 			<div class="contentGrid" id="content">

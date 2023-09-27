@@ -57,10 +57,10 @@ const searchForm = (canvasID = 0, infoText = '') => {
 							placeholder="Max Obj: e.g.: 2 person 3 car 0 dog, means at most 2 persons, 3 cars, no dogs"></textarea></td>
 				</tr>
 				<tr valign="top">
-					<td colspan="12" title="Scene Description">
+					<td id="textual${canvasID}_container" colspan="12" title="Scene Description">
 						<b>${infoText}<b>
-						<div class="Icon-inside">
-						<textarea id="textual${canvasID}" class="textualquery"  cols="38" rows="3"  placeholder="Desc: e.g.: A tennis player serving a ball on the court"></textarea>
+						<div id="div_textual${canvasID}" class="Icon-inside">
+						<textarea id="textual${canvasID}" class="textualquery"  cols="38" rows="3"  placeholder="${canvasID} Desc: e.g.: A tennis player serving a ball on the court"></textarea>
 						<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
 						</div>
 					</td>
