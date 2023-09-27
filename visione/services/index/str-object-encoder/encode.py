@@ -13,7 +13,7 @@ import subprocess
 
 import pandas as pd
 
-from visione import load_config, CliProgress
+from visione import load_config, cli_progress
 from visione.savers import GzipJsonlFile
 
 
