@@ -88,6 +88,7 @@ var prevIsGray = [];
 
 var results = null;
 var resultsSortedByVideo = null;
+var res = null
 var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
@@ -115,6 +116,9 @@ var tempSearchForms = 2
 var latestQuery = "";
 var setDisplayTo = "block";
 var isAdvanced = false
+var resCursor = 0;
+var resMatrix = [];
+
 
 function handler(myObj) {
 	urlBSService = myObj.serviceUrl;
@@ -445,7 +449,13 @@ function cell2Text(idx) {
 		notField = ' -' + notField.replace(new RegExp(" ", "g"), ' -');
 	}
 
-	if (notField != '')
+	if (objects != '') {
+		groups = '';
+		if ((group = objects.match('\\((.*?)\\)'))) {
+			objects = objects.replace("\\(" + group[1] + "\\)", '');
+			groups += group;
+		}
+	} else if (notField != '')
 		objects = "*";
 
 	objects += notField;
@@ -830,12 +840,13 @@ function showResults(data) {
 		avsRemoveAutoselected();
 	}
 	//empty avsFirstCol
-	avsAutoSelected.length = 0
+	//avsAutoSelected.length = 0
 	$('html,body').scrollTop(0);
 	$("#imgGridResults").remove();
 	//$('#results').scrollTop(0);
 	$('#content').scrollTop(0);
-
+	resCursor = -1;
+	resMatrix = [];
 	var imgGridResults = '<div id="imgGridResults" class="gridcontainer">';
 
 	if ((data == null || data == "") && latestQuery != "") {
@@ -845,7 +856,7 @@ function showResults(data) {
 		if (!isAdvanced)
 			displaySimplifiedUI();
 
-		let res = JSON.parse(data);
+		res = JSON.parse(data);
 		if (res.length == 0)
 			imgGridResults = '<div id="imgGridResults" class="alert alert-danger" role="alert"> <strong>Ops!</strong> No results.';
 		else {
@@ -856,6 +867,8 @@ function showResults(data) {
 
 			let itemPerRow = 0;
 			let columnIdx = 1;
+			let rowIdx = 0;
+			resMatrix[rowIdx] = [];
 			for (let i = 0; i < res.length; i++) {
 				let imgId = res[i].imgId;
 				let videoId = res[i].videoId;
@@ -866,6 +879,7 @@ function showResults(data) {
 				let frameNumber = imgId.split('_').pop();
 
 				if (i > 0 && videoId != prevID) {
+					resMatrix[++rowIdx] = [];
 					let spanVal = 11 - columnIdx;
 					columnIdx = 1;
 					if (spanVal > 0)
@@ -886,13 +900,15 @@ function showResults(data) {
 				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailUrl + path)
 				resultData = getResultData(videoId, imgId, thumbnailUrl + path, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
-				if (itemPerRow == 0)
+				/*if (itemPerRow == 0)
 					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-						addToAutoSelected(avsObj)
+						addToAutoSelected(avsObj)*/
 
 				imgGridResults += '<div class="item column-span-1">'
 				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], avsObj, true)
 				imgGridResults += '</div>'
+				resMatrix[rowIdx][columnIdx -1] = res[i];
+
 				columnIdx++;
 
 			}
@@ -996,7 +1012,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
 			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
 			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(avsObj)'>
+			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(${avsObj}, event)'>
 	
 	
 			<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
@@ -1015,7 +1031,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
 		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(avsObj)'>
+		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsToggle(${avsObj}, event)'>
 
 
 		<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
@@ -1130,6 +1146,47 @@ dropImage = function (e) {
 		draggedLabel = '';
 	}
 }
+
+function indexedCells(txt) {
+	console.log("indexedCells " + txt);
+	res = txt.trim().split(" ");
+	cellTxt = [];
+	for (i = 0; i < res.length; i++) {
+		txt = '';
+		key = res[i].substring(0, 2);
+		if (cellTxt[key])
+			txt = cellTxt[key];
+		style = colorMap[res[i].substring(2)] == null ? '<div>'
+				+ res[i].substring(2) + '</div>' : '<div '
+				+ colorMap[res[i].substring(2)] + '>' + res[i].substring(2)
+				+ '</div>';
+		txt += style;
+		cellTxt[key] = txt;
+		console.log(cellTxt[0]);
+
+	}
+	imgtable = '<table id="cellTable" style="width: 825px;">';
+	imgtable += '<tr><td align="center"></td><td align="center">a</td><td align="center">b</td><td align="center">c</td><td align="center">d</td><td align="center">e</td>	<td align="center">f</td><td align="center">g</td>';
+	counter = 0;
+	row = 0;
+	for (y = 0; y < CELL_ROWS; y++) {
+		for (x = 0; x < CELL_COLS; x++) {
+			if (counter % CELL_COLS == 0) {
+				imgtable += '<tr>';
+				imgtable += '<td style="width: 16px;">' + row++ + '</td>';
+
+			}
+			imgtable += '<td valign="top" style="border: 1px solid black; width: 115px;">'
+					+ cellTxt[y.toString() + String.fromCharCode(97 + x)]
+					+ '</td>';
+			counter++;
+		}
+	}
+	imgtable += '</table>'
+
+	$('#txt').append(imgtable);
+}
+
 /*
 function changeQueryBySampleMod(mode) {
 	if (mode == "url") {
@@ -1318,7 +1375,6 @@ function displayAdvanced(isAdv) {
 		if ($("#sceneDes1").length > 0)
 			$('#simplified1').css('display', 'block');
 
-
 		//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
 		//document.getElementById("simplified0").className = 'simplified0'
 		//document.getElementById("textual0").className = 'textualquery0'
@@ -1328,7 +1384,7 @@ function displayAdvanced(isAdv) {
 		$('#textual0').removeClass('simplifiedTextual0');
 		$('#visionelogo').removeClass('visioneLogo_bigger');
 
-		$('#sceneDes0').addClass('fa fa-hourglass-start fa-2x');
+		$('#sceneDes0').addClass('fa-hourglass-start');
 		$('#simplified0').addClass('simplified0');
 		$('#textual0').addClass('textualquery0');
 		$('#visionelogo').addClass('visioneLogo');
@@ -1339,12 +1395,10 @@ function displayAdvanced(isAdv) {
 		$('#sceneDes1').css('display', 'none');
 		$('#simplified1').css('display', 'none');
 		//document.getElementById("simplified0").className = 'simplifiedSearchBar'
-		$('#sceneDes0').removeClass('fa fa-hourglass-start fa-2x');
+		$('#sceneDes0').removeClass('fa-hourglass-start');
 		$('#simplified0').removeClass('simplified0');
 		$('#textual0').removeClass('textualquery0');
 		$('#visionelogo').removeClass('visioneLogo');
-
-
 
 		$('#simplified0').addClass('simplifiedSearchBar');
 
@@ -1356,7 +1410,7 @@ function displayAdvanced(isAdv) {
 
 		$('#newsession').css('display', 'none');
 
-		document.getElementById("sceneDes0").className = 'fa fa-2x'
+		//document.getElementById("sceneDes0").className = 'fa fa-2x'
 	}
 	var elements = document.getElementsByClassName("advanced");
 	for (var i = 0; i < elements.length; i++) {
@@ -1382,8 +1436,55 @@ function createInputTextWithMic() {
 	return inputText;
 }
 
+colIdx = 0;
+
+function checkKey(e) {
+
+	e = e || window.event;
+
+	if (e.keyCode == '38') {
+		colIdx = 0;
+		resCursor--;
+		//$("#" + res[resCursor--].imgId).click();
+		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+
+		// Chiamare l'evento onclick
+		element.click();
+		console.log("up arrow")
+	}
+	else if (e.keyCode == '40') {
+		colIdx = 0;
+		resCursor++;
+		//$("#" + res[resCursor++].imgId).click();
+		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+
+		// Chiamare l'evento onclick
+		element.click();
+		console.log("down arrow")
+	}
+	else if (e.keyCode == '37') {
+		--colIdx
+		//$("#" + res[resCursor--].imgId).click();
+		var element = document.getElementById(resMatrix[resCursor][Math.max(0,colIdx)].imgId);
+		element.click();
+		console.log("left arrow")
+	}
+	else if (e.keyCode == '39') {
+		++colIdx
+		//$("#" + res[resCursor++].imgId).click();
+		var element = document.getElementById(resMatrix[resCursor][colIdx].imgId);
+		element.click();
+		console.log("right arrow")
+	}
+
+}
+
 
 function init() {
+
+	document.onkeydown = checkKey;
+
+
 
 	$(function () {
 		$("#dialog").dialog({
@@ -1397,7 +1498,7 @@ function init() {
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
 	if ($('meta[name=task]').attr('content') == "KIS") {
-		$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', " Describe the next scene (optional)", "fa fa-hourglass-end fa-2x"));
+		$("#searchTab").append(searchForm(1, 'Objects & color of the next scene', " Describe the next scene(optional)", "fa fa-hourglass-end fa-1x"));
 	} else {
 		document.getElementById('avsSubmittedTab').style.display = 'block'
 	}
