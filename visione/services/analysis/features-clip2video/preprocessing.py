@@ -37,30 +37,19 @@ def preprocess_shots(shot_infos, min_duration=0.0, num_threads=5, out_folder=Pat
     It includes merging together the shots if they are too short, if needed.
 
     shot_info: tuple containing video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time
-    min_duration: used for merging shots if duration is less than this amount
+    min_duration: used for padding shots if duration is less than this amount
     """
-
-    # FIXME: if min_duration > 0 (merging enabled), we first need to aggregate the tuples by video_id
-    # Otherwise, there's the risk that shots from different videos are merged together
-    if min_duration > 0.0:
-        raise NotImplementedError()
-
     out_folder.mkdir(exist_ok=True)
 
     lines = []
-    skip = False
     for video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time in shot_infos:
-        # merge contiguous shots if the minimum time length (min_duration) is not reached
-        start_time = start_time if not skip else start_time
-        shot_id_visione = shot_id if not skip else shot_id_visione
-        end_time = end_time
-        if end_time - start_time < min_duration:
-            skip = True
-            continue
-        else:
-            skip = False
-        # out_video_ext = '.mp4' # os.path.splitext(mp4_file)[1]
-        out_file = out_folder / f'{shot_id_visione}.mp4' # out_folder / '{}_{}.mp4'.format(video_id, shot_id_visione) # os.path.join(out_folder, '{}_{}.mp4'.format(video_id, shot_id_visione))
+        duration = end_time - start_time
+        if duration < min_duration:
+            pad = (min_duration - duration) / 2
+            start_time = max(0, start_time - pad)
+            end_time = start_time + min_duration  # FIXME: this could overshoot the end of the video
+
+        out_file = out_folder / f'{shot_id}.mp4'
         lines.append((video_path, start_time, end_time, out_file))
 
     if parallel:
