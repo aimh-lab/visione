@@ -33,20 +33,20 @@ services_urls:
 
 
 analysis:
-  # List of object detectors to employ.
+  # Object detectors to employ (with optional parameters)
   object_detectors:
-    - colors
-    - mrcnn-lvis
-    - vfnet64-coco
-    - frcnn-oiv4
+    colors:
+    mrcnn-lvis:
+    vfnet64-coco:
+    frcnn-oiv4:
 
-  # List of feature vector extractors to employ.
+  # Feature vector extractors to employ (with optional parameters)
   features:
-    - gem
-    - aladin
-    - clip-openai
-    - clip-laion
-    - clip2video
+    gem:
+    aladin:
+    clip-openai:
+    clip-laion:
+    clip2video:
 
   frame_cluster:
     feature: gem  # Which feature vector to employ in frames clustering.

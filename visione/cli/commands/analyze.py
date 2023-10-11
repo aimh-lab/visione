@@ -51,22 +51,23 @@ class AnalyzeCommand(BaseCommand):
                 progress.update(task, description=f"Analyzing '{video_id}'")
                 subtasks = []
 
+                active_object_detectors = analysis_config.get('object_detectors', {})
+                active_feature_extractors = analysis_config.get('features', {})
+                clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
+
                 # Objects & Colors Detection
-                active_object_detectors = analysis_config.get('object_detectors', [])
-                for detector in active_object_detectors:
+                for detector, params in active_object_detectors.items():
                     subtask = progress.add_task(f'- Detecting objects ({detector})', total=None)
-                    self.detect_objects(detector, video_id=video_id, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    self.detect_objects(detector, video_id=video_id, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Feature vector extraction
-                active_feature_extractors = analysis_config.get('features', [])
-                for extractor in active_feature_extractors:
+                for extractor, params in active_feature_extractors.items():
                     subtask = progress.add_task(f'- Extracting features ({extractor})', total=None)
-                    self.extract_features(extractor, video_id=video_id, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    self.extract_features(extractor, video_id=video_id, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
 
                 # Frame clustering
-                clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
                 if clustering_features:
                     subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=None)
                     self.cluster_frames(video_id, features=clustering_features, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
@@ -134,8 +135,8 @@ class AnalyzeCommand(BaseCommand):
                 progress.console.log(f"Starting analysis on {n_frames} frame{'' if n_frames == 1 else 's'}.")
 
                 analysis_config = self.config.get('analysis', {})
-                active_object_detectors = analysis_config.get('object_detectors', [])
-                active_feature_extractors = analysis_config.get('features', [])
+                active_object_detectors = analysis_config.get('object_detectors', {})
+                active_feature_extractors = analysis_config.get('features', {})
                 clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
 
                 n_analyses = len(active_object_detectors) + len(active_feature_extractors) + (1 if clustering_features else 0)
@@ -144,16 +145,16 @@ class AnalyzeCommand(BaseCommand):
                 subtasks = []
 
                 # run analysis: objects & colors detectors
-                for detector in active_object_detectors:
+                for detector, params in active_object_detectors.items():
                     subtask = progress.add_task(f'- Detecting objects ({detector})', total=n_frames)
-                    self.detect_objects(detector, image_list=image_list_path, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    self.detect_objects(detector, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
                     progress.advance(task)
 
                 # run analysis: feature vector extraction
-                for extractor in active_feature_extractors:
+                for extractor, params in active_feature_extractors.items():
                     subtask = progress.add_task(f'- Extracting features ({extractor})', total=n_frames)
-                    self.extract_features(extractor, image_list=image_list_path, force=replace, gpu=gpu, stdout_callback=self.progress_callback(progress, subtask))
+                    self.extract_features(extractor, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
                     subtasks.append(subtask)
                     progress.advance(task)
 
@@ -165,7 +166,7 @@ class AnalyzeCommand(BaseCommand):
                         progress.advance(subtask)
                     subtasks.append(subtask)
 
-    def extract_features(self, extractor, image_list=None, video_id=None, force=False, gpu=False, **run_kws):
+    def extract_features(self, extractor, image_list=None, video_id=None, force=False, gpu=False, params={}, **run_kws):
         """ Extracts features from selected keyframes of a video.
 
         Args:
@@ -195,12 +196,17 @@ class AnalyzeCommand(BaseCommand):
         input_path = '/data' / input_path.relative_to(self.collection_dir)
         output_template = '/data' / output_template.relative_to(self.collection_dir)
 
+        cmd_params = []
+        for k, v in params.items():
+            cmd_params += [f'--{k}', str(v)]
+
         service = f'features-{extractor}'
         command = [
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
+        ] + cmd_params + [
             str(input_path),
             'hdf5',
             '--features-name', extractor,
@@ -209,7 +215,7 @@ class AnalyzeCommand(BaseCommand):
 
         return self.compose_run(service, command, **run_kws)
 
-    def detect_objects(self, detector_name, image_list=None, video_id=None, force=False, gpu=False, **run_kws):
+    def detect_objects(self, detector_name, image_list=None, video_id=None, force=False, gpu=False, params={}, **run_kws):
         """ Detects objects in selected keyframes.
 
         Args:
@@ -239,12 +245,17 @@ class AnalyzeCommand(BaseCommand):
         input_path = '/data' / input_path.relative_to(self.collection_dir)
         output_template = '/data' / output_template.relative_to(self.collection_dir)
 
+        cmd_params = []
+        for k, v in params.items():
+            cmd_params += [f'--{k}', str(v)]
+
         service = f'objects-{detector_name}'
         command = [
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
             '--save-every', '200',
+        ] + cmd_params + [
             str(input_path),
             'jsonl',
             '--output', str(output_template),
