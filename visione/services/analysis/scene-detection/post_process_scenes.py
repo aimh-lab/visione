@@ -80,8 +80,6 @@ def main(args):
         split_lengths_timecode = seconds_to_timecode(split_lengths_sec)
         split_num = scene_num + np.linspace(0, 1, num_splits + 1)[:-1]
 
-
-
         subscenes = pd.DataFrame({
             'Scene Number': scene_num + np.linspace(0, 1, num_splits + 1)[:-1],
             'Start Frame': split_frames[:-1],

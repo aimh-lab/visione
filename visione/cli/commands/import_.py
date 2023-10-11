@@ -85,7 +85,7 @@ class ImportCommand(BaseCommand):
 
         if bulk and multi_import:
            return self._import_bulk(video_paths, replace, gpu, scene_detection_params, scene_max_length)
-        
+
         return self._import_sequential(video_paths, multi_import, video_id, replace, gpu, scene_detection_params, scene_max_length)
 
 
