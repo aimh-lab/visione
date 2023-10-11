@@ -17,20 +17,29 @@ class AnalyzeCommand(BaseCommand):
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all imported videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing analyses.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
+        parser.add_argument('analyses', nargs='*', default=None, help='Analysis to run. If not given, runs all analyses.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace, gpu, **kwargs):
+    def __call__(self, *, video_ids, replace, gpu, analyses, **kwargs):
         super(AnalyzeCommand, AnalyzeCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
+        analyze_kwargs = dict(replace=replace, gpu=gpu, analyses=analyses)
+
         # if video IDs are given, analyze only those
         if len(video_ids):
-            return self.analyze_videos(video_ids, replace=replace, gpu=gpu)
+            return self.analyze_videos(video_ids, **analyze_kwargs)
 
         # otherwise, bulk analyze all videos in the collection
-        return self.bulk_analyze_videos(replace=replace, gpu=gpu)
+        return self.bulk_analyze_videos(**analyze_kwargs)
 
-    def analyze_videos(self, video_ids, replace=False, gpu=False):
+    def analyze_videos(
+        self,
+        video_ids,
+        replace=False,
+        gpu=False,
+        analyses=None,
+    ):
         """ Analyzes a list of videos given by IDs. """
 
         progress_cols = [
@@ -54,6 +63,14 @@ class AnalyzeCommand(BaseCommand):
                 active_object_detectors = analysis_config.get('object_detectors', {})
                 active_feature_extractors = analysis_config.get('features', {})
                 clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
+
+                if analyses:  # keep only requested analyses
+                    available = list(active_object_detectors.keys()) + list(active_feature_extractors.keys()) + (['frame-cluster'] if clustering_features else [])
+                    assert all(a in available for a in analyses), f"Unknown analysis: {set(analyses) - set(available)}. Available analyses: {available}"
+
+                    active_object_detectors = {k: v for k, v in active_object_detectors.items() if k in analyses}
+                    active_feature_extractors = {k: v for k, v in active_feature_extractors.items() if k in analyses}
+                    clustering_features = clustering_features if 'frame-cluster' in analyses else False
 
                 # Objects & Colors Detection
                 for detector, params in active_object_detectors.items():
@@ -80,7 +97,13 @@ class AnalyzeCommand(BaseCommand):
 
             progress.console.log('Analysis complete.')
 
-    def bulk_analyze_videos(self, replace=False, gpu=False, **run_kws):
+    def bulk_analyze_videos(
+        self,
+        replace=False,
+        gpu=False,
+        analyses=None,
+        **run_kws
+    ):
         """ Analyzes all videos in the collection in bulk. """
 
         frames_dir = self.collection_dir / 'selected-frames'
@@ -138,6 +161,14 @@ class AnalyzeCommand(BaseCommand):
                 active_object_detectors = analysis_config.get('object_detectors', {})
                 active_feature_extractors = analysis_config.get('features', {})
                 clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
+
+                if analyses:  # keep only requested analyses
+                    available = list(active_object_detectors.keys()) + list(active_feature_extractors.keys()) + (['frame-cluster'] if clustering_features else [])
+                    assert all(a in available for a in analyses), f"Unknown analysis: {set(analyses) - set(available)}. Available analyses: {available}"
+
+                    active_object_detectors = {k: v for k, v in active_object_detectors.items() if k in analyses}
+                    active_feature_extractors = {k: v for k, v in active_feature_extractors.items() if k in analyses}
+                    clustering_features = clustering_features if 'frame-cluster' in analyses else False
 
                 n_analyses = len(active_object_detectors) + len(active_feature_extractors) + (1 if clustering_features else 0)
 
