@@ -24,7 +24,7 @@ class ServeCommand(BaseCommand):
 
         # figure out which optional services are also needed;
         # each optional service is contained in a profile named as the service
-        enabled_features = self.config.get('analysis', {}).get('features', [])
+        enabled_features = self.config.get('analysis', {}).get('features', {}).keys()
         optional_services = [f'features-{f}' for f in enabled_features]
         for service in optional_services:
             profile_options.extend(['--profile', service])
