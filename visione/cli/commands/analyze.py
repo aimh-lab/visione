@@ -15,16 +15,19 @@ class AnalyzeCommand(BaseCommand):
     def add_arguments(self, subparsers):
         parser = subparsers.add_parser('analyze', help='Analyzes videos imported in the collection.')
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all imported videos.')
+        parser.add_argument('--image-list', dest='image_list_path', default=None, type=Path, help='Path to a file containing a list of images to analyze.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing analyses.')
         parser.add_argument('--no-gpu', dest='gpu', default=self.is_gpu_available(), action='store_false', help='Do not use the GPU if available.')
         parser.add_argument('analyses', nargs='*', default=None, help='Analysis to run. If not given, runs all analyses.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace, gpu, analyses, **kwargs):
+    def __call__(self, *, video_ids, replace, gpu, image_list_path, analyses, **kwargs):
+        assert not (video_ids and image_list_path), 'Only one of --id or --image-list can be specified.'
+
         super(AnalyzeCommand, AnalyzeCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
-        analyze_kwargs = dict(replace=replace, gpu=gpu, analyses=analyses)
+        analyze_kwargs = dict(replace=replace, gpu=gpu, image_list_path=image_list_path, analyses=analyses)
 
         # if video IDs are given, analyze only those
         if len(video_ids):
@@ -33,11 +36,13 @@ class AnalyzeCommand(BaseCommand):
         # otherwise, bulk analyze all videos in the collection
         return self.bulk_analyze_videos(**analyze_kwargs)
 
+    # FIXME refactor this and next method, unelegant rn
     def analyze_videos(
         self,
         video_ids,
         replace=False,
         gpu=False,
+        image_list_path=None,
         analyses=None,
     ):
         """ Analyzes a list of videos given by IDs. """
@@ -101,11 +106,27 @@ class AnalyzeCommand(BaseCommand):
         self,
         replace=False,
         gpu=False,
+        image_list_path=None,
         analyses=None,
         **run_kws
     ):
         """ Analyzes all videos in the collection in bulk. """
 
+        # use an image list if given
+        if image_list_path:
+            image_list_path = image_list_path.resolve().absolute()
+            video_ids = set()
+            n_frames = 0
+            with image_list_path.open('r', encoding='utf8') as image_list:
+                for line in image_list:
+                    video_id = line.split('\t')[0]
+                    video_ids.add(video_id)
+                    n_frames += 1
+
+            self._bulk_analyze(image_list_path, video_ids, n_frames, analyses, replace, gpu, **run_kws)
+            return
+
+        # otherwise, generate an image list
         frames_dir = self.collection_dir / 'selected-frames'
         video_dirs = frames_dir.iterdir()
         video_dirs = filter(lambda p: p.is_dir(), video_dirs)
@@ -146,56 +167,58 @@ class AnalyzeCommand(BaseCommand):
             image_list.seek(0)
 
             image_list_path = Path(image_list.name)
+            self._bulk_analyze(image_list_path, video_ids, n_frames, analyses, replace, gpu, **run_kws)
 
-            progress_cols = [
-                SpinnerColumn(),
-                *Progress.get_default_columns()[:1],
-                MofNCompleteColumn(),
-                *Progress.get_default_columns()[1:],
-                TimeElapsedColumn()
-            ]
-            with Progress(*progress_cols, transient=True) as progress:
-                progress.console.log(f"Starting analysis on {n_frames} frame{'' if n_frames == 1 else 's'}.")
+    def _bulk_analyze(self, image_list_path, video_ids, n_frames, analyses, replace, gpu, **run_kws):
+        progress_cols = [
+            SpinnerColumn(),
+            *Progress.get_default_columns()[:1],
+            MofNCompleteColumn(),
+            *Progress.get_default_columns()[1:],
+            TimeElapsedColumn()
+        ]
+        with Progress(*progress_cols, transient=True) as progress:
+            progress.console.log(f"Starting analysis on {n_frames} frame{'' if n_frames == 1 else 's'}.")
 
-                analysis_config = self.config.get('analysis', {})
-                active_object_detectors = analysis_config.get('object_detectors', {})
-                active_feature_extractors = analysis_config.get('features', {})
-                clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
+            analysis_config = self.config.get('analysis', {})
+            active_object_detectors = analysis_config.get('object_detectors', {})
+            active_feature_extractors = analysis_config.get('features', {})
+            clustering_features = analysis_config.get('frame_cluster', {}).get('feature', None)
 
-                if analyses:  # keep only requested analyses
-                    available = list(active_object_detectors.keys()) + list(active_feature_extractors.keys()) + (['frame-cluster'] if clustering_features else [])
-                    assert all(a in available for a in analyses), f"Unknown analysis: {set(analyses) - set(available)}. Available analyses: {available}"
+            if analyses:  # keep only requested analyses
+                available = list(active_object_detectors.keys()) + list(active_feature_extractors.keys()) + (['frame-cluster'] if clustering_features else [])
+                assert all(a in available for a in analyses), f"Unknown analysis: {set(analyses) - set(available)}. Available analyses: {available}"
 
-                    active_object_detectors = {k: v for k, v in active_object_detectors.items() if k in analyses}
-                    active_feature_extractors = {k: v for k, v in active_feature_extractors.items() if k in analyses}
-                    clustering_features = clustering_features if 'frame-cluster' in analyses else False
+                active_object_detectors = {k: v for k, v in active_object_detectors.items() if k in analyses}
+                active_feature_extractors = {k: v for k, v in active_feature_extractors.items() if k in analyses}
+                clustering_features = clustering_features if 'frame-cluster' in analyses else False
 
-                n_analyses = len(active_object_detectors) + len(active_feature_extractors) + (1 if clustering_features else 0)
+            n_analyses = len(active_object_detectors) + len(active_feature_extractors) + (1 if clustering_features else 0)
 
-                task = progress.add_task(f'Bulk analysis ({"GPU" if gpu else "CPU"})', total=n_analyses)
-                subtasks = []
+            task = progress.add_task(f'Bulk analysis ({"GPU" if gpu else "CPU"})', total=n_analyses)
+            subtasks = []
 
-                # run analysis: objects & colors detectors
-                for detector, params in active_object_detectors.items():
-                    subtask = progress.add_task(f'- Detecting objects ({detector})', total=n_frames)
-                    self.detect_objects(detector, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-                    progress.advance(task)
+            # run analysis: objects & colors detectors
+            for detector, params in active_object_detectors.items():
+                subtask = progress.add_task(f'- Detecting objects ({detector})', total=n_frames)
+                self.detect_objects(detector, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
+                subtasks.append(subtask)
+                progress.advance(task)
 
-                # run analysis: feature vector extraction
-                for extractor, params in active_feature_extractors.items():
-                    subtask = progress.add_task(f'- Extracting features ({extractor})', total=n_frames)
-                    self.extract_features(extractor, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
-                    subtasks.append(subtask)
-                    progress.advance(task)
+            # run analysis: feature vector extraction
+            for extractor, params in active_feature_extractors.items():
+                subtask = progress.add_task(f'- Extracting features ({extractor})', total=n_frames)
+                self.extract_features(extractor, image_list=image_list_path, force=replace, gpu=gpu, params=params, stdout_callback=self.progress_callback(progress, subtask))
+                subtasks.append(subtask)
+                progress.advance(task)
 
-                # run analysis: frame clustering
-                if clustering_features:
-                    subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=len(video_ids))
-                    for video_id in video_ids:
-                        self.cluster_frames(video_id, features=clustering_features, force=replace, gpu=gpu)
-                        progress.advance(subtask)
-                    subtasks.append(subtask)
+            # run analysis: frame clustering
+            if clustering_features:
+                subtask = progress.add_task(f'- Clustering frames ({clustering_features})', total=len(video_ids))
+                for video_id in video_ids:  # FIXME: write a bulked version of this to uniform the interface
+                    self.cluster_frames(video_id, features=clustering_features, force=replace, gpu=gpu)
+                    progress.advance(subtask)
+                subtasks.append(subtask)
 
     def extract_features(self, extractor, image_list=None, video_id=None, force=False, gpu=False, params={}, **run_kws):
         """ Extracts features from selected keyframes of a video.
