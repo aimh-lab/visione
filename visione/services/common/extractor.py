@@ -171,77 +171,54 @@ class BaseVideoExtractor(object):
         (video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time) tuples. """
         input_shots = self.args.input_shots
 
-        # FIXME: these two if branches can be merged together using the code in the else branch (bulk processing)
         if input_shots.is_dir():
             # inputs_shots is the directory of a single video
             video_id = input_shots.stem
-            scenes_file = self.args.input_shots / f'{video_id}-scenes.csv'
-            assert scenes_file.is_file()  # input should be a file, parse it
-
-            # find the video file (it can have any extension)
-            # video_path = input_shots.parents[1] / 'videos' / f'{video_id}.mp4'
-            escaped_video_id = re.escape(video_id)
-            candidates = (input_shots.parents[1] / 'videos').glob(f'{video_id}.*')
-            video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
-
-            with scenes_file.open() as f:
-                reader = csv.reader(f)
-
-                # peek at the first line to determine the number of columns
-                peek, reader = itertools.tee(reader)
-                num_cols = len(next(peek))
-                del peek
-
-                assert num_cols == 10
-
-                # parse the rest of the file
-                parse_row = lambda row: (video_id, f'{video_id}-{int(row[0]):03}', video_path, int(row[1]), float(row[3]), int(row[4]), float(row[6]))
-
-                next(reader)    # skips the header
-                shot_paths_and_times = [parse_row(row) for row in reader]
+            frame_paths = sorted(input_shots.glob("*.png"))
+            frame_ids = [f.stem for f in frame_paths]
+            shot_frames = list(zip(itertools.repeat(video_id), frame_ids, frame_paths))
 
         else:
             # input_shots is a tsv file containing (video_id, frame_id, frame_path)
             with input_shots.open() as image_list:
-                bulk_reader = csv.reader(image_list, delimiter='\t')
+                shot_frames = list(csv.reader(image_list, delimiter='\t'))
 
-                shot_paths_and_times = []
+        shot_paths_and_times = []
 
-                # for each video, read the scenes.csv to get the time information
-                for video_id, group in itertools.groupby(bulk_reader, key=lambda x: x[0]):
+        # for each video, read the scenes.csv to get the time information
+        for video_id, group in itertools.groupby(shot_frames, key=lambda x: x[0]):
 
-                    # get scenes file and video path from the frame path
-                    frame_ids, frame_paths = zip(*((fid, Path(fpath)) for _, fid, fpath in group))
-                    scenes_file = frame_paths[0].parent / f'{video_id}-scenes.csv'
+            # get scenes file and video path from the frame path
+            frame_ids, frame_paths = zip(*((fid, Path(fpath)) for _, fid, fpath in group))
+            scenes_file = frame_paths[0].parent / f'{video_id}-scenes.csv'
 
-                    # find the video file (it can have any extension)
-                    # video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
-                    escaped_video_id = re.escape(video_id)
-                    candidates = (scenes_file.parents[2] / 'videos').glob(f'{video_id}.*')
-                    # candidates = list(candidates)
-                    # print(video_id, group[0][2], candidates)
-                    video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
+            # find the video file (it can have any extension)
+            # video_path = group[0][2].parents[2] / 'videos' / f'{video_id}.mp4'
+            escaped_video_id = re.escape(video_id)
+            candidates = (scenes_file.parents[2] / 'videos').glob(f'{video_id}.*')
+            # candidates = list(candidates)
+            # print(video_id, group[0][2], candidates)
+            video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
 
-                    # read the scenes.csv file
-                    with scenes_file.open() as scenes:
-                        scenes_reader = csv.DictReader(scenes)
-                        frame_id_to_timeinfo_dict = {
-                            int(row['Scene Number']): (
-                                int(row['Start Frame']), 
-                                float(row['Start Time (seconds)']),
-                                int(row['End Frame']),
-                                float(row['End Time (seconds)'])
-                            ) for row in scenes_reader}
+            # read the scenes.csv file
+            with scenes_file.open() as scenes:
+                scenes_reader = csv.DictReader(scenes)
+                frame_id_to_timeinfo_dict = {
+                    int(row['Scene Number']): (
+                        int(row['Start Frame']), 
+                        float(row['Start Time (seconds)']),
+                        int(row['End Frame']),
+                        float(row['End Time (seconds)'])
+                    ) for row in scenes_reader}
 
-                    for frame_id, frame_path in zip(frame_ids, frame_paths):
-                        scene_id = int(re.split('-|_', frame_path.stem)[-1])
-                        if scene_id not in frame_id_to_timeinfo_dict:
-                            print(f'WARNING: scene {scene_id} not found in {scenes_file}')
-                            
-                        timeinfo = frame_id_to_timeinfo_dict[scene_id]
-                        row = (video_id, frame_id, video_path, *timeinfo)
-                        shot_paths_and_times.append(row)
-
+            for frame_id, frame_path in zip(frame_ids, frame_paths):
+                scene_id = int(re.split('-|_', frame_path.stem)[-1])
+                if scene_id not in frame_id_to_timeinfo_dict:
+                    print(f'WARNING: scene {scene_id} not found in {scenes_file}')
+                    
+                timeinfo = frame_id_to_timeinfo_dict[scene_id]
+                row = (video_id, frame_id, video_path, *timeinfo)
+                shot_paths_and_times.append(row)
 
         return shot_paths_and_times
 
