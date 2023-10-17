@@ -14,11 +14,14 @@ services:
   objects-frcnn-oiv4:
     volumes: ["./analysis/objects-openimagesv4:/usr/src/app"]
 
-  features-clip-openai:
+  features-clip-openai: &clip
     volumes: ["./analysis/features-clip:/usr/src/app"]
 
   features-clip-laion:
-    volumes: ["./analysis/features-clip:/usr/src/app"]
+    <<: *clip
+  
+  features-clip-datacomp:
+    <<: *clip
 
   features-clip2video:
     volumes:

@@ -28,6 +28,8 @@ services_urls:
   clip_internal_search_url:       null
   clip_laion_url:                 null
   clip_laion_internal_search_url: null
+  clip_datacomp_url:              null
+  clip_datacomp_internal_search_url: null
   clip2video_url:                 null
   clip2video_internal_search_url: null
 
@@ -46,6 +48,7 @@ analysis:
     aladin:
     clip-openai:
     clip-laion:
+    clip-datacomp:
     clip2video:
 
   frame_cluster:

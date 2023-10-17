@@ -79,6 +79,17 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "features-clip-laion"]
     deploy: *needs_gpu
+  
+  features-clip-datacomp:
+    build: ./analysis/features-clip
+    image: visione/features-clip
+    shm_size: 2g
+    environment:
+      - FEATURES_NAME=clip-datacomp
+      - MODEL_HANDLE=laion/CLIP-ViT-L-14-DataComp.XL-s13B-b90K
+    volumes: *common_volumes
+    profiles: ["analysis", "features-clip-datacomp"]
+    deploy: *needs_gpu
 
   features-clip2video:
     build: ./analysis/features-clip2video

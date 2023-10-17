@@ -21,6 +21,8 @@ server {
 	location ^~ /clip-internal-search       { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL}; }
 	location ^~ /clip-laion-text-search     { proxy_pass ${VISIONE_CLIP_LAION_URL}; }
 	location ^~ /clip-laion-internal-search { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL}; }
+	location ^~ /clip-datacomp-text-search     { proxy_pass ${VISIONE_CLIP_DATACOMP_URL}; }
+	location ^~ /clip-datacomp-internal-search { proxy_pass ${VISIONE_CLIP_DATACOMP_INTERNAL_SEARCH_URL}; }
 	location ^~ /clip2video-text-search     { proxy_pass ${VISIONE_CLIP2VIDEO_URL}; }
 	location ^~ /clip2video-internal-search { proxy_pass ${VISIONE_CLIP2VIDEO_INTERNAL_SEARCH_URL}; }
 
@@ -49,6 +51,8 @@ server {
 	location ^~ /clip-internal-search       { proxy_pass http://features-clip-openai:5030/internal-image-search; }
 	location ^~ /clip-laion-text-search     { proxy_pass http://features-clip-laion:5030/text-to-image-search; }
 	location ^~ /clip-laion-internal-search { proxy_pass http://features-clip-laion:5030/internal-image-search; }
+	location ^~ /clip-datacomp-text-search     { proxy_pass http://features-clip-datacomp:5030/text-to-image-search; }
+	location ^~ /clip-datacomp-internal-search { proxy_pass http://features-clip-datacomp:5030/internal-image-search; }
 	location ^~ /clip2video-text-search     { proxy_pass http://features-clip2video:5010/text-to-image-search; }
 	location ^~ /clip2video-internal-search { proxy_pass http://features-clip2video:5010/internal-image-search; }
 
