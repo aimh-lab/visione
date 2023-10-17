@@ -280,3 +280,7 @@ index:
     clip-laion:
       index_engine: faiss
       index_type: Flat
+    
+    clip-datacomp:
+      index_engine: faiss
+      index_type: Flat
