@@ -50,6 +50,9 @@ analysis:
     clip-laion:
     clip-datacomp:
     clip2video:
+      pad-shot-to: 6  # Pad shots shorter than this length (in seconds)
+      batch-size: 1   # Batch size
+      num-workers: 8  # Number of workers
 
   frame_cluster:
     feature: gem  # Which feature vector to employ in frames clustering.
