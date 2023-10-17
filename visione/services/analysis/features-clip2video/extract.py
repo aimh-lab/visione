@@ -1,69 +1,124 @@
 import argparse
+import itertools
 import os
-
-# from .preprocessing import preprocess_shots
-from pathlib import Path
-from preprocessing import preprocess_shots
-from common import init_device, init_model, set_seed_logger
-
-# from visione.services.common.extractor import BaseVideoExtractor
-from visione.extractor import BaseVideoExtractor
-
-# loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-# for logger in loggers:
-#     logger.setLevel(logging.WARNING)
-
-import torch
-import numpy as np
-import os
-import random
-import tqdm
+import subprocess
 import sys
 
+import more_itertools
+import numpy as np
+from PIL import Image
+import torch
+import torchvision.transforms as T
+from torch.utils.data import DataLoader
+
+from common import init_device, init_model, set_seed_logger
 from config import Config
-from dataset import c2v_dataloader
+from visione.extractor import BaseVideoExtractor
 
-def extract_video_features(model, test_dataloader, device, n_gpu, logger):
-    """
-    Extract video features
-    """
 
-    if hasattr(model, 'module'):
-        model = model.module.to(device)
+def load_shot(
+    shot_info,
+    *,
+    pad_shot_to_seconds=0.0,
+    fps=5,
+    max_frames=100,
+    sample_framerate=2,
+    size=224,
+    transform=None,
+    ffmpeg_threads=2,
+):
+    video = torch.empty(1, max_frames, 3, size, size)
+    video_mask = torch.zeros(1, max_frames, dtype=torch.long)
+
+    video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time = shot_info
+
+    duration = end_time - start_time
+    if duration < pad_shot_to_seconds:
+        pad = (pad_shot_to_seconds - duration) / 2
+        start_time = max(0, start_time - pad)
+        end_time = start_time + pad_shot_to_seconds  # FIXME: this could overshoot the end of the video
+        duration = pad_shot_to_seconds
+
+    cmd = [
+        'ffmpeg',
+        '-y',
+        '-hide_banner',
+        '-loglevel', 'fatal',
+        '-threads', f'{ffmpeg_threads}',
+        '-ss', f'{start_time:.2f}',
+        '-i', video_path,
+        '-t', f'{duration:.2f}',
+        '-r', f'{fps}',
+        '-q', '0',
+        '-vf', f'scale=320x240',
+        '-pix_fmt', 'rgb24',
+        '-f', 'rawvideo',
+        'pipe:',
+    ]
+
+    ffmpeg = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    video, _ = ffmpeg.communicate()
+    if ffmpeg.returncode != 0:
+        print("Error in processing video {}, shot {}".format(video_path, shot_id), file=sys.stderr)
+        return video, video_mask, shot_id, item_id
+
+    video = torch.frombuffer(video, dtype=torch.uint8).reshape(-1, 240, 320, 3).detach().clone()
+    video = video.permute(0, 3, 1, 2)  # T x 3 x H x W
+    video = video[::sample_framerate, ...]
+    video = video / 255.0  # convert to [0, 1]
+
+    if transform:
+        video = transform(video)
+
+    video_len = video.shape[0]
+    if video_len > max_frames:
+        idx = np.linspace(0, video_len - 1, num=max_frames, dtype=int)
+        video = video[idx, ...]
+        video_len = max_frames
     else:
-        model = model.to(device)
+        pad = torch.zeros(max_frames - video_len, 3, size, size)
+        video = torch.cat((video, pad), dim=0)
+    
+    # video is (T, 3, H, W)
+    video = video.unsqueeze(1)  # T x 1 x 3 x H x W
+    video = video.unsqueeze(0)  # 1 x T x 1 x 3 x H x W
+    video_mask[0, :video_len] = 1
 
-    # if multi_sentence_ == True: compute the similarity with multi-sentences retrieval
-    multi_sentence_ = False
+    return video, video_mask, shot_id
 
-    cut_off_points_, sentence_num_, video_num_ = [], -1, -1
-    if hasattr(test_dataloader.dataset, 'multi_sentence_per_video') \
-            and test_dataloader.dataset.multi_sentence_per_video:
-        multi_sentence_ = True
-        cut_off_points_ = test_dataloader.dataset.cut_off_points # used to tag the label when calculate the metric
-        sentence_num_ = test_dataloader.dataset.sentence_num # used to cut the sentence representation
-        video_num_ = test_dataloader.dataset.video_num # used to cut the video representation
-        cut_off_points_ = [itm - 1 for itm in cut_off_points_]
 
-    if multi_sentence_:
-        logger.warning("Eval under the multi-sentence per video clip setting.")
-        logger.warning("sentence num: {}, video num: {}".format(sentence_num_, video_num_))
+class C2VDataset(torch.utils.data.Dataset):
+    def __init__(self, shot_infos, **kwargs):
+        self.shot_infos = shot_infos
+        self.kwargs = kwargs
+    
+    def __len__(self):
+        return len(self.shot_infos)
+    
+    def __getitem__(self, item_id):
+        return load_shot(self.shot_infos[item_id], **self.kwargs)
 
-    model.eval()
+class C2VIterableDataset(torch.utils.data.IterableDataset):
+    def __init__(self, iterable, *, batch_size=1, **kwargs):
+        self.iterable = iterable
+        self.batch_size = batch_size
+        self.kwargs = kwargs
+    
+    def process(self, batch):
+        batch = [load_shot(item, **self.kwargs) for item in batch]
+        return batch
+  
+    def __iter__(self):
+        worker_info = torch.utils.data.get_worker_info()
+        worker_id = worker_info.id
+        num_workers = worker_info.num_workers
 
-    with torch.no_grad():
-        for bid, batch in enumerate(tqdm.tqdm(test_dataloader)):
-            assert bid == 0 # if everything is ok, we only perform 1 dataloader iteration (batch_size == num videos to process)
-            batch = tuple(t.to(device) if isinstance(t, torch.Tensor) else t for t in batch)
-            video, video_mask, shot_ids, batch_id = batch
-
-            batch_id, shot_ids = batch_id.tolist(), list(shot_ids)
-
-            visual_output = model.get_visual_output(video, video_mask)
-            visual_features = model.get_video_features(visual_output, video_mask)
-
-            feats = visual_features.cpu()
-            return feats
+        # chunk by batch size, then skip batches for other workers
+        itr = more_itertools.chunked(self.iterable, self.batch_size)
+        itr = itertools.islice(itr, worker_id, None, num_workers)
+        itr = map(self.process, itr)
+        itr = itertools.chain.from_iterable(itr)
+        return itr
 
 
 class CLIP2VideoExtractor(BaseVideoExtractor):
@@ -72,83 +127,80 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     def add_arguments(cls, parser):
         # parser.add_argument('--model-handle', default=os.environ['MODEL_HANDLE'], help='hugging face handle of the CLIP model')
         super(CLIP2VideoExtractor, cls).add_arguments(parser)
-        parser.add_argument('--temp_video_path', type=Path, default=Path("/data/temp-videos-for-video-extraction/"), help="Where to store pre-processed videos for features extraction")
         parser.add_argument('--pad-shot-to', type=float, default=0.0, help="Pad shots shorter than this duration (in seconds) before extracting features")
+        parser.add_argument('--shot-fps', type=float, default=5, help="FPS to use when extracting shots from videos")
+        parser.add_argument('--input-size', type=int, default=224, help="Size of the input images to the model")
+        parser.add_argument('--num-workers', type=int, default=0, help="Number of workers for data loading")
+        parser.add_argument('--ffmpeg-threads', type=int, default=2, help="Number of threads to use for each ffmpeg worker")
 
     def __init__(self, args):
         super(CLIP2VideoExtractor, self).__init__(args)
         self.device = None
         self.model = None
-        self.processor = None
-        self.temp_video_path = args.temp_video_path
-        self.min_shot_duration = args.pad_shot_to
+
+        # obtain the hyper-parameter, set the seed and device
+        self.conf = Config(checkpoint='checkpoint', clip_path='checkpoint/ViT-B-32.pt')
+        self.conf, self.logger = set_seed_logger(self.conf)
+        self.conf.gpu = args.gpu
+
+        self.load_shot_args = {
+            'pad_shot_to_seconds': args.pad_shot_to,
+            'fps': args.shot_fps,
+            'max_frames': self.conf.max_frames,
+            'sample_framerate': self.conf.feature_framerate,
+            'size': args.input_size,
+            'transform': T.Compose([
+                T.Resize(args.input_size, interpolation=Image.BICUBIC),
+                T.CenterCrop(args.input_size),
+                # T.ToTensor(),
+                T.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+            ]),
+            'ffmpeg_threads': args.ffmpeg_threads,
+        }
 
     def setup(self):
         if self.model is None:
-            # obtain the hyper-parameter
-
-            # create directory for temp videos
-            self.temp_video_path.mkdir(exist_ok=True, parents=True)
-
-            self.conf = Config(
-                video_path=self.temp_video_path,
-                checkpoint='checkpoint', # 'visione/services/analysis/features-clip2video/checkpoint',
-                clip_path='checkpoint/ViT-B-32.pt' # 'visione/services/analysis/features-clip2video/checkpoint/ViT-B-32.pt'
-            )
-
-            # self.conf = Config(
-            #     video_path=self.temp_video_path,
-            #     checkpoint='visione/services/analysis/features-clip2video/checkpoint',
-            #     clip_path='visione/services/analysis/features-clip2video/checkpoint/ViT-B-32.pt'
-            # )
-
-            # set the seed
-            self.conf, self.logger = set_seed_logger(self.conf)
-
-            self.conf.gpu = args.gpu
-
-            # setting the testing device
+            # init device and model
             self.device, self.n_gpu = init_device(self.conf, self.conf.local_rank, self.logger)
-
-            # init model
             self.model = init_model(self.conf, self.device, self.logger)
 
-            # print information for debugging
-            # if self.conf.local_rank == 0:
-            #     logger.info("***** Running test *****")
-            #     logger.info("  Num examples = %d", test_length)
-            #     logger.info("  Batch size = %d", self.conf.batch_size_val)
-            #     logger.info("  Num steps = %d", len(self.test_dataloader))
+            if hasattr(self.model, 'module'):
+                self.model = self.model.module
+
+            self.model = self.model.to(self.device)
+            self.model.eval()
+    
+    def forward_batch(self, batch):
+        video, video_mask, shot_ids = batch
+        video, video_mask = video.to(self.device), video_mask.to(self.device)
+        visual_output = self.model.get_visual_output(video, video_mask)
+        video_features = self.model.get_video_features(visual_output, video_mask)
+        records = [{'feature_vector': f.tolist()} for f in video_features.cpu().numpy()]
+        return records
 
     def extract(self, shot_paths_and_times):
         self.setup()  # lazy load model
 
-        # preprocess shots using ffmpeg and return their paths
-        shot_paths, errors = preprocess_shots(shot_paths_and_times, min_duration=self.min_shot_duration, out_folder=self.temp_video_path)
-
-        # only process videos for which error is False
-        valid_shot_paths = [shot_path for shot_path, error in zip(shot_paths, errors) if not error]
-        valid_idxs = [idx for idx, error in enumerate(errors) if not error]
-
         # init test dataloader
-        dataloader, _ = c2v_dataloader(self.conf, valid_shot_paths)
+        dataset = C2VDataset(shot_paths_and_times, **self.load_shot_args)
+        dataloader = DataLoader(dataset, batch_size=1, num_workers=self.num_workers)
 
-        # extract
-        features = extract_video_features(
-            self.model, 
-            dataloader,
-            self.device, 
-            self.n_gpu, 
-            self.logger
-        )
-
-        # FIXME: maybe there is a better way, but as of now features of corrupted videos are set to all zeros
-        all_features = torch.zeros((len(shot_paths), features.shape[1]))
-        # put valid features in the right place in all_features depending on valid_idxs
-        all_features[valid_idxs] = features
-        
-        records = [{'feature_vector': f.tolist()} for f in all_features.cpu().numpy()]
+        with torch.no_grad():
+            records = [self.forward_batch(batch) for batch in dataloader]
+            records = list(itertools.chain.from_iterable(records))
+            
         return records
+
+    def extract_iterable(self, shot_paths_and_times, batch_size=2):
+        self.setup()
+
+        dataset = C2VIterableDataset(shot_paths_and_times, batch_size=batch_size, **self.load_shot_args)
+        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=self.num_workers)
+
+        with torch.no_grad():
+            for batch in dataloader:
+                records = self.forward_batch(batch)
+                yield from records
 
 
 if __name__ == "__main__":
