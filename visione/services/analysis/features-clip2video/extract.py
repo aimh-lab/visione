@@ -73,6 +73,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         # parser.add_argument('--model-handle', default=os.environ['MODEL_HANDLE'], help='hugging face handle of the CLIP model')
         super(CLIP2VideoExtractor, cls).add_arguments(parser)
         parser.add_argument('--temp_video_path', type=Path, default=Path("/data/temp-videos-for-video-extraction/"), help="Where to store pre-processed videos for features extraction")
+        parser.add_argument('--pad-shot-to', type=float, default=0.0, help="Pad shots shorter than this duration (in seconds) before extracting features")
 
     def __init__(self, args):
         super(CLIP2VideoExtractor, self).__init__(args)
@@ -80,6 +81,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         self.model = None
         self.processor = None
         self.temp_video_path = args.temp_video_path
+        self.min_shot_duration = args.pad_shot_to
 
     def setup(self):
         if self.model is None:
@@ -122,7 +124,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         self.setup()  # lazy load model
 
         # preprocess shots using ffmpeg and return their paths
-        shot_paths, errors = preprocess_shots(shot_paths_and_times, out_folder=self.temp_video_path)
+        shot_paths, errors = preprocess_shots(shot_paths_and_times, min_duration=self.min_shot_duration, out_folder=self.temp_video_path)
 
         # only process videos for which error is False
         valid_shot_paths = [shot_path for shot_path, error in zip(shot_paths, errors) if not error]
