@@ -3,6 +3,7 @@ import itertools
 import multiprocessing
 import os
 from pathlib import Path
+from queue import Empty
 
 import mmcv
 from mmdet.apis import init_detector, inference_detector
@@ -11,30 +12,30 @@ import torch
 
 from visione.extractor import BaseExtractor
 
-
+# FIXME: ditch this function in favor of torch's IterableDataset
 def buffered_imap(func, iterable, buffer_size):
     # Create a multiprocessing.Queue to act as a buffer
     queue = multiprocessing.Queue(maxsize=buffer_size)
+    done = multiprocessing.Value('B', 0)
 
-    def worker(queue):
+    def worker(queue, done):
         for item in iterable:
             result = func(item)
             queue.put(result)
-
-        # Put the sentinel value to signal the end of processing
-        queue.put(None)
+        done.value = 1
 
     # Start the worker process
-    worker_process = multiprocessing.Process(target=worker, args=(queue,))
+    worker_process = multiprocessing.Process(target=worker, args=(queue, done))
     worker_process.start()
 
     while True:
-        result = queue.get()
-        if result is None:
-            break
-        yield result
-
-    worker_process.join()
+        try:
+            result = queue.get(block=True, timeout=1)
+            yield result
+        except Empty:
+            print('except get queue', done.value)
+            if done.value:
+                break
 
 
 def detection2record(detection, detector, classes, image_hw):
