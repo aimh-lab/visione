@@ -24,20 +24,23 @@ class IndexCommand(BaseCommand):
         parser.add_argument('--id', dest='video_ids', nargs='+', default=(), help='Video ID(s) to be indexed. If not given, proceeds on all analyzed videos.')
         parser.add_argument('--replace', default=False, action='store_true', help='Replace any existing index entry.')
         parser.add_argument('--bulk', default=False, action='store_true', help='Bulk index when given multiple video ids.')
+        parser.add_argument('phases', nargs='*', default=None, help='Indexing phases to run. If not given, runs all phases.')
         parser.set_defaults(func=self)
 
-    def __call__(self, *, video_ids, replace, bulk, **kwargs):
+    def __call__(self, *, video_ids, replace, bulk, phases, **kwargs):
         super(IndexCommand, IndexCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
+        index_kwargs = dict(video_ids=video_ids, replace=replace, phases=phases)
+
         # if video IDs are given, index only those
         if len(video_ids) and not bulk:
-            return self.index_videos(video_ids, replace=replace)
+            return self.index_videos(**index_kwargs)
 
         # otherwise, bulk index all videos in the collection
-        return self.bulk_index_videos(video_ids=video_ids, replace=replace)
+        return self.bulk_index_videos(**index_kwargs)
 
-    def index_videos(self, video_ids, replace=False):
+    def index_videos(self, video_ids, replace=False, phases=None):
         """ Indexes the given video IDs sequentially.
             Videos become searchable as soon as they are indexed.
         """
@@ -59,6 +62,13 @@ class IndexCommand(BaseCommand):
             indexed_features = index_config.get('features', {})
             str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
             faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
+            update_lucene = str_objects or str_features
+
+            if phases:
+                str_objects = str_objects if 'objects' in phases else False
+                str_features = [f for f in str_features if f in phases]
+                faiss_features = [f for f in faiss_features if f in phases]
+                update_lucene = 'lucene' in phases
 
             for video_id in video_ids:
                 progress.update(task, description=f"Indexing '{video_id}'")
@@ -80,7 +90,7 @@ class IndexCommand(BaseCommand):
                     subtasks.append(subtask)
 
                 # push to Lucene index
-                if str_objects or str_features:
+                if update_lucene:
                     for thread in threads:
                         thread.join()
                     subtask = progress.add_task('- Creating Lucene documents', total=None)
@@ -104,7 +114,7 @@ class IndexCommand(BaseCommand):
 
             progress.console.log('Indexing complete.')
 
-    def bulk_index_videos(self, video_ids=None, replace=False):
+    def bulk_index_videos(self, video_ids=None, replace=False, phases=None):
         """ Indexes all or given videos in bulk. Videos become searchable only at the end of the bulk indexing operation. """
 
         video_ids = video_ids or []
@@ -146,11 +156,18 @@ class IndexCommand(BaseCommand):
                 indexed_features = index_config.get('features', {})
                 str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
                 faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
+                update_lucene = str_objects or str_features
+
+                if phases:
+                    str_objects = str_objects if 'objects' in phases else False
+                    str_features = [f for f in str_features if f in phases]
+                    faiss_features = [f for f in faiss_features if f in phases]
+                    update_lucene = 'lucene' in phases
 
                 n_tasks = 0
                 n_tasks += 1 if str_objects else 0
                 n_tasks += len(str_features)
-                n_tasks += 2 if str_objects or str_features else 0
+                n_tasks += 2 if update_lucene else 0
                 n_tasks += len(faiss_features)
                 task = progress.add_task('Bulk indexing', total=n_tasks)
                 
@@ -167,7 +184,7 @@ class IndexCommand(BaseCommand):
                     progress.advance(task)
 
                 # push to Lucene index
-                if str_objects or str_features:
+                if update_lucene:
                     subtask = progress.add_task('- Creating Lucene documents', total=None)
                     self.prepare_lucene_docs(video_list=video_list_path, force=replace, progress=self.progress_callback(progress, subtask))
                     progress.advance(task)
