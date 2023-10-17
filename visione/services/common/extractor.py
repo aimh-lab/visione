@@ -1,11 +1,11 @@
 import csv
 from pathlib import Path
 import itertools
-import more_itertools
 import re
+import warnings
 
-# from visione import CliProgress
-# from visione.savers import GzipJsonlFile, HDF5File
+import more_itertools
+
 from . import CliProgress
 from .savers import GzipJsonlFile, HDF5File
 
@@ -16,10 +16,10 @@ class BaseExtractor(object):
     @classmethod
     def add_arguments(cls, parser):
         """ Add arguments to the parser. """
-        parser.add_argument('--batch-size', type=int, help='batch size')
+        parser.add_argument('--chunk-size', type=int, default=-1, help='if the extractor does not support streaming extraction, send this many image paths to the extractor at once. -1 means send all at once.')
         parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
         parser.add_argument('--gpu', default=False, action='store_true', help='use the GPU if available')
-        parser.add_argument('--save-every', type=int, default=5000, help='save every N records')
+        parser.add_argument('--save-every', type=int, default=5000, help='flush every N records extracted')
 
         parser.add_argument('input_images', type=Path, help='images to be processed.'
             'Can be a directory or a file with a list of images.'
@@ -40,7 +40,6 @@ class BaseExtractor(object):
         """ Initialize the extractor. """
         super(BaseExtractor, self).__init__()
         self.args = args
-        self.args.batch_size = self.args.batch_size or self.args.save_every
 
     def parse_input(self):
         """ Parses the input file and returns a list of (video_id, frame_id, frame_path) tuples. """
@@ -84,12 +83,20 @@ class BaseExtractor(object):
         """ Loads a batch of images and extracts features. """
         raise NotImplementedError()
 
-    def extract_iterable(self, image_paths, batch_size=1):
+    def extract_iterable(self, image_paths):
         """ Consumes an iterable and returns an iterable of records.
             This method contains a fallback implementation using chunked processing,
             but subclasses can implement optimized solutions here.
         """
-        batched_image_paths = more_itertools.chunked(image_paths, batch_size)
+        if self.args.chunk_size > 0:
+            batched_image_paths = more_itertools.chunked(image_paths, self.args.chunk_size)
+        else:
+            warnings.warn(
+                'Using chunked processing with chunk_size=-1. '
+                'This may cause memory issues and progress not showing correctly. '
+                'Set a positive chunk_size or implement extract_iterable() in your extractor to avoid this.'
+            )
+            batched_image_paths = [list(image_paths)]
         batched_records = map(self.extract, batched_image_paths)
         records = itertools.chain.from_iterable(batched_records)
         return records
@@ -121,7 +128,7 @@ class BaseExtractor(object):
         video_ids, image_ids, image_paths = more_itertools.padded(ids_and_paths, fillvalue=(), n=3)
 
         # process images in batches
-        records = self.extract_iterable(image_paths, self.args.batch_size)
+        records = self.extract_iterable(image_paths)
         ids_and_records = zip(video_ids, image_ids, records)
         ids_and_records = progress(ids_and_records)
 
@@ -141,10 +148,10 @@ class BaseVideoExtractor(object):
     @classmethod
     def add_arguments(cls, parser):
         """ Add arguments to the parser. """
-        parser.add_argument('--batch-size', type=int, help='batch size')
+        parser.add_argument('--chunk-size', type=int, default=-1, help='if the extractor does not support streaming extraction, send this many image paths to the extractor at once. -1 means send all at once.')
         parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
         parser.add_argument('--gpu', default=False, action='store_true', help='use the GPU if available')
-        parser.add_argument('--save-every', type=int, default=5000, help='save every N records')
+        parser.add_argument('--save-every', type=int, default=5000, help='flush every N records extracted')
 
         parser.add_argument('input_shots', type=Path, help='file containing the detected scenes.'
             'It is a file containing scenes information, in the format '
@@ -164,7 +171,6 @@ class BaseVideoExtractor(object):
         """ Initialize the extractor. """
         super(BaseVideoExtractor, self).__init__()
         self.args = args
-        self.args.batch_size = self.args.batch_size or self.args.save_every
 
     def parse_input(self):
         """ Parses the input file and returns a list of
@@ -238,12 +244,20 @@ class BaseVideoExtractor(object):
         """ Loads a batch of shots and extracts features. """
         raise NotImplementedError()
     
-    def extract_iterable(self, shot_infos, batch_size=1):
+    def extract_iterable(self, shot_infos):
         """ Consumes an iterable and returns an iterable of records.
             This method contains a fallback implementation using chunked processing,
             but subclasses can implement optimized solutions here.
         """
-        batched_shot_infos = more_itertools.chunked(shot_infos, batch_size)
+         if self.args.chunk_size > 0:
+            batched_shot_infos = more_itertools.chunked(shot_infos, self.args.chunk_size)
+        else:
+            warnings.warn(
+                'Using chunked processing with chunk_size=-1. '
+                'This may cause memory issues and progress not showing correctly. '
+                'Set a positive chunk_size or implement extract_iterable() in your extractor to avoid this.'
+            )
+            batched_shot_infos = [list(image_paths)]
         batched_records = map(self.extract, batched_shot_infos)
         records = itertools.chain.from_iterable(batched_records)
         return records
@@ -273,7 +287,7 @@ class BaseVideoExtractor(object):
                 return None
 
         # process images in batches
-        records = self.extract_iterable(shot_paths_and_times, self.args.batch_size)
+        records = self.extract_iterable(shot_paths_and_times)
 
         # unzip ids and paths
         shot_paths_and_times_unzipped = more_itertools.unzip(shot_paths_and_times)

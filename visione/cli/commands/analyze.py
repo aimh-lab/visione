@@ -259,7 +259,6 @@ class AnalyzeCommand(BaseCommand):
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
-            '--save-every', '200',
         ] + cmd_params + [
             str(input_path),
             'hdf5',
@@ -308,7 +307,6 @@ class AnalyzeCommand(BaseCommand):
             'python', 'extract.py',
         ] + (['--force'] if force else []) + [
         ] + (['--gpu'] if gpu else []) + [
-            '--save-every', '200',
         ] + cmd_params + [
             str(input_path),
             'jsonl',

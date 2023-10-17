@@ -37,18 +37,26 @@ services_urls:
 analysis:
   # Object detectors to employ (with optional parameters)
   object_detectors:
-    colors:
-    mrcnn-lvis:
-    vfnet64-coco:
-    frcnn-oiv4:
+    colors: {}
+    mrcnn-lvis: {}
+    vfnet64-coco: {}
+    frcnn-oiv4: {}
 
   # Feature vector extractors to employ (with optional parameters)
   features:
     gem:
+      chunk-size: 200
     aladin:
+      chunk-size: 1000
     clip-openai:
+      batch-size: 1   # Batch size
+      num-workers: 8  # Number of workers
     clip-laion:
+      batch-size: 1   # Batch size
+      num-workers: 8  # Number of workers
     clip-datacomp:
+      batch-size: 1   # Batch size
+      num-workers: 8  # Number of workers
     clip2video:
       pad-shot-to: 6  # Pad shots shorter than this length (in seconds)
       batch-size: 1   # Batch size

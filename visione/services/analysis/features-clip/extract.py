@@ -65,6 +65,8 @@ class CLIPExtractor(BaseExtractor):
     @classmethod
     def add_arguments(cls, parser):
         parser.add_argument('--model-handle', default=os.environ['MODEL_HANDLE'], help='hugging face handle of the CLIP model')
+        parser.add_argument('--batch-size', default=1, type=int, help='batch size')
+        parser.add_argument('--num-workers', default=4, type=int, help='number of workers')
         super(CLIPExtractor, cls).add_arguments(parser)
 
     def __init__(self, args):
@@ -85,7 +87,7 @@ class CLIPExtractor(BaseExtractor):
         records = list(self.extract_iterable(image_paths, batch_size))
         return records
 
-    def extract_iterable(self, image_paths, batch_size=2):
+    def extract_iterable(self, image_paths):
         self.setup()  # lazy load model
 
         # FIXME: iterable dataset has problems with h5py in multiprocessing, it only works with preload=True
@@ -95,7 +97,12 @@ class CLIPExtractor(BaseExtractor):
         # if we must preload, we might as well use a standard dataset
         image_paths = list(image_paths)
         dataset = ImageListDataset(image_paths, self.processor)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, num_workers=24, collate_fn=ImageListDataset.collate_fn)
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.args.batch_size,
+            num_workers=self.args.num_workers,
+            collate_fn=ImageListDataset.collate_fn
+        )
         
         with torch.no_grad():
             for images_pt in dataloader:
