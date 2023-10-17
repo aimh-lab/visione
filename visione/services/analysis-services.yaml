@@ -105,6 +105,7 @@ services:
       secrets: ["asset_token"]
     image: visione/features-aladin
     volumes: *common_volumes
+    shm_size: 2g
     profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
 
