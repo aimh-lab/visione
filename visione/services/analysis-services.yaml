@@ -94,6 +94,7 @@ services:
   features-clip2video:
     build: ./analysis/features-clip2video
     image: visione/features-clip2video
+    shm_size: 2g
     volumes: *common_volumes
     profiles: ["analysis", "features-clip2video"]
     deploy: *needs_gpu
