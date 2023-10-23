@@ -59,20 +59,28 @@
 				if (i % 6 == 0) {
 					table += "<div class='row'>";
 				}
-				link = "<div class='myalign'> <a style='font-size:12px;' href='indexedData.html?videoId=" + videoId + "&id=" + keyframes[i]
-					+ "' title='Show Indexed Data' target='_blank' >" + keyframes[i] + "</a>"
-					+ '<i class="fa fa-play" style="font-size:16px; color:#007bff;padding-left: 5px;padding-right: 5px;" onclick="playVideoWindow(\'' + videoUrl + '\', \'' + videoId + '\', \'' + keyframes[i] + '\'); return false;"></i>'
 
-					+ "<span class='pull-right'><i title='Submit result' class='fa fa-arrow-alt-circle-up' style='font-size:21px; float: right; color:#00AA00; padding-left: 0px;' "
-					+ "onclick=\"submitWithAlert('"+ frameName + "', '" + videoId + "'); return false;\"></i></span></div>";
-					//+ "onclick=\"console.log('pppp'); const channel = new BroadcastChannel('app-data'); channel.postMessage('"+ frameName + "," + videoId + "'); \"></i></span></div>";
+				let imgAttrs = (imgId == keyframes[i]) ?
+					`class="rounded myborder" id="${keyframes[i].split("\\.")[0]}"` :
+					`class="rounded"`;
 
-				if (imgId == keyframes[i]) {
-					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded myborder' id='"
-						+ keyframes[i].split("\\.")[0] + "'/></div>";
-				} else {
-					table += "<div class='col-2 with-margin'>" + link + "<img height=120 src='" + keyFramesUrl + path + "' title='" + keyframes[i] + "' class='rounded'/></div>";
-				}
+				// hack to replace .jpg with .png if the image is not found
+				// FIXME: remove it when all VISIONE instances will use pngs
+				let hack = `onerror="this.src = this.src.replace('.jpg', '.png')"`;
+
+				table += `
+				<div class='col-2 with-margin'>
+					<div class='myalign'>
+						<a style="font-size:12px;" href="indexedData.html?videoId=${videoId}&id=${keyframes[i]}" title="Show Indexed Data" target="_blank" >${keyframes[i]}</a>
+						<i class="fa fa-play" style="font-size: 16px; color: #007bff; padding-left: 5px; padding-right: 5px;" onclick="playVideoWindow('${videoUrl}', '${videoId}', '${keyframes[i]}'); return false;"></i>
+						<span class="pull-right">
+							<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size: 21px; float: right; color: #00AA00; padding-left: 0px;" onclick="submitWithAlert('${frameName}', '${videoId}'); return false;"></i>
+						</span>
+					</div>
+					<img height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
+				</div>
+				`;
+
 				if (i % 6 == 5) {
 					table += "</div>";
 				}
