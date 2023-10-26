@@ -18,7 +18,7 @@ RUN sed -i -e 's|from torch.hub import _download_url_to_file|from torch.hub impo
 RUN conda create --name sg_benchmark python=3.7 -y && \
     conda install -n sg_benchmark pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge && \
     conda install -n sg_benchmark ipython h5py nltk joblib jupyter pandas scipy && \
-    conda run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
+    conda run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython==0.29.34 matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
     conda install -n sg_benchmark -c conda-forge timm einops && \
     conda install -n sg_benchmark -c conda-forge pycocotools && \
     conda run --no-capture-output -n sg_benchmark python -m pip install cityscapesscripts && \
