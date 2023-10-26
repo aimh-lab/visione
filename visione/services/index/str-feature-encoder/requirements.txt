@@ -1,7 +1,10 @@
 flask==2.2.3
+Werkzeug>=2.2,<3.0
 h5py
 more-itertools
 pyyaml
-scikit-learn==0.23.2
-scipy==1.6.0
+#scikit-learn==0.23.2
+#scipy==1.6.0
+scikit-learn>=1.2
+scipy
 git+https://github.com/fabiocarrara/str-encoders
