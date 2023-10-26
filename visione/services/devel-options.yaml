@@ -14,12 +14,17 @@ services:
   objects-frcnn-oiv4:
     volumes: ["./analysis/objects-openimagesv4:/usr/src/app"]
 
+  features-aladin:
+    volumes:
+      - ./analysis/features-aladin/extract.py:/usr/src/app/ALADIN/extract.py
+      - ./analysis/features-aladin/service.py:/usr/src/app/ALADIN/alad/service.py
+
   features-clip-openai: &clip
     volumes: ["./analysis/features-clip:/usr/src/app"]
 
   features-clip-laion:
     <<: *clip
-  
+
   features-clip-datacomp:
     <<: *clip
 
