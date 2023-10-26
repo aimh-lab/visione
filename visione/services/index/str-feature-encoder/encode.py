@@ -4,6 +4,7 @@ import itertools
 import json
 import logging
 from pathlib import Path
+import random
 import sys
 
 import h5py
@@ -35,7 +36,7 @@ def get_features(features_input_template, video_ids):
     with h5py.File(features_h5, 'r') as f:
         features_name = f.attrs['features_name']
         features_dim = f['data'].shape[1]
-    
+
     # generate training set
     def _gen():
         for video_id in video_ids:
@@ -66,14 +67,16 @@ def load_or_build_encoder(encoder_filename, encoder_config, dim, features, n_tra
 
         encoder = surrogate.index_factory(dim, index_type, index_params)
 
-        assert encoder.is_trained, "Training the encoder on a single video is not supported. It will be supported for bulk indexing."
-
-        if not encoder.is_trained:  # currently not used
+        if not encoder.is_trained:
             # get subsample if necessary for training
-            train_features = itertools.islice(features, 0, n_train)
-            # train the encoder
             log.info('Training the encoder ...')
-            encoder.train(train_features)  # FIXME random shuffling is missing
+            log.info('- Collecting training features ...')
+            train_features = itertools.islice(features, 0, n_train)
+            train_features = list(train_features)
+            random.shuffle(train_features)
+            # train the encoder
+            log.info('- Training ...')
+            encoder.train(train_features)
             log.info('Trained.')
 
         # save encoder
@@ -155,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument('--force', default=False, action='store_true', help='overwrite existing data')
     parser.add_argument('--force-encoder', default=False, action='store_true', help='overwrite existing trained encoder')
     parser.add_argument('--batch-size', type=int, default=5000, help='encoder batch size')
-    parser.add_argument('--train-size', type=int, default=10_000, help='encoder train set size')
+    parser.add_argument('--train-size', type=int, default=500_000, help='encoder train set size')
 
     parser.add_argument('--video-ids-list-path', type=Path, help='path to file with list of video ids to process')
     parser.add_argument('--video-ids', nargs='+', help='list of video ids to process')
