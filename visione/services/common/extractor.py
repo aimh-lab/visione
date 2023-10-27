@@ -249,7 +249,7 @@ class BaseVideoExtractor(object):
             This method contains a fallback implementation using chunked processing,
             but subclasses can implement optimized solutions here.
         """
-         if self.args.chunk_size > 0:
+        if self.args.chunk_size > 0:
             batched_shot_infos = more_itertools.chunked(shot_infos, self.args.chunk_size)
         else:
             warnings.warn(
@@ -257,7 +257,7 @@ class BaseVideoExtractor(object):
                 'This may cause memory issues and progress not showing correctly. '
                 'Set a positive chunk_size or implement extract_iterable() in your extractor to avoid this.'
             )
-            batched_shot_infos = [list(image_paths)]
+            batched_shot_infos = [list(shot_infos)]
         batched_records = map(self.extract, batched_shot_infos)
         records = itertools.chain.from_iterable(batched_records)
         return records
