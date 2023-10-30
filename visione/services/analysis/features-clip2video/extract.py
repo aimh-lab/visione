@@ -130,6 +130,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         parser.add_argument('--pad-shot-to', type=float, default=0.0, help="Pad shots shorter than this duration (in seconds) before extracting features")
         parser.add_argument('--shot-fps', type=float, default=5, help="FPS to use when extracting shots from videos")
         parser.add_argument('--input-size', type=int, default=224, help="Size of the input images to the model")
+        parser.add_argument('--batch-size', type=int, default=1, help="Batch size")
         parser.add_argument('--num-workers', type=int, default=0, help="Number of workers for data loading")
         parser.add_argument('--ffmpeg-threads', type=int, default=2, help="Number of threads to use for each ffmpeg worker")
 
@@ -183,7 +184,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
 
         # init test dataloader
         dataset = C2VDataset(shot_paths_and_times, **self.load_shot_args)
-        dataloader = DataLoader(dataset, batch_size=1, num_workers=self.num_workers)
+        dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers)
 
         with torch.no_grad():
             records = [self.forward_batch(batch) for batch in dataloader]
@@ -191,11 +192,11 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
             
         return records
 
-    def extract_iterable(self, shot_paths_and_times, batch_size=2):
+    def extract_iterable(self, shot_paths_and_times):
         self.setup()
 
-        dataset = C2VIterableDataset(shot_paths_and_times, batch_size=batch_size, **self.load_shot_args)
-        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=self.num_workers)
+        dataset = C2VIterableDataset(shot_paths_and_times, batch_size=self.args.batch_size, **self.load_shot_args)
+        dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers)
 
         with torch.no_grad():
             for batch in dataloader:
