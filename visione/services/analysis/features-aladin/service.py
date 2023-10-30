@@ -65,6 +65,7 @@ def extract_quant_from_text():
 
     return jsonify(str_doc)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Service for query feature extraction for ALADIN models.')
 

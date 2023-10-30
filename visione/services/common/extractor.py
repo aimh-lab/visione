@@ -221,7 +221,7 @@ class BaseVideoExtractor(object):
                 scene_id = int(re.split('-|_', frame_path.stem)[-1])
                 if scene_id not in frame_id_to_timeinfo_dict:
                     print(f'WARNING: scene {scene_id} not found in {scenes_file}')
-                    
+
                 timeinfo = frame_id_to_timeinfo_dict[scene_id]
                 row = (video_id, frame_id, video_path, *timeinfo)
                 shot_paths_and_times.append(row)
@@ -243,7 +243,7 @@ class BaseVideoExtractor(object):
     def extract(self, shot_info):
         """ Loads a batch of shots and extracts features. """
         raise NotImplementedError()
-    
+
     def extract_iterable(self, shot_infos):
         """ Consumes an iterable and returns an iterable of records.
             This method contains a fallback implementation using chunked processing,
