@@ -227,7 +227,7 @@ public class VBSService {
 						BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
 						String textQuery = queryObj.getQuery().get("textual");
 						queryObj.getQuery().remove("textual");
-						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("al") >= 0;
+						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("alad") >= 0;
 						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("cl") >= 0;
 						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("cv") >= 0;
 						Boolean doAll=queryObj.getParameters().get("textualMode").indexOf("all") >= 0;
