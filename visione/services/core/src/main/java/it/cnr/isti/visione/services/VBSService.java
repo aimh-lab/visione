@@ -154,7 +154,8 @@ public class VBSService {
 		@DefaultValue("false") @FormParam("simreorder") boolean simReorder,
 		@DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row,
 		@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
-		@DefaultValue("1500") @FormParam("maxres") int maxRes
+		@DefaultValue("1500") @FormParam("maxres") int maxRes,
+		@DefaultValue("lucia") @FormParam("fusion") String fusionMode
 	) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		String response = "";
@@ -184,7 +185,7 @@ public class VBSService {
 					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
 					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
 					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k));//search by Clip4Video
-					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
+					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k, false, fusionMode);
 					log(res, query, logQueries, simReorder);
 					if (sortByVideo)
 					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
@@ -278,7 +279,7 @@ public class VBSService {
 
 						for (Thread t: threadedCombo)
 							t.join();
-						tabHits.add(searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false));//merging lucene res with clip res and adding it to tabHits	
+						tabHits.add(searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false, fusionMode));//merging lucene res with clip res and adding it to tabHits	
 
 					}else {//here we need to call Lucene without text 
 						tabHits.add(searcher.search(queryObj, k));
@@ -299,7 +300,7 @@ public class VBSService {
 		System.out.println("^^^^^^^^^ RES ^^^^^^^^");
 		try {
 			if (tabHits.size() > 1) {
-				hits = searcher.mergeResults(tabHits, Settings.K, true);//LUCIA bug fixed(?) Settings.K instead of K
+				hits = searcher.mergeResults(tabHits, Settings.K, true, fusionMode);
 			}
 			else if (tabHits.size() == 1) {
 				hits = tabHits.get(0);

@@ -908,8 +908,15 @@ public class LucTextSearch {
 
 	}
 
-	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, boolean temporalquery)
-			throws NumberFormatException, IOException {
+	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, boolean temporalquery, String fusionMode) throws NumberFormatException, IOException {
+		if (fusionMode.toLowerCase().equals("rrf"))
+			return mergeResultsRRF(topDocsList, topK, temporalquery);
+
+		// if (fusionMode.toLowerCase().equals("lucia"))
+		return mergeResultsLucia(topDocsList, topK, temporalquery);
+	}
+
+	private TopDocs mergeResultsLucia(List<TopDocs> topDocsList, int topK, boolean temporalquery) throws NumberFormatException, IOException {
 		topDocsList = topDocsList.stream().filter(x -> x != null).collect(Collectors.toList());
 		int nHitsToMerge = topDocsList.size();
 		TopDocs res = null;
@@ -1183,7 +1190,44 @@ public class LucTextSearch {
 
 		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
 	}
-	
+
+	private TopDocs mergeResultsRRF(List<TopDocs> topDocsList, int topK, boolean temporalquery) {
+		long time = -System.currentTimeMillis();
+		TopDocs res = null;
+		int nRankings = topDocsList.size();
+		int nHits = -1;
+		int k_rrf = 60;  // rank constant: higher values give more weight to lower-ranked docs
+
+		if (nRankings == 1) // no fusion needed
+			return TopDocs.merge(topK, topDocsList.toArray(new TopDocs[0]));  // merge() with single TopDocs == keep topK results
+		
+		if (nRankings > 1) {  // perform reciprocal rank fusion
+			ConcurrentHashMap<Integer, Float> fusedScores = new ConcurrentHashMap<Integer, Float>();
+
+			for (TopDocs rank: topDocsList) {
+				for (int i = 0; i < rank.scoreDocs.length; i++) {
+					int docID = rank.scoreDocs[i].doc;
+					float newScore = fusedScores.getOrDefault(docID, 0f) + (1 / (float) (i + 1 + k_rrf));
+					fusedScores.put(docID, newScore);
+				}
+			}
+
+			// create ScoreDocs
+			ScoreDoc[] scoreDocs = fusedScores.entrySet().stream() // get stream of (key=docId, value=score) entries
+				.sorted(Entry.<Integer, Float>comparingByValue().reversed()) // sort by descending score
+				.limit(topK) // keep topK entries
+				.map(e -> new ScoreDoc(e.getKey(), e.getValue())) // create ScoreDoc objects per each entry
+				.toArray(ScoreDoc[]::new); // convert to array
+
+			res = new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
+		}
+
+		time += System.currentTimeMillis();
+		System.out.println("** reciprocal rank fusion time: " + time + "ms" + "\t res size:" + nHits);
+
+		return res;
+	}
+
 	class MaxValue {
 		public int row;
 		private int col;
