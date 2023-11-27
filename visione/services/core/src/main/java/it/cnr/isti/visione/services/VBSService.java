@@ -148,9 +148,15 @@ public class VBSService {
 	@Path("/search")
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	@Produces(MediaType.TEXT_PLAIN)
-	public String search(@FormParam("query") String query, @DefaultValue("-1") @FormParam("k") int k, @DefaultValue("false") @FormParam("simreorder") boolean simReorder, @DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row) {
+	public String search(
+		@FormParam("query") String query,
+		@DefaultValue("-1") @FormParam("k") int k,
+		@DefaultValue("false") @FormParam("simreorder") boolean simReorder,
+		@DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row,
+		@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
+		@DefaultValue("1500") @FormParam("maxres") int maxRes
+	) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
-		int maxRes=1500;//
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
@@ -180,28 +186,38 @@ public class VBSService {
 					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k));//search by Clip4Video
 					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,1, false);
 					log(res, query, logQueries, simReorder);
+					if (sortByVideo)
 					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder);
+					if (sortByVideo)
 					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = searcher.searchByExample(features, k, hitsToReorder);
 					log(res, query, logQueries, simReorder);
-					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
+					if (sortByVideo)
+						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs res =searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder);
-					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
+					if (sortByVideo)
+						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
 					TopDocs res = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
 					log(res, query, logQueries, simReorder);
-					return gson.toJson(searcher.sortByVideo(res,n_frames_per_row, maxRes));
+					if (sortByVideo)
+						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else {
 					
@@ -291,8 +307,11 @@ public class VBSService {
 			
 			log(hits, query, logQueries, simReorder);
 			
+			if (sortByVideo)
+				response = gson.toJson(searcher.sortByVideo(hits, n_frames_per_row, maxRes));
+			else
+				response = gson.toJson(searcher.topDocs2SearchResults(hits, maxRes));
 			
-			response = gson.toJson(searcher.sortByVideo(hits,n_frames_per_row, maxRes));
 			if (response == null)
 				response = "";//new
 //				response = gson.toJson(searcher.topDocs2SearchResults(hits));
