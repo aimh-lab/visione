@@ -188,14 +188,14 @@ public class VBSService {
 					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k, false, fusionMode);
 					log(res, query, logQueries, simReorder);
 					if (sortByVideo)
-					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
 					log(res, query, logQueries, simReorder);
 					if (sortByVideo)
-					return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
+						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("qbe")) {
@@ -312,7 +312,7 @@ public class VBSService {
 				response = gson.toJson(searcher.sortByVideo(hits, n_frames_per_row, maxRes));
 			else
 				response = gson.toJson(searcher.topDocs2SearchResults(hits, maxRes));
-			
+
 			if (response == null)
 				response = "";//new
 //				response = gson.toJson(searcher.topDocs2SearchResults(hits));

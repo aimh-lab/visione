@@ -1192,6 +1192,7 @@ public class LucTextSearch {
 	}
 
 	private TopDocs mergeResultsRRF(List<TopDocs> topDocsList, int topK, boolean temporalquery) {
+		// Cormack et al. (2009, July). Reciprocal rank fusion outperforms condorcet and individual rank learning methods. In SIGIR 2009. (pp. 758-759).
 		long time = -System.currentTimeMillis();
 		TopDocs res = null;
 		int nRankings = topDocsList.size();
