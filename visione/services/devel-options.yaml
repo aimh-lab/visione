@@ -28,6 +28,11 @@ services:
   features-clip-datacomp:
     <<: *clip
 
+  features-clipvip:
+    volumes:
+      - ./analysis/features-clipvip/extract.py:/usr/src/app/extract.py
+      - ./analysis/features-clipvip/service.py:/usr/src/app/service.py
+
   features-clip2video:
     volumes:
       - ./analysis/features-clip2video/extract.py:/usr/src/app/extract.py

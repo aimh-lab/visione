@@ -109,6 +109,14 @@ services:
     profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
 
+  features-clipvip:
+    build: ./analysis/features-clipvip
+    image: visione/features-clipvip
+    shm_size: 2g
+    volumes: *common_volumes
+    profiles: ["analysis", "features-clipvip"]
+    deploy: *needs_gpu
+
   frame-cluster:
     build: ./analysis/frame-cluster
     image: visione/frame-cluster
