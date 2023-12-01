@@ -49,6 +49,7 @@ def query_example():
     return out
 
 # deprecated, just for backward compatibility of 'core' service
+@app.route('/', methods=['GET'])
 @app.route('/aladin', methods=['GET'])
 def extract_quant_from_text():
     text = request.args.get("text")
