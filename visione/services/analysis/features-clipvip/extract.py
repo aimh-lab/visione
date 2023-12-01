@@ -58,7 +58,7 @@ def load_shot(
         # return np.zeros((clip_len, 224, 224, 3), dtype=np.uint8)
         raise
     
-    how_many_frames = end_frame - start_frame
+    how_many_frames = int(duration * container.streams.video[0].average_rate)
     if how_many_frames == 0:
         how_many_frames = 1
     indices = sample_frame_indices(clip_len, how_many_frames)
