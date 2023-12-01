@@ -937,7 +937,7 @@ function showResults(data) {
 				}
 				let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
 				prevID = videoId;
-				let videoUrl = videoUrlPrefix + videoId + ".mp4";
+				let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
 				videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
 				let thumbnailPath = thumbnailUrl + path + ".jpg";
