@@ -822,131 +822,29 @@ public class LucTextSearch {
 		// the presence of significant outliers.
 	}
 
-	public TopDocs mergeHits(TopDocs td0, TopDocs td1, int k) { // Lucia: I assume that td0 (e.g CLIP) is better than
-																// td1
-		float lambda = 0.7f;
-		ScoreDoc[] hits0 = td0.scoreDocs.clone();
-		ScoreDoc[] hits1 = td1.scoreDocs.clone();
-		float[] minscores = { 0.8f * hits0[hits0.length - 1].score, hits1[hits1.length - 1].score };// hits0 may be an
-																									// order of
-																									// magnitude shorter
-																									// than hits1, I
-																									// assume that the
-																									// "real" min is
-																									// lower that the
-																									// one measured in
-																									// hits
-		float[] maxscores = { td0.scoreDocs[0].score, td1.scoreDocs[0].score };
-		// for(int i=0; i<200; i++) {
-		// float test0=nomalize_score(hits0[i].score, minscores[0], maxscores[0],1);
-		// float test1=nomalize_score(hits1[i].score, minscores[1], maxscores[1],1);
-		// System.out.println("test0: "+test0+"-- test1 "+ test1);
-		// }
 
-		int boost = Math.min(10, Math.min(hits0.length, hits1.length)); // boosting the first 10 results of both the
-																		// list (they will have a score greater then 1)
-		for (int i = 0; i < boost; i++) {
-			hits0[i].score *= 2;
-			hits1[i].score *= 2;
-
-		}
-
-		long total_time = -System.currentTimeMillis();
-		Arrays.sort(hits0, new Comparator<ScoreDoc>() {
-			@Override
-			public int compare(ScoreDoc a, ScoreDoc b) {
-				return a.doc - b.doc;
-			}
-		});
-		Arrays.sort(hits1, new Comparator<ScoreDoc>() {
-			@Override
-			public int compare(ScoreDoc a, ScoreDoc b) {
-				return a.doc - b.doc;
-			}
-		});
-
-		// Now merge sort docIDs from hits,
-		ArrayList<ScoreDoc> mergedRes = new ArrayList<ScoreDoc>();
-
-		int hit1Upto = 0;
-		for (int i0 = 0; i0 < hits0.length; i0++) {
-			ScoreDoc sc0 = hits0[i0];
-			int docID0 = sc0.doc;
-			sc0.score = nomalize_score(sc0.score, minscores[0], maxscores[0], lambda);
-
-			while (hit1Upto < hits1.length && hits1[hit1Upto].doc < docID0) {
-				ScoreDoc sc1 = hits1[hit1Upto];
-				sc1.score = nomalize_score(sc1.score, minscores[1], maxscores[1], 1 - lambda);
-				mergedRes.add(sc1);
-				hit1Upto++;
-			}
-			if (hit1Upto < hits1.length && hits1[hit1Upto].doc == docID0) {// caso in cui sono uscita dal while con un
-																			// match
-				ScoreDoc sc1 = hits1[hit1Upto];
-				sc1.score = nomalize_score(sc1.score, minscores[1], maxscores[1], 1 - lambda);
-				sc0.score = (sc0.score + sc1.score); // lo score del match lo metto in sc0
-				hit1Upto++;
-			}
-			mergedRes.add(sc0);
-		}
-
-		while (hit1Upto < hits1.length) {// caso in cui ho finito di scorrere la prima lista ma non la seconda
-			ScoreDoc sc1 = hits1[hit1Upto];
-			sc1.score = nomalize_score(sc1.score, minscores[1], maxscores[1], 1 - lambda);
-			mergedRes.add(sc1);
-			hit1Upto++;
-		}
-
-		Collections.sort(mergedRes, new ScoreDocsComparator()); // riordino in base allo score
-		k = Math.min(mergedRes.size(), k);
-		ScoreDoc[] firstKscoreDocs = mergedRes.stream().limit(k).collect(Collectors.toList()).toArray(new ScoreDoc[k]);
-
-		total_time += System.currentTimeMillis();
-		System.out.println("combining 2 hits time:" + total_time + "ms");
-
-		return new TopDocs(firstKscoreDocs.length, firstKscoreDocs, firstKscoreDocs[0].score);
-
-	}
 
 	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, boolean temporalquery, String fusionMode) throws NumberFormatException, IOException {
-		if (fusionMode.toLowerCase().equals("rrf"))
-			return mergeResultsRRF(topDocsList, topK, temporalquery);
-
-		// if (fusionMode.toLowerCase().equals("lucia"))
-		return mergeResultsLucia(topDocsList, topK, temporalquery);
-	}
-
-	private TopDocs mergeResultsLucia(List<TopDocs> topDocsList, int topK, boolean temporalquery) throws NumberFormatException, IOException {
 		topDocsList = topDocsList.stream().filter(x -> x != null).collect(Collectors.toList());
-		int nHitsToMerge = topDocsList.size();
-		TopDocs res = null;
-		
-		if (nHitsToMerge >= 1) { 
-			if (nHitsToMerge == 1) {//only one topDocs hits
-				TopDocs td = topDocsList.get(0);
-				if (td.totalHits > topK) {
-					td.scoreDocs = Arrays.copyOf(td.scoreDocs, topK);
-				}
-				res = td;
-			}	
-			else { //two or more topDocs
-				if (temporalquery)
-					res = combineResults_temporal(topDocsList, topK, 3, 12);
-				else {
-					res =combineResults(topDocsList, topK);
-//					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
-//						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
-//					else
-//						res = combineResults_temporal(topDocsList, topK, 2, 4);// qui entra se ci sono >=3 topDocs																// arrivarci mai ma da controllare!
-//					
-				
-				}
-				}
-		}
-		return res; //case nHitsToMerge <1, i.e. res=null
+		int nRankings = topDocsList.size();
+
+		if (nRankings <1)
+			return null;
+		if (nRankings == 1) // no fusion needed
+			return TopDocs.merge(topK, topDocsList.toArray(new TopDocs[0]));  // merge() with single TopDocs == keep topK results
+
+		//nRankings > 1
+		if (temporalquery)
+			 return combineResults_temporal(topDocsList, topK, 3, 12); 
+			 //note: temporal combination using RRF scores instead of normalized scores semmes to work worse
+
+		// if (fusionMode.toLowerCase().equals("rrf"))
+		// return mergeResultsRRF(topDocsList, topK, temporalquery);
+
+		// //if (fusionMode.toLowerCase().equals("rrf_with_boost"))
+		return mergeResultsRRFwithBoostTopN(topDocsList, topK);
+
 	}
-	
-//	private LRUCache<Integer, ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, ScoreDoc>>> mergeCache = new LRUCache<>(10);
 
 
 	private TopDocs combineResults_temporal(List<TopDocs> topDocsList, int k, int time_quantizer, float timeinterval)
@@ -1078,121 +976,58 @@ public class LucTextSearch {
 		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
 	}
 
-	private TopDocs combineResults(List<TopDocs> topDocsList, int k)
+
+
+
+	/**
+	 * Combine a list of top documents returned by a search engine using RRF and temporal quantization.
+	 *
+	 * @param topDocsList The list of TopDocs objects to be merged.
+	 * @param n The maximum number of merged documents to return.
+	 * @return The merged TopDocs object.
+	 */
+	private TopDocs mergeResultsRRFwithBoostTopN(List<TopDocs> topDocsList, int topK)
 			throws NumberFormatException, IOException {
-		long total_time = -System.currentTimeMillis();	
-		int time_quantizer=3;
-		int nHitsToMerge = topDocsList.size();
-		
-		
-	
 
 		long time = -System.currentTimeMillis();
-		Collections.sort(topDocsList, new Comparator<TopDocs>() {
-			@Override
-			public int compare(TopDocs o1, TopDocs o2) {
-				return Long.compare(o1.totalHits, o2.totalHits);
-			}
-		});
+		TopDocs res = null;
+		int nHits = topDocsList.size();
+		int k_rrf = 100;  // rank constant: higher values give more weight to lower-ranked docs
+		int n=3; //  boosting teh score of the top-k result of each list before merging them 
+		System.out.println("=");
+		ConcurrentHashMap<Integer, Float> fusedScores = new ConcurrentHashMap<Integer, Float>();
 
-
-		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
-		Set<String> videoIds = new HashSet<String> ();
-		float lambda= 10.0f/nHitsToMerge; //I used 10 to avoid  too small number (e.g. 10^-6)
-		
-		
-		for (int i = 0; i < nHitsToMerge; i++) {
-			TopDocs hits_i = topDocsList.get(i);
-			if(hits_i==null || hits_i.totalHits == 0)
-				continue;
-			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits);
-			float max_score= hits_i.scoreDocs[0].score;			
-			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
-			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
-			//boost first 10 results and normalize the others (up to max_res_each_hits)
-			for (int r=0; r< max_res_each_hits; r++) {
-				ScoreDoc sd=hits_i.scoreDocs[r];
-				float score=nomalize_score(sd.score, min_score, max_score, lambda);
-				if(r<10)
-					score *= nHitsToMerge;
-				scoreDocs[r]=new ScoreDoc(sd.doc, score);
-			}
-			TopDocs modified_hits_i=new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
-
-			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i
-			videoIds.addAll(shmap[i].keySet()); //videoIds is the union of all the videos in the topDocsList 
-
+		for (TopDocs topdocsHit: topDocsList) {
+			int max_rank= (int)Math.min(topK, topdocsHit.totalHits);
+			for (int rank = 0; rank < max_rank; rank++) {
+				int docID = topdocsHit.scoreDocs[rank].doc;
+				float score= k_rrf/ (float) (rank + k_rrf); 
+				//score=1 if rank=0, score=0.5 if rank=k_rrf, score 0.1 if rank=9*k_rrf
+				if(rank<n)
+				  	score *= nHits;
+				float newScore = fusedScores.getOrDefault(docID, 0f) + score;
+				fusedScores.put(docID, newScore);
+			}		// String res = test.mergeResults(res1, res2);
+			// System.out.println(res);
 		}
-		time += System.currentTimeMillis();
-		System.out.print("[hashing:" + time + "ms]\t");
+		ScoreDoc[] scoreDocs = fusedScores.entrySet().stream() // get stream of (key=docId, value=score) entries
+			.sorted(Entry.<Integer, Float>comparingByValue().reversed()) // sort by descending score
+			.limit(topK) // keep top n entries
+			.map(e -> new ScoreDoc(e.getKey(), e.getValue())) // create ScoreDoc objects per each entry
+			.toArray(ScoreDoc[]::new); // convert to array
 
-		// matching
-		time = -System.currentTimeMillis();
-		ArrayList<ScoreDoc> resultsSD = new ArrayList<>();
-
-		for (String videoId : videoIds) {
-			ConcurrentHashMap<Integer, HashSet<Integer>> hm_docs = new ConcurrentHashMap<Integer, HashSet<Integer>>();
-			ConcurrentHashMap<Integer, Float> hm_score = new ConcurrentHashMap<Integer, Float>();
-			for (int i = 0; i < nHitsToMerge; i++) {
-				ConcurrentHashMap<Integer, ScoreDoc> hm_i=shmap[i].get(videoId);
-				if(hm_i==null)
-					continue;
-				//List<Entry<Integer, ScoreDoc>> listOfEntries = new ArrayList(hm_i.entrySet());
-				for (Entry<Integer, ScoreDoc> entry : hm_i.entrySet()) {
-					Integer id_t = entry.getKey();
-					ScoreDoc sd=entry.getValue();
-					float aggregated_score=sd.score;
-					HashSet docSet=hm_docs.getOrDefault(id_t,new HashSet<Integer>());
-					aggregated_score+=hm_score.getOrDefault(id_t, 0.0f);
-					docSet.add(sd.doc);
-					hm_docs.put(id_t, docSet);
-					hm_score.put(id_t, aggregated_score);
-
-				}
-			}
-			//save merged results of the considered video
-			
-			for(Entry<Integer, HashSet<Integer>> entry_docs:hm_docs.entrySet()) {
-				Integer id_t = entry_docs.getKey();
-				HashSet<Integer> docSet=entry_docs.getValue();
-				float agg_score=hm_score.get(id_t);
-				for( int doc: docSet) {
-
-					ScoreDoc ssi = new ScoreDoc(doc, agg_score);
-					resultsSD.add(ssi);
-
-				}
-
-			}
-
-		}
+		res = new TopDocs(scoreDocs.length, scoreDocs, scoreDocs[0].score);
 
 		time += System.currentTimeMillis();
-		System.out.print("[matching time:" + time + "ms]\t");
+		System.out.println("** RRF (with boost top-"+n+") time: " + time + "ms" + "\t res size:" + res.totalHits);
 
-		time = -System.currentTimeMillis();
-		Collections.sort(resultsSD, new ScoreDocsComparator());
-		time += System.currentTimeMillis();
-		System.out.print("[sorting time:" + time + "ms]\t");
+		return res;
 
-		total_time += System.currentTimeMillis();
-		System.out.print("total HITS COMBINE time:" + total_time + "ms\t");
-
-		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
-
-		int nHits = Math.min(k, resultsSD.size());
-		if (nHits < 1)
-			return null;
-
-		ScoreDoc[] firstKscoreDocs = resultsSD.stream().limit(nHits).collect(Collectors.toList())
-				.toArray(new ScoreDoc[nHits]);
-		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
-
-		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
 	}
 
 	private TopDocs mergeResultsRRF(List<TopDocs> topDocsList, int topK, boolean temporalquery) {
 		// Cormack et al. (2009, July). Reciprocal rank fusion outperforms condorcet and individual rank learning methods. In SIGIR 2009. (pp. 758-759).
+		System.out.println("RRF");
 		long time = -System.currentTimeMillis();
 		TopDocs res = null;
 		int nRankings = topDocsList.size();
@@ -1322,157 +1157,8 @@ public class LucTextSearch {
 		System.out.println("clipID: " + queryId);
 		return (searchResults2TopDocs(CLIPExtractor.id2CLIPResults(queryId)));
 	}
-	
-	
-	public TopDocs mergeResults(List<TopDocs> topDocsList, int topK, int time_quantizer, boolean temporalquery)
-			throws NumberFormatException, IOException {
-		topDocsList = topDocsList.stream().filter(x -> x != null).collect(Collectors.toList());
-		int nHitsToMerge = topDocsList.size();
-		TopDocs res = null;
-		
-		if (nHitsToMerge >= 1) { 
-			if (nHitsToMerge == 1) {//only one topDocs hits
-				TopDocs td = topDocsList.get(0);
-				if (td.totalHits > topK) {
-					td.scoreDocs = Arrays.copyOf(td.scoreDocs, topK);
-				}
-				res = td;
-			}	
-			else { //two or more topDocs
-				if (temporalquery)
-					res = combineResults_temporal(topDocsList, topK, time_quantizer, 12);
-				else {
-					res =combineResults(topDocsList, topK, time_quantizer);
-//					if (nHitsToMerge == 2 && topDocsList.get(0).totalHits > 0 && topDocsList.get(1).totalHits > 0)
-//						res = mergeHits(topDocsList.get(0), topDocsList.get(1), topK); // clip is topDocsList.get(0), ALADIN is																	// topDocsList.get(1)
-//					else
-//						res = combineResults_temporal(topDocsList, topK, 2, 4);// qui entra se ci sono >=3 topDocs																// arrivarci mai ma da controllare!
-//					
-				
-				}
-				}
-		}
-		return res; //case nHitsToMerge <1, i.e. res=null
-	}
-	
-//	private LRUCache<Integer, ConcurrentHashMap<Integer, ConcurrentHashMap<Integer, ScoreDoc>>> mergeCache = new LRUCache<>(10);
 
 
-
-	private TopDocs combineResults(List<TopDocs> topDocsList, int k, int time_quantizer)
-			throws NumberFormatException, IOException {
-		long total_time = -System.currentTimeMillis();	
-		int nHitsToMerge = topDocsList.size();
-		
-		
-	
-
-		long time = -System.currentTimeMillis();
-		Collections.sort(topDocsList, new Comparator<TopDocs>() {
-			@Override
-			public int compare(TopDocs o1, TopDocs o2) {
-				return Long.compare(o1.totalHits, o2.totalHits);
-			}
-		});
-
-
-		ConcurrentHashMap<String, ConcurrentHashMap<Integer, ScoreDoc>>[] shmap = new ConcurrentHashMap[nHitsToMerge];
-		Set<String> videoIds = new HashSet<String> ();
-		float lambda= 10.0f/nHitsToMerge; //I used 10 to avoid  too small number (e.g. 10^-6)
-		
-		
-		for (int i = 0; i < nHitsToMerge; i++) {
-			TopDocs hits_i = topDocsList.get(i);
-			if(hits_i==null)
-				continue;
-			int max_res_each_hits=(int)Math.min(k, hits_i.totalHits);
-			float max_score= hits_i.scoreDocs[0].score;			
-			float min_score= hits_i.scoreDocs[max_res_each_hits - 1].score;
-			ScoreDoc[] scoreDocs=new ScoreDoc[max_res_each_hits] ;
-			//boost first 10 results and normalize the others (up to max_res_each_hits)
-			for (int r=0; r< max_res_each_hits; r++) {
-				ScoreDoc sd=hits_i.scoreDocs[r];
-				float score=nomalize_score(sd.score, min_score, max_score, lambda);
-				if(r<10)
-					score *= nHitsToMerge;
-				scoreDocs[r]=new ScoreDoc(sd.doc, score);
-			}
-			TopDocs modified_hits_i= new TopDocs(scoreDocs.length, scoreDocs, max_score);
-			//TopDocs modified_hits_i= new TopDocs(new TotalHits(scoreDocs.length, TotalHits.Relation.EQUAL_TO), scoreDocs);
-			shmap[i] = getVideoHashMap_th(modified_hits_i, time_quantizer, null); // hashing  hits_i
-			videoIds.addAll(shmap[i].keySet()); //videoIds is the union of all the videos in the topDocsList 
-
-		}
-		time += System.currentTimeMillis();
-		System.out.print("[hashing:" + time + "ms]\t");
-
-		// matching
-		time = -System.currentTimeMillis();
-		ArrayList<ScoreDoc> resultsSD = new ArrayList<>();
-
-		for (String videoId : videoIds) {
-			ConcurrentHashMap<Integer, HashSet<Integer>> hm_docs = new ConcurrentHashMap<Integer, HashSet<Integer>>();
-			ConcurrentHashMap<Integer, Float> hm_score = new ConcurrentHashMap<Integer, Float>();
-			for (int i = 0; i < nHitsToMerge; i++) {
-				ConcurrentHashMap<Integer, ScoreDoc> hm_i=shmap[i].get(videoId);
-				if(hm_i==null)
-					continue;
-				//List<Entry<Integer, ScoreDoc>> listOfEntries = new ArrayList(hm_i.entrySet());
-				for (Entry<Integer, ScoreDoc> entry : hm_i.entrySet()) {
-					Integer id_t = entry.getKey();
-					ScoreDoc sd=entry.getValue();
-					float aggregated_score=sd.score;
-					HashSet docSet=hm_docs.getOrDefault(id_t,new HashSet<Integer>());
-					aggregated_score+=hm_score.getOrDefault(id_t, 0.0f);
-					docSet.add(sd.doc);
-					hm_docs.put(id_t, docSet);
-					hm_score.put(id_t, aggregated_score);
-
-				}
-			}
-			//save merged results of the considered video
-			
-			for(Entry<Integer, HashSet<Integer>> entry_docs:hm_docs.entrySet()) {
-				Integer id_t = entry_docs.getKey();
-				HashSet<Integer> docSet=entry_docs.getValue();
-				float agg_score=hm_score.get(id_t);
-				for( int doc: docSet) {
-
-					ScoreDoc ssi = new ScoreDoc(doc, agg_score);
-					resultsSD.add(ssi);
-
-				}
-
-			}
-
-		}
-
-		time += System.currentTimeMillis();
-		System.out.print("[matching time:" + time + "ms]\t");
-
-		time = -System.currentTimeMillis();
-		Collections.sort(resultsSD, new ScoreDocsComparator());
-		time += System.currentTimeMillis();
-		System.out.print("[sorting time:" + time + "ms]\t");
-
-		total_time += System.currentTimeMillis();
-		System.out.print("total HITS COMBINE time:" + total_time + "ms\t");
-
-		System.out.print("[result size before truncation " + resultsSD.size() + "]\t");
-
-		int nHits = Math.min(k, resultsSD.size());
-		if (nHits < 1)
-			return null;
-
-		ScoreDoc[] firstKscoreDocs = resultsSD.stream().limit(nHits).collect(Collectors.toList())
-				.toArray(new ScoreDoc[nHits]);
-		System.out.println("  [result size after truncation " + firstKscoreDocs.length + "]");
-
-		return new TopDocs(nHits, firstKscoreDocs, firstKscoreDocs[0].score);
-//		return new TopDocs(new TotalHits(nHits, TotalHits.Relation.EQUAL_TO), firstKscoreDocs);
-
-
-	}
 
 	public static void main(String[] args) throws NumberFormatException, IOException {
 		String res1 = "6.567852 03551/shot03551_83.png 6.3930883 07053/shot07053_41.png 6.3930883 01009/shot01009_24.png 6.1475897 05709/shot05709_1205.png 6.1475897 02254/shot02254_6.png 6.1475897 07053/shot07053_109.png 6.1475897 06853/shot06853_46.png 6.1475897 05565/shot05565_167.png 6.09558 03249/shot03249_63.png 6.09558 03119/shot03119_160.png 6.09558 02218/shot02218_178.png";
