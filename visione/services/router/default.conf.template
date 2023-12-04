@@ -47,7 +47,7 @@ server {
 
 	# HACK: use variable in proxy_pass to avoid nginx exit on startup if the service is not available (disabled)
 	location ^~ /gem                           { set $url "http://features-gem:5090/";                                proxy_pass $url$is_args$args; }
-	location ^~ /aladin                        { set $url "http://features-aladin:5020/";                             proxy_pass $url$is_args$args; }
+	location ^~ /aladin                        { set $url "http://features-aladin:5020/aladin";                       proxy_pass $url$is_args$args; }
 	location ^~ /clip-text-search              { set $url "http://features-clip-openai:5030/text-to-image-search";    proxy_pass $url$is_args$args; }
 	location ^~ /clip-internal-search          { set $url "http://features-clip-openai:5030/internal-image-search";   proxy_pass $url$is_args$args; }
 	location ^~ /clip-laion-text-search        { set $url "http://features-clip-laion:5030/text-to-image-search";     proxy_pass $url$is_args$args; }
