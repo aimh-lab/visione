@@ -52,6 +52,12 @@ class ImportCommand(BaseCommand):
         parser.add_argument('--scene-detection-params', default=DEFAULT_DETECTION_PARAMS, type=str2list, help='A string (use quotes) with scenedetect detection parameters (see https://www.scenedetect.com/docs/latest/cli.html#detectors)')
         parser.add_argument('--scene-max-length', default=0, type=float, help='Maximum length in seconds of a scene. Longer scenes will be splitted. 0 = no maximum length.')
 
+        parser.add_argument('--no-copy', dest='do_copy', default=True, action='store_false', help='Do not copy the video file to the collection.')
+        parser.add_argument('--no-resize', dest='do_resize', default=True, action='store_false', help='Do not create resized videos.')
+        parser.add_argument('--no-scenes', dest='do_scenes', default=True, action='store_false', help='Do not detect scenes.')
+        parser.add_argument('--no-frames', dest='do_frames', default=True, action='store_false', help='Do not extract frames.')
+        parser.add_argument('--no-thumbs', dest='do_thumbs', default=True, action='store_false', help='Do not create frames thumbnails.')
+
         parser.add_argument('video_path_or_url', nargs='?', default=None, help='Path or URL to video file to be imported. If not given, resumes importing of existing videos.')
         parser.set_defaults(func=self)
 
@@ -63,9 +69,14 @@ class ImportCommand(BaseCommand):
         gpu,
         scene_detection_params,
         scene_max_length,
+        do_copy,
+        do_resize,
+        do_scenes,
+        do_frames,
+        do_thumbs,
         bulk=False,
         **kwargs,
-        ):
+    ):
         super(ImportCommand, ImportCommand).__call__(self, **kwargs)
         self.create_services_containers()
 
@@ -81,15 +92,41 @@ class ImportCommand(BaseCommand):
             video_paths = [str(v) for v in video_paths]
         else:
             # import a single video
-            video_paths = [video_path_or_url]
+            video_paths = [Path(video_path_or_url)]
+
+        common = (
+            replace,
+            gpu,
+            scene_detection_params,
+            scene_max_length,
+            do_copy,
+            do_resize,
+            do_scenes,
+            do_frames,
+            do_thumbs,
+        )
 
         if bulk and multi_import:
-           return self._import_bulk(video_paths, replace, gpu, scene_detection_params, scene_max_length)
+           return self._import_bulk(video_paths, *common)
 
-        return self._import_sequential(video_paths, multi_import, video_id, replace, gpu, scene_detection_params, scene_max_length)
+        return self._import_sequential(video_paths, multi_import, video_id, *common)
 
 
-    def _import_sequential(self, video_paths, multi_import, video_id, replace, gpu, scene_detection_params, scene_max_length):
+    def _import_sequential(
+        self,
+        video_paths,
+        multi_import,
+        video_id,
+        replace,
+        gpu,
+        scene_detection_params,
+        scene_max_length,
+        do_copy,
+        do_resize,
+        do_scenes,
+        do_frames,
+        do_thumbs,
+    ):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress:
 
@@ -104,33 +141,40 @@ class ImportCommand(BaseCommand):
                 subtasks = []
 
                 # import video file
-                subtask = progress.add_task('- Copying video file')
-                overwrite = replace if not multi_import else False
-                video_id, video_path = self.copy_or_download_video(video_path, video_id, overwrite, show_progress(subtask))
-                subtasks.append(subtask)
+                if do_copy:
+                    subtask = progress.add_task('- Copying video file')
+                    overwrite = replace if not multi_import else False
+                    video_id, video_path = self.copy_or_download_video(video_path, video_id, overwrite, show_progress(subtask))
+                    subtasks.append(subtask)
 
                 # create resized video files
-                subtask = progress.add_task('- Resizing video')
-                thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, gpu, show_progress(subtask)))
-                thread.start()
-                subtasks.append(subtask)
+                if do_resize:
+                    subtask = progress.add_task('- Resizing video')
+                    thread = threading.Thread(target=self.create_resized_videos, args=(video_path, video_id, replace, gpu, show_progress(subtask)))
+                    thread.start()
+                    subtasks.append(subtask)
 
                 # detect scenes
-                subtask = progress.add_task('- Detect scenes', total=None)
-                self.detect_scenes(video_path, video_id, scene_detection_params, scene_max_length, force=replace, show_progress=show_progress(subtask))
-                subtasks.append(subtask)
+                if do_scenes:
+                    subtask = progress.add_task('- Detect scenes', total=None)
+                    self.detect_scenes(video_path, video_id, scene_detection_params, scene_max_length, force=replace, show_progress=show_progress(subtask))
+                    subtasks.append(subtask)
 
                 # extract frames
-                subtask = progress.add_task('- Extract frames', total=None)
-                self.extract_frames(video_path, video_id, force=replace, show_progress=show_progress(subtask))
-                subtasks.append(subtask)
+                if do_frames:
+                    subtask = progress.add_task('- Extract frames', total=None)
+                    self.extract_frames(video_path, video_id, force=replace, show_progress=show_progress(subtask))
+                    subtasks.append(subtask)
 
                 # create frames thumbnails
-                subtask = progress.add_task('- Generating thumbs')
-                self.create_frames_thumbnails(video_id, replace, show_progress(subtask))
-                subtasks.append(subtask)
+                if do_thumbs:
+                    subtask = progress.add_task('- Generating thumbs')
+                    self.create_frames_thumbnails(video_id, replace, show_progress(subtask))
+                    subtasks.append(subtask)
 
-                thread.join()
+                if do_resize:
+                    thread.join()
+                
                 progress.console.log(f"- '{video_id}' imported.")
                 for subtask in subtasks:
                     progress.remove_task(subtask)
@@ -144,7 +188,19 @@ class ImportCommand(BaseCommand):
         ret = [] if multi_import else [video_id]
         return ret
 
-    def _import_bulk(self, video_paths, replace, gpu, scene_detection_params, scene_max_length):
+    def _import_bulk(
+        self,
+        video_paths,
+        replace,
+        gpu,
+        scene_detection_params,
+        scene_max_length,
+        do_copy,
+        do_resize,
+        do_scenes,
+        do_frames,
+        do_thumbs,
+    ):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), MofNCompleteColumn(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress, \
              concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as executor:
@@ -162,22 +218,29 @@ class ImportCommand(BaseCommand):
                 return results
 
             # copy all video files
-            video_ids_and_paths = map_with_progress(self.copy_or_download_video, video_paths, description='Copying video files')
+            if do_copy:
+                video_ids_and_paths = map_with_progress(self.copy_or_download_video, video_paths, description='Copying video files')
+            else:
+                video_ids_and_paths = [self.get_video_id_and_path(v) for v in video_paths]
 
             # create all resized videos
-            func = lambda x: self.create_resized_videos(x[1], x[0], replace, gpu)
-            map_with_progress(func, video_ids_and_paths, description='Resizing videos')
+            if do_resize:
+                func = lambda x: self.create_resized_videos(x[1], x[0], replace, gpu)
+                map_with_progress(func, video_ids_and_paths, description='Resizing videos')
 
-            # detect scenes and extract frames
-            func = lambda x: self.detect_scenes(x[1], x[0], scene_detection_params, scene_max_length, force=replace)
-            map_with_progress(func, video_ids_and_paths, description='Detecting scenes')
+            if do_scenes:
+                # detect scenes and extract frames
+                func = lambda x: self.detect_scenes(x[1], x[0], scene_detection_params, scene_max_length, force=replace)
+                map_with_progress(func, video_ids_and_paths, description='Detecting scenes')
 
-            func = lambda x: self.extract_frames(x[1], x[0], force=replace)
-            map_with_progress(func, video_ids_and_paths, description='Extracting frames')
+            if do_frames:
+                func = lambda x: self.extract_frames(x[1], x[0], force=replace)
+                map_with_progress(func, video_ids_and_paths, description='Extracting frames')
 
-            # create frames thumbnails
-            func = lambda x: self.create_frames_thumbnails(x[0], replace)
-            map_with_progress(func, video_ids_and_paths, description='Generating thumbs')
+            if do_thumbs:
+                # create frames thumbnails
+                func = lambda x: self.create_frames_thumbnails(x[0], replace)
+                map_with_progress(func, video_ids_and_paths, description='Generating thumbs')
 
             progress.console.log('Import complete.')
 
@@ -185,6 +248,28 @@ class ImportCommand(BaseCommand):
         # otherwise, return the video ID of the imported video
         # XXX this is for supporting the 'add' cli command but the interface needs to be improved
         return []
+
+    def get_video_id_and_path(self, video_path_or_url, video_id=None):
+        """ Returns the video ID and path given a video path or URL.
+
+        Args:
+            video_path_or_url (str or pathlib.Path): Local path or URL of the video.
+            video_id (str, optional): New ID of the downloaded video. If None, take the video file stem as video ID. Defaults to None.
+
+        Returns:
+            video_id (str): The given video ID (useful if video_id was None).
+            video_path (pathlib.Path): Path to the copied video.
+        """
+
+        # get the URL path to extract the video filename and extension
+        url_parts = urllib.parse.urlparse(video_path_or_url)
+        video_filename = Path(url_parts.path)
+
+        video_id = str(video_filename.stem) if not video_id else video_id
+        video_ext = str(video_filename.suffix)
+
+        video_out = self.collection_dir / 'videos' / f'{video_id}{video_ext}'
+        return video_id, video_out
 
     def copy_or_download_video(self, video_path_or_url, video_id=None, replace=False, show_progress=None):
         """ Copies or downloads a video from a local path or URL and places it
@@ -201,14 +286,7 @@ class ImportCommand(BaseCommand):
             video_path (pathlib.Path): Path to the copied video.
         """
 
-        # get the URL path to extract the video filename and extension
-        url_parts = urllib.parse.urlparse(video_path_or_url)
-        video_filename = Path(url_parts.path)
-
-        video_id = str(video_filename.stem) if not video_id else video_id
-        video_ext = str(video_filename.suffix)
-
-        video_out = self.collection_dir / 'videos' / f'{video_id}{video_ext}'
+        video_id, video_out = self.get_video_id_and_path(video_path_or_url, video_id)
         if video_out.exists() and (not replace or video_out.samefile(video_path_or_url)):
             print(f'Using existing video file: {video_out.name}')
             if show_progress:
