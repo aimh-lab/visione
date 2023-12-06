@@ -1,6 +1,7 @@
 import argparse
 import itertools
 import av
+import gc
 
 import more_itertools
 from easydict import EasyDict as edict
@@ -17,7 +18,8 @@ from visione.extractor import BaseVideoExtractor
 
 def read_video_pyav(container, indices, start_time, how_many_frames):
     frames = []
-    container.seek(int(start_time * container.streams.video[0].time_base), any_frame=True)
+    start_time_tb = int(start_time * av.time_base)
+    container.seek(start_time_tb, any_frame=True)
 
     for i, frame in enumerate(container.decode(video=0)):
         if i > how_many_frames:
@@ -50,19 +52,14 @@ def load_shot(
         end_time = start_time + pad_shot_to_seconds  # FIXME: this could overshoot the end of the video
         duration = pad_shot_to_seconds
 
-    try:
-        container = av.open(video_path.as_posix())
-    except:
-        print(f"Failed to open {video_path}")
-        # return a black clip
-        # return np.zeros((clip_len, 224, 224, 3), dtype=np.uint8)
-        raise
-    
-    how_many_frames = int(duration * container.streams.video[0].average_rate)
-    if how_many_frames == 0:
-        how_many_frames = 1
-    indices = sample_frame_indices(clip_len, how_many_frames)
-    video = read_video_pyav(container, indices, start_time, how_many_frames)
+    with av.open(video_path.as_posix()) as container:
+        how_many_frames = int(duration * container.streams.video[0].average_rate)
+        if how_many_frames == 0:
+            how_many_frames = 1
+        indices = sample_frame_indices(clip_len, how_many_frames)
+        video = read_video_pyav(container, indices, start_time, how_many_frames)
+
+    gc.collect()    # FIXME: this avoids a memory leak in pyav, but probably there's a better way
 
     return video
 
