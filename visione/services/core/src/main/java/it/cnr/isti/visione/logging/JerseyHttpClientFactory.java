@@ -7,9 +7,6 @@ import javax.net.ssl.TrustManager;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
-
 import it.cnr.isti.visione.services.Settings;
 
 import java.security.KeyManagementException;

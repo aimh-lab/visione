@@ -7,8 +7,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Properties;
 
-import javax.json.Json;
-
 import org.json.JSONObject;
 
 import com.google.gson.Gson;
