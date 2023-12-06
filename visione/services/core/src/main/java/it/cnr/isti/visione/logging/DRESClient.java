@@ -7,21 +7,15 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
-import org.openapitools.client.model.ClientRunInfo;
-import org.openapitools.client.model.ClientRunInfoList;
-import org.openapitools.client.model.LoginRequest;
-import org.openapitools.client.model.QueryEventLog;
-import org.openapitools.client.model.QueryResultLog;
-import org.openapitools.client.model.SuccessStatus;
-import org.openapitools.client.model.SuccessfulSubmissionsStatus;
-import org.openapitools.client.model.UserDetails;
+import org.openapitools.client.model.*;
 
 import com.google.gson.Gson;
 
 import dev.dres.ApiClient;
 import dev.dres.ApiException;
-import dev.dres.client.ClientRunInfoApi;
+import dev.dres.client.EvaluationClientApi;
 import dev.dres.client.LogApi;
 import dev.dres.client.SubmissionApi;
 import dev.dres.client.UserApi;
@@ -30,7 +24,7 @@ import it.cnr.isti.visione.services.Settings;
 public class DRESClient {
 	
 	private UserApi userApi;
-	private ClientRunInfoApi runInfoApi;
+	private EvaluationClientApi runInfoApi;
 	private SubmissionApi submissionApi;
 	private LogApi logApi;
 	private String sessionId;
@@ -67,7 +61,7 @@ public class DRESClient {
         userApi = new UserApi(client);
 
         //initialize evaluation run info client
-        runInfoApi = new ClientRunInfoApi(client);
+        runInfoApi = new EvaluationClientApi(client);
 
         //initialize submission api client
         submissionApi = new SubmissionApi(client);
@@ -78,9 +72,9 @@ public class DRESClient {
         System.out.println("Trying to log in to '" + Settings.SUBMIT_SERVER + "' with user '" + Settings.SUBMIT_USER + "'");
 
         //login request
-        UserDetails login = null;
+        ApiUser login = null;
         try {
-            login = userApi.postApiV1Login(new LoginRequest().username(Settings.SUBMIT_USER).password(Settings.SUBMIT_PWD));
+            login = userApi.postApiV2Login(new LoginRequest().username(Settings.SUBMIT_USER).password(Settings.SUBMIT_PWD));
             System.out.println("login successful");
             System.out.println("user: " + login.getUsername());
             System.out.println("role: " + login.getRole().getValue());
@@ -109,9 +103,13 @@ public class DRESClient {
 	public String dresSubmitResultByTime(String video, String timestamp) throws ApiException {
         SuccessfulSubmissionsStatus res = null;
         System.out.println("submitting " + video + " @ " + timestamp);
+        List<ApiEvaluationInfo> currentRuns;
+        currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
+        String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+
         try {
 	        //TODO
-        	res = submissionApi.getApiV1Submit(
+        	/*res = submissionApi.getApiV1Submit(
 	                null, //does not usually need to be set
 	                video, //item which is to be submitted
                     null, //in case the task is not targeting a particular content object but plaintext
@@ -119,7 +117,15 @@ public class DRESClient {
                     null,  // only one of the time fields needs to be set.
                     timestamp, //in this case, we use the timestamp in the form HH:MM:SS:FF
 	                sessionId
-	        );
+	        );*/
+        	res = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+                    new ApiClientSubmission().addAnswerSetsItem(
+                        new ApiClientAnswerSet().addAnswersItem(
+                            new ApiClientAnswer()
+                                .mediaItemId(video) //item which is to be submitted
+                                .start(Long.parseLong(timestamp)) //start time in milliseconds
+                        )
+                    ), sessionId);
         } catch (ApiException e) {
         	String message = "";
             ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
@@ -152,8 +158,12 @@ public class DRESClient {
         return res.getDescription();
 	}
 
-	
+	//TODO Remove its call in VBSService
 	public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
+		return null;
+	}
+	
+	/*public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
         SuccessfulSubmissionsStatus res = null;
         System.out.println("submitting " + video + " @ frame " + frameNumber);
         try {
@@ -167,6 +177,14 @@ public class DRESClient {
                     null, //in this case, we use the timestamp in the form HH:MM:SS:FF
 	                sessionId
 	        );
+        	res = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+                    new ApiClientSubmission().addAnswerSetsItem(
+                        new ApiClientAnswerSet().addAnswersItem(
+                            new ApiClientAnswer()
+                                .mediaItemId("some_item_name"). //item which is to be submitted
+                                .start(10_000L) //start time in milliseconds
+                        )
+                    ), sessionId);
         } catch (ApiException e) {
         	String message = "";
             ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
@@ -197,7 +215,7 @@ public class DRESClient {
             System.out.println("The submission was successfully sent to the server.");
         }
         return res.getDescription();
-	}
+	}*/
 	
 	public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 		DresQueryLogging queryLogging = new DresQueryLogging(eventLog);
@@ -213,7 +231,7 @@ public class DRESClient {
 		 SuccessStatus logout = null;
 
 //         logout = userApi.getApiLogout(sessionId);
-         logout = userApi.getApiV1Logout(sessionId);
+         logout = userApi.getApiV2Logout(sessionId);
 
         if (logout.getStatus()) {
             System.out.println("Successfully logged out");
@@ -245,7 +263,7 @@ public class DRESClient {
 		public String submitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	        SuccessStatus res = null;
 			try {
-	           res = logApi.postApiV1LogQuery(sessionId, eventLog);
+	           res = logApi.postApiV2LogQuery(sessionId, eventLog);
 	        } catch (ApiException e) {
 	        	String message = "Error during request: '" + e.getMessage() + "'";
 	            System.err.println(message);
@@ -278,7 +296,7 @@ public class DRESClient {
 		public String submitResults(QueryResultLog resultsLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	        SuccessStatus res = null;
 			try {
-	           res = logApi.postApiV1LogResult(sessionId, resultsLog);
+	           res = logApi.postApiV2LogResult(sessionId, resultsLog);
 	        } catch (ApiException e) {
 	        	String message = "Error during request: '" + e.getMessage() + "'";
 	            System.err.println(message);

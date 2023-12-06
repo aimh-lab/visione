@@ -13,6 +13,7 @@ import com.google.gson.Gson;
 
 
 import org.openapitools.client.model.QueryEvent;
+import org.openapitools.client.model.QueryEventCategory;
 import org.openapitools.client.model.QueryEventLog;
 import org.openapitools.client.model.QueryResult;
 import org.openapitools.client.model.QueryResultLog;
@@ -231,32 +232,32 @@ public class LogParserDRES {
 		return category;
 	}
 	
-	private QueryEvent.CategoryEnum getCategoryEnum(String field) {
-		QueryEvent.CategoryEnum category;
+	private QueryEventCategory getCategoryEnum(String field) {
+		QueryEventCategory category;
 		
 		switch (field) {
 		case "text":
-			category = QueryEvent.CategoryEnum.TEXT;
+			category = QueryEventCategory.TEXT;
 			break;
 			
 		case "sketch":
-			category = QueryEvent.CategoryEnum.SKETCH;
+			category = QueryEventCategory.SKETCH;
 			break;
 			
 		case "filter":
-			category = QueryEvent.CategoryEnum.FILTER;
+			category = QueryEventCategory.FILTER;
 			break;
 			
 		case "image":
-			category = QueryEvent.CategoryEnum.IMAGE;
+			category = QueryEventCategory.IMAGE;
 			break;
 		
 		case "browsing":
-			category = QueryEvent.CategoryEnum.BROWSING;
+			category = QueryEventCategory.BROWSING;
 			break;
 		
 		default:
-			category = QueryEvent.CategoryEnum.OTHER;
+			category = QueryEventCategory.OTHER;
 		}
 		
 		return category;
