@@ -33,6 +33,9 @@ services:
       - ./analysis/features-clipvip/extract.py:/usr/src/app/extract.py
       - ./analysis/features-clipvip/service.py:/usr/src/app/service.py
 
+  features-biomed-clip:
+    volumes: ["./analysis/features-openclip:/usr/src/app"]
+
   features-clip2video:
     volumes:
       - ./analysis/features-clip2video/extract.py:/usr/src/app/extract.py

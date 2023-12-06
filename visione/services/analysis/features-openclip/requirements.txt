@@ -1,0 +1,8 @@
+flask==2.2.3
+Werkzeug>=2.2,<3.0
+h5py
+more_itertools
+Pillow
+pyyaml
+open_clip_torch>=2.23.0
+transformers==4.34.1

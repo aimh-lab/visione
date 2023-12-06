@@ -91,6 +91,16 @@ services:
     profiles: ["analysis", "features-clip-datacomp"]
     deploy: *needs_gpu
 
+  features-biomed-clip:
+    build: ./analysis/features-openclip
+    image: visione/features-openclip
+    environment:
+      - FEATURES_NAME=biomed-clip
+      - MODEL_HANDLE=hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+    volumes: *common_volumes
+    profiles: ["analysis", "features-biomed-clip"]
+    deploy: *needs_gpu
+
   features-clip2video:
     build: ./analysis/features-clip2video
     image: visione/features-clip2video
