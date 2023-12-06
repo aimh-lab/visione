@@ -85,6 +85,7 @@ class VideoCollate():
         batch = self.processor(videos=batch, return_tensors="pt").pixel_values
         return batch
 
+
 class C2VIterableDataset(torch.utils.data.IterableDataset):
     def __init__(self, iterable, *, batch_size=1, **kwargs):
         self.iterable = iterable
@@ -96,13 +97,17 @@ class C2VIterableDataset(torch.utils.data.IterableDataset):
         return batch
   
     def __iter__(self):
-        worker_info = torch.utils.data.get_worker_info()
-        worker_id = worker_info.id
-        num_workers = worker_info.num_workers
-
-        # chunk by batch size, then skip batches for other workers
+        # chunk by batch size
         itr = more_itertools.chunked(self.iterable, self.batch_size)
-        itr = itertools.islice(itr, worker_id, None, num_workers)
+
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+        
+            # skip batches for other workers
+            itr = itertools.islice(itr, worker_id, None, num_workers)
+
         itr = map(self.process, itr)
         itr = itertools.chain.from_iterable(itr)
         return itr
