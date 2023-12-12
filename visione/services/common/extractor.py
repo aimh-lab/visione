@@ -189,8 +189,6 @@ class BaseVideoExtractor(object):
             with input_shots.open() as image_list:
                 shot_frames = list(csv.reader(image_list, delimiter='\t'))
 
-        shot_paths_and_times = []
-
         # for each video, read the scenes.csv to get the time information
         for video_id, group in itertools.groupby(shot_frames, key=lambda x: x[0]):
 
@@ -224,11 +222,9 @@ class BaseVideoExtractor(object):
 
                 timeinfo = frame_id_to_timeinfo_dict[scene_id]
                 row = (video_id, frame_id, video_path, *timeinfo)
-                shot_paths_and_times.append(row)
+                yield row
 
-        return shot_paths_and_times
-
-    def get_saver(self, video_id):
+    def get_saver(self, video_id, read_only=False):
         """ Returns a saver for the given video id. """
         output_path = str(self.args.output).format(video_id=video_id)
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -238,7 +234,7 @@ class BaseVideoExtractor(object):
             return GzipJsonlFile(output_path, flush_every=save_every)
 
         elif self.args.output_type == 'hdf5':
-            return HDF5File(output_path, flush_every=save_every, attrs={'features_name': self.args.features_name})
+            return HDF5File(output_path, read_only=read_only, flush_every=save_every, attrs={'features_name': self.args.features_name})
 
     def extract(self, shot_info):
         """ Loads a batch of shots and extracts features. """
@@ -264,27 +260,28 @@ class BaseVideoExtractor(object):
 
     def skip_existing(self, shot_paths_and_times, progress=None):
         """ Skips shots that have already been processed. """
-        to_be_processed = []
         for video_id, group in itertools.groupby(shot_paths_and_times, key=lambda x: x[0]):
-            with self.get_saver(video_id) as saver:
+            to_be_processed = []
+            with self.get_saver(video_id, read_only=True) as saver:
                 for video_id, shot_id, image_path, *other in group:
                     if shot_id not in saver:
                         to_be_processed.append((video_id, shot_id, image_path, *other))
                     elif progress:
                         progress.initial += 1
 
-        return to_be_processed
+            yield from to_be_processed
 
     def run(self):
         shot_paths_and_times = self.parse_input()
-        n_shots = len(shot_paths_and_times)
+        # n_shots = len(shot_paths_and_times)
+        n_shots = -1
 
         progress = CliProgress(initial=0, total=n_shots)
 
         if not self.args.force:
             shot_paths_and_times = self.skip_existing(shot_paths_and_times, progress)
-            if len(shot_paths_and_times) == 0:
-                return None
+            # if len(shot_paths_and_times) == 0:
+            #     return None
 
         # process images in batches
         records = self.extract_iterable(shot_paths_and_times)
@@ -298,9 +295,9 @@ class BaseVideoExtractor(object):
 
         # group images by video id
         for video_id, group in itertools.groupby(shot_ids_and_records, key=lambda x: x[0]):
-            with self.get_saver(video_id) as saver:
-                # make records
-                records = ({'_id': _id, **record} for _, _id, record in group)
+            # make records
+            records = [{'_id': _id, **record} for _, _id, record in group]
 
+            with self.get_saver(video_id) as saver:
                 # save records
                 saver.add_many(records, force=self.args.force)

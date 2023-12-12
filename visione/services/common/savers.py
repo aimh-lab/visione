@@ -71,11 +71,13 @@ class GzipJsonlFile(Saver):
 
 class HDF5File(Saver):
     """ Save / Load / Append results in a HDF5 file. """
-    def __init__(self, path, flush_every=100, attrs={}):
+    def __init__(self, path, read_only=False, flush_every=100, attrs={}):
         self.path = Path(path)
+        self.read_only = read_only
         self.flush_every = flush_every
         self.attrs = attrs
 
+        self.file = None
         self._ids = dict()
         self._to_be_flushed = 0
 
@@ -83,25 +85,33 @@ class HDF5File(Saver):
         self._data_dataset = None
 
     def __enter__(self):
-        self.file = h5py.File(str(self.path), 'a')
+        if self.read_only and not self.path.exists():
+            return self
+
+        mode = 'r' if self.read_only else 'a'
+        self.file = h5py.File(str(self.path), mode)
 
         if 'ids' in self.file:
             self._ids_dataset = self.file['ids']
             self._data_dataset = self.file['data']
             self._ids = {_id: i for i, _id in enumerate(self._ids_dataset.asstr())}
 
-        for k, v in self.attrs.items():
-            self.file.attrs[k] = v
+        if not self.read_only:
+            for k, v in self.attrs.items():
+                self.file.attrs[k] = v
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
+        if self.file:
+            self.file.close()
 
     def __contains__(self, _id):
         return _id in self._ids
 
     def add(self, record, force=False):
+        assert not self.read_only, "Cannot add record to read-only HDF5 file."
+
         feature_vector = record['feature_vector']
         dim = len(feature_vector)
 
