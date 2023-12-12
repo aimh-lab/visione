@@ -2,6 +2,7 @@ import argparse
 import itertools
 import av
 import gc
+import logging
 
 import more_itertools
 from easydict import EasyDict as edict
@@ -15,6 +16,12 @@ from clipvip.CLIP_VIP import CLIPModel, clip_loss
 
 from visione.extractor import BaseVideoExtractor
 
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for logger in loggers:
+    logger.setLevel(logging.WARNING)
+
+logging.basicConfig(fname='/data/clipvip.log', level=logging.INFO)
+
 
 def read_video_pyav(container, indices, start_time, how_many_frames):
     frames = []
@@ -27,7 +34,6 @@ def read_video_pyav(container, indices, start_time, how_many_frames):
         if i in indices:
             frames.append(frame)
     return np.stack([x.to_ndarray(format="rgb24") for x in frames])
-
 
 def sample_frame_indices(clip_len, how_many_frames):
     start_idx = 0
@@ -52,12 +58,17 @@ def load_shot(
         end_time = start_time + pad_shot_to_seconds  # FIXME: this could overshoot the end of the video
         duration = pad_shot_to_seconds
 
-    with av.open(video_path.as_posix()) as container:
-        how_many_frames = int(duration * container.streams.video[0].average_rate)
+    with av.open(video_path.as_posix(), metadata_errors="ignore") as container:
+        video_stream = container.streams.video[0]
+        how_many_frames = int(duration * video_stream.average_rate)
         if how_many_frames == 0:
             how_many_frames = 1
         indices = sample_frame_indices(clip_len, how_many_frames)
-        video = read_video_pyav(container, indices, start_time, how_many_frames)
+        try:
+            video = read_video_pyav(container, indices, start_time, how_many_frames)
+        except Exception as e:
+            logging.error(f"Failed video decoding for {video_path} {start_time}-{end_time}: {e}")
+            video = np.zeros((len(indices), video_stream.height, video_stream.width, 3), dtype=np.uint8)
 
     gc.collect()    # FIXME: this avoids a memory leak in pyav, but probably there's a better way
 
@@ -157,9 +168,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     
     def forward_batch(self, video):
         video = video.to(self.device)
-        inputs = {
-            "if_norm": True,
-            "pixel_values": video}
+        inputs = {"if_norm": True, "pixel_values": video}
         video_features = self.model.get_image_features(**inputs)
         records = [{'feature_vector': f.tolist()} for f in video_features.cpu().numpy()]
         return records
