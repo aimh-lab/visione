@@ -46,7 +46,7 @@
 			res = getAllVideoKeyframes(videoId);
 			var keyframes = JSON.parse(res);
 			
-			videoUrl = videoUrlPrefix + videoId + ".mp4"
+			videoUrl = videoUrlPrefix + videoId + "-medium.mp4"
 			$("#videoURL").attr("href", videoUrl)
 			$("#videoURL").text(videoId)
 			$("#imgId").attr("href", "#" + imgId)
