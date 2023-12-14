@@ -1,3 +1,16 @@
+FROM docker.io/maven:3.8.6-openjdk-18 as build
+
+WORKDIR /usr/src/app
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn install:install-file \
+      -Dfile=src/main/webapp/WEB-INF/lib/openapi-java-client-2.0.0.jar \
+      -DgroupId=org.openapitools.client -DartifactId=model -Dversion=2.0.0 -Dpackaging=jar
+
+RUN --mount=type=cache,target=/root/.m2 mvn clean compile package
+
 FROM tomcat:9
 
 ## CONFIGURE TOMCAT
@@ -20,11 +33,6 @@ RUN sed -i -e 's:allow=":allow="172\\.\\d+\\.\\d+\\.\\d+|:' $CATALINA_HOME/webap
 # debug: enable tomcat listings
 # RUN sed -i '/\s<param-name>listings<\/param-name>/{n;s/false/true/}' $CATALINA_HOME/conf/web.xml
 
-# build tomcat webapp
-COPY src/main/webapp ${CATALINA_HOME}/webapps/ROOT
-COPY src/ /usr/local/src
-
-RUN cd /usr/local/src && \
-    find main/java -iname "*.java" > files.txt && \
-    javac -target 1.8 -source 1.8 -cp "main/webapp/WEB-INF/lib/*" -d "$CATALINA_HOME/webapps/ROOT/WEB-INF/classes/" @files.txt && \
-    rm files.txt
+# copy tomcat webapp
+COPY --from=build /usr/src/app/target/core-0.5.war ${CATALINA_HOME}/webapps/ROOT.war
+# RUN ls -l ${CATALINA_HOME}/webapps/ROOT
