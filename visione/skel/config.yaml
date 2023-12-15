@@ -299,3 +299,53 @@ index:
     biomed-clip:
       index_engine: faiss
       index_type: Flat  
+
+ui:
+  objects:
+    # Object categories to display in the UI.
+    palette:
+      - {name: person}  # by default, urls are assumed to be '<name>.png'
+      - {name: man}
+      - {name: woman}
+      - {name: human_face, url: humanface.png}
+      - {name: musical_instrument, url: musical.png}
+      - {name: sports_equipment, url: sports.png}
+      - {name: skateboard}
+      - {name: glasses}
+      - {name: bicycle}
+      - {name: motorcycle}
+      - {name: car}
+      # - {break: true}  # you can add a line break in the UI by adding a 'break' entry
+      - {name: truck}
+      - {name: boat}
+      - {name: parachute}
+      - {name: airplane}
+      - {name: bench}
+      - {name: chair}
+      - {name: couch, url: sofa.png}
+      - {name: building}
+      - {name: umbrella}
+      - {name: wine_glass, url: wineglass.png}
+      - {name: cup}
+      - {name: dessert}
+      - {name: cell_phone, url: cellphone.png}
+      - {name: television}
+      - {name: laptop_computer, url: laptop.png}
+      - {name: book}
+      - {name: cat}
+      - {name: dog}
+      - {name: horse}
+      - {name: bird}
+      - {name: flower}
+      - {name: tree}
+      - {name: black}
+      - {name: blue}
+      - {name: brown}
+      - {name: green}
+      - {name: grey}
+      - {name: orange}
+      - {name: pink}
+      - {name: purple}
+      - {name: red}
+      - {name: white}
+      - {name: yellow}

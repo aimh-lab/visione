@@ -16,6 +16,7 @@
 		<script src="js/jquery-3.3.1.min.js"></script>
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/fabric.js"></script>
+		<script src="js/js-yaml.min.js"></script>
 		<script src="js/queryByExample.js"></script>
 		<script src="js/visione.js"></script>
 		<script src="js/visioneAVS.js"></script>
@@ -113,7 +114,7 @@
 		</div>
 
 		<script>
-			$(document).ready(init());
+			init();
 			const channel = new BroadcastChannel('app-data');
 			channel.addEventListener ('message', (event) => {
 				window.focus();

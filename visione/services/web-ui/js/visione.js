@@ -122,6 +122,7 @@ var colIdx = 1;
 var rowIdx = 0;
 var isAVS = false;
 
+var config = null;
 
 function handler(myObj) {
 	urlBSService = myObj.serviceUrl;
@@ -137,10 +138,10 @@ function setAVS(isAvsSel) {
 }
 
 function loadConfig() {
-	return fetch("js/conf.json").then(response => response.json()).then(handler);
-} 
-
-loadConfig();
+	promise1 = fetch("config.yaml").then(response => response.text()).then(data => { config = jsyaml.load(data); });
+	promise2 = fetch("js/conf.json").then(response => response.json()).then(handler);
+	return Promise.all([promise1, promise2]);
+}
 
 function setSpeech(speechRes, idx) {
 	if (speechRes == null) {
@@ -1867,7 +1868,7 @@ function init() {
 		document.getElementById('avsSubmittedTab').style.display = 'block'
 	}
 	//$("#searchTab").append(addButton);
-	loadPalette('palette.csv');
+	loadConfig().then(loadPalette);
 	canvas0 = get_canvas('canvas0', 'annotations0',
 		'not0');
 	canvas1 = get_canvas('canvas1', 'annotations1',
@@ -2113,20 +2114,18 @@ function init() {
 }
 
 
-function loadPalette(url) {
-	return fetch(url)
-		.then(response => {
-			if (!response.ok) {
-				throw new Error('Failed to fetch the file.');
-			}
-			return response.text();
-		})
-		.then(csvData => {
-			const rowsArray = csvData.split('\n');
-			const dataArray = rowsArray.map(row => row.split(','));
-			setPalette(dataArray);
-			return dataArray;
-		});
+function loadPalette() {
+	let palette = config?.ui?.objects?.palette || [];
+	let dataArray = [];
+	palette.forEach(item => {
+		if (item.name)
+			dataArray.push([item.name, 'palette/' + (item.url || item.name + '.png')]);
+		if (item.break)
+			dataArray.push(['-------']);
+	});
+
+	setPalette(dataArray);
+	return dataArray;
 }
 
 function setPalette(palette) {

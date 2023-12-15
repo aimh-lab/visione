@@ -9,6 +9,10 @@ server {
 	location ^~ /videos/tiny { proxy_pass ${VISIONE_RESIZED_VIDEOS_URL}; }
 	location ^~ /frames      { proxy_pass ${VISIONE_FRAMES_URL}; }
 	location ^~ /frames/tiny { proxy_pass ${VISIONE_RESIZED_FRAMES_URL}; }
+	location ^~ /palette	 { proxy_pass ${VISIONE_PALETTE_URL}; }
+
+	# expose some files in collection dir (FIXME: reorganize files in a better way)
+	location = /config.yaml { proxy_pass http://router/config.yaml; }
 	location = /objects_doc_freq.csv { proxy_pass http://router/objects_doc_freq.csv; }
 
 	### Services Routing
@@ -45,6 +49,10 @@ server {
 	location ^~ /videos/tiny  { alias /data/resized-videos/tiny/; }
 	location ^~ /frames       { alias /data/selected-frames/; }
 	location ^~ /frames/tiny  { alias /data/thumbnails/; }
+	location ^~ /palette      { alias /data/palette/; }
+
+	# expose some files in collection dir (FIXME: reorganize files in a better way)
+	location = /config.yaml { alias /data/config.yaml; }
 	location = /objects_doc_freq.csv { alias /data/objects_doc_freq.csv; }
 
 	# HACK: use variable in proxy_pass to avoid nginx exit on startup if the service is not available (disabled)
