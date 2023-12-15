@@ -348,11 +348,11 @@ class IndexCommand(BaseCommand):
                 # insert mappings / processing here when needed
                 yield from records
 
-        str_object_docs = map_objects(str_objects_file)
+        str_object_docs = map_objects(str_objects_file) if str_objects_file.exists() else itertools.repeat({})
 
         # prepare frames cluster codes
         clusters_file = self.collection_dir / 'cluster-codes' / video_id / f'{video_id}-cluster-codes.jsonl.gz'
-        cluster_docs = map_objects(clusters_file)
+        cluster_docs = map_objects(clusters_file) if clusters_file.exists() else itertools.repeat({})
 
         # prepare features fields of records
         str_features_dir = self.collection_dir / 'str-features' / video_id
@@ -378,8 +378,10 @@ class IndexCommand(BaseCommand):
             scene_docs,
             str_object_docs,
             cluster_docs,
-            *str_feature_docs
         ]
+
+        if str_features_files:
+            str_documents.extend(str_feature_docs)
 
         def merge_docs(docs):
             for records in zip(*docs):
