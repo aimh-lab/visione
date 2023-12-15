@@ -63,12 +63,14 @@ class IndexCommand(BaseCommand):
             str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
             faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
             update_lucene = str_objects or str_features
+            objects_count = len(self.config.get('analysis', {}).get('object_detectors', {})) > 0
 
             if phases:
                 str_objects = str_objects if 'objects' in phases else False
                 str_features = [f for f in str_features if f in phases]
                 faiss_features = [f for f in faiss_features if f in phases]
                 update_lucene = 'lucene' in phases
+                objects_count = 'objects-count' in phases
 
             for video_id in video_ids:
                 progress.update(task, description=f"Indexing '{video_id}'")
@@ -111,6 +113,11 @@ class IndexCommand(BaseCommand):
                 for subtask in subtasks:
                     progress.remove_task(subtask)
                 progress.advance(task)
+            
+            # generate object count
+            if objects_count:
+                subtask = progress.add_task('- Object count', total=None)
+                self.object_count(force=replace, progress=lambda: progress.advance(subtask))
 
             progress.console.log('Indexing complete.')
 
@@ -157,12 +164,14 @@ class IndexCommand(BaseCommand):
                 str_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'str']
                 faiss_features = [k for k, v in indexed_features.items() if v['index_engine'] == 'faiss']
                 update_lucene = str_objects or str_features
+                objects_count = len(self.config.get('analysis', {}).get('object_detectors', {})) > 0
 
                 if phases:
                     str_objects = str_objects if 'objects' in phases else False
                     str_features = [f for f in str_features if f in phases]
                     faiss_features = [f for f in faiss_features if f in phases]
                     update_lucene = 'lucene' in phases
+                    objects_count = 'objects-count' in phases
 
                 n_tasks = 0
                 n_tasks += 1 if str_objects else 0
@@ -198,6 +207,11 @@ class IndexCommand(BaseCommand):
                     subtask = progress.add_task(f"- Adding features '{features_name}' to FAISS index", total=None)
                     self.add_to_faiss_index(features_name, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     progress.advance(task)
+                
+                # generate object count
+                if objects_count:
+                    subtask = progress.add_task('- Object count', total=None)
+                    self.object_count(force=replace, progress=lambda: progress.advance(subtask))
 
                 progress.console.log('Indexing complete.')
 
@@ -536,3 +550,33 @@ class IndexCommand(BaseCommand):
         ]
 
         return self.compose_run(service, command, **run_kws)
+
+    def object_count(self, force=False, progress=None):
+        """ Computes the total count of objects in all videos and saves it to a CSV file.
+
+        Args:
+            force (bool, optional): Whether to replace existing output or skip computation. Defaults to False.
+
+        """
+
+        count_objects_dir = self.collection_dir / 'count-objects'
+        count_objects_dir.mkdir(parents=True, exist_ok=True)
+        count_objects_file = self.collection_dir / 'objects_doc_freq.csv'
+
+        if not force and count_objects_file.exists():
+            print(f'Skipping object count, using existing file:', count_objects_file.name)
+            return 0
+
+        # count objects
+        count = collections.Counter()
+        for count_file in count_objects_dir.glob('**/*-count-objects.json'):
+            with count_file.open('r') as f:
+                count += collections.Counter(json.load(f))
+                if progress:
+                    progress()
+        
+        # save to CSV in alphabetical order
+        with count_objects_file.open('w') as f:
+            writer = csv.writer(f)
+            for key in sorted(count.keys()):
+                writer.writerow([key, count[key]])

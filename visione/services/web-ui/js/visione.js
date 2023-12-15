@@ -184,8 +184,7 @@ function extractprev(term) {
 	return split(term).pop();
 }
 
-// TODO generate csv in collection dir
-$.get($('meta[name=dataset]').attr('content') + '_objects_doc_freq.csv', function (data) {
+$.get('objects_doc_freq.csv', function (data) {
 	availableTags = data.split("\n");
 	//availableTags = [];
 });
