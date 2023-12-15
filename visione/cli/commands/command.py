@@ -105,7 +105,9 @@ class BaseCommand(ABC):
         command = self.compose_run_cmd + [service_name] + service_command
 
         if self.verbose:
-            print(f"Running: {' '.join(command)}")
+            debug_env = [f'{k}={v}' for k, v in self.compose_env.items()]
+            debug_command = ' '.join(debug_env + command)
+            print(f"Running: {debug_command}")
             stdout_callback = stdout_callback or partial(print, end='')
             stderr_callback = stderr_callback or partial(print, end='')
 
