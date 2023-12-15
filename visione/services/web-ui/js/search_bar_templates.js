@@ -50,7 +50,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 					<div id="div_textual${canvasID}">
 						<!--<i id="sceneDes${canvasID}" aria-hidden="true"></i>-->	
 						<div  class="Icon-inside">
-							<textarea id="textual${canvasID}" type="text" class="textualquery${canvasID} font-normal"  cols="40"  placeholder="${txtSearchTitle}"></textarea>
+							<textarea id="textual${canvasID}" type="text" class="textualquery${canvasID} font-normal" cols="40" placeholder="${txtSearchTitle}" on></textarea>
 							<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>
 							<i id="cancelText${canvasID}" class="fa fa-times fa-lg fa-fw" aria-hidden="true" style="right:30px; color:gray; display:none"></i>
 							<i class="fa fa-search fa-lg fa-fw" style="left:10px; color:gray;"></i>
@@ -103,6 +103,10 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 					<span onclick="setTextualMode(${canvasID}, 'all')">
 						<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
 						<label for="textualMode${canvasID}" class="font-tiny">use all</label>
+					</span>
+					<span style="padding-left: 2em;">
+						<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
+						<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
 					</span>
 				</div>
 			</div>

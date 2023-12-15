@@ -127,6 +127,8 @@ var config = null;
 function handler(myObj) {
 	urlBSService = myObj.serviceUrl;
 	speech2TextService = myObj.speech2Text;
+	translateService = myObj.translate;
+
 	thumbnailUrl= myObj.thumbnailUrl;
 	keyFramesUrl=myObj.keyFramesUrl;
 	videoUrlPrefix=myObj.videoUrl;
@@ -170,7 +172,7 @@ function setSpeech(speechRes, idx) {
 
 function playVideo(id) {
 	alert(id);
-	alert(getStartTime(id + ".png"));
+	alert(getStartTime(id + ".jpg"));
 }
 
 function split(val) {
@@ -565,6 +567,8 @@ function searchByForm() {
 }
 
 function setResults(data) {
+	//data ='[{"score":13.926777,"videoId":"05188","imgId":"05188_12","middleFrame":919,"collection":"v3c"},{"score":13.917663,"videoId":"17058","imgId":"17058_85","middleFrame":5345,"collection":"v3c"}]'
+
 	results = data;
 	//results = sortByVideo(data);
 	resultsSortedByVideo = results;
@@ -941,7 +945,7 @@ function showResults(data) {
 				videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
 				let thumbnailPath = thumbnailUrl + path + ".jpg";
-				let keyframePath = keyFramesUrl + path + ".png";
+				let keyframePath = keyFramesUrl + path + ".jpg";
 				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
 				resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
@@ -1086,21 +1090,34 @@ function unifiedTabSubmit(avsObj, ev) {
 
 }
 
+function showOverlay(img_overlay) {
+	document.getElementById(img_overlay).style.opacity = 1;
+}
+
+function hideOverlay(img_overlay) {
+	document.getElementById(img_overlay).style.opacity = 0;
+}
+
 const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 
 	if (isSimplified) {
 		return `
-			<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-			<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-			<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-			<i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
-			<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
-			<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-			<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span>
-			<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
-	
-	
-			<img id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
+			<!--<div class="img_container" onmouseover='console.log("in"); showOverlay("toolbar_icons_${res.imgId}")' onmouseout='console.log("out"); hideOverlay("toolbar_icons_${res.imgId}")'>-->
+			<div class="img_container">
+				<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
+					<img id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)' />
+				</div>
+				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
+				<div  id="toolbar_icons_${res.imgId}">
+					<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
+					<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+					<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+					<i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
+					<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
+					<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
+					<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span>
+				<div>
+
 			</div>
 
 		`
@@ -1596,6 +1613,27 @@ var scrollOffset = -1.5;
 var rowHeight = 0;
 var scrollingOffset = 0;
 
+function translateText(textQuery, idx) {
+	$.ajax({
+		type : "POST",
+		async : true,
+		crossDomain: true,
+		data: {text: textQuery},
+		dataType : "text",
+		url : translateService+"/text",
+		success : function(data) {
+			console.log(data)
+			let jsonTranslate = JSON.parse(data)
+			if (jsonTranslate.translated == true)
+				setSpeech(data, idx);
+		},
+		error : function(data) {
+			setSpeech(null, idx);
+		}
+	});
+	//return JSON.parse('{"lang":"it","translated":true,"translation":"the pipo"}');
+}
+
 function checkKey(e) {
 
 	e = e || window.event;
@@ -1603,8 +1641,21 @@ function checkKey(e) {
 	var goToNextResult = false;
 
 	var activeElement = document.activeElement;
-	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0) {
-		console.log("Tasto premuto in un campo di input text");
+	if (activeElement.id === "textual0" || activeElement.id === "textual1") {
+		var idx = activeElement.id == "textual0" ? 0 : 1;
+
+		console.log(activeElement.id);
+		if (e.key === 'Enter') {
+			var textQuery =  activeElement.value;
+			if (textQuery.length > 0) {
+				if (document.getElementById("isTranslate" + idx).checked)
+					translateText(textQuery, idx);
+			console.log(activeElement.value);
+			}
+		  }
+		return;
+	}
+	else if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0) {
 		return;
 	}
 

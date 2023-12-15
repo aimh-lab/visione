@@ -68,7 +68,7 @@ body {
 
 .dashboardGrid {
   display: grid;
-  grid-template-columns:  110px 30px 70px 130px;
+  grid-template-columns:  150px 30px 70px 130px;
   /* Dimensioni delle colonne */
   grid-gap: 10px;
 }
@@ -84,7 +84,7 @@ body {
   padding: 10px;
   text-align: center;
   /*font-size: 12px;*/
-  width: 9em;
+  width: 13em;
   height: 3em
 }
 
@@ -724,4 +724,25 @@ video::-webkit-media-controls {
 
 textarea::placeholder {
   font-size: 12px; /* Change this value to your desired font size */
+}
+
+.img_container {
+  position: relative;
+  display: inline-block;
+}
+
+.toolbar_icons_over_img {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(8, 8, 8, 0.5); /* Adjust the alpha value for the overlay color */
+  opacity: 0; /* Initially hidden */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
 }
