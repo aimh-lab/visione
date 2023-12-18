@@ -19,6 +19,7 @@ static_files_urls:
   resized_videos_url: null  # URL to which 'videos/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
   frames_url:         null  # URL to which 'frames/...' requests will be redirected. Set to 'null' for serving them locally.
   resized_frames_url: null  # URL to which 'frames/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
+  palette_url:        null  # URL to which 'palette/...' requests will be redirected. Set to 'null' for serving them locally.
 
 # (deprecated) URLs for externally hosted backend services. If null, use the locally hosted service.
 services_urls:
