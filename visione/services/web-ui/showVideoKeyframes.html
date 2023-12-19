@@ -10,6 +10,7 @@
 	<link rel="stylesheet" href="css/visione.css">
 	<script src="js/jquery-3.3.1.min.js"></script>
 	<script src="js/jquery-ui.min.js"></script>
+	<script src="js/js-yaml.min.js"></script>
 	<script src="js/visione.js"></script>
 </head>
 
@@ -57,7 +58,7 @@
 				path = videoId + "/" + frameName;
 
 				if (i % 6 == 0) {
-					table += "<div class='row'>";
+					table += "<div class='row' style='border-bottom: 3px dotted #808; padding:10px'>"
 				}
 
 				let imgAttrs = (imgId == keyframes[i]) ?
@@ -70,6 +71,7 @@
 
 				table += `
 				<div class='col-2 with-margin'>
+					<img height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
 					<div class='myalign'>
 						<a style="font-size:12px;" href="indexedData.html?videoId=${videoId}&id=${keyframes[i]}" title="Show Indexed Data" target="_blank" >${keyframes[i]}</a>
 						<i class="fa fa-play" style="font-size: 16px; color: #007bff; padding-left: 5px; padding-right: 5px;" onclick="playVideoWindow('${videoUrl}', '${videoId}', '${keyframes[i]}'); return false;"></i>
@@ -77,7 +79,6 @@
 							<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size: 21px; float: right; color: #00AA00; padding-left: 0px;" onclick="submitWithAlert('${frameName}', '${videoId}'); return false;"></i>
 						</span>
 					</div>
-					<img height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
 				</div>
 				`;
 

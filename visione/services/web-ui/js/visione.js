@@ -1,4 +1,4 @@
-
+var regex_to_match_keyframe_number = /_(\d+(?:_\d+)?)(?:-(\d+))?$|-(\d+)$/;
 var cells = 49;
 var canvasWidth = 275;
 var canvasHeight = 154;
@@ -99,7 +99,7 @@ var simreorder = false;
 var is43 = false;
 var is169 = false;
 
-var urlBSService = '';
+var urlVBSService = '';
 var thumbnailUrl = '';
 var keyFramesUrl = '';
 var activeCanvasIdx = 0;
@@ -123,9 +123,11 @@ var rowIdx = 0;
 var isAVS = false;
 
 var config = null;
+var loadingSpinner = null;
+
 
 function handler(myObj) {
-	urlBSService = myObj.serviceUrl;
+	urlVBSService = myObj.serviceUrl;
 	speech2TextService = myObj.speech2Text;
 	translateService = myObj.translate;
 
@@ -204,7 +206,7 @@ function getText(id, field) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getText?id="+ id + "&field=" + field,
+			url :  urlVBSService+"/getText?id="+ id + "&field=" + field,
 			async : false
 		}).responseText
 }
@@ -213,7 +215,7 @@ function getAllVideoKeyframes(videoId) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getAllVideoKeyframes?videoId="+ videoId,
+			url :  urlVBSService+"/getAllVideoKeyframes?videoId="+ videoId,
 			async : false
 		}).responseText
 }
@@ -222,7 +224,7 @@ function getField(id, field) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getField?id="+ id + "&field=" + field,
+			url :  urlVBSService+"/getField?id="+ id + "&field=" + field,
 			async : false
 		}).responseText
 }
@@ -231,7 +233,7 @@ function getStartTime(id) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getStartTime?id="+ id,
+			url :  urlVBSService+"/getStartTime?id="+ id,
 			async : false
 		}).responseText
 }
@@ -240,7 +242,7 @@ function getEndTime(id) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getEndTime?id="+ id,
+			url :  urlVBSService+"/getEndTime?id="+ id,
 			async : false
 		}).responseText
 }
@@ -249,7 +251,7 @@ function getMiddleTimestamp(id) {
 	return $
 		.ajax({
 			type : "GET",
-			url :  urlBSService+"/getMiddleTimestamp?id="+ id,
+			url :  urlVBSService+"/getMiddleTimestamp?id="+ id,
 			async : false
 		}).responseText
 }
@@ -298,7 +300,7 @@ function startNewSession() {
 		$.ajax({
 			type: "GET",
 			async: false,
-			url: urlBSService + "/init"
+			url: urlVBSService + "/init"
 		}).responseText
 	}
 }
@@ -309,7 +311,7 @@ function startNewKISSession() {
 	$.ajax({
 		type: "GET",
 		async: false,
-		url: urlBSService + "/init"
+		url: urlVBSService + "/init"
 	}).responseText
 	//}
 }
@@ -320,7 +322,7 @@ function startNewAVSSession() {
 	$.ajax({
 		type : "GET",
 		async : false,
-		url : urlBSService+"/init"
+		url : urlVBSService+"/init"
 	}).responseText
 	loadConfig();
 	//}
@@ -330,7 +332,7 @@ function submitResult(id,videoId) {
 	return $.ajax({
 		type : "GET",
 		async : false,
-		url : urlBSService+"/submitResult?id="+ id+ "&videoid="+ videoId,
+		url : urlVBSService+"/submitResult?id="+ id+ "&videoid="+ videoId,
 	}).responseText;
 }
 
@@ -338,7 +340,7 @@ function submitAtTime(videoId, time) {
 	return $.ajax({
 		type: "GET",
 		async: false,
-		url: urlBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
+		url: urlVBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
 	}).responseText;
 }
 
@@ -346,7 +348,7 @@ function log(query) {
 	return $.ajax({
 		type: "GET",
 		async: false,
-		url: urlBSService + "/log?query=" + query,
+		url: urlVBSService + "/log?query=" + query,
 	}).responseText;
 }
 
@@ -577,6 +579,9 @@ function setResults(data) {
 }
 
 function search2(query) {
+	loadingSpinner = document.getElementById('loading-spinner');
+
+	loadingSpinner.style.display = 'block';
 	latestQuery = query
 	if (query == "") {
 		setResults(query)
@@ -588,7 +593,7 @@ function search2(query) {
 			async : true,
 			data: {query: query, simreorder: simreorder},
 			dataType : "text",
-			url : urlBSService+"/search",
+			url : urlVBSService+"/search",
 			success : function(data) {
 				setResults(data)
 			},
@@ -604,7 +609,7 @@ function searchByALADINSimilarity(query) {
 		type: "POST",
 		data: { query: query },
 		dataType: "text",
-		url: urlBSService + "/search",
+		url: urlVBSService + "/search",
 		success: function (data) {
 			results = data;
 			//results = sortByVideo(data);
@@ -623,7 +628,7 @@ function searchByCLIPSimilarity(query) {
 		type: "POST",
 		data: { query: query },
 		dataType: "text",
-		url: urlBSService + "/search",
+		url: urlVBSService + "/search",
 		success: function (data) {
 			results = data;
 			//results = sortByVideo(data);
@@ -923,7 +928,12 @@ function showResults(data) {
 				let score = res[i].score;
 
 				let path = videoId + "/" + imgId;
-				let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
+				//let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
+				//let frameNumber = imgId.match(regex_to_match_keyframe_number)[1] || "";
+
+				let result = imgId.match(regex_to_match_keyframe_number);
+				let frameNumber = result ? result[1] || result[2] || result[3] : null;
+				
 
 				if (i > 0 && videoId != prevID) {
 					resMatrix[++resrowIdx] = [];
@@ -945,7 +955,7 @@ function showResults(data) {
 				videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
 				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
 				let thumbnailPath = thumbnailUrl + path + ".jpg";
-				let keyframePath = keyFramesUrl + path + ".jpg";
+				let keyframePath = keyFramesUrl + path + ".png";
 				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
 				resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
 
@@ -964,13 +974,13 @@ function showResults(data) {
 
 			}
 		}
+
 		if (res.length > 1) {
 			for (let i = 0; i < res.length; i++) {
 				let imgId = res[i].imgId;
 				let score = res[i].score;
 
-				let imgId4Regex = imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-				let cip = $('#' + imgId4Regex).hover(hoverVideo, hideVideo);
+				let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
 
 				function hoverVideo(e) {
 					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
@@ -1035,6 +1045,8 @@ function showResults(data) {
 	//avsAddAutoselected();
 	//}
 	updateAVSInfo();
+	loadingSpinner.style.display = 'none';
+
 }
 
 
@@ -1103,23 +1115,20 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
 	if (isSimplified) {
 		return `
 			<!--<div class="img_container" onmouseover='console.log("in"); showOverlay("toolbar_icons_${res.imgId}")' onmouseout='console.log("out"); hideOverlay("toolbar_icons_${res.imgId}")'>-->
-			<div class="img_container">
+
+				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
 				<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
 					<img id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)' />
 				</div>
-				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
 				<div  id="toolbar_icons_${res.imgId}">
 					<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
 					<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
 					<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-					<i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
-					<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
-					<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-					<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span>
+					<a href="" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+					<a href="" title="image similarity"><img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+					<a href="" title="Visual similarity"><img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+					<a href="" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
 				<div>
-
-			</div>
-
 		`
 	}
 
@@ -1470,12 +1479,20 @@ function displayAdvanced(isAdv) {
 		$('#block1').css('display', 'block');
 		$('#textualOptions0').css('display', 'block');
 		$('#textualOptions1').css('display', 'block');
+
+		//Restore the width of the left sidebar
+		$('.sidebarGrid').css('width', '310');
+		$('.bodyGrid').css('grid-template-columns', '1fr 4.2fr 0.3fr');
 	} else {
 		setDisplayTo = "none";
 		$('#block0').css('display', 'none');
 		$('#block1').css('display', 'none');
 		$('#textualOptions0').css('display', 'none');
 		$('#textualOptions1').css('display', 'none');
+
+		//Set to 0 the left sidebar
+		$('.sidebarGrid').css('width', '0');
+		$('.bodyGrid').css('grid-template-columns', '0fr 4.2fr 0.3fr');
 	}
 
 	//if (latestQuery != "" || isAdvanced) {
@@ -1557,7 +1574,7 @@ function scrollToRow(rowNumber) {
 	var containerBottom = containerTop + containerHeight;
 
 	
-	var row = document.getElementById(resMatrix[rowNumber][colIdx].imgId);
+	var row = document.getElementById("img" + resMatrix[rowNumber][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 	var rowHeight = row.offsetHeight;
@@ -1590,7 +1607,7 @@ function unscrollToRow(rowNumber) {
 	var container = document.querySelector('.resGrid2');
 	var containerTop = container.offsetTop;
 
-	var row = document.getElementById(resMatrix[rowNumber][colIdx].imgId);
+	var row = document.getElementById("img" + resMatrix[rowNumber][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 
@@ -1663,7 +1680,7 @@ function checkKey(e) {
 
 		//var mouseOverEvent = new Event('mouseenter');
 
-		let imgId4Regex = lastSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+		//let imgId4Regex = lastSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
 		/*if (prevSelected != null) {
 			let prevImgId4Regex = prevSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
 			$('#' + prevImgId4Regex).off("contextmenu");
@@ -1728,7 +1745,7 @@ function checkKey(e) {
 		rowIdx = Math.max(0, rowIdx - 1);
 		console.log(resCursor)
 		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
+		var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 		}
@@ -1836,7 +1853,7 @@ function checkKey(e) {
 	else if (e.keyCode == '37') {
 		colIdx = Math.max(0, colIdx - 1);
 		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById(resMatrix[rowIdx][Math.max(0, colIdx)].imgId);
+		var element = document.getElementById("img" + resMatrix[rowIdx][Math.max(0, colIdx)].imgId);
 		if (lastSelected != null) {
 			lastSelected.click();
 			//lastSelected.style.display = 'block'
@@ -1857,7 +1874,7 @@ function checkKey(e) {
 		++colIdx
 		//$("#" + res[resCursor++].imgId).click();
 		try {
-			var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
+			var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
 		} catch (error) {
 			--colIdx;
 			return;
@@ -1887,7 +1904,7 @@ function selectNextResult() {
 	console.log(rowIdx)
 
 	//$("#" + res[resCursor++].imgId).click();
-	var element = document.getElementById(resMatrix[rowIdx][colIdx].imgId);
+	var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
 	if (lastSelected != null) {
 		lastSelected.click();
 	}

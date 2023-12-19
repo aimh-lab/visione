@@ -88,6 +88,10 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 					</div>
 				</div>
 				<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
+					<span style="padding-right: 4em;" id="translate${canvasID}">
+						<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
+						<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
+					</span>
 					<span onclick="setTextualMode(${canvasID}, 'cv')">
 						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
 						<label for="textualMode${canvasID}" class="font-tiny">ClipVideo</label>
@@ -103,10 +107,6 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 					<span onclick="setTextualMode(${canvasID}, 'all')">
 						<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
 						<label for="textualMode${canvasID}" class="font-tiny">use all</label>
-					</span>
-					<span style="padding-left: 2em;">
-						<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
-						<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
 					</span>
 				</div>
 			</div>
