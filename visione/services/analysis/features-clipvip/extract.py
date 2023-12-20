@@ -60,7 +60,8 @@ def load_shot(
 
     with av.open(video_path.as_posix(), metadata_errors="ignore") as container:
         video_stream = container.streams.video[0]
-        how_many_frames = int(duration * video_stream.average_rate)
+        fps = video_stream.average_rate or video_stream.guessed_rate or 25
+        how_many_frames = int(duration * fps)
         if how_many_frames == 0:
             how_many_frames = 1
         indices = sample_frame_indices(clip_len, how_many_frames)
