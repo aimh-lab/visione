@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -66,7 +68,7 @@ public class Settings {
 			Gson gson = new Gson();
 //			props.load(new FileInputStream(new File(VISIONE_HOME + "/conf.properties")));
 			try {
-			props.load(is);
+			props.load(new InputStreamReader(is, StandardCharsets.UTF_8));
 
 //			TEAM_ID = Integer.parseInt(props.getProperty("TEAM_ID"));
 			MEMBER_ID = props.getProperty("MEMBER_ID");
