@@ -14,6 +14,10 @@ private String item;
 @Expose
 private int frame;
 
+@SerializedName("startTime")
+@Expose
+private long startTime;
+
 @SerializedName("score")
 @Expose
 private float score;
@@ -36,6 +40,14 @@ return frame;
 
 public void setFrame(int frame) {
 this.frame = frame;
+}
+
+public long  getStartTime() {
+return startTime;
+}
+    
+public void setStartTime(long startTime) {
+this.startTime = startTime;
 }
 
 public float getScore() {

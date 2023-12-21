@@ -34,11 +34,11 @@ public class DRESClient {
 	
 	public static void main(String[] args) {
 		String videoId = "06809";
-		String timestamp = "1753.385";
-		String time = Tools.convertTimeToVBSFormat(timestamp);
+		double timestamp = 1753.385;
+		long time = (long) (timestamp*1000); //Tools.convertTimeToVBSFormat(timestamp);
 		int frameNumber = 35460;
 		System.out.println(time);
-		time = "00:29:13:10";
+		//time = "00:29:13:10";
 		
 		DRESClient client = new DRESClient();
 		
@@ -100,30 +100,36 @@ public class DRESClient {
 		return sessionId;
 	}
 	
-	public String dresSubmitResultByTime(String video, String timestamp) throws ApiException {
-        SuccessfulSubmissionsStatus res = null;
-        System.out.println("submitting " + video + " @ " + timestamp);
-        List<ApiEvaluationInfo> currentRuns;
-        currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
-        String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+	public String dresSubmitResultByTime(String video, long timestamp) throws ApiException {
 
+        System.out.println("Submitting " + video + " @ " + timestamp);
+		List<ApiEvaluationInfo> currentRuns;
+		try {
+		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
+		} catch (Exception e) {
+		  System.out.println("Error during request: '" + e.getMessage() + "', exiting");
+		  return null;
+		}
+
+		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
+
+		for (ApiEvaluationInfo run : currentRuns) {
+		  System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
+		  if (run.getTemplateDescription() != null) {
+			System.out.println(run.getTemplateDescription());
+		  }
+		  System.out.println();
+		}
+		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+
+		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
-	        //TODO
-        	/*res = submissionApi.getApiV1Submit(
-	                null, //does not usually need to be set
-	                video, //item which is to be submitted
-                    null, //in case the task is not targeting a particular content object but plaintext
-                    null, // for items with temporal components, such as video
-                    null,  // only one of the time fields needs to be set.
-                    timestamp, //in this case, we use the timestamp in the form HH:MM:SS:FF
-	                sessionId
-	        );*/
-        	res = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+        	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
                     new ApiClientSubmission().addAnswerSetsItem(
                         new ApiClientAnswerSet().addAnswersItem(
                             new ApiClientAnswer()
                                 .mediaItemId(video) //item which is to be submitted
-                                .start(Long.parseLong(timestamp)) //start time in milliseconds
+                                .start(timestamp) //start time in milliseconds
                         )
                     ), sessionId);
         } catch (ApiException e) {
@@ -152,16 +158,16 @@ public class DRESClient {
             return message;
         }
 
-        if (res != null && res.getStatus()) {
+        if (submissionResponse  != null && submissionResponse.getStatus()) {
             System.out.println("The submission was successfully sent to the server.");
         }
-        return res.getDescription();
+        return submissionResponse.getDescription();
 	}
 
 	//TODO Remove its call in VBSService
-	public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
-		return null;
-	}
+	//public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
+	//	return null;
+	//}
 	
 	/*public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
         SuccessfulSubmissionsStatus res = null;

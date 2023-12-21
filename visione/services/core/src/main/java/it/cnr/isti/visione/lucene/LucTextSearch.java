@@ -292,7 +292,8 @@ public class LucTextSearch {
 			String imgID = s.doc(doc).get(Fields.IMG_ID);
 			String videoID = s.doc(doc).get(Fields.VIDEO_ID);
 			Integer middleFrame = Integer.parseInt(s.doc(doc).get(Fields.MIDDLE_FRAME));
-			results.add(new SearchResults(imgID, videoID, score, middleFrame));
+			long middleTime = (long) (Double.parseDouble(s.doc(doc).get(Fields.MIDDLE_TIME))*1000);
+			results.add(new SearchResults(imgID, videoID, score, middleFrame, middleTime));
 			// System.out.println(score + ", " + imgID);
 		}
 		return results;
@@ -709,8 +710,10 @@ public class LucTextSearch {
 					Document document = s.doc(scoredoc.doc);
 					String imgID = document.get(Fields.IMG_ID);
 					String videoID = document.get(Fields.VIDEO_ID);
-					float timestamp = Float.parseFloat(document.get((Fields.MIDDLE_TIME)));
+					double timestamp = Double.parseDouble(document.get((Fields.MIDDLE_TIME)));
 					Integer middleFrame = Integer.parseInt(document.get(Fields.MIDDLE_FRAME));
+					// timestamp is in second, trasforming it into millisecond and storing it in middeTime variable
+					long middleTime = (long) (timestamp * 1000);
 
 
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
@@ -718,7 +721,7 @@ public class LucTextSearch {
 					hm.putIfAbsent(videoID, new ConcurrentHashMap<Integer, SearchResults>());
 					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoID); // video keyframes (one for each quantized time interval)
 					
-					keyframes.putIfAbsent(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame));
+					keyframes.putIfAbsent(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame, middleTime));
 					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
 					if (representative_keyframe.score > score)
 						continue; // We keep just one keyframe for each quantized time interval
@@ -726,7 +729,7 @@ public class LucTextSearch {
 					synchronized (sem) {
 						keyframes = hm.get(videoID); 
 						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame));		
+							keyframes.put(id_quantized_timestamp, new SearchResults(imgID, videoID, score, middleFrame, middleTime));		
 							hm.put(videoID, keyframes);
 						}
 					}

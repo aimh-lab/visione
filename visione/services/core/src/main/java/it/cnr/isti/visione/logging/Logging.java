@@ -36,11 +36,11 @@ public class Logging {
 	
 	public synchronized void savePreviousSessionLogs(String dresSessionId, long clientSubmissionTimestamp) throws IOException {
 		if(queries.size()>0) {
-			save("", -1, "", dresSessionId, clientSubmissionTimestamp);
+			save("", -1, -1, dresSessionId, clientSubmissionTimestamp);
 		}
 	}
 	
-	public synchronized void save(String videoId, int frameNumber, String time, String dresSessionId, long clientSubmissionTimestamp) throws IOException {
+	public synchronized void save(String videoId, int frameNumber, long startTime, String dresSessionId, long clientSubmissionTimestamp) throws IOException {
 		
 		new Runnable() {
 			
@@ -55,11 +55,12 @@ public class Logging {
 					//TO CHECK!
 					log.setTimestamp(clientSubmissionTimestamp);
 					log.setVideoId(videoId);
-					if (time != null)
-						log.setVideoTime(time);
-					else if (frameNumber != -1)
+					//if (time != null)
+					//	log.setVideoTime(time);
+					if (frameNumber != -1)
 						log.setFrameNum(frameNumber);
-					
+				    if (startTime != -1)
+						log.setTimeNum(startTime);
 					log.setQueries(queries);
 					log.setResults(results);
 					

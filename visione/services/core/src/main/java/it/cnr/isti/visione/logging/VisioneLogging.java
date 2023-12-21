@@ -11,6 +11,7 @@ public class VisioneLogging {
 	private List<ResultSet> results = null;
 	private String videoId;
 	private int frameNum;
+	private long timeNum;
 	private String videoTime;
 	private String sessionId;
 	private String simReorder;
@@ -45,6 +46,14 @@ public class VisioneLogging {
 
 	public void setFrameNum(int frameNum) {
 		this.frameNum = frameNum;
+	}
+	
+	public long getTimeNum() {
+		return timeNum;
+	}
+
+	public void setTimeNum(long timeNum) {
+		this.timeNum = timeNum;
 	}
 
 	public String getVideoTime() {

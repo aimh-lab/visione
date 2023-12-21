@@ -531,74 +531,50 @@ public class VBSService {
 		String response = "";
 		System.out.println("isAVS " + isAVS );
 		String videoId = videoIdParam;
-		String time = null;
 		int middleFrame = -1;
-		String value=null;
+		long timeToSubmit = -1;
+		long value=-1;
+
 		if (keyframeIdParam != null) {
-			try {
+			try {		
+				timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME))*1000);
 				middleFrame = Integer.parseInt(searcher.get(keyframeIdParam, Fields.MIDDLE_FRAME));
-				//if(dataset.equals("mvk"))
-				//	time=Tools.convertTimeToVBSFormat(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		} else {
-			videoId = videoIdParam;
-			time = Tools.convertTimeToVBSFormat(videoAtTime);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
 		}
-			
-				
-		if (time != null) {
-			value=time;
-			boolean exit = false;
-			int counter = 0;
-			while(!exit) {
-				try {
-					response = client.dresSubmitResultByTime(videoId, time);
+		else{
+			timeToSubmit=  (long) (Double.parseDouble(videoAtTime)*1000);
+		}
+		
+		boolean exit = false;
+		int counter = 0;
+		while(!exit) {
+			try {
+				response = client.dresSubmitResultByTime(videoId, timeToSubmit);
+				exit = true;
+			} catch (ApiException e) {
+				System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
+				if (counter++ <= 3 )
+					client = new DRESClient();
+				else {
+					System.err.println("Error unable to initialize DRES client");
 					exit = true;
-				} catch (ApiException e) {
-					System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-					if (counter++ <= 3 )
-						client = new DRESClient();
-					else {
-						System.err.println("Error unable to initialize DRES client");
-						exit = true;
-					}
 				}
 			}
-			
-		}else {
-			
-			if (middleFrame != -1) {
-				value=Integer.toString(middleFrame);
-				boolean exit = false;
-				int counter = 0;
-				while(!exit) {
-					try {
-						response = client.dresSubmitResultByFrameNumber(videoId, middleFrame);
-						exit = true;
-					} catch (ApiException e) {
-						System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-						if (counter++ <= 3 )
-							client = new DRESClient();
-						else {
-							System.err.println("Error unable to initialize DRES client");
-							exit = true;
-						}
-					}
-				}
-			}			
 		}
+							
 		visioneLog.saveResponse(response);
-		System.out.println(Settings.TEAM_ID + "," + videoId + "," + time);
+		System.out.println(Settings.TEAM_ID + "," + videoId + "," + timeToSubmit);
 				
 		//saving logs
 		try {
-			visioneLog.save(videoId, middleFrame, time, client.getSessionId(),clientSubmissionTimestamp);
-			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+value );
+			visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
+			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+timeToSubmit );
 		} catch (IOException | NumberFormatException e1) {
 			e1.printStackTrace();
-			System.out.println(Settings.MEMBER_ID + "," + videoId + "," + time);
+			System.out.println(Settings.MEMBER_ID + "," + videoId + "," + timeToSubmit);
 		}
 
 		return response;

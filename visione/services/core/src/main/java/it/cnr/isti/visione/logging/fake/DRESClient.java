@@ -20,14 +20,10 @@ public class DRESClient {
 		return sessionId;
 	}
 	
-	public String dresSubmitResultByTime(String video, String timestamp) throws ApiException {
+	public String dresSubmitResultByTime(String video, long timestamp) throws ApiException {
         return "";
 	}
 
-	
-	public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
-        return "";
-	}
 	
 	public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	}
