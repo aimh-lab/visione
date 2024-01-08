@@ -8,7 +8,7 @@ const addButton = `<button id="addNewCanvas" class="btn btn-outline-info btn-lg"
 
 const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class = "") => {
 	return `
-	<div class="advanced scene${canvasID}" id='canvasTab'>
+	<div class="scene${canvasID}" id='canvasTab'>
 		<div class="">
 			<div id="description_objects${canvasID}">
 				<div class="font-large font-bold"><i id="sceneDes${canvasID}" class="${css_class}"> ${infoText}</i> </div>
@@ -87,28 +87,29 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 						</div>
 					</div>
 				</div>
-				<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
-					<span style="padding-right: 4em;" id="translate${canvasID}">
-						<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
-						<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
-					</span>
-					<span onclick="setTextualMode(${canvasID}, 'cv')">
-						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-						<label for="textualMode${canvasID}" class="font-tiny">ClipVideo</label>
-					</span>
-					<span onclick="setTextualMode(${canvasID}, 'cl')">
-						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-						<label for="textualMode${canvasID}" class="font-tiny">ClipLAION</label>
-					</span>
-					<span onclick="setTextualMode(${canvasID}, 'aladin')">
-						<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-						<label for="textualMode${canvasID}" class="font-tiny">Aladin</label>
-					</span>
-					<span onclick="setTextualMode(${canvasID}, 'all')">
-						<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
-						<label for="textualMode${canvasID}" class="font-tiny">use all</label>
-					</span>
-				</div>
+
+			</div>
+			<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
+				<span style="padding-right: 4em;" id="translate${canvasID}">
+					<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
+					<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
+				</span>
+				<span onclick="setTextualMode(${canvasID}, 'cv')">
+					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+					<label for="textualMode${canvasID}" class="font-tiny">ClipVideo</label>
+				</span>
+				<span onclick="setTextualMode(${canvasID}, 'cl')">
+					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+					<label for="textualMode${canvasID}" class="font-tiny">ClipLAION</label>
+				</span>
+				<span onclick="setTextualMode(${canvasID}, 'aladin')">
+					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
+					<label for="textualMode${canvasID}" class="font-tiny">Aladin</label>
+				</span>
+				<span onclick="setTextualMode(${canvasID}, 'all')">
+					<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
+					<label for="textualMode${canvasID}" class="font-tiny">use all</label>
+				</span>
 			</div>
 		</div>
 	</div>

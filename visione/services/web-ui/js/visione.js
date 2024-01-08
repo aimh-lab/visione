@@ -1465,8 +1465,8 @@ function initLayout() {
 	$('#visionelogo').addClass('visioneLogo_bigger');
 
 	$('#textual0').addClass('simplifiedTextual0');
-	$('#textualOptions0').css('display', 'none');
-	$('#textualOptions1').css('display', 'none');
+	//$('#textualOptions0').css('display', 'none');
+	//$('#textualOptions1').css('display', 'none');
 //-----
 }
 
@@ -1477,8 +1477,8 @@ function displayAdvanced(isAdv) {
 		setDisplayTo = "block";
 		$('#block0').css('display', 'block');
 		$('#block1').css('display', 'block');
-		$('#textualOptions0').css('display', 'block');
-		$('#textualOptions1').css('display', 'block');
+		//$('#textualOptions0').css('display', 'block');
+		//$('#textualOptions1').css('display', 'block');
 
 		//Restore the width of the left sidebar
 		$('.sidebarGrid').css('width', '310');
@@ -1487,8 +1487,8 @@ function displayAdvanced(isAdv) {
 		setDisplayTo = "none";
 		$('#block0').css('display', 'none');
 		$('#block1').css('display', 'none');
-		$('#textualOptions0').css('display', 'none');
-		$('#textualOptions1').css('display', 'none');
+		//$('#textualOptions0').css('display', 'none');
+		//$('#textualOptions1').css('display', 'none');
 
 		//Set to 0 the left sidebar
 		$('.sidebarGrid').css('width', '0');
@@ -1657,7 +1657,7 @@ function checkKey(e) {
 	console.log(e.keyCode)
 	var goToNextResult = false;
 
-	var activeElement = document.activeElement;
+	/*var activeElement = document.activeElement;
 	if (activeElement.id === "textual0" || activeElement.id === "textual1") {
 		var idx = activeElement.id == "textual0" ? 0 : 1;
 
@@ -1674,7 +1674,10 @@ function checkKey(e) {
 	}
 	else if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0) {
 		return;
-	}
+	}*/
+	var activeElement = document.activeElement;
+	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0)
+		return;
 
 	if (e.keyCode == '65') {
 
@@ -1978,13 +1981,17 @@ function init() {
 				if (event.keyCode === 13) {
 					$("#textual0")
 						.val(
-							$(
-								"#textual0")
+							$("#textual0")
 								.val()
 								.replace(
 									/(\r\n|\n|\r)/gm,
 									""));
-					queryByTextual();
+					var textQuery =  $("#textual0").val();
+					if (textQuery.length > 0) {
+						if (document.getElementById("isTranslate0").checked)
+							translateText(textQuery, 0);
+					}
+					//queryByTextual();
 					$('#textual0').blur();
 				}
 				if ($("#textual0").val() == "")
@@ -2005,7 +2012,12 @@ function init() {
 								.replace(
 									/(\r\n|\n|\r)/gm,
 									""));
-					queryByTextual();
+					var textQuery =  $("#textual1").val();
+					if (textQuery.length > 0) {
+						if (document.getElementById("isTranslate1").checked)
+							translateText(textQuery, 1);
+					}
+					//queryByTextual();
 					$('#textual1').blur();
 
 				}
