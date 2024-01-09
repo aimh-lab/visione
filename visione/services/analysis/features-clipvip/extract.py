@@ -3,6 +3,7 @@ import itertools
 import av
 import gc
 import logging
+import math
 
 import more_itertools
 from easydict import EasyDict as edict
@@ -60,9 +61,19 @@ def load_shot(
 
     with av.open(video_path.as_posix(), metadata_errors="ignore") as container:
         video_stream = container.streams.video[0]
+
+        if video_stream.duration is not None:
+            # FIXME: the stream seems empty if start time is too close to the end of the video
+            video_duration = float(video_stream.duration * video_stream.time_base)
+            if video_duration - start_time < 3:
+                logging.warning(f"Shot {shot_id} has less than 3 seconds of video left, using last 3 seconds")
+                start_time = video_duration - 3
+
         fps = video_stream.average_rate or video_stream.guessed_rate or 25
-        how_many_frames = int(duration * fps)
+        how_many_frames = math.ceil(duration * fps)
         if how_many_frames == 0:
+            # should never happen, but just in case
+            logging.warning(f"Shot {shot_id} has duration 0, using 1 frame")
             how_many_frames = 1
         indices = sample_frame_indices(clip_len, how_many_frames)
         try:
@@ -192,13 +203,28 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         self.setup()
 
         collate_fn = VideoCollate(self.processor)
-        dataset = C2VIterableDataset(shot_paths_and_times, batch_size=self.args.batch_size, **{'pad_shot_to_seconds': self.args.pad_shot_to})
+        shot_paths_and_times = list(shot_paths_and_times)
+        dataset = C2VDataset(shot_paths_and_times, **{'pad_shot_to_seconds': self.args.pad_shot_to})
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers, collate_fn=collate_fn)
 
         with torch.no_grad():
             for batch in dataloader:
                 records = self.forward_batch(batch)
                 yield from records
+
+    # def extract_iterable(self, shot_paths_and_times):
+    #     # FIXME: not working correctly when num_workers == 0
+
+    #     self.setup()
+
+    #     collate_fn = VideoCollate(self.processor)
+    #     dataset = C2VIterableDataset(shot_paths_and_times, batch_size=self.args.batch_size, **{'pad_shot_to_seconds': self.args.pad_shot_to})
+    #     dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers, collate_fn=collate_fn)
+
+    #     with torch.no_grad():
+    #         for batch in dataloader:
+    #             records = self.forward_batch(batch)
+    #             yield from records
 
 
 if __name__ == "__main__":

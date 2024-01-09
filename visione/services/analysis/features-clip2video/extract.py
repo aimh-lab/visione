@@ -3,6 +3,7 @@ import itertools
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import more_itertools
 import numpy as np
@@ -33,6 +34,13 @@ def load_shot(
     video_id, shot_id, video_path, start_frame, start_time, end_frame, end_time = shot_info
 
     duration = end_time - start_time
+
+    if duration == 0 or (end_frame - start_frame) <= 1:
+        # FIXME: to handle videos having 0s duration, we expand the duration to 0.5 second. Pretty hacky.
+        start_time = max(0, start_time - 0.5 / 2)
+        end_time = start_time + 0.5
+        duration = end_time - start_time
+
     if duration < pad_shot_to_seconds:
         pad = (pad_shot_to_seconds - duration) / 2
         start_time = max(0, start_time - pad)
@@ -61,8 +69,13 @@ def load_shot(
     if ffmpeg.returncode != 0:
         print("Error in processing video {}, shot {}".format(video_path, shot_id), file=sys.stderr)
         return video, video_mask, shot_id, item_id
-
-    video = torch.frombuffer(video, dtype=torch.uint8).reshape(-1, 240, 320, 3).detach().clone()
+    try:
+        video = torch.frombuffer(video, dtype=torch.uint8).reshape(-1, 240, 320, 3).detach().clone()
+    except:
+        print("Error in processing video {}, shot {}".format(video_path, shot_id), file=sys.stderr)
+        print(f"{video_id} {shot_id} {video_path} {start_frame} {start_time} {end_frame} {end_time}", file=sys.stderr)
+        raise
+        
     video = video.permute(0, 3, 1, 2)  # T x 3 x H x W
     video = video[::sample_framerate, ...]
     video = video / 255.0  # convert to [0, 1]
@@ -200,13 +213,28 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
     def extract_iterable(self, shot_paths_and_times):
         self.setup()
 
-        dataset = C2VIterableDataset(shot_paths_and_times, batch_size=self.args.batch_size, **self.load_shot_args)
+        shot_paths_and_times = list(shot_paths_and_times)
+        dataset = C2VDataset(shot_paths_and_times, **self.load_shot_args)
+        print(f"Dataset len: {len(shot_paths_and_times)}")
         dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers)
 
         with torch.no_grad():
             for batch in dataloader:
                 records = self.forward_batch(batch)
                 yield from records
+
+    # def extract_iterable(self, shot_paths_and_times):
+    #     # FIXME: not working correctly when num_workers == 0
+
+    #     self.setup()
+
+    #     dataset = C2VIterableDataset(shot_paths_and_times, batch_size=self.args.batch_size, **self.load_shot_args)
+    #     dataloader = DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers)
+
+    #     with torch.no_grad():
+    #         for batch in dataloader:
+    #             records = self.forward_batch(batch)
+    #             yield from records
 
 
 if __name__ == "__main__":
