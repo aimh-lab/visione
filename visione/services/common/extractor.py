@@ -46,7 +46,7 @@ class BaseExtractor(object):
 
         input_path = self.args.input_images
         if input_path.is_dir():  # input is a directory, list all images in it
-            image_paths = sorted(input_path.glob("*.png"))
+            image_paths = sorted(input_path.glob("*.png")) or sorted(input_path.glob("*.jpg"))
             ids_and_paths = [(input_path.name, p.stem, p) for p in image_paths]
         else:  # input is a file, parse it
             with input_path.open() as image_list:
@@ -180,7 +180,7 @@ class BaseVideoExtractor(object):
         if input_shots.is_dir():
             # inputs_shots is the directory of a single video
             video_id = input_shots.stem
-            frame_paths = sorted(input_shots.glob("*.png"))
+            frame_paths = sorted(input_shots.glob("*.png")) or sorted(input_shots.glob("*.jpg"))
             frame_ids = [f.stem for f in frame_paths]
             shot_frames = list(zip(itertools.repeat(video_id), frame_ids, frame_paths))
 
@@ -284,10 +284,11 @@ class BaseVideoExtractor(object):
             #     return None
 
         # process images in batches
-        records = self.extract_iterable(shot_paths_and_times)
+        shot_paths, other_infos = itertools.tee(shot_paths_and_times)
+        records = self.extract_iterable(shot_paths)
 
         # unzip ids and paths
-        shot_paths_and_times_unzipped = more_itertools.unzip(shot_paths_and_times)
+        shot_paths_and_times_unzipped = more_itertools.unzip(other_infos)
         video_ids, image_ids, image_paths, *_ = shot_paths_and_times_unzipped
 
         shot_ids_and_records = zip(video_ids, image_ids, records)
