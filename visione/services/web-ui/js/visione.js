@@ -100,6 +100,7 @@ var is43 = false;
 var is169 = false;
 
 var urlVBSService = '';
+var translateService = '';
 var thumbnailUrl = '';
 var keyFramesUrl = '';
 var activeCanvasIdx = 0;
@@ -131,10 +132,10 @@ function handler(myObj) {
 	speech2TextService = myObj.speech2Text;
 	translateService = myObj.translate;
 
-	thumbnailUrl= myObj.thumbnailUrl;
-	keyFramesUrl=myObj.keyFramesUrl;
-	videoUrlPrefix=myObj.videoUrl;
-	videoshrinkUrl=myObj.videoshrinkUrl;
+	thumbnailUrl = myObj.thumbnailUrl;
+	keyFramesUrl = myObj.keyFramesUrl;
+	videoUrlPrefix = myObj.videoUrl;
+	videoshrinkUrl = myObj.videoshrinkUrl;
 }
 
 function setAVS(isAvsSel) {
@@ -151,8 +152,9 @@ function setSpeech(speechRes, idx) {
 	if (speechRes == null) {
 		console.log("Warning, speechRes is " + speechRes);
 		prevTextual[idx] = $("#textual" + idx).val();
-		$("#textual" + idx).val('');
-		document.getElementById('cancelText' + idx).style.display = 'none'
+		//$("#textual" + idx).val('');
+		//document.getElementById('cancelText' + idx).style.display = 'none'
+		//searchByForm();
 	}
 
 	else {
@@ -162,14 +164,30 @@ function setSpeech(speechRes, idx) {
 		$("#textual" + idx).val(jsonSpeech.translation);
 		document.getElementById('cancelText' + idx).style.display = 'block'
 
-		searchByForm();
-		idx = Math.floor(Math.random() * 3);
-		if (jsonSpeech.translation.length > 50) {
-			prevTextual[idx] = $("#textual" + idx).val();
-			//jsonRes = JSON.parse(speechRes);
-			//alert(messages[idx]);
-		}
+		//searchByForm();
 	}
+	searchByForm();
+}
+
+function setTranslate(speechRes, idx) {
+	if (speechRes == null) {
+		console.log("Warning, speechRes is " + speechRes);
+		prevTextual[idx] = $("#textual" + idx).val();
+		//$("#textual" + idx).val('');
+		//document.getElementById('cancelText' + idx).style.display = 'none'
+		//searchByForm();
+	}
+
+	else {
+		console.log(speechRes);
+		let jsonSpeech = JSON.parse(speechRes)
+
+		$("#textual" + idx).val(jsonSpeech.translated_text);
+		document.getElementById('cancelText' + idx).style.display = 'block'
+
+		//searchByForm();
+	}
+	searchByForm();
 }
 
 function playVideo(id) {
@@ -205,54 +223,54 @@ function drag(ev) {
 function getText(id, field) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getText?id="+ id + "&field=" + field,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getText?id=" + id + "&field=" + field,
+			async: false
 		}).responseText
 }
 
 function getAllVideoKeyframes(videoId) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getAllVideoKeyframes?videoId="+ videoId,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getAllVideoKeyframes?videoId=" + videoId,
+			async: false
 		}).responseText
 }
 
 function getField(id, field) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getField?id="+ id + "&field=" + field,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getField?id=" + id + "&field=" + field,
+			async: false
 		}).responseText
 }
 
 function getStartTime(id) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getStartTime?id="+ id,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getStartTime?id=" + id,
+			async: false
 		}).responseText
 }
 
 function getEndTime(id) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getEndTime?id="+ id,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getEndTime?id=" + id,
+			async: false
 		}).responseText
 }
 
 function getMiddleTimestamp(id) {
 	return $
 		.ajax({
-			type : "GET",
-			url :  urlVBSService+"/getMiddleTimestamp?id="+ id,
-			async : false
+			type: "GET",
+			url: urlVBSService + "/getMiddleTimestamp?id=" + id,
+			async: false
 		}).responseText
 }
 
@@ -320,19 +338,19 @@ function startNewAVSSession() {
 	//if (confirm('Starting a new AVS session?')) {
 	location.href = "index_V3C_AVS.html";
 	$.ajax({
-		type : "GET",
-		async : false,
-		url : urlVBSService+"/init"
+		type: "GET",
+		async: false,
+		url: urlVBSService + "/init"
 	}).responseText
 	loadConfig();
 	//}
 }
 
-function submitResult(id,videoId) {
+function submitResult(id, videoId) {
 	return $.ajax({
-		type : "GET",
-		async : false,
-		url : urlVBSService+"/submitResult?id="+ id+ "&videoid="+ videoId,
+		type: "GET",
+		async: false,
+		url: urlVBSService + "/submitResult?id=" + id + "&videoid=" + videoId,
 	}).responseText;
 }
 
@@ -589,15 +607,15 @@ function search2(query) {
 		console.log(query);
 
 		$.ajax({
-			type : "POST",
-			async : true,
-			data: {query: query, simreorder: simreorder},
-			dataType : "text",
-			url : urlVBSService+"/search",
-			success : function(data) {
+			type: "POST",
+			async: true,
+			data: { query: query, simreorder: simreorder },
+			dataType: "text",
+			url: urlVBSService + "/search",
+			success: function (data) {
 				setResults(data)
 			},
-			error : function(data) {
+			error: function (data) {
 				setResults(data);
 			}
 		});
@@ -920,7 +938,10 @@ function showResults(data) {
 			let itemPerRow = 0;
 
 			resMatrix[resrowIdx] = [];
+			let img_loading = "eager"
 			for (let i = 0; i < res.length; i++) {
+				if (i >= 100)
+				img_loading = "lazy"
 				var imgGridResults = ""
 				let imgId = res[i].imgId;
 				let videoId = res[i].videoId;
@@ -933,7 +954,7 @@ function showResults(data) {
 
 				let result = imgId.match(regex_to_match_keyframe_number);
 				let frameNumber = result ? result[1] || result[2] || result[3] : null;
-				
+
 
 				if (i > 0 && videoId != prevID) {
 					resMatrix[++resrowIdx] = [];
@@ -964,7 +985,7 @@ function showResults(data) {
 						addToAutoSelected(avsObj)*/
 
 				imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), true)
+				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), true, img_loading)
 				imgGridResults += '</div>'
 				resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
@@ -1065,17 +1086,17 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, vid
 }
 
 function unifiedSubmit(avsObj, ev) {
-	if (!submitAlert()) 
-		return false; 
+	if (!submitAlert())
+		return false;
 
-	currentSelected =  null;
+	currentSelected = null;
 
 	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
 		currentSelected = avsManuallyByVideoID.entries().next().value[1];
 		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
 	}
 
-	avsCleanManuallySelected(); 
+	avsCleanManuallySelected();
 	avsToggle(avsObj, ev);
 	submitAVS();
 
@@ -1086,17 +1107,17 @@ function unifiedSubmit(avsObj, ev) {
 }
 
 function unifiedTabSubmit(avsObj, ev) {
-	if (!submitAlert()) 
-		return false; 
+	if (!submitAlert())
+		return false;
 
-	currentSelected =  null;
+	currentSelected = null;
 
 	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
 		currentSelected = avsManuallyByVideoID.entries().next().value[1];
 		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
 	}
 
-	avsCleanManuallySelected(); 
+	avsCleanManuallySelected();
 	avsToggle(avsObj, ev);
 	submitAVS();
 
@@ -1110,25 +1131,27 @@ function hideOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 0;
 }
 
-const imgResult = (res, borderColor, avsObj, isSimplified = false) => {
+const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="eager") => {
 
 	if (isSimplified) {
 		return `
 			<!--<div class="img_container" onmouseover='console.log("in"); showOverlay("toolbar_icons_${res.imgId}")' onmouseout='console.log("out"); hideOverlay("toolbar_icons_${res.imgId}")'>-->
 
 				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
-				<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
-					<img id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)' />
+				<div class="result-border" style="border-color: ${borderColor};">
+					<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
+						<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)' />
+					</div>
+					<div  id="toolbar_icons_${res.imgId}">
+						<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
+						<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+						<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+						<a href="" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+						<a href="" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="" title="Visual similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
+					<div>
 				</div>
-				<div  id="toolbar_icons_${res.imgId}">
-					<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-					<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-					<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-					<a href="" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-					<a href="" title="image similarity"><img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-					<a href="" title="Visual similarity"><img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-					<a href="" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
-				<div>
 		`
 	}
 
@@ -1355,17 +1378,17 @@ function includeHTML() {
 function canvasClean(idx) {
 	prevOccur[idx] = $('#and' + idx).is(':checked');
 	$('input:radio[name=occur' + idx + ']')[0].checked = true;
-/*
-	prevTextual[idx] = $("#textual" + idx).val();
-	$("#textual" + idx).val('');
-
-	if ($('#textualMode' + idx).is(':checked')) {
-		prevTextualMode[idx] = "aladin";
-	}
-	else
-		prevTextualMode[idx] = "clip";
-	$('#textualMode' + idx).prop('checked', false);
-*/
+	/*
+		prevTextual[idx] = $("#textual" + idx).val();
+		$("#textual" + idx).val('');
+	
+		if ($('#textualMode' + idx).is(':checked')) {
+			prevTextualMode[idx] = "aladin";
+		}
+		else
+			prevTextualMode[idx] = "clip";
+		$('#textualMode' + idx).prop('checked', false);
+	*/
 	prevNotField[idx] = $("#not" + idx).val();
 	$("#not" + idx).val('');
 
@@ -1456,7 +1479,7 @@ function initLayout() {
 	$('#simplified0').append($('#textualOptions0'));
 	$('#simplified1').append($('#textualOptions1'));
 
-//------da settate all'inizio senza farlo da javascript
+	//------da settate all'inizio senza farlo da javascript
 	$('#simplified1').css('display', 'none');
 	$('#textual0').removeClass('textualquery0');
 	$('#visionelogo').removeClass('visioneLogo');
@@ -1467,7 +1490,7 @@ function initLayout() {
 	$('#textual0').addClass('simplifiedTextual0');
 	//$('#textualOptions0').css('display', 'none');
 	//$('#textualOptions1').css('display', 'none');
-//-----
+	//-----
 }
 
 function displayAdvanced(isAdv) {
@@ -1496,27 +1519,27 @@ function displayAdvanced(isAdv) {
 	}
 
 	//if (latestQuery != "" || isAdvanced) {
-		//$('#sceneDes1').css('display', 'block');
-		//if ($("#sceneDes1").length > 0)
-		$('#simplified1').css('display', 'block');
+	//$('#sceneDes1').css('display', 'block');
+	//if ($("#sceneDes1").length > 0)
+	$('#simplified1').css('display', 'block');
 
-		//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-		//document.getElementById("simplified0").className = 'simplified0'
-		//document.getElementById("textual0").className = 'textualquery0'
-		//document.getElementById("visionelogo").className = 'visioneLogo'
+	//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
+	//document.getElementById("simplified0").className = 'simplified0'
+	//document.getElementById("textual0").className = 'textualquery0'
+	//document.getElementById("visionelogo").className = 'visioneLogo'
 
-		$('#simplified0').removeClass('simplifiedSearchBar');
-		$('#textual0').removeClass('simplifiedTextual0');
-		$('#visionelogo').removeClass('visioneLogo_bigger');
+	$('#simplified0').removeClass('simplifiedSearchBar');
+	$('#textual0').removeClass('simplifiedTextual0');
+	$('#visionelogo').removeClass('visioneLogo_bigger');
 
-		//$('#sceneDes0').addClass('fa-hourglass-start');
-		//$('#simplified0').addClass('simplified0');
-		$('#textual0').addClass('textualquery0');
-		$('#visionelogo').addClass('visioneLogo');
-		$('#hourglass-start').css('display', 'block');
-		$('#hourglass-end').css('display', 'block');
+	//$('#sceneDes0').addClass('fa-hourglass-start');
+	//$('#simplified0').addClass('simplified0');
+	$('#textual0').addClass('textualquery0');
+	$('#visionelogo').addClass('visioneLogo');
+	$('#hourglass-start').css('display', 'block');
+	$('#hourglass-end').css('display', 'block');
 
-		//$('#newsession').css('display', 'block');
+	//$('#newsession').css('display', 'block');
 
 	//} 
 	/*else {
@@ -1573,32 +1596,32 @@ function scrollToRow(rowNumber) {
 	var containerHeight = container.offsetHeight;
 	var containerBottom = containerTop + containerHeight;
 
-	
+
 	var row = document.getElementById("img" + resMatrix[rowNumber][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 	var rowHeight = row.offsetHeight;
 
-	container.scrollTop = rowTop - containerTop - rowHeight/2;
+	container.scrollTop = rowTop - containerTop - rowHeight / 2;
 
 
-/*
-	if (rowTop - t < containerTop) {
-		// La riga è sopra la parte correntemente visibile
-		container.scrollTop = rowTop;
-	} else if (rowTop -t > containerHeight) {
-		// La riga è sotto la parte correntemente visibile
-		container.scrollTop = rowTop - rowHeight - containerHeight;
-	}*/
+	/*
+		if (rowTop - t < containerTop) {
+			// La riga è sopra la parte correntemente visibile
+			container.scrollTop = rowTop;
+		} else if (rowTop -t > containerHeight) {
+			// La riga è sotto la parte correntemente visibile
+			container.scrollTop = rowTop - rowHeight - containerHeight;
+		}*/
 
-/*
-	if (rowTop < containerTop) {
-		// La riga è sopra la parte correntemente visibile
-		container.scrollTop = rowTop;
-	} else if (rowTop + rowHeight > containerTop + containerHeight) {
-		// La riga è sotto la parte correntemente visibile
-		container.scrollTop = rowTop - rowHeight - containerHeight;
-	}*/
+	/*
+		if (rowTop < containerTop) {
+			// La riga è sopra la parte correntemente visibile
+			container.scrollTop = rowTop;
+		} else if (rowTop + rowHeight > containerTop + containerHeight) {
+			// La riga è sotto la parte correntemente visibile
+			container.scrollTop = rowTop - rowHeight - containerHeight;
+		}*/
 }
 
 function unscrollToRow(rowNumber) {
@@ -1611,10 +1634,10 @@ function unscrollToRow(rowNumber) {
 
 	var rowTop = row.offsetTop;
 
-		// La riga è sopra la parte correntemente visibile
-		//valore hardcoded. Bisognerebbe calcolare l'altezza dell'immagine selezionata
-	container.scrollTop = rowTop -   - rowHeight/2;
-	
+	// La riga è sopra la parte correntemente visibile
+	//valore hardcoded. Bisognerebbe calcolare l'altezza dell'immagine selezionata
+	container.scrollTop = rowTop - - rowHeight / 2;
+
 }
 
 //var colIdx = 0;
@@ -1632,20 +1655,32 @@ var scrollingOffset = 0;
 
 function translateText(textQuery, idx) {
 	$.ajax({
-		type : "POST",
-		async : true,
+		type: "POST",
+		async: true,
 		crossDomain: true,
-		data: {text: textQuery},
-		dataType : "text",
-		url : translateService+"/text",
-		success : function(data) {
+		data: { text: textQuery },
+		dataType: "text",
+		url: translateService + "/text",
+		success: function (data) {
 			console.log(data)
+
 			let jsonTranslate = JSON.parse(data)
-			if (jsonTranslate.translated == true)
-				setSpeech(data, idx);
+			let toLog = {
+				"query": [],
+				"parameters": []
+			};
+			toLog.query.push({"translate": ""});
+			toLog.parameters.push(jsonTranslate);
+			toLog = JSON.stringify(toLog)
+			console.log(toLog)
+
+			log(toLog);
+
+			if (jsonTranslate.is_translated == true)
+				setTranslate(data, idx);
 		},
-		error : function(data) {
-			setSpeech(null, idx);
+		error: function (data) {
+			setTranslate(null, idx);
 		}
 	});
 	//return JSON.parse('{"lang":"it","translated":true,"translation":"the pipo"}');
@@ -1761,31 +1796,31 @@ function checkKey(e) {
 		//scrollToRow(rowIdx);
 
 
-/*
-		var container = document.querySelector('.resGrid2');
-
-		var containerTop = container.getBoundingClientRect().top;
-		var containerBottom = containerTop + container.offsetHeight;
-
-		var percentVisible = 0;
-		numCycle = 0;
-		while (percentVisible < 100 && numCycle++ < 10) {
-			var elementTop = element.getBoundingClientRect().top;
-			var elementBottom = elementTop + element.offsetHeight;
-
-			if (elementTop >= containerTop && elementTop <= containerBottom) {
-				var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-				var elementHeight = element.offsetHeight;
-				var percentVisible = (visibleHeight / elementHeight) * 100;
-			}
-			if (percentVisible < 100) {
-				var gridContent = $("#content").find(".resGrid2");
-				scrollingOffset = Math.max(0, scrollingOffset - 250)
-				gridContent.animate({ scrollTop: scrollingOffset }, 0);
-			}
-			console.log("percentVisible: " + percentVisible);
-		}
-*/
+		/*
+				var container = document.querySelector('.resGrid2');
+		
+				var containerTop = container.getBoundingClientRect().top;
+				var containerBottom = containerTop + container.offsetHeight;
+		
+				var percentVisible = 0;
+				numCycle = 0;
+				while (percentVisible < 100 && numCycle++ < 10) {
+					var elementTop = element.getBoundingClientRect().top;
+					var elementBottom = elementTop + element.offsetHeight;
+		
+					if (elementTop >= containerTop && elementTop <= containerBottom) {
+						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+						var elementHeight = element.offsetHeight;
+						var percentVisible = (visibleHeight / elementHeight) * 100;
+					}
+					if (percentVisible < 100) {
+						var gridContent = $("#content").find(".resGrid2");
+						scrollingOffset = Math.max(0, scrollingOffset - 250)
+						gridContent.animate({ scrollTop: scrollingOffset }, 0);
+					}
+					console.log("percentVisible: " + percentVisible);
+				}
+		*/
 
 
 		/*gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
@@ -1802,53 +1837,53 @@ function checkKey(e) {
 
 		//scrollToRow(rowIdx);
 
-/*
-
-		var container = document.querySelector('.resGrid2');
-
-		var containerTop = container.getBoundingClientRect().top;
-		var containerBottom = containerTop + container.offsetHeight;
-
-		var percentVisible = 0;
-		numCycle = 0;
-		while (percentVisible < 100 && numCycle++ < 10) {
-
-			var elementTop = element.getBoundingClientRect().top;
-			var elementBottom = elementTop + element.offsetHeight;
-
-			if (elementTop >= containerTop && elementTop <= containerBottom) {
-				var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-				var elementHeight = element.offsetHeight;
-				percentVisible = (visibleHeight / elementHeight) * 100;
-			}
-			if (percentVisible < 100) {
-				var gridContent = $("#content").find(".resGrid2");
-				scrollingOffset += 250
-				gridContent.animate({ scrollTop: scrollingOffset }, 0);
-			}
-			console.log("percentVisible: " + percentVisible);
-		}
 		/*
 		
-				var gridItems = container.querySelectorAll('.item');
-				var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
+				var container = document.querySelector('.resGrid2');
 		
 				var containerTop = container.getBoundingClientRect().top;
-				var containerHeight = container.offsetHeight;
-				var selectedRowTop = selectedRow.getBoundingClientRect().top;
+				var containerBottom = containerTop + container.offsetHeight;
 		
-				if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
-				console.log("La riga 25 è visibile");
-				} else {
-					console.log("La riga 25 è al di sotto dello scroll");
-					gridOffsetY = gridOffsetY + rowHeight ;
-					var gridContent = $("#content").find(".contentGrid");
-					//gridContent.animate({ scrollTop: gridOffsetY }, 0);
-					gridContent.animate({ scrollTop: 200 }, 0);
+				var percentVisible = 0;
+				numCycle = 0;
+				while (percentVisible < 100 && numCycle++ < 10) {
 		
-					resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
-					rowHeight = resRow.offsetHeight - scrollOffset
-				}*/
+					var elementTop = element.getBoundingClientRect().top;
+					var elementBottom = elementTop + element.offsetHeight;
+		
+					if (elementTop >= containerTop && elementTop <= containerBottom) {
+						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
+						var elementHeight = element.offsetHeight;
+						percentVisible = (visibleHeight / elementHeight) * 100;
+					}
+					if (percentVisible < 100) {
+						var gridContent = $("#content").find(".resGrid2");
+						scrollingOffset += 250
+						gridContent.animate({ scrollTop: scrollingOffset }, 0);
+					}
+					console.log("percentVisible: " + percentVisible);
+				}
+				/*
+				
+						var gridItems = container.querySelectorAll('.item');
+						var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
+				
+						var containerTop = container.getBoundingClientRect().top;
+						var containerHeight = container.offsetHeight;
+						var selectedRowTop = selectedRow.getBoundingClientRect().top;
+				
+						if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
+						console.log("La riga 25 è visibile");
+						} else {
+							console.log("La riga 25 è al di sotto dello scroll");
+							gridOffsetY = gridOffsetY + rowHeight ;
+							var gridContent = $("#content").find(".contentGrid");
+							//gridContent.animate({ scrollTop: gridOffsetY }, 0);
+							gridContent.animate({ scrollTop: 200 }, 0);
+				
+							resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
+							rowHeight = resRow.offsetHeight - scrollOffset
+						}*/
 
 
 		console.log("down arrow")
@@ -1939,7 +1974,7 @@ function init() {
 		document.getElementById('avsSubmittedTab').style.display = 'block'
 	}
 	//$("#searchTab").append(addButton);
-	loadConfig().then(loadPalette);
+	loadConfig().then(loadPalette)//.then(checkServices);
 	canvas0 = get_canvas('canvas0', 'annotations0',
 		'not0');
 	canvas1 = get_canvas('canvas1', 'annotations1',
@@ -1986,7 +2021,7 @@ function init() {
 								.replace(
 									/(\r\n|\n|\r)/gm,
 									""));
-					var textQuery =  $("#textual0").val();
+					var textQuery = $("#textual0").val();
 					if (textQuery.length > 0) {
 						if (document.getElementById("isTranslate0").checked)
 							translateText(textQuery, 0);
@@ -2012,7 +2047,7 @@ function init() {
 								.replace(
 									/(\r\n|\n|\r)/gm,
 									""));
-					var textQuery =  $("#textual1").val();
+					var textQuery = $("#textual1").val();
 					if (textQuery.length > 0) {
 						if (document.getElementById("isTranslate1").checked)
 							translateText(textQuery, 1);
@@ -2208,6 +2243,48 @@ function loadPalette() {
 	return dataArray;
 }
 
+async function checkServices() {
+    let services_url = config?.services_urls || [];
+    let message = "Warning, the following services return an error status:";
+    let isError = false;
+
+    // Funzione per effettuare la chiamata Fetch e gestire la risposta
+    async function checkServiceStatus(key, url) {
+        try {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                isError = true;
+                message += `\n${key}: ${response.status}`;
+            }
+        } catch (error) {
+            // Gestione degli errori di rete o Fetch
+            isError = true;
+            message += `\n${key}: Network error or Fetch error`;
+        }
+    }
+
+    // Array di promesse per le chiamate Fetch
+    const fetchPromises = [];
+
+    for (let key in services_url) {
+        let value = services_url[key];
+		let serviceName = key.replace(/_url$/, '');
+        let url = value != null ? value : '/' + serviceName;
+
+        // Aggiungi la promessa alla lista
+        fetchPromises.push(checkServiceStatus(serviceName, url));
+    }
+
+    // Attendi che tutte le chiamate Fetch siano completate
+    await Promise.all(fetchPromises);
+
+    // Mostra l'alert se ci sono errori
+    if (isError) {
+        alert(message);
+    }
+}
+
 function setPalette(palette) {
 	const paletteElement = document.querySelector('.palette');
 	const computedStyle = window.getComputedStyle(paletteElement);
@@ -2240,7 +2317,7 @@ function setPalette(palette) {
 	$("#palette").append(html);
 }
 
-function noResultsOutput(isNoResult=true) {
+function noResultsOutput(isNoResult = true) {
 	var elemento = $('#imgGridResults');
 	if (isNoResult) {
 		elemento.removeClass('gridcontainer');
