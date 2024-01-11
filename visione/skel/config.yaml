@@ -35,6 +35,36 @@ services_urls:
   clip2video_internal_search_url: null
 
 
+core:
+  K: 10000  # Number of results to return in searches.
+
+  ## Advanced stuff, don't touch unless you know what you're doing.
+  ## Commented values are the default ones.
+  ## Uncomment and change them if you want to override them.
+
+  #-------PATH SETTINGS-------#
+  # index_path: /data/lucene-index  # LUCENE
+  # log_path: /data/logs  # LOG_FOLDER
+  # log_dres_path: /data/logs_dres  # LOG_FOLDER_DRES
+
+  #-------QUERY & FIELDS SETTINGS-------#
+  # OBJECTS: {"field":"objects", "similarity":"DotProduct", "weight":"1.0"} 
+  # BB: {"field":"txt", "similarity":"CosineSimilarity", "weight":"1.0"}
+  # ALADIN: {"field":"aladin", "similarity":"DotProduct", "weight":"0.00005"}
+  # CLIP: {"field":"clip", "similarity":"CosineSimilarity", "weight":"1.0"}
+  # IMG_SIM: {"field":"features", "similarity":"DotProduct", "weight":"1.0"}
+  #
+  # RESCORER_PIPELINE: [OBJECTS, ALADIN, BB]
+
+  RMAC_SERVICE: http://router/gem
+  ALADIN_SERVICE: http://router/aladin
+  CLIP_SERVICE: http://router/clip2video-text-search
+  # http://router/clip-text-search
+  CLIP_INTERNAL_IMG_SEARCH_SERVICE: http://router/clip2video-internal-search
+  # http://router/clip-internal-search
+  CLIP_ONE_SERVICE: http://router/clip-laion-text-search
+  CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE: http://router/clip-laion-internal-search
+
 analysis:
   # Object detectors to employ (with optional parameters)
   object_detectors:
@@ -350,3 +380,11 @@ ui:
       - {name: red}
       - {name: white}
       - {name: yellow}
+
+dres:
+  endpoint: http://router/dres  # SUBMIT_SERVER=http://router/dres
+  username: visione  # SUBMIT_USER
+  password: visione  # SUBMIT_PWD
+  member_id: visione  # MEMBER_ID
+  send_logs: false  # SEND_LOG_TO_DRES
+  # SUBMIT_SERVICE=submit  (deprecated)

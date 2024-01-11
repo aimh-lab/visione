@@ -1,122 +1,103 @@
 package it.cnr.isti.visione.services;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+// import java.io.InputStreamReader;
+// import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Properties;
+import java.util.List;
+import java.util.Map;
 
-import org.json.JSONObject;
-
-import com.google.gson.Gson;
-
+import org.yaml.snakeyaml.Yaml;
 
 public class Settings {
-	
-//	private static final String VISIONE_HOME = System.getenv("VISIONE_HOME_4") == null ? ".": System.getenv("VISIONE_HOME_4");
-	
-	private static Properties props;
 
-	public static Boolean SEND_LOG_TO_DRES;	
-	public static int TEAM_ID;
+	// DRES-related settings
+	public static Boolean SEND_LOG_TO_DRES;
+	public static String SUBMIT_SERVER;
+	public static String SUBMIT_USER;
+	public static String SUBMIT_PWD;
 	public static String MEMBER_ID;
+	public static int TEAM_ID = 0;
+
+	// paths
 	public static String LUCENE;
-	public static String KEYFRAME_TIMESTAMP;
-	public static String KEYFRAME_NUMBER;
 	public static String LOG_FOLDER;
 	public static String LOG_FOLDER_DRES;
+
+	// search pipeline settings
 	public static int K;
-	public static String THUMBNAILS_FOLDER;
-	public static String SUBMIT_SERVICE;
-	public static String SUBMIT_SERVER;
-	public static String LOG_SERVICE;
+	public static String[] RESCORER_PIPELINE;
+	public static FieldParameters[] RESCORER_PIPELINE_FIELDS;
+
+	// service URLs
 	public static String RMAC_SERVICE;
 	public static String ALADIN_SERVICE;
 	public static String CLIP_SERVICE;
 	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE;
 	public static String CLIP_ONE_SERVICE;
 	public static String CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE;
-	public static String SUBMIT_USER;
-	public static String SUBMIT_PWD;
-	public static String[] RESCORER_PIPELINE;
-	public static FieldParameters[] RESCORER_PIPELINE_FIELDS;
-	public static String[] FIELD_SIMILARITIES;
-	public static float[] RESCORER_PIPELINE_WEIGHTS;
-	public static String OBJECTS_WEIGHT;
-	public static String BB_WEIGHT;
-	public static String ALADIN_WEIGHT;	
-	public static String IMG_SIM_WEIGHT;	
-	public static String OBJECTS_SIMILARITY;
-	public static String BB_SIMILARITY;
-	public static String ALADIN_SIMILARITY;
-	public static String IMG_SIM_SIMILARITY;
-	
-	public static FieldParameters OBJECT_PARAMETERS;
-	public static FieldParameters BB_PARAMETERS;
-	public static FieldParameters ALADIN_PARAMETERS;
-	public static FieldParameters IMG_SIM_PARAMETERS;
-	
-	private static HashMap<String, FieldParameters> FIELD_MAP;
-	public static File HYPERSET_FILE;
-	
-	public static void init(InputStream is) {
-		props = new Properties();
-		FIELD_MAP = new HashMap<String, FieldParameters>();
-			Gson gson = new Gson();
-//			props.load(new FileInputStream(new File(VISIONE_HOME + "/conf.properties")));
-			try {
-			props.load(new InputStreamReader(is, StandardCharsets.UTF_8));
 
-//			TEAM_ID = Integer.parseInt(props.getProperty("TEAM_ID"));
-			MEMBER_ID = props.getProperty("MEMBER_ID");
-			LUCENE = props.getProperty("LUCENE");
-			SEND_LOG_TO_DRES=Boolean.parseBoolean(props.getProperty("SEND_LOG_TO_DRES"));
-//			KEYFRAME_TIMESTAMP = props.getProperty("KEYFRAME_TIMESTAMP");
-//			KEYFRAME_NUMBER = props.getProperty("KEYFRAME_NUMBER");
-			LOG_FOLDER = props.getProperty("LOG_FOLDER");
-			LOG_FOLDER_DRES = props.getProperty("LOG_FOLDER_DRES");
-			K = Integer.parseInt(props.getProperty("K"));
-			THUMBNAILS_FOLDER = props.getProperty("THUMBNAILS_FOLDER");
-			SUBMIT_SERVICE = props.getProperty("SUBMIT_SERVICE");
-			SUBMIT_SERVER = props.getProperty("SUBMIT_SERVER");
-			SUBMIT_USER = props.getProperty("SUBMIT_USER");
-			SUBMIT_PWD = props.getProperty("SUBMIT_PWD");
-			LOG_SERVICE = props.getProperty("LOG_SERVICE");
-			RMAC_SERVICE = props.getProperty("RMAC_SERVICE");
-			ALADIN_SERVICE = props.getProperty("ALADIN_SERVICE");
-			CLIP_SERVICE = props.getProperty("CLIP_SERVICE");
-			CLIP_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
-			
-			CLIP_ONE_SERVICE = props.getProperty("CLIP_ONE_SERVICE");
-			CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE = props.getProperty("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE");
-			
-			OBJECT_PARAMETERS = gson.fromJson(props.getProperty("OBJECTS"), FieldParameters.class);
-			FIELD_MAP.put("OBJECTS", OBJECT_PARAMETERS);
-			
-			BB_PARAMETERS = gson.fromJson(props.getProperty("BB"), FieldParameters.class);
-			FIELD_MAP.put("BB", BB_PARAMETERS);
+	public static Map<String, FieldParameters> FIELD_PARAMETERS_MAP = new HashMap<String, FieldParameters>();
 
-			ALADIN_PARAMETERS = gson.fromJson(props.getProperty("ALADIN"), FieldParameters.class);
-			FIELD_MAP.put("ALADIN", ALADIN_PARAMETERS);
-
-			IMG_SIM_PARAMETERS = gson.fromJson(props.getProperty("IMG_SIM"), FieldParameters.class);
-			FIELD_MAP.put("IMG_SIM", IMG_SIM_PARAMETERS);
-			
-			RESCORER_PIPELINE = props.getProperty("RESCORER_PIPELINE").split(",");
-			RESCORER_PIPELINE_FIELDS = new FieldParameters[RESCORER_PIPELINE.length];
-			for (int i = 0; i < RESCORER_PIPELINE.length; i++) {
-				RESCORER_PIPELINE_FIELDS[i] = FIELD_MAP.get(RESCORER_PIPELINE[i]);
-			}
-			HYPERSET_FILE = new File(props.getProperty("HYPERSET"));
-
-			
-
-		} catch (IOException e) {
-			e.printStackTrace();
+	// default values
+	private static final List<String> DEFAULT_RESCORER_PIPELINE = Arrays.asList("OBJECTS", "BB", "ALADIN");
+	private static final Map<String, FieldParameters> DEFAULT_FIELD_PARAMETERS_MAP = new HashMap<String, FieldParameters>() {
+		{
+			put("OBJECTS", new FieldParameters("objects", 1.0f, "DotProduct"));
+			put("BB", new FieldParameters("txt", 1.0f, "CosineSimilarity"));
+			put("ALADIN", new FieldParameters("aladin", 0.00005f, "DotProduct"));
+			put("CLIP", new FieldParameters("clip", 1.0f, "CosineSimilarity"));
+			put("IMG_SIM", new FieldParameters("features", 1.0f, "DotProduct"));
 		}
+	};
+
+	public static void init(InputStream is) {
+		Yaml yaml = new Yaml();
+		// is = new InputStreamReader(is, StandardCharsets.UTF_8);
+		Map<String, Object> config = yaml.load(is);
+		System.out.println(config);
+		Map<String, Object> coreConfig = (Map<String, Object>) config.getOrDefault("core", new HashMap<String, Object>());
+		Map<String, Object> dresConfig = (Map<String, Object>) config.getOrDefault("dres", new HashMap<String, Object>());
+
+		// DRES-related settings
+		SUBMIT_SERVER = (String) dresConfig.getOrDefault("endpoint", "http://router/dres");
+		SUBMIT_USER = (String) dresConfig.getOrDefault("username", "visione");
+		SUBMIT_PWD = (String) dresConfig.getOrDefault("password", "visione");
+		SEND_LOG_TO_DRES = (Boolean) dresConfig.getOrDefault("send_logs", false);
+		MEMBER_ID = (String) dresConfig.getOrDefault("member_id", "visione");
+
+		// Paths
+		LUCENE = (String) coreConfig.getOrDefault("index_path", "/data/lucene-index");
+		LOG_FOLDER = (String) coreConfig.getOrDefault("log_path", "/data/logs");
+		LOG_FOLDER_DRES = (String) coreConfig.getOrDefault("log_dres_path", "/data/logs_dres");
+
+		// Search pipeline settings
+		K = (Integer) config.getOrDefault("K", 10000);
+
+		DEFAULT_FIELD_PARAMETERS_MAP.forEach((field, fp) -> {
+			// Load field parameters overrides
+			if (coreConfig.containsKey(field)) {
+				Map<String, Object> fieldConfig = (Map<String, Object>) coreConfig.get(field);
+				fp = FieldParameters.fromMap(fieldConfig);
+			}
+			FIELD_PARAMETERS_MAP.put(field, fp);
+		});
+
+		RESCORER_PIPELINE = ((List<String>) coreConfig.getOrDefault("RESCORER_PIPELINE", DEFAULT_RESCORER_PIPELINE)).toArray(new String[0]);
+		RESCORER_PIPELINE_FIELDS = new FieldParameters[RESCORER_PIPELINE.length];
+		for (int i = 0; i < RESCORER_PIPELINE.length; i++) {
+			RESCORER_PIPELINE_FIELDS[i] = FIELD_PARAMETERS_MAP.get(RESCORER_PIPELINE[i]);
+		}
+
+		// Service URLs (TODO)
+		RMAC_SERVICE = (String) coreConfig.get("RMAC_SERVICE");
+		ALADIN_SERVICE = (String) coreConfig.get("ALADIN_SERVICE");
+		CLIP_SERVICE = (String) coreConfig.get("CLIP_SERVICE");
+		CLIP_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
+
+		CLIP_ONE_SERVICE = (String) coreConfig.get("CLIP_ONE_SERVICE");
+		CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE");
 	}
-	
+
 }

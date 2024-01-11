@@ -330,7 +330,7 @@ public class LucTextSearch {
 
 	public TopDocs searchByExample(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
 		// s.setSimilarity(dotProduct);
-		Similarity sim = fieldSimilaties.get(Settings.IMG_SIM_PARAMETERS.getSimilarity());
+		Similarity sim = fieldSimilaties.get(Settings.FIELD_PARAMETERS_MAP.get("IMG_SIM").getSimilarity());
 
 		s.setSimilarity(sim);
 		String occur = "";
@@ -367,7 +367,7 @@ public class LucTextSearch {
 	}
 
 	public TopDocs searchByALADIN(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
-		Similarity sim = fieldSimilaties.get(Settings.IMG_SIM_PARAMETERS.getSimilarity());
+		Similarity sim = fieldSimilaties.get(Settings.FIELD_PARAMETERS_MAP.get("IMG_SIM").getSimilarity());
 		s.setSimilarity(sim);
 
 		String occur = "";

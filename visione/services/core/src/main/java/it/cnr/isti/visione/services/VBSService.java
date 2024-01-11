@@ -1,6 +1,7 @@
 package it.cnr.isti.visione.services;
 
 import java.io.File;
+import java.io.FileInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +55,7 @@ public class VBSService {
 	private DRESClient client;
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
-	private static final String VISIONE_CONF = "/WEB-INF/conf.properties";
+	private static final String VISIONE_CONF = "/data/config.yaml";
 	private static File LOGGING_FOLDER;
 	private static File LOGGING_FOLDER_DRES;
 	private static String MEMBER_ID;
@@ -73,14 +74,16 @@ public class VBSService {
 			objectPreprocessing = new ObjectQueryPreprocessing(is);
 		}
 		
-		try (InputStream is = context.getResourceAsStream(VISIONE_CONF)) {
+		File configFile = new File(VISIONE_CONF);
+		try (InputStream is = new FileInputStream(configFile)) {
 			Settings.init(is);
-			LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
-			LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
-			MEMBER_ID=Settings.MEMBER_ID;
-			SEND_LOG_TO_DRES=Settings.SEND_LOG_TO_DRES;
 		}
-		
+
+		LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
+		LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
+		MEMBER_ID = Settings.MEMBER_ID;
+		SEND_LOG_TO_DRES = Settings.SEND_LOG_TO_DRES;
+
 		LucTextSearch.setPreprocessing(objectPreprocessing);
 		searcher.openSearcher(Settings.LUCENE);
 		

@@ -1,11 +1,26 @@
 package it.cnr.isti.visione.services;
 
+import java.util.Map;
+
 public class FieldParameters {
-	
+
 	private String field;
 	private float weight;
 	private String similarity;
-	
+
+	public static FieldParameters fromMap(Map<String, Object> map) {
+		String field = (String) map.get("field");
+		float weight = (float) map.get("weight");
+		String similarity = (String) map.get("similarity");
+		return new FieldParameters(field, weight, similarity);
+	}
+
+	public FieldParameters(String field, float weight, String similarity) {
+		this.field = field;
+		this.weight = weight;
+		this.similarity = similarity;
+	}
+
 	public String getField() {
 		return field;
 	}
