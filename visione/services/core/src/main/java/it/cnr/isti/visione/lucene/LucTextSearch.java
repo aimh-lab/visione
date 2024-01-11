@@ -78,7 +78,6 @@ public class LucTextSearch {
 
 	private double similarityRescorerWeight = 10000;
 	private HashMap<String, Similarity> fieldSimilaties = new HashMap<>();
-//	private static 	ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(Settings.HYPERSET_FILE);
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 
 	public void openSearcher(String lucenePath) throws IOException {
@@ -196,7 +195,6 @@ public class LucTextSearch {
 				booleanQuery = booleanQuery.replaceAll("\\(", "\\\\(").replaceAll("\\)", "\\\\)");
 
 				// System.out.println(booleanQuery);
-				System.out.println(booleanQuery);
 				
 				query4Cache += booleanQuery;
 				if (luceneCache.containsKey(query4Cache.hashCode())) {
