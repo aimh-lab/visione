@@ -107,7 +107,7 @@ public class Logging {
 		}.run();
 	}
 	
-	public synchronized void query2Log(String query, boolean simReorder, String resultset) throws IOException {
+	public synchronized void query2Log(String query, String resultset) throws IOException {
 		Query queryObj = new Query(System.currentTimeMillis(), query);
 		ResultSet queryResults = new ResultSet(resultset);
 		queries.add(queryObj);

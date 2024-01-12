@@ -97,12 +97,11 @@ public class LogParserDRES {
 	/**
 	 * Create a DRES QueryResultLog event given the VISIONE query and results
 	 * @param queries Lucene queries used to get the current resultset
-	 * @param simReorder parameter used in Lucene
 	 * @param resultset  ranked SearchResults
 	 * @return clientTimestamp timestamp of the log
 	 * @throws IOException
 	 */
-	public synchronized long query2Log(List<VisioneQuery> queries, boolean simReorder, ArrayList<SearchResults> resultset) throws IOException {
+	public synchronized long query2Log(List<VisioneQuery> queries, ArrayList<SearchResults> resultset) throws IOException {
 		int rank = 1;
 		this.resultLog = new QueryResultLog();
 		long clientTimestamp = System.currentTimeMillis();
@@ -110,14 +109,16 @@ public class LogParserDRES {
 		resultLog.setResultSetAvailability("Top10000");
 		resultLog.setSortType("rankingModel");
 		//creating result list 
-		for (int i = 0; i < resultset.size(); i ++) {
-			QueryResult resultItem = new QueryResult();
-			SearchResults res=resultset.get(i);
-			resultItem.setItem(res.videoId);
-			resultItem.setFrame(res.middleFrame);
-			resultItem.setRank(rank++);
-			resultItem.setScore((double) res.score);
-			resultLog.addResultsItem(resultItem);
+		if(resultset!=null){
+			for (int i = 0; i < resultset.size(); i ++) {
+				QueryResult resultItem = new QueryResult();
+				SearchResults res=resultset.get(i);
+				resultItem.setItem(res.videoId);
+				resultItem.setFrame(res.middleFrame);
+				resultItem.setRank(rank++);
+				resultItem.setScore((double) res.score);
+				resultLog.addResultsItem(resultItem);
+			}
 		}
 
 		//creating event list 
@@ -139,7 +140,7 @@ public class LogParserDRES {
 				QueryEvent queryEvent = new QueryEvent();
 				queryEvent.setTimestamp(clientTimestamp);
 				queryEvent.setCategory(getCategoryEnum(getCategory(keyField)));
-				queryEvent.setType(getType(keyField)+" > "+getSubType(keyField)); //TODO see if in DRES they have added a subtype 
+				queryEvent.setType(getType(keyField)+getSubType(keyField)); //TODO see if in DRES they have added a subtype 
 				queryEvent.setValue(value+temporaltTxT+queryParam); //TODO see if in DRES they have added an additional fieldto store query param and temporal info 
 				resultLog.addEventsItem(queryEvent);
 			}
@@ -169,27 +170,7 @@ public class LogParserDRES {
 		case "txt":
 			category = "text";
 			break;
-			
-		case "color": //TODO deprecated?
-			category = "sketch";
-			break;
-			
-		case "colorTXT": //TODO deprecated?
-			category = "sketch"; 
-			break;
-			
-		case "bw":
-			category = "filter";
-			break;
-			
-		case "ratio":
-			category = "filter";
-			break;
-			
-		case "mifile":
-			category = "text";
-			break;
-			
+
 		case "textual":
 			category = "text";
 			break;
@@ -210,13 +191,13 @@ public class LogParserDRES {
 			category = "image";
 			break;
 		
-		case "explicitsort":
-			category = "browsing";
-			break;
+		// case "explicitsort":
+		// 	category = "browsing";
+		// 	break;
 			
-		case "rankedlist":
-			category = "browsing";
-			break;
+		// case "rankedlist":
+		// 	category = "browsing";
+		// 	break;
 			
 		case "videoplayer":
 			category = "browsing";
@@ -225,6 +206,12 @@ public class LogParserDRES {
 		case "videosummary":
 			category = "browsing";
 			break;
+
+		case "translate":
+			category="service";	
+			
+		case "speach2text":
+			category="service";	
 		
 		default:
 			category = "unknownCategory";
@@ -275,26 +262,6 @@ public class LogParserDRES {
 			type = "LocalizedObjectAndColors";
 			break;
 		
-		case "color":
-			type = "color"; //TODO deprecated?
-			break;
-			
-		case "colorTXT":
-			type = "color"; //TODO deprecated?
-			break;
-			
-		case "bw":
-			type = "B/W";
-			break;
-			
-		case "ratio":
-			type = "resolution";
-			break;
-			
-		case "mifile":
-			type = "concept";
-			break;
-		
 		case "vf":
 			type = "globalFeatures";
 			break;
@@ -315,13 +282,13 @@ public class LogParserDRES {
 			type = "jointEmbedding";
 			break;
 			
-		case "explicitsort":
-			type = "explicitSort";
-			break;
+		// case "explicitsort":
+		// 	type = "explicitSort";
+		// 	break;
 		
-		case "rankedlist":
-			type = "rankedList";
-			break;
+		// case "rankedlist":
+		// 	type = "rankedList";
+		// 	break;
 
 		case "videosummary":
 			type = "videoSummary";
@@ -330,6 +297,13 @@ public class LogParserDRES {
 		case "videoplayer":
 			type = "videoPlayer";
 			break;
+
+		case "translate":
+			type="translate";	
+			
+		case "speach2text":
+			type="speach2text";	
+
 		default:
 			type = ""; //unknownType
 		}
@@ -342,29 +316,35 @@ public class LogParserDRES {
 		
 		switch (field) {
 		case "objects":
-			subtype = "classes";
+			subtype = ">classes";
 			break;
 		
 		case "txt":
-			subtype = "position";
+			subtype = ">position";
 			break;
 		
 		case "vf":
-			subtype = "image similarity (GEM)";
+			subtype = ">image similarity ";
 			break;
 			
 		case "qbe":
-			subtype = "image similarity from URL of an image (GEM)";
+			subtype = ">image similarity from URL of an image ";
 			break;
 			
 		case "aladinSim":
-			subtype = "sematic similarity (ALADIN)";
+			subtype = ">sematic similarity (ALADIN)";
 			break;
 		
 		case "clipSim":
-			subtype = "sematic video similarity (CLIP)";
+			subtype = ">sematic video similarity (CLIP)";
 			break;
+
+		case "translate":
+			subtype=">SeamlessM4T";	
 			
+		case "speach2text":
+			subtype=">Whisper";	
+
 		default:
 			subtype = "";
 		}

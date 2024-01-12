@@ -188,14 +188,14 @@ public class VBSService {
 					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
 					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k));//search by Clip4Video
 					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k, false, fusionMode);
-					log(res, query, logQueries, simReorder);
+					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("vf")) {
 					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
-					log(res, query, logQueries, simReorder);
+					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
@@ -203,21 +203,21 @@ public class VBSService {
 				else if (queryObj.getQuery().containsKey("qbe")) {
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = searcher.searchByExample(features, k, hitsToReorder);
-					log(res, query, logQueries, simReorder);
+					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs res =searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
-					log(res, query, logQueries, simReorder);
+					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("clipSim")) {
 					TopDocs res = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
-					log(res, query, logQueries, simReorder);
+					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
@@ -308,7 +308,7 @@ public class VBSService {
 				hits = tabHits.get(0);
 			}
 			
-			log(hits, query, logQueries, simReorder);
+			log(hits, query, logQueries);
 			
 			if (sortByVideo)
 				response = gson.toJson(searcher.sortByVideo(hits, n_frames_per_row, maxRes));
@@ -328,21 +328,20 @@ public class VBSService {
 	
 	
 	/**
-	 * Write Dres QueryResultLog, save it to a file without saving it)
+	 * Write Dres QueryResultLog, save it to a file 
 	 * @param hits
 	 * @param query
 	 * @param queries
-	 * @param simReorder
 	 */
-	public void log(TopDocs hits, String query, List<VisioneQuery> queries, boolean simReorder) {
+	public void log(TopDocs hits, String query, List<VisioneQuery> queries) {
 		try {
 			ArrayList<SearchResults> searchResults = searcher.topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
-			Long clientTimestamp=dresLog.query2Log(queries, simReorder, searchResults); 
+			Long clientTimestamp=dresLog.query2Log(queries, searchResults); 
 			if(SEND_LOG_TO_DRES)
 				client.dresSubmitLog(dresLog.getResultLog()); 
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			visioneLog.query2Log(query, simReorder, resLog); 
+			// visioneLog.query2Log(query, resLog); //not saving logs in visione format anymore
 			
 //			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
@@ -353,20 +352,12 @@ public class VBSService {
 	
 	@GET
 	@Path("/log")
-	@Consumes({ MediaType.TEXT_PLAIN })
+	@Consumes({MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String log(@QueryParam("query") String query) {
+	public String log(@QueryParam("query") String query) { //TODO fix this also in the UI to log Browsing and  translate
 		String response = "";
-		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
-		if (query != null && !query.trim().equals("")) {
-//			disabled to avoid browsing logging
-//			try {
-//				log.query2Log(query);
-//			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-//				e1.printStackTrace();
-//			}
-		}
+		List<VisioneQuery> logQueries = QueryParser.getQueries(query);
+        log(null, query, logQueries);
 		return response;
 	}
 /*	

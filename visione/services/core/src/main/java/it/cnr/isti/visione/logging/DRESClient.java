@@ -101,14 +101,13 @@ public class DRESClient {
 	}
 	
 	public String dresSubmitResultByTime(String video, long timestamp) throws ApiException {
-
-        System.out.println("Submitting " + video + " @ " + timestamp);
+        System.out.println("Submission to DRES ");
 		List<ApiEvaluationInfo> currentRuns;
 		try {
 		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
 		  System.out.println("Error during request: '" + e.getMessage() + "', exiting");
-		  return null;
+		  return e.getMessage();
 		}
 
 		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
@@ -121,7 +120,7 @@ public class DRESClient {
 		  System.out.println();
 		}
 		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
-
+        System.out.println("Submitting " + video + " @ " + timestamp);
 		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
         	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
