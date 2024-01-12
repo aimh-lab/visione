@@ -45,7 +45,7 @@ import it.cnr.isti.visione.lucene.LucTextSearch;
  * @author lucia
  *
  */
-@Path("/VBSService")
+@Path("/")
 @Singleton
 public class VBSService {
 	

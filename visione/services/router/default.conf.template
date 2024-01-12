@@ -17,11 +17,10 @@ server {
 	location = /objects_doc_freq.csv { proxy_pass http://router/objects_doc_freq.csv; }
 
 	### Services Routing
-	location ^~ /services { proxy_pass http://core:8080/services/VBSService; }
-	location ~ ^/features/(?<name>[^/]+) {
-		# routes requests to the features services, e.g., /features/gem/... -> http://features-gem:8080/...
-		set $url "http://features-$name:8080";
-		rewrite ^/features/(?<name>[^/]+)(.*)$ $2 break;
+	location ~ ^/services/(?<service>[^/]+) {
+		# routes requests to the internal services, e.g., /services/features-gem/... -> http://features-gem:8080/...
+		set $url "http://$service:8080";
+		rewrite ^/services/(?<service>[^/]+)(.*)$ $2 break;
 		proxy_pass $url;
 	}
 

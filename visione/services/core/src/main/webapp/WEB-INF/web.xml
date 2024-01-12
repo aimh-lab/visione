@@ -14,7 +14,7 @@
   </servlet>
   <servlet-mapping>
     <servlet-name>VBSService</servlet-name>
-    <url-pattern>/services/*</url-pattern>
+    <url-pattern>/*</url-pattern>
   </servlet-mapping>
   <welcome-file-list>
     <welcome-file>index.html</welcome-file>

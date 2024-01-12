@@ -1,5 +1,5 @@
 {
-    "serviceUrl": "services/",
+    "serviceUrl": "services/core/",
     "thumbnailUrl": "frames/tiny/",
     "videoUrl":"videos/",
     "videoshrinkUrl":"videos/tiny/",
