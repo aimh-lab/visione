@@ -177,9 +177,16 @@ body {
 .myimg-thumbnail{
 	padding: 0.1rem;
 	background-color: #fff;
-	border: 3px solid #dee2e6;
+	
 	border-radius: 0.25rem;
 	width: 145px;
+}
+
+.result-border {
+  border: 2px solid;
+  border-radius: 5px;
+  margin-top: 1px;
+  margin-bottom: 1px;
 }
 
 .thumbnailButtons{

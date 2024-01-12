@@ -84,7 +84,7 @@ function selectImg(selectedItem) {
 			+'<a title="Video summary" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 5px;"></i></a>'
 			+'<i title="Play Video" class="fa fa-play" style="font-size:12px; color:#007bff;padding-left: 5px;" onclick="playVideoWindow(\''+ videoUrl + '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
 			+'<img style="padding-left: 5px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
-			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 5px;" onclick=\'if (submitAlert()) {submitAVS();selectNextResult();}\'></i>'
+			+'<i title="Submit result" class="fa fa-arrow-alt-circle-up" style="font-size:17px; color:#00AA00; padding-left: 5px;" onclick=\'if (isQA) {submitQA();return;}; if (submitAlert()) {submitAVS();selectNextResult();}\'></i>'
 
 			+'<br>'
 			+'<div id="avsdiv_' + selectedItem.imgId + '" lang="' + selectedItem.videoId + '|' + videoUrlPreview  + '" style="height: 25em;">'

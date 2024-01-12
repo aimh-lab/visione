@@ -7,7 +7,7 @@ const searchFormID = {
 const addButton = `<button id="addNewCanvas" class="btn btn-outline-info btn-lg" title="add a new canvas"> <i class="fa fa-plus-circle"></i></button>`
 
 const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class = "") => {
-	return `
+	let searchFormHtml = `
 	<div class="scene${canvasID}" id='canvasTab'>
 		<div class="">
 			<div id="description_objects${canvasID}">
@@ -93,26 +93,23 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 				<span style="padding-right: 4em;" id="translate${canvasID}">
 					<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
 					<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'cv')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}" class="font-tiny">ClipVideo</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'cl')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}" class="font-tiny">ClipLAION</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'aladin')">
-					<input type="radio" name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}" class="font-tiny">Aladin</label>
-				</span>
-				<span onclick="setTextualMode(${canvasID}, 'all')">
-					<input type="radio" checked name="textualMode${canvasID}" id="textualMode${canvasID}">
-					<label for="textualMode${canvasID}" class="font-tiny">use all</label>
-				</span>
+				</span>`;
+
+	config['ui']['textual-modes'].forEach((mode) => {
+		let checked = (mode.mode == 'all') ? 'checked' : '';
+		console.log(checked)
+		searchFormHtml += `
+				<span onclick="setTextualMode(${canvasID}, '${mode.mode}')">
+					<input type="radio" ${checked} name="textualMode${canvasID}" id="textualMode${canvasID}">
+					<label for="textualMode${canvasID}" class="font-tiny">${mode.name}</label>
+				</span>`;
+	});
+
+	searchFormHtml += `
 			</div>
 		</div>
 	</div>
 `
+ 	return searchFormHtml;
 }
 

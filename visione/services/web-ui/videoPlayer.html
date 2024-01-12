@@ -13,6 +13,25 @@
 
 <body>
 	<script type="text/javascript">
+
+		function checkQA2() {
+			var urlParams = new URLSearchParams(window.location.search);
+			var isQA = urlParams.get('isQA') === 'true' ? true : false;
+
+			if (isQA)
+				submitQA();
+			return isQA;
+		}
+
+		function checkQA() {
+			console.log(localStorage.getItem('isQA'));
+			let isQA = localStorage.getItem('isQA') === 'true' ? true : false;
+
+			if (isQA)
+				submitQA();
+			return isQA;
+		}
+
 		$.urlParam = function(name) {
 			var results = new RegExp('[\?&]' + name + '=([^&#]*)')
 					.exec(window.location.href);
@@ -73,7 +92,7 @@
 
 
   <button id="submit" class="btn btn-warning btn-sm"
-					title="Submit result at current play time" onclick="submitAtCurrentPlayTime();">
+					title="Submit result at current play time" onclick="if (!checkQA()) submitAtCurrentPlayTime();">
 					<i class="fa fa-play"> Submit</i></button>
 </body>
 </html>

@@ -122,6 +122,7 @@ var resMatrix = [];
 var colIdx = 1;
 var rowIdx = 0;
 var isAVS = false;
+var isQA = false;
 
 var config = null;
 var loadingSpinner = null;
@@ -136,10 +137,26 @@ function handler(myObj) {
 	keyFramesUrl = myObj.keyFramesUrl;
 	videoUrlPrefix = myObj.videoUrl;
 	videoshrinkUrl = myObj.videoshrinkUrl;
+
+	//document.cookie = 'isQA=' + isQA + '; path=/';
+
+	//localStorage.setItem('isQA', isQA);
 }
 
 function setAVS(isAvsSel) {
 	isAVS = isAvsSel;
+	isQA = false;
+	localStorage.setItem('isQA', isQA);
+	document.cookie = 'isQA=' + isQA + '; path=/';
+
+}
+
+function setQA(isQASel) {
+	isQA = isQASel;
+	isAVS = false;
+	localStorage.setItem('isQA', isQA);
+	document.cookie = 'isQA=' + isQA + '; path=/';
+
 }
 
 function loadConfig() {
@@ -1085,7 +1102,18 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, vid
 	return resultData
 }
 
+function submitQA() {
+	let answ = prompt("Please enter your answering", "");
+  	if (answ != null) {
+		alert(answ);
+	}
+}
+
 function unifiedSubmit(avsObj, ev) {
+	if (isQA) {
+		submitQA();
+		return;
+	}
 	if (!submitAlert())
 		return false;
 
@@ -1146,10 +1174,10 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="
 						<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
 						<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
 						<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-						<a href="" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-						<a href="" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-						<a href="" title="Visual similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-						<a href="" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
+						<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+						<a href="#" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="#" title="Visual similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
 					<div>
 				</div>
 		`
@@ -1176,7 +1204,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="
 function playVideoWindow(videoURL, videoId, imgId) {
 	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
 	var time = getStartTime(imgId);
-	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
+	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time + "&isQA=" + isQA, "playvideo", params);
 }
 
 function generateUUID(color) {
@@ -1954,7 +1982,7 @@ function selectNextResult() {
 }
 
 
-function init() {
+async function init() {
 
 	document.onkeydown = checkKey;
 
@@ -1965,6 +1993,9 @@ function init() {
 	});
 	includeHTML();
 
+	await loadConfig();
+	loadPalette();
+
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
@@ -1974,7 +2005,7 @@ function init() {
 		document.getElementById('avsSubmittedTab').style.display = 'block'
 	}
 	//$("#searchTab").append(addButton);
-	loadConfig().then(loadPalette)//.then(checkServices);
+	// loadConfig().then(loadPalette)//.then(checkServices);
 	canvas0 = get_canvas('canvas0', 'annotations0',
 		'not0');
 	canvas1 = get_canvas('canvas1', 'annotations1',
