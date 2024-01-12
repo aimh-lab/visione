@@ -42,15 +42,21 @@ def ping():
     return "pong"
 
 @app.route('/get-text-feature', methods=['GET'])
-def query_example():
+def extract_text_feature():
     text = request.args.get("text")
-
-    # first, produce the feature
     text_feature = qe.get_text_embedding(text)
-    # text_feature = text_feature[np.newaxis, :]  # 1 x 1024  # TODO: is needed?
-
     out = jsonify(text_feature.tolist())
     return out
+
+@app.route('/get-image-feature', methods=['GET'])
+def extract_image_feature_by_url():
+    # url = request.args.get("url")
+    return "Not Implemented", 501
+
+@app.route('/get-image-feature', methods=['POST'])
+def extract_image_feature_by_file():
+    # file = request.files['file']
+    return "Not Implemented", 501
 
 # deprecated, just for backward compatibility of 'core' service
 @app.route('/', methods=['GET'])

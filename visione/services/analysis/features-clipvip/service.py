@@ -46,6 +46,10 @@ def get_text_features():
     out = jsonify(text_feature.tolist())
     return out
 
+@app.route('/get-image-feature', methods=['GET', 'POST'])
+def extract_image_feature():
+    return "Not Implemented", 501
+
 # deprecated, kept for backward compatibility of 'core' service
 @app.route('/text-to-image-search', methods=['GET'])
 def text_to_image_search():

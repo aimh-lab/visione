@@ -74,6 +74,7 @@ def ping():
     return "pong"
 
 @app.route('/extract', methods=['GET'])
+@app.route('/get-image-feature', methods=['GET'])
 def extract_from_url():
     url = request.args.get("url")
     logging.info(f'Received URL: {url}')
@@ -83,6 +84,7 @@ def extract_from_url():
 
 
 @app.route('/extract', methods=['POST'])
+@app.route('/get-image-feature', methods=['POST'])
 def extract_from_image():
     uploaded_file = request.files['image']
 
