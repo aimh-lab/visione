@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Query a FAISS index.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
-    parser.add_argument('--port', default='4010', help="Port to use for binding")
+    parser.add_argument('--port', default='8080', help="Port to use for binding")
     parser.add_argument('--lazy-load', action='store_true', default=False, help="Whether to load indices lazily (at first request)")
     args = parser.parse_args()
 

@@ -56,14 +56,12 @@ core:
   #
   # RESCORER_PIPELINE: [OBJECTS, ALADIN, BB]
 
-  RMAC_SERVICE: http://router/gem
-  ALADIN_SERVICE: http://router/aladin
-  CLIP_SERVICE: http://router/clip2video-text-search
-  # http://router/clip-text-search
-  CLIP_INTERNAL_IMG_SEARCH_SERVICE: http://router/clip2video-internal-search
-  # http://router/clip-internal-search
-  CLIP_ONE_SERVICE: http://router/clip-laion-text-search
-  CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE: http://router/clip-laion-internal-search
+  RMAC_SERVICE: http://features-gem:8080/gem
+  ALADIN_SERVICE: http://features-aladin:8080/aladin
+  CLIP_SERVICE: http://features-clip2video:8080/text-to-image-search
+  CLIP_INTERNAL_IMG_SEARCH_SERVICE: http://features-clip2video:8080/internal-image-search
+  CLIP_ONE_SERVICE: http://features-clip-laion:8080/text-to-image-search
+  CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE: http://features-clip-laion:8080/internal-image-search
 
 analysis:
   # Object detectors to employ (with optional parameters)

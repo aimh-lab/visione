@@ -48,7 +48,7 @@ def text_to_image_search():
     logging.info('Received text: {}'.format(text))
     text_feature = qe.get_text_embedding(text, normalized=args.normalized)
 
-    response = requests.post('http://faiss-index-manager:4010/search', json={
+    response = requests.post('http://faiss-index-manager:8080/search', json={
         'type': features_name,
         'feature_vector': text_feature.tolist(),
         'k': k,
@@ -62,7 +62,7 @@ def internal_image_search():
     img_id = request.args.get("imgId")
     k = request.args.get("k", type=int, default=10000)
 
-    response = requests.post('http://faiss-index-manager:4010/search', json={
+    response = requests.post('http://faiss-index-manager:8080/search', json={
         'type': features_name,
         'query_id': img_id,
         'k': k,
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Service for query feature extraction for Open CLIP models.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
-    parser.add_argument('--port', default='5030', help="Port to use for binding")
+    parser.add_argument('--port', default='8080', help="Port to use for binding")
     parser.add_argument('--model-handle', default=default_model_handle, help='hugging face handle of the Open CLIP model')
     parser.add_argument('--no-normalized', action='store_false', dest='normalized', default=True, help='Whether to normalize features or not')
 

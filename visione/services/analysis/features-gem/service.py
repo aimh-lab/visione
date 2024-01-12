@@ -95,7 +95,7 @@ def extract_quant_from_url():
     logging.info(f'Received URL: {url}')
     feature_vector = extractor.extract_from_url(url).squeeze()
     logging.debug(f'Feature Vector: {feature_vector[:5]} ...')
-    str_doc = requests.post('http://str-feature-encoder:4000/encode', json={
+    str_doc = requests.post('http://str-feature-encoder:8080/encode', json={
         'type': 'gem',
         'feature_vector': feature_vector.tolist(),
     }).content
@@ -114,7 +114,7 @@ def extract_quant_from_image():
         uploaded_file.save(tmp_image_path)
         feature_vector = extractor.extract_from_path(tmp_image_path)
 
-        str_doc = requests.post('http://str-feature-encoder:4000/encode', json={
+        str_doc = requests.post('http://str-feature-encoder:8080/encode', json={
             'type': 'gem',
             'feature_vector': feature_vector.tolist(),
         }).content
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create a webservice for CLIP model for t2i and i2i searches.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
-    parser.add_argument('--port', default='5090', help="Port to use for binding")
+    parser.add_argument('--port', default='8080', help="Port to use for binding")
     parser.add_argument('--gpu', action='store_true', default=default_gpu, help='Whether to use GPU')
 
     args = parser.parse_args()

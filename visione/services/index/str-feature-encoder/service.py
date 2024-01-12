@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create a webservice for CLIP model for t2i and i2i searches.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
-    parser.add_argument('--port', default='4000', help="Port to use for binding")
+    parser.add_argument('--port', default='8080', help="Port to use for binding")
     args = parser.parse_args()
 
     # run the flask app

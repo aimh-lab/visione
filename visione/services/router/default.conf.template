@@ -2,6 +2,7 @@
 server {
 	listen 80 default_server;
     server_name  _;
+	resolver 127.0.0.11;
 
 	### Static File Routing
 
@@ -16,20 +17,13 @@ server {
 	location = /objects_doc_freq.csv { proxy_pass http://router/objects_doc_freq.csv; }
 
 	### Services Routing
-
-	location ^~ /services                      { proxy_pass http://core:8080/services/VBSService; }
-
-	# Routes for services that can be optionally hosted externally
-	location ^~ /gem                           { proxy_pass ${VISIONE_GEM_URL};                           }
-	location ^~ /aladin                        { proxy_pass ${VISIONE_ALADIN_URL};                        }
-	location ^~ /clip-text-search              { proxy_pass ${VISIONE_CLIP_URL};                          }
-	location ^~ /clip-internal-search          { proxy_pass ${VISIONE_CLIP_INTERNAL_SEARCH_URL};          }
-	location ^~ /clip-laion-text-search        { proxy_pass ${VISIONE_CLIP_LAION_URL};                    }
-	location ^~ /clip-laion-internal-search    { proxy_pass ${VISIONE_CLIP_LAION_INTERNAL_SEARCH_URL};    }
-	location ^~ /clip-datacomp-text-search     { proxy_pass ${VISIONE_CLIP_DATACOMP_URL};                 }
-	location ^~ /clip-datacomp-internal-search { proxy_pass ${VISIONE_CLIP_DATACOMP_INTERNAL_SEARCH_URL}; }
-	location ^~ /clip2video-text-search        { proxy_pass ${VISIONE_CLIP2VIDEO_URL};                    }
-	location ^~ /clip2video-internal-search    { proxy_pass ${VISIONE_CLIP2VIDEO_INTERNAL_SEARCH_URL};    }
+	location ^~ /services { proxy_pass http://core:8080/services/VBSService; }
+	location ~ ^/features/(?<name>[^/]+) {
+		# routes requests to the features services, e.g., /features/gem/... -> http://features-gem:8080/...
+		set $url "http://features-$name:8080";
+		rewrite ^/features/(?<name>[^/]+)(.*)$ $2 break;
+		proxy_pass $url;
+	}
 
 	location / {
 		root /usr/share/nginx/html;
@@ -54,18 +48,6 @@ server {
 	# expose some files in collection dir (FIXME: reorganize files in a better way)
 	location = /config.yaml { alias /data/config.yaml; }
 	location = /objects_doc_freq.csv { alias /data/objects_doc_freq.csv; }
-
-	# HACK: use variable in proxy_pass to avoid nginx exit on startup if the service is not available (disabled)
-	location ^~ /gem                           { set $url "http://features-gem:5090/";                                proxy_pass $url$is_args$args; }
-	location ^~ /aladin                        { set $url "http://features-aladin:5020/aladin";                       proxy_pass $url$is_args$args; }
-	location ^~ /clip-text-search              { set $url "http://features-clip-openai:5030/text-to-image-search";    proxy_pass $url$is_args$args; }
-	location ^~ /clip-internal-search          { set $url "http://features-clip-openai:5030/internal-image-search";   proxy_pass $url$is_args$args; }
-	location ^~ /clip-laion-text-search        { set $url "http://features-clip-laion:5030/text-to-image-search";     proxy_pass $url$is_args$args; }
-	location ^~ /clip-laion-internal-search    { set $url "http://features-clip-laion:5030/internal-image-search";    proxy_pass $url$is_args$args; }
-	location ^~ /clip-datacomp-text-search     { set $url "http://features-clip-datacomp:5030/text-to-image-search";  proxy_pass $url$is_args$args; }
-	location ^~ /clip-datacomp-internal-search { set $url "http://features-clip-datacomp:5030/internal-image-search"; proxy_pass $url$is_args$args; }
-	location ^~ /clip2video-text-search        { set $url "http://features-clip2video:5010/text-to-image-search";     proxy_pass $url$is_args$args; }
-	location ^~ /clip2video-internal-search    { set $url "http://features-clip2video:5010/internal-image-search";    proxy_pass $url$is_args$args; }
 
 	location / {
 		root /usr/share/nginx/html;

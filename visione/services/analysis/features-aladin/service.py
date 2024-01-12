@@ -56,7 +56,7 @@ def extract_quant_from_text():
     logging.info(f'Received text: {text}')
     feature_vector = qe.get_text_embedding(text)
     logging.debug(f'Feature Vector: {feature_vector[:5]} ...')
-    str_doc = requests.post('http://str-feature-encoder:4000/encode', json={
+    str_doc = requests.post('http://str-feature-encoder:8080/encode', json={
         'type': 'aladin',
         'feature_vector': feature_vector.tolist(),
     }).content
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Service for query feature extraction for ALADIN models.')
 
     parser.add_argument('--host', default='0.0.0.0', help="IP address to use for binding")
-    parser.add_argument('--port', default='5020', help="Port to use for binding")
+    parser.add_argument('--port', default='8080', help="Port to use for binding")
     args = parser.parse_args()
 
     app.run(debug=False, host=args.host, port=args.port)
