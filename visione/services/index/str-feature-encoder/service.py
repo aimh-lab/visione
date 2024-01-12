@@ -27,6 +27,9 @@ def load_encoder(feature_type):
 
     return encoder
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
 
 @app.route('/encode', methods=['POST'])
 def features():

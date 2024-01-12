@@ -101,6 +101,9 @@ class CLIP2VideoTextEncoder:
             text_feature = text_feature.squeeze(0).cpu().numpy()
         return text_feature
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
 
 @app.route('/get-text-feature', methods=['GET'])
 def get_text_features():

@@ -107,6 +107,14 @@ public class VBSService {
 		return "Strunz!!!!";
 	}
 
+	@GET
+	@Path("/ping")
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.TEXT_PLAIN)
+	public String ping() {
+		return "pong";
+	}
+
 	@POST
 	@Path("/testSubmitResult")
 	@Consumes(MediaType.APPLICATION_JSON)

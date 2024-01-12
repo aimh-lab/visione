@@ -34,6 +34,9 @@ class CLIPTextEncoder():
             text_features = text_features.numpy()
         return text_features
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
 
 @app.route('/get-text-feature', methods=['GET'])
 def get_text_features():

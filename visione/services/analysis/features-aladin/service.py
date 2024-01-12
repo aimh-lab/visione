@@ -37,6 +37,10 @@ args_str = '--eval_model_dir checkpoint-0132780 '+\
            '--load_checkpoint weights/best_model_align_and_distill.pth.tar'
 qe = QueryEncoder(args_str)
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
+
 @app.route('/get-text-feature', methods=['GET'])
 def query_example():
     text = request.args.get("text")

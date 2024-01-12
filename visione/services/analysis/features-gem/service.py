@@ -69,6 +69,9 @@ class GeMExtractor(object):
             features = ops.whiten_features(features, self.net.pca, **self.whiten)
             return features
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
 
 @app.route('/extract', methods=['GET'])
 def extract_from_url():

@@ -64,6 +64,9 @@ def load_index(feature_type):
 
     return index_wrapper
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong"
 
 @app.route('/search', methods=['POST'])
 def search():
