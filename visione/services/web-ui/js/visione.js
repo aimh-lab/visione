@@ -147,7 +147,7 @@ function setAVS(isAvsSel) {
 	isAVS = isAvsSel;
 	isQA = false;
 	localStorage.setItem('isQA', isQA);
-	document.cookie = 'isQA=' + isQA + '; path=/';
+	//document.cookie = 'isQA=' + isQA + '; path=/';
 
 }
 
@@ -155,7 +155,7 @@ function setQA(isQASel) {
 	isQA = isQASel;
 	isAVS = false;
 	localStorage.setItem('isQA', isQA);
-	document.cookie = 'isQA=' + isQA + '; path=/';
+	//document.cookie = 'isQA=' + isQA + '; path=/';
 
 }
 
@@ -379,12 +379,29 @@ function submitAtTime(videoId, time) {
 	}).responseText;
 }
 
-function log(query) {
+/*function log(query) {
 	return $.ajax({
 		type: "GET",
 		async: false,
 		url: urlVBSService + "/log?query=" + query,
 	}).responseText;
+}*/
+
+function log(query) {
+	$.ajax({
+		type: "POST",
+		async: true,
+		crossDomain: false,
+		data: { query: query },
+		dataType: "text",
+		url: urlVBSService + "/log",
+		success: function (data) {
+			console.log(data)
+		},
+		error: function (data) {
+			console.log("Error logging " + data)
+		}
+	})
 }
 
 function addDeleteBtn(label, rect) {
@@ -1204,7 +1221,7 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="
 function playVideoWindow(videoURL, videoId, imgId) {
 	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
 	var time = getStartTime(imgId);
-	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&url=" + videoURL + "&t=" + time + "&isQA=" + isQA, "playvideo", params);
+	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&frameid=" + imgId + "&url=" + videoURL + "&t=" + time + "&isQA=" + isQA, "playvideo", params);
 }
 
 function generateUUID(color) {

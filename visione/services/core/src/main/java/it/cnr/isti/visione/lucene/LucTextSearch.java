@@ -284,15 +284,17 @@ public class LucTextSearch {
 	
 	public ArrayList<SearchResults> topDocs2SearchResults(TopDocs hits, int k) throws IOException {
 		ArrayList<SearchResults> results = new ArrayList<>();
-		for (int i = 0; i < hits.scoreDocs.length && i < k; i++) {
-			int doc = hits.scoreDocs[i].doc;
-			float score = hits.scoreDocs[i].score;
-			String imgID = s.doc(doc).get(Fields.IMG_ID);
-			String videoID = s.doc(doc).get(Fields.VIDEO_ID);
-			Integer middleFrame = Integer.parseInt(s.doc(doc).get(Fields.MIDDLE_FRAME));
-			long middleTime = (long) (Double.parseDouble(s.doc(doc).get(Fields.MIDDLE_TIME))*1000);
-			results.add(new SearchResults(imgID, videoID, score, middleFrame, middleTime));
-			// System.out.println(score + ", " + imgID);
+		if (hits != null){
+			for (int i = 0; i < hits.scoreDocs.length && i < k; i++) {
+				int doc = hits.scoreDocs[i].doc;
+				float score = hits.scoreDocs[i].score;
+				String imgID = s.doc(doc).get(Fields.IMG_ID);
+				String videoID = s.doc(doc).get(Fields.VIDEO_ID);
+				Integer middleFrame = Integer.parseInt(s.doc(doc).get(Fields.MIDDLE_FRAME));
+				long middleTime = (long) (Double.parseDouble(s.doc(doc).get(Fields.MIDDLE_TIME))*1000);
+				results.add(new SearchResults(imgID, videoID, score, middleFrame, middleTime));
+				// System.out.println(score + ", " + imgID);
+			}
 		}
 		return results;
 	}

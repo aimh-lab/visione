@@ -69,6 +69,8 @@
 			videoId = $.urlParam('videoId');
 			
 			console.log('====ID' + imgId);
+			toLog = '{"query":[{"videosummary":"' + videoId + '"}], "parameters":[{}]}'
+			log(toLog)
 			res = getAllVideoKeyframes(videoId);
 			var keyframes = JSON.parse(res);
 			

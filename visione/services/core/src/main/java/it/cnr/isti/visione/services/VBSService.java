@@ -358,12 +358,13 @@ public class VBSService {
 		}
 	}
 	
-	@GET
+	@POST
 	@Path("/log")
-	@Consumes({MediaType.TEXT_PLAIN })
+	@Consumes({MediaType.APPLICATION_FORM_URLENCODED })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String log(@QueryParam("query") String query) { //TODO fix this also in the UI to log Browsing and  translate
-		String response = "";
+	public String log(@FormParam("query") String query) { //TODO fix this also in the UI to log Browsing and  translate
+		System.out.println("Logging service");
+		String response = "logging service";
 		List<VisioneQuery> logQueries = QueryParser.getQueries(query);
         log(null, query, logQueries);
 		return response;
