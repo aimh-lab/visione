@@ -15,6 +15,13 @@ for logger in loggers:
     logger.setLevel(logging.WARNING)
 
 
+def load_image(image_path, *, transform=None):
+    image = Image.open(image_path)
+    if transform is not None:
+        image = transform(image)
+    return image
+
+
 class ImageListDataset(torch.utils.data.Dataset):
     def __init__(self, image_paths):
         self.image_paths = image_paths
@@ -29,7 +36,7 @@ class ImageListDataset(torch.utils.data.Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        return self.transform(Image.open(self.image_paths[idx]))
+        return load_image(self.image_paths[idx], transform=self.transform)
 
 
 
@@ -38,7 +45,8 @@ class DinoV2Extractor(BaseExtractor):
     @classmethod
     def add_arguments(cls, parser):
         parser.add_argument('--model', default='dinov2_vits14', choices=('dinov2_vits14', 'dinov2_vitb14', 'dinov2_vitl14', 'dinov2_vitg14'), help='Model to use')
-        parser.add_argument('--mini-batch-size', default=8, type=int, help='Mini batch size')
+        parser.add_argument('--batch-size', default=1, type=int, help='batch size')
+        parser.add_argument('--num-workers', default=4, type=int, help='number of workers')
         super(DinoV2Extractor, cls).add_arguments(parser)
 
     def __init__(self, args):
@@ -56,7 +64,13 @@ class DinoV2Extractor(BaseExtractor):
         self.setup()
 
         dataset = ImageListDataset(image_paths)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.args.mini_batch_size, shuffle=False, num_workers=4, pin_memory=True)
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            shuffle=False,
+            batch_size=self.args.batch_size,
+            num_workers=self.args.num_workers,
+            pin_memory=True
+        )
 
         features = []
         with torch.no_grad():
