@@ -1,4 +1,5 @@
 flask==2.2.3
+Werkzeug>=2.2,<3.0
 h5py
 more_itertools
 Pillow
