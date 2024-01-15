@@ -14,7 +14,7 @@ RUN sed -i '/torch/d' CLIP2Video/requirements.txt
 RUN pip install -r CLIP2Video/requirements.txt
 
 # Install other dependencies
-RUN pip install gdown more_itertools av flask==2.2.3
+RUN pip install gdown more_itertools av flask==2.2.3 "Werkzeug>=2.2,<3.0"
 RUN conda install -c conda-forge ffmpeg
 
 # Download CLIP and CLIP2Video models
