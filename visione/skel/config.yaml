@@ -33,6 +33,7 @@ services_urls:
   clip_datacomp_internal_search_url: null
   clip2video_url:                 null
   clip2video_internal_search_url: null
+  translate_url: null
 
 
 core:

@@ -3,5 +3,6 @@
     "thumbnailUrl": "frames/tiny/",
     "videoUrl":"videos/",
     "videoshrinkUrl":"videos/tiny/",
-    "keyFramesUrl":"frames/"
+    "keyFramesUrl":"frames/",
+    "translate": "translate"
   }

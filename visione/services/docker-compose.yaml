@@ -12,6 +12,7 @@ services:
       - VISIONE_FRAMES_URL
       - VISIONE_RESIZED_FRAMES_URL
       - VISIONE_PALETTE_URL
+      - VISIONE_TRANSLATE_URL
     volumes:
       - ./router:/etc/nginx/templates/
       - ./web-ui:/usr/share/nginx/html:ro
