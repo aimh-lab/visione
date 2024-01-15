@@ -134,11 +134,8 @@ class BaseExtractor(object):
 
         # group images by video id
         for video_id, group in itertools.groupby(ids_and_records, key=lambda x: x[0]):
+            records = [{'_id': _id, **record} for _, _id, record in group]
             with self.get_saver(video_id) as saver:
-                # make records
-                records = ({'_id': _id, **record} for _, _id, record in group)
-
-                # save records
                 saver.add_many(records, force=self.args.force)
 
 
