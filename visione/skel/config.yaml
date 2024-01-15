@@ -75,6 +75,8 @@ analysis:
   features:
     gem:
       chunk-size: 200
+    dinov2:
+      chunk-size: 1000
     aladin:
       chunk-size: 1000
     clip-openai:
@@ -99,7 +101,7 @@ analysis:
       num-workers: 8  # Number of workers
 
   frame_cluster:
-    feature: gem  # Which feature vector to employ in frames clustering.
+    feature: dinov2  # Which feature vector to employ in frames clustering.
 
 index:
   # Object-specific indexing parameters.
@@ -297,6 +299,10 @@ index:
       index_params:
         keep: 0.5
         dim_multiplier: 2
+    
+    dinov2:
+      index_engine: faiss
+      index_type: Flat
 
     aladin:
       index_engine: str

@@ -118,6 +118,16 @@ services:
     shm_size: 2g
     profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
+  
+  features-dinov2:
+    build: ./analysis/features-dinov2
+    image: visione/features-dinov2
+    environment:
+      - FEATURES_NAME=dinov2
+      - MODEL=dinov2_vits14
+    volumes: *common_volumes
+    profiles: ["analysis", "features-dinov2"]
+    deploy: *needs_gpu
 
   features-clipvip:
     build: ./analysis/features-clipvip

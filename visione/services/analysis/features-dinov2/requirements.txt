@@ -1,0 +1,5 @@
+flask==2.2.3
+h5py
+more_itertools
+Pillow
+pyyaml

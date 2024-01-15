@@ -41,6 +41,9 @@ services:
       - ./analysis/features-clip2video/extract.py:/usr/src/app/extract.py
       - ./analysis/features-clip2video/service.py:/usr/src/app/service.py
 
+  features-dinov2:
+    volumes: ["./analysis/features-dinov2:/usr/src/app"]
+
   features-gem:
     volumes:
       - ./analysis/features-gem/extract.py:/usr/src/app/extract.py
