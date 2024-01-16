@@ -100,7 +100,7 @@ public class DRESClient {
 		return sessionId;
 	}
 	
-	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {
+	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
 		List<ApiClientEvaluationInfo> currentRuns;
 		try {
@@ -130,6 +130,68 @@ public class DRESClient {
                                 .mediaItemName(video)
                                 .start(startTime) //start time in milliseconds
 								.end(endTime)
+                        )
+                    ), sessionId);
+        } catch (ApiException e) {
+        	String message = "";
+            ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
+            switch (e.getCode()) {
+                case 401: {
+                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
+                    System.err.println(message);
+                    throw new ApiException(message);
+                }
+                case 404: {
+                    message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
+                    System.err.println(message);
+                    break;
+                }
+                case 412: {
+                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
+                    System.err.println(message);
+                    break;
+                }
+                default: {
+                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
+                    System.err.println(message);                }
+            }
+            return message;
+        }
+
+        if (submissionResponse  != null && submissionResponse.getStatus()) {
+            System.out.println("The submission was successfully sent to the server.");
+        }
+        return submissionResponse.getDescription();
+	}
+	
+	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { //used in Question Aswering Tasks
+        System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+		List<ApiClientEvaluationInfo> currentRuns;
+		try {
+		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
+		} catch (Exception e) {
+		  System.out.println("Error during request: '" + e.getMessage() + "', exiting");
+		  return e.getMessage();
+		}
+
+		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
+
+		for (ApiClientEvaluationInfo run : currentRuns) {
+		  System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
+		  if (run.getTemplateDescription() != null) {
+			System.out.println(run.getTemplateDescription());
+		  }
+		  System.out.println();
+		}
+		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+        System.out.println("Submitting userAnswer");
+		SuccessfulSubmissionsStatus submissionResponse = null;
+        try {
+        	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+                    new ApiClientSubmission().addAnswerSetsItem(
+                        new ApiClientAnswerSet().addAnswersItem(
+                            new ApiClientAnswer()
+                                .text(userAnswer) 
                         )
                     ), sessionId);
         } catch (ApiException e) {

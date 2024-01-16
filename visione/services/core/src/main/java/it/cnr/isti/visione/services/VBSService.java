@@ -56,13 +56,13 @@ public class VBSService {
 	private static 	ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
 	private static final String VISIONE_CONF = "/data/config.yaml";
-	private static File LOGGING_FOLDER;
+	// private static File LOGGING_FOLDER;
 	private static File LOGGING_FOLDER_DRES;
 	private static String MEMBER_ID;
 	private static Boolean SEND_LOG_TO_DRES;
 	private LucTextSearch searcher = new LucTextSearch();
 	private LogParserDRES dresLog; //saved at each query
-	private Logging visioneLog; //saved at submission time and at each new session (if not empty)
+	//private Logging visioneLog; //saved at submission time and at each new session (if not empty)
 
 
 	@Context
@@ -79,7 +79,7 @@ public class VBSService {
 			Settings.init(is);
 		}
 
-		LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
+		// LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
 		LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 		MEMBER_ID = Settings.MEMBER_ID;
 		SEND_LOG_TO_DRES = Settings.SEND_LOG_TO_DRES;
@@ -88,12 +88,12 @@ public class VBSService {
 		searcher.openSearcher(Settings.LUCENE);
 		
 		gson = new Gson();
-		if (!LOGGING_FOLDER.exists())
-			LOGGING_FOLDER.mkdir();
+		// if (!LOGGING_FOLDER.exists())
+		// 	LOGGING_FOLDER.mkdir();
 		if (!LOGGING_FOLDER_DRES.exists())
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		visioneLog = new Logging(LOGGING_FOLDER);
+		//visioneLog = new Logging(LOGGING_FOLDER);
 		client = new DRESClient();
 		
 		System.out.println("started...");
@@ -142,11 +142,11 @@ public class VBSService {
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String init() {
-		try {
-			visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log 
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		// try {
+		// 	visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log 
+		// } catch (IOException e) {
+		// 	e.printStackTrace();
+		// }
 		System.out.println("New Session Started");
 		return "New Session Started";
 	}
@@ -523,47 +523,62 @@ public class VBSService {
 		return response;
 	}
 
-
-    	
-    
 	@GET
 	@Path("/submitResult")
-	@Consumes({ MediaType.TEXT_PLAIN })
+	@Consumes({MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder) {
+	public String submitResult(@DefaultValue("kis") @QueryParam("taskType") String taskTypeParam,  @QueryParam("videoid") String videoIdParam, @QueryParam("id") String keyframeIdParam, @QueryParam("textAnswer") String textAnswer, @QueryParam("time") String videoAtTime) {
+
 		long clientSubmissionTimestamp = System.currentTimeMillis();
 		String response = "";
-		System.out.println("isAVS " + isAVS );
+		String taskType= taskTypeParam;
 		String videoId = videoIdParam;
+		String keyframeId=keyframeIdParam;
 		int middleFrame = -1;
 		long timeToSubmit = -1;
 		long value=-1;
+		System.out.println("Submitting - task: "+ taskType);
 
-		if (keyframeIdParam != null) {
-			try {		
-				timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME))*1000);
-				middleFrame = Integer.parseInt(searcher.get(keyframeIdParam, Fields.MIDDLE_FRAME));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+		if(!taskType.equals("qa")){
+			if (keyframeId != null) {
+				try {		
+					timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeId, Fields.MIDDLE_TIME))*1000);
+					middleFrame = Integer.parseInt(searcher.get(keyframeId, Fields.MIDDLE_FRAME));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 
+			}
+			else{
+				timeToSubmit = (long) (Double.parseDouble(videoAtTime)*1000);
+			}
 		}
-		else{
-			timeToSubmit=  (long) (Double.parseDouble(videoAtTime)*1000);
-		}
-		
+	
 		boolean exit = false;
 		int counter = 0;
+		String submittedItem="";
 		while(!exit) {
 			try {
-				long startTime = timeToSubmit;
-				long endTime = timeToSubmit;
-				if(isAVS) {
-					startTime = timeToSubmit - 1000;
-					endTime = timeToSubmit + 1000;
-				}
-				response = client.dresSubmitResultByTime(videoId, startTime,endTime);
-				exit = true;
+				switch(taskType){
+						case "qa":
+						    response = client.dresSubmitTextAnswer(textAnswer);
+							exit = true;
+							submittedItem="text: "+ textAnswer;
+							break;
+						case "avs":
+							long startTime = timeToSubmit; //Math.max(timeToSubmit-1000,0);
+							long endTime = timeToSubmit; 
+							response = client.dresSubmitResultByTime(videoId, startTime,endTime); 
+							exit = true;
+							submittedItem=videoId+", starttime"+startTime+", endtime"+endTime; 
+							break;
+						default: //all tasks that are not qa and avs are handled as kis
+							response = client.dresSubmitResultByTime(videoId,timeToSubmit,timeToSubmit);
+							exit = true;
+							submittedItem=videoId+", starttime"+timeToSubmit+", endtime"+timeToSubmit; 
+				
+					} 
+
 			} catch (ApiException e) {
 				System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
 				if (counter++ <= 3 )
@@ -575,20 +590,85 @@ public class VBSService {
 			}
 		}
 							
-		visioneLog.saveResponse(response);
-		System.out.println(Settings.TEAM_ID + "," + videoId + "," + timeToSubmit);
+		//visioneLog.saveResponse(response);
+		System.out.println(Settings.TEAM_ID + "," + submittedItem);
 				
 		//saving logs
 		try {
-			visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
-			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+timeToSubmit );
+			//visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
+			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, submittedItem);
 		} catch (IOException | NumberFormatException e1) {
 			e1.printStackTrace();
-			System.out.println(Settings.MEMBER_ID + "," + videoId + "," + timeToSubmit);
+			System.out.println("Failed to save logs of submission:" +Settings.MEMBER_ID + "," + submittedItem);
 		}
-
 		return response;
 	}
+	
+    	
+    
+	// @GET
+	// @Path("/submitResult")
+	// @Consumes({ MediaType.TEXT_PLAIN })
+	// @Produces(MediaType.TEXT_PLAIN)
+	// public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder) {
+	// 	long clientSubmissionTimestamp = System.currentTimeMillis();
+	// 	String response = "";
+	// 	System.out.println("isAVS " + isAVS );
+	// 	String videoId = videoIdParam;
+	// 	int middleFrame = -1;
+	// 	long timeToSubmit = -1;
+	// 	long value=-1;
+
+	// 	if (keyframeIdParam != null) {
+	// 		try {		
+	// 			timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME))*1000);
+	// 			middleFrame = Integer.parseInt(searcher.get(keyframeIdParam, Fields.MIDDLE_FRAME));
+	// 			} catch (IOException e) {
+	// 				e.printStackTrace();
+	// 			}
+
+	// 	}
+	// 	else{
+	// 		timeToSubmit=  (long) (Double.parseDouble(videoAtTime)*1000);
+	// 	}
+		
+	// 	boolean exit = false;
+	// 	int counter = 0;
+	// 	while(!exit) {
+	// 		try {
+	// 			long startTime = timeToSubmit;
+	// 			long endTime = timeToSubmit;
+	// 			if(isAVS) {
+	// 				startTime = timeToSubmit - 1000;
+	// 				endTime = timeToSubmit + 1000;
+	// 			}
+	// 			response = client.dresSubmitResultByTime(videoId, startTime,endTime);
+	// 			exit = true;
+	// 		} catch (ApiException e) {
+	// 			System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
+	// 			if (counter++ <= 3 )
+	// 				client = new DRESClient();
+	// 			else {
+	// 				System.err.println("Error unable to initialize DRES client");
+	// 				exit = true;
+	// 			}
+	// 		}
+	// 	}
+							
+	// 	//visioneLog.saveResponse(response);
+	// 	System.out.println(Settings.TEAM_ID + "," + videoId + "," + timeToSubmit);
+				
+	// 	//saving logs
+	// 	try {
+	// 		//visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
+	// 		dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+timeToSubmit );
+	// 	} catch (IOException | NumberFormatException e1) {
+	// 		e1.printStackTrace();
+	// 		System.out.println(Settings.MEMBER_ID + "," + videoId + "," + timeToSubmit);
+	// 	}
+
+	// 	return response;
+	// }
 	
 	@GET
 	@Path("/setSimilarity")

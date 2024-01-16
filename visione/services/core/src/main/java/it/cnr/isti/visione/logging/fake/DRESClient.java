@@ -24,6 +24,9 @@ public class DRESClient {
         return "";
 	}
 
+	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { 
+     return "";
+	}
 	
 	public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	}
