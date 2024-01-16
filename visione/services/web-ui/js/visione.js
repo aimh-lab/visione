@@ -1710,19 +1710,22 @@ function translateText(textQuery, idx) {
 			console.log(data)
 
 			let jsonTranslate = JSON.parse(data)
-			let toLog = {
-				"query": [],
-				"parameters": []
-			};
-			toLog.query.push({"translate": ""});
-			toLog.parameters.push(jsonTranslate);
-			toLog = JSON.stringify(toLog)
-			console.log(toLog)
 
-			log(toLog);
-
-			if (jsonTranslate.is_translated == true)
+			if (jsonTranslate.is_translated == "True") {
 				setTranslate(data, idx);
+				let toLog = {
+					"query": [],
+					"parameters": []
+				};
+				toLog.query.push({"translate": ""});
+				//to fix a boolean parse error
+				//toLog.parameters.push({"detected_language":jsonTranslate.detected_language,"original_text":jsonTranslate.original_text,"translated_text":jsonTranslate.translated_text,"translation_model":jsonTranslate.translation_model})
+				toLog.parameters.push(jsonTranslate);
+				toLog = JSON.stringify(toLog);
+				console.log(toLog);
+				log(toLog);
+			}
+
 		},
 		error: function (data) {
 			setTranslate(null, idx);
@@ -2000,6 +2003,7 @@ function selectNextResult() {
 
 
 async function init() {
+	localStorage.setItem('isQA', false);
 
 	document.onkeydown = checkKey;
 

@@ -44,7 +44,7 @@ public class DRESClient {
 		
 //		client.dresSubmitResultByFrameNumber(videoId, frameNumber);
 		try {
-			client.dresSubmitResultByTime(videoId, time);
+			client.dresSubmitResultByTime(videoId, time, time);
 		} catch (ApiException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -100,9 +100,9 @@ public class DRESClient {
 		return sessionId;
 	}
 	
-	public String dresSubmitResultByTime(String video, long timestamp) throws ApiException {
-        System.out.println("Submission to DRES ");
-		List<ApiEvaluationInfo> currentRuns;
+	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {
+        System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+		List<ApiClientEvaluationInfo> currentRuns;
 		try {
 		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
@@ -112,7 +112,7 @@ public class DRESClient {
 
 		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
 
-		for (ApiEvaluationInfo run : currentRuns) {
+		for (ApiClientEvaluationInfo run : currentRuns) {
 		  System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
 		  if (run.getTemplateDescription() != null) {
 			System.out.println(run.getTemplateDescription());
@@ -120,15 +120,16 @@ public class DRESClient {
 		  System.out.println();
 		}
 		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
-        System.out.println("Submitting " + video + " @ " + timestamp);
+        System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
 		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
         	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
                     new ApiClientSubmission().addAnswerSetsItem(
                         new ApiClientAnswerSet().addAnswersItem(
                             new ApiClientAnswer()
-                                .mediaItemId(video) //item which is to be submitted
-                                .start(timestamp) //start time in milliseconds
+                                .mediaItemName(video)
+                                .start(startTime) //start time in milliseconds
+								.end(endTime)
                         )
                     ), sessionId);
         } catch (ApiException e) {
@@ -151,7 +152,7 @@ public class DRESClient {
                     break;
                 }
                 default: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
+                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
                     System.err.println(message);                }
             }
             return message;

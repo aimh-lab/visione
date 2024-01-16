@@ -349,11 +349,13 @@ public class VBSService {
 			if(SEND_LOG_TO_DRES)
 				client.dresSubmitLog(dresLog.getResultLog()); 
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
+			System.out.println("- Log saved");
 			// visioneLog.query2Log(query, resLog); //not saving logs in visione format anymore
 			
 //			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
 			// TODO Auto-generated catch block
+			System.out.println("Error in saving logging");
 			e1.printStackTrace();
 		}
 	}
@@ -554,7 +556,13 @@ public class VBSService {
 		int counter = 0;
 		while(!exit) {
 			try {
-				response = client.dresSubmitResultByTime(videoId, timeToSubmit);
+				long startTime = timeToSubmit;
+				long endTime = timeToSubmit;
+				if(isAVS) {
+					startTime = timeToSubmit - 1000;
+					endTime = timeToSubmit + 1000;
+				}
+				response = client.dresSubmitResultByTime(videoId, startTime,endTime);
 				exit = true;
 			} catch (ApiException e) {
 				System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
