@@ -49,6 +49,7 @@ def detection2record(detection, detector, classes, image_hw):
     labels = list(itertools.chain.from_iterable(labels))
 
     boxes_and_scores = np.concatenate(boxes_and_scores, axis=0)
+    boxes_and_scores = boxes_and_scores[:, [1, 0, 3, 2, 4]]  # xyxys -> yxyxs
     # normalize coordinates and clip them in [0,1]
     boxes = boxes_and_scores[:, :4] / np.tile(image_hw, 2)
     boxes = np.clip(boxes, 0, 1)
