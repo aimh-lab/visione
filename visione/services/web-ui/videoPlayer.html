@@ -75,13 +75,14 @@
 	</div>
 
 <script type="text/javascript">
+	var myPlayer;
 	function loadPage() {
 		url = $.urlParam('url');
 		t = $.urlParam('t');
 		frameID = $.urlParam('frameid');
 		toLog = '{"query":[{"videoplayer":"' + frameID + '"}], "parameters":[{}]}'
 		log(toLog)
-		var myPlayer = videojs('vbsvideo'); 
+		myPlayer = videojs('vbsvideo'); 
 		myPlayer.src({ type: "video/mp4", src: url});
 		myPlayer.currentTime(t);
 		myPlayer.muted(true);//	myPlayer.autoplay(true);
