@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import threading
+import itertools
 
 from rich.progress import Progress, SpinnerColumn, MofNCompleteColumn, TimeElapsedColumn
 
@@ -110,6 +111,8 @@ class IndexCommand(BaseCommand):
                     subtasks.append(subtask)
 
                 progress.console.log(f"- '{video_id}' indexed.")
+                for thread in threads:
+                    thread.join()
                 for subtask in subtasks:
                     progress.remove_task(subtask)
                 progress.advance(task)
@@ -419,7 +422,8 @@ class IndexCommand(BaseCommand):
             record['objectsinfo'] = record.pop('object_info')
 
             # features
-            record['features'] = record.pop('features_gem_str')
+            # record['features'] = record.pop('features_gem_str')
+            record['features'] = record.pop('features_dinov2_str')
             record['aladin'] = record.pop('features_aladin_str')
             return record
 

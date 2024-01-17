@@ -197,10 +197,24 @@ function setTranslate(speechRes, idx) {
 
 	else {
 		console.log(speechRes);
-		let jsonSpeech = JSON.parse(speechRes)
+		let jsonTranslate = JSON.parse(speechRes)
 
-		$("#textual" + idx).val(jsonSpeech.translated_text);
-		document.getElementById('cancelText' + idx).style.display = 'block'
+		if (jsonTranslate.is_translated == "True") {
+			$("#textual" + idx).val(jsonTranslate.translated_text);
+			document.getElementById('cancelText' + idx).style.display = 'block'
+
+			let toLog = {
+				"query": [],
+				"parameters": []
+			};
+			toLog.query.push({"translate": ""});
+			//to fix a boolean parse error
+			//toLog.parameters.push({"detected_language":jsonTranslate.detected_language,"original_text":jsonTranslate.original_text,"translated_text":jsonTranslate.translated_text,"translation_model":jsonTranslate.translation_model})
+			toLog.parameters.push(jsonTranslate);
+			toLog = JSON.stringify(toLog);
+			console.log(toLog);
+			log(toLog);
+		}
 
 		//searchByForm();
 	}
@@ -291,14 +305,6 @@ function getMiddleTimestamp(id) {
 		}).responseText
 }
 
-function submitAlert() {
-	if (!isAVS) {
-		if (!confirm('Are you sure you want to submit?')) {
-			return false;
-		}
-	}
-	return true;
-}
 
 function submitWithAlert(id, videoId) {
 	if (!isAVS) {
@@ -363,21 +369,6 @@ function startNewAVSSession() {
 	//}
 }
 
-function submitResult(id, videoId) {
-	return $.ajax({
-		type: "GET",
-		async: false,
-		url: urlVBSService + "/submitResult?id=" + id + "&videoid=" + videoId,
-	}).responseText;
-}
-
-function submitAtTime(videoId, time) {
-	return $.ajax({
-		type: "GET",
-		async: false,
-		url: urlVBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
-	}).responseText;
-}
 
 /*function log(query) {
 	return $.ajax({
@@ -1122,8 +1113,78 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, vid
 function submitQA() {
 	let answ = prompt("Please enter your answering", "");
   	if (answ != null) {
-		alert(answ);
+		submitResult(id=null, videoId=null, textAnswer=answ, isAsync=true)
 	}
+}
+
+function submitAlert() {
+	if (!isAVS) {
+		if (!confirm('Are you sure you want to submit?')) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function getTaskType() {
+	if (isAVS)
+		return "avs"
+	else if (isQA)
+		return "qa"
+	else
+		return "kis"
+}
+
+function submitResult(id, videoId, textAnswer=null, isAsync=false) {
+	return $.ajax({
+		type: "GET",
+		async: isAsync,
+		url: urlVBSService + "/submitResult?id=" + id + "&videoid=" + videoId + "&textAnswer=" + textAnswer + "&taskType=" + getTaskType(),
+	}).responseText;
+}
+
+function submitAtTime(videoId, time) {
+	return $.ajax({
+		type: "GET",
+		async: false,
+		url: urlVBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
+	}).responseText;
+}
+
+function submitVersion2(selectedItem) {
+	$('#submitted_bar').css("display", "block");
+	let res = null;
+	if (isQA) {
+		submitQA();
+	} else {
+		if (submitAlert()) {
+			if (isAVS)
+				submitResult(selectedItem.imgId, selectedItem.videoId, isAsync=true);
+			else {
+				res = submitResult(selectedItem.imgId, selectedItem.videoId);
+				alert('Server response: ' + res);
+			}
+
+			
+			//remove selected image preview
+			unselectImg(selectedItem);
+			//avsRemoveSelected(selectedItem)
+	
+			//updateAVSTab(selectedItem)
+			
+			avsSubmitted.set(selectedItem.videoId, selectedItem);
+			
+			//add submitted image to the sidebar on the right
+			avsSubmittedTab(selectedItem);
+			$( "#submitted_num" ).text(avsSubmitted.size)
+
+			//che fa? boh!
+			updateAVSInfo();
+
+			avsHilightlighSubmittedVideos();
+		}
+	}
+	return res;
 }
 
 function unifiedSubmit(avsObj, ev) {
@@ -1136,35 +1197,18 @@ function unifiedSubmit(avsObj, ev) {
 
 	currentSelected = null;
 
-	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
-		currentSelected = avsManuallyByVideoID.entries().next().value[1];
+	//if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
+		//currentSelected = avsManuallyByVideoID.entries().next().value[1];
 		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
-	}
+//	}
 
 	avsCleanManuallySelected();
-	avsToggle(avsObj, ev);
-	submitAVS();
+	//avsToggle(avsObj, ev);
+	submitAVS(avsObj);
 
-	if (currentSelected != null) {
-		avsToggle(currentSelected, ev);
-	}
-
-}
-
-function unifiedTabSubmit(avsObj, ev) {
-	if (!submitAlert())
-		return false;
-
-	currentSelected = null;
-
-	if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
-		currentSelected = avsManuallyByVideoID.entries().next().value[1];
-		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
-	}
-
-	avsCleanManuallySelected();
-	avsToggle(avsObj, ev);
-	submitAVS();
+	/*if (currentSelected != null) {
+		//avsToggle(currentSelected, ev);
+	}*/
 
 }
 
@@ -1176,7 +1220,7 @@ function hideOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 0;
 }
 
-const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="eager") => {
+const imgResult = (res, borderColor, selectedItem, isSimplified = false, img_loading="eager") => {
 
 	if (isSimplified) {
 		return `
@@ -1185,16 +1229,16 @@ const imgResult = (res, borderColor, avsObj, isSimplified = false, img_loading="
 				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
 				<div class="result-border" style="border-color: ${borderColor};">
 					<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
-						<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)' />
+						<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${selectedItem}, event)' />
 					</div>
 					<div  id="toolbar_icons_${res.imgId}">
 						<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
 						<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
 						<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
 						<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-						<a href="#" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-						<a href="#" title="Visual similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-						<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='unifiedSubmit(${avsObj}, event);'> </i></span></a>
+						<a href="#" title="image similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+						<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
 					<div>
 				</div>
 		`
@@ -1708,23 +1752,7 @@ function translateText(textQuery, idx) {
 		url: translateService + "/text",
 		success: function (data) {
 			console.log(data)
-
-			let jsonTranslate = JSON.parse(data)
-
-			if (jsonTranslate.is_translated == "True") {
-				setTranslate(data, idx);
-				let toLog = {
-					"query": [],
-					"parameters": []
-				};
-				toLog.query.push({"translate": ""});
-				//to fix a boolean parse error
-				//toLog.parameters.push({"detected_language":jsonTranslate.detected_language,"original_text":jsonTranslate.original_text,"translated_text":jsonTranslate.translated_text,"translation_model":jsonTranslate.translation_model})
-				toLog.parameters.push(jsonTranslate);
-				toLog = JSON.stringify(toLog);
-				console.log(toLog);
-				log(toLog);
-			}
+			setTranslate(data, idx);
 
 		},
 		error: function (data) {
@@ -1820,10 +1848,14 @@ function checkKey(e) {
 		//testDiv.dispatchEvent(mouseOverEvent);
 	}
 	else if (e.keyCode == '83') {
-		if (submitAlert()) {
-			submitAVS();
-			goToNextResult = true;
-		}
+		//replace img to submitBTN_
+		submitId = lastSelected.id.replace("img", "submitBTN_");
+		document.getElementById(submitId).click();
+		//submitBTN_${res.imgId}
+
+
+		//submitVersion2()
+		goToNextResult = true;
 	}
 
 	else if (e.keyCode == '38') {
@@ -2015,12 +2047,13 @@ async function init() {
 	includeHTML();
 
 	await loadConfig();
-	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
+if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	loadPalette();
 
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
+	document.getElementById('avsSubmittedTab').style.display = 'block'
 	if ($('meta[name=task]').attr('content') == "KIS") {
 		$("#searchTab").append(searchForm(1, 'Objects & color next scene', " Describe the next scene (optional)...", "fa fa-hourglass-end fa-1x"));
 	} else {
@@ -2078,6 +2111,9 @@ async function init() {
 					if (textQuery.length > 0) {
 						if (document.getElementById("isTranslate0").checked)
 							translateText(textQuery, 0);
+						else {
+							queryByTextual();
+						}
 					}
 					//queryByTextual();
 					$('#textual0').blur();
@@ -2104,6 +2140,9 @@ async function init() {
 					if (textQuery.length > 0) {
 						if (document.getElementById("isTranslate1").checked)
 							translateText(textQuery, 1);
+						else {
+							queryByTextual();
+						}
 					}
 					//queryByTextual();
 					$('#textual1').blur();
