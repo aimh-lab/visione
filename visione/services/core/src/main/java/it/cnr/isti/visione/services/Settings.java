@@ -56,7 +56,6 @@ public class Settings {
 		Yaml yaml = new Yaml();
 		// is = new InputStreamReader(is, StandardCharsets.UTF_8);
 		Map<String, Object> config = yaml.load(is);
-		System.out.println(config);
 		Map<String, Object> coreConfig = (Map<String, Object>) config.getOrDefault("core", new HashMap<String, Object>());
 		Map<String, Object> dresConfig = (Map<String, Object>) config.getOrDefault("dres", new HashMap<String, Object>());
 
@@ -95,7 +94,6 @@ public class Settings {
 		ALADIN_SERVICE = (String) coreConfig.get("ALADIN_SERVICE");
 		CLIP_SERVICE = (String) coreConfig.get("CLIP_SERVICE");
 		CLIP_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
-
 		CLIP_ONE_SERVICE = (String) coreConfig.get("CLIP_ONE_SERVICE");
 		CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE");
 	}

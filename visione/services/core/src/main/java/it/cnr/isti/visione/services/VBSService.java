@@ -208,7 +208,7 @@ public class VBSService {
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
-				else if (queryObj.getQuery().containsKey("qbe")) {
+				else if (queryObj.getQuery().containsKey("qbe")) { // FIXME: QueryByExample to be rewritten 
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
 					TopDocs res = searcher.searchByExample(features, k, hitsToReorder);
 					log(res, query, logQueries);
@@ -217,7 +217,7 @@ public class VBSService {
 					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
 				}
 				else if (queryObj.getQuery().containsKey("aladinSim")) {
-					TopDocs res =searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
+					TopDocs res = searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
 					log(res, query, logQueries);
 					if (sortByVideo)
 						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
@@ -343,18 +343,17 @@ public class VBSService {
 	 */
 	public void log(TopDocs hits, String query, List<VisioneQuery> queries) {
 		try {
+			long elapsed = -System.currentTimeMillis();
 			ArrayList<SearchResults> searchResults = searcher.topDocs2SearchResults(hits, 10000);
 			String resLog = gson.toJson(searchResults);
-			Long clientTimestamp=dresLog.query2Log(queries, searchResults); 
+			Long clientTimestamp = dresLog.query2Log(queries, searchResults); 
 			if(SEND_LOG_TO_DRES)
-				client.dresSubmitLog(dresLog.getResultLog()); 
+				client.dresSubmitLog(dresLog.getResultLog());
 			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			System.out.println("- Log saved");
+			elapsed += System.currentTimeMillis();
+			System.out.println("- Log saved: " + elapsed + "ms");
 			// visioneLog.query2Log(query, resLog); //not saving logs in visione format anymore
-			
-//			
 		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
-			// TODO Auto-generated catch block
 			System.out.println("Error in saving logging");
 			e1.printStackTrace();
 		}

@@ -20,7 +20,7 @@ public class DRESClient {
 		return sessionId;
 	}
 	
-	public String dresSubmitResultByTime(String video, long timestamp) throws ApiException {
+	public String dresSubmitResultByTime(String video, long starttime, long endtime) throws ApiException {
         return "";
 	}
 
