@@ -55,10 +55,10 @@ services:
   features-gem:
     build: ./analysis/features-gem
     image: visione/features-gem
-    shm_size: 2GB
     volumes: *common_volumes
     profiles: ["analysis", "features-gem"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   features-clip-openai:
     build: ./analysis/features-clip
@@ -66,9 +66,10 @@ services:
     environment:
       - FEATURES_NAME=clip-openai
       - MODEL_HANDLE=openai/clip-vit-large-patch14
-    deploy: *needs_gpu
     volumes: *common_volumes
     profiles: ["analysis", "features-clip-openai"]
+    deploy: *needs_gpu
+    shm_size: 16g
 
   features-clip-laion:
     build: ./analysis/features-clip
@@ -79,17 +80,18 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "features-clip-laion"]
     deploy: *needs_gpu
+    shm_size: 16g
   
   features-clip-datacomp:
     build: ./analysis/features-clip
     image: visione/features-clip
-    shm_size: 2g
     environment:
       - FEATURES_NAME=clip-datacomp
       - MODEL_HANDLE=laion/CLIP-ViT-L-14-DataComp.XL-s13B-b90K
     volumes: *common_volumes
     profiles: ["analysis", "features-clip-datacomp"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   features-biomed-clip:
     build: ./analysis/features-openclip
@@ -100,14 +102,15 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "features-biomed-clip"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   features-clip2video:
     build: ./analysis/features-clip2video
     image: visione/features-clip2video
-    shm_size: 2g
     volumes: *common_volumes
     profiles: ["analysis", "features-clip2video"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   features-aladin:
     build:
@@ -115,9 +118,9 @@ services:
       secrets: ["asset_token"]
     image: visione/features-aladin
     volumes: *common_volumes
-    shm_size: 2g
     profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
+    shm_size: 16g
   
   features-dinov2:
     build: ./analysis/features-dinov2
@@ -128,14 +131,15 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "features-dinov2"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   features-clipvip:
     build: ./analysis/features-clipvip
     image: visione/features-clipvip
-    shm_size: 2g
     volumes: *common_volumes
     profiles: ["analysis", "features-clipvip"]
     deploy: *needs_gpu
+    shm_size: 16g
 
   frame-cluster:
     build: ./analysis/frame-cluster
