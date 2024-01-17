@@ -2015,6 +2015,7 @@ async function init() {
 	includeHTML();
 
 	await loadConfig();
+	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	loadPalette();
 
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));

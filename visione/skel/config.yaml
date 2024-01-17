@@ -6,6 +6,7 @@
 #
 
 main:
+  collection_name: null   # Label for this collection (optional).
   server_name: localhost  # Server name to which this instance will respond. (deprecated)
   port: 8000              # Port to which this instance will respond.
 
