@@ -31,7 +31,7 @@ class CLIPTextEncoder():
             text_features = self.model.get_text_features(**inputs)
             if normalized:
                 text_features = F.normalize(text_features, dim=-1)
-            text_features = text_features.numpy()
+            text_features = text_features.numpy().squeeze()
         return text_features
 
 @app.route('/ping', methods=['GET'])

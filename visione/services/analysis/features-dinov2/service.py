@@ -35,7 +35,7 @@ class DinoV2Extractor():
             if normalized:
                 image_features = F.normalize(image_features, dim=-1)
             
-        image_features = image_features.cpu().numpy()
+        image_features = image_features.cpu().numpy().squeeze()
         return image_features
 
     def extract_from_path(self, image_path):
