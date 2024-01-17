@@ -6,11 +6,11 @@ server {
 
 	### Static File Routing
 
-	location ^~ /videos      { proxy_pass ${VISIONE_VIDEOS_URL}; }
-	location ^~ /videos/tiny { proxy_pass ${VISIONE_RESIZED_VIDEOS_URL}; }
-	location ^~ /frames      { proxy_pass ${VISIONE_FRAMES_URL}; }
-	location ^~ /frames/tiny { proxy_pass ${VISIONE_RESIZED_FRAMES_URL}; }
-	location ^~ /palette	 { proxy_pass ${VISIONE_PALETTE_URL}; }
+	location ^~ /videos      { access_log off; proxy_pass ${VISIONE_VIDEOS_URL}; }
+	location ^~ /videos/tiny { access_log off; proxy_pass ${VISIONE_RESIZED_VIDEOS_URL}; }
+	location ^~ /frames      { access_log off; proxy_pass ${VISIONE_FRAMES_URL}; }
+	location ^~ /frames/tiny { access_log off; proxy_pass ${VISIONE_RESIZED_FRAMES_URL}; }
+	location ^~ /palette	 { access_log off; proxy_pass ${VISIONE_PALETTE_URL}; }
 
 	# expose some files in collection dir (FIXME: reorganize files in a better way)
 	location = /config.yaml { proxy_pass http://router/config.yaml; }
@@ -39,11 +39,11 @@ server {
 	server_name router;
 	resolver 127.0.0.11 valid=30s;
 
-	location ^~ /videos       { alias /data/resized-videos/medium/; }
-	location ^~ /videos/tiny  { alias /data/resized-videos/tiny/; }
-	location ^~ /frames       { alias /data/selected-frames/; }
-	location ^~ /frames/tiny  { alias /data/thumbnails/; }
-	location ^~ /palette      { alias /data/palette/; }
+	location ^~ /videos       { access_log off; alias /data/resized-videos/medium/; }
+	location ^~ /videos/tiny  { access_log off; alias /data/resized-videos/tiny/; }
+	location ^~ /frames       { access_log off; alias /data/selected-frames/; }
+	location ^~ /frames/tiny  { access_log off; alias /data/thumbnails/; }
+	location ^~ /palette      { access_log off; alias /data/palette/; }
 
 	# expose some files in collection dir (FIXME: reorganize files in a better way)
 	location = /config.yaml { alias /data/config.yaml; }
