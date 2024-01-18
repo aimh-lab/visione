@@ -925,14 +925,17 @@ function displaySimplifiedUI() {
 }
 
 function showResults(data) {
-	displayAdvanced(isAdvanced);
+	//displayAdvanced(isAdvanced);
 	//temporary!!!!!!!!!!!
 	avsCleanManuallySelected();
+	console.log(isAdvanced)
+	console.log($('.advanced').css('display'))
 
-	if ($('meta[name=task]').attr('content') == "AVS") {
+
+	/*if ($('meta[name=task]').attr('content') == "AVS") {
 		avsCleanManuallySelected();
 		avsRemoveAutoselected();
-	}
+	}*/
 	//empty avsFirstCol
 	//avsAutoSelected.length = 0
 	$('html,body').scrollTop(0);
@@ -965,8 +968,8 @@ function showResults(data) {
 			resMatrix[resrowIdx] = [];
 			let img_loading = "eager"
 			for (let i = 0; i < res.length; i++) {
-				if (i >= 100)
-				img_loading = "lazy"
+				if (i >= 500)
+					img_loading = "lazy"
 				var imgGridResults = ""
 				let imgId = res[i].imgId;
 				let videoId = res[i].videoId;
@@ -1010,7 +1013,7 @@ function showResults(data) {
 						addToAutoSelected(avsObj)*/
 
 				imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), true, img_loading)
+				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
 				imgGridResults += '</div>'
 				resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
@@ -1222,7 +1225,9 @@ function hideOverlay(img_overlay) {
 
 const imgResult = (res, borderColor, selectedItem, isSimplified = false, img_loading="eager") => {
 
-	if (isSimplified) {
+	displayValue= isSimplified == true ? "none" : "block";
+
+	if (!isSimplified) {
 		return `
 			<!--<div class="img_container" onmouseover='console.log("in"); showOverlay("toolbar_icons_${res.imgId}")' onmouseout='console.log("out"); hideOverlay("toolbar_icons_${res.imgId}")'>-->
 
@@ -1238,6 +1243,7 @@ const imgResult = (res, borderColor, selectedItem, isSimplified = false, img_loa
 						<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
 						<a href="#" title="image similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 						<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+					
 						<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
 					<div>
 				</div>
@@ -1245,19 +1251,22 @@ const imgResult = (res, borderColor, selectedItem, isSimplified = false, img_loa
 	}
 
 	return `
-		<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-		<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-		<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-		<i title="Play Video" class="fa fa-play  font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i>
-		<img loading="lazy" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<img loading="lazy" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;">
-		<span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick="submitWithAlert('${res.imgId}','${res.videoId}'); return false;"></i></span>'
-		<div class="myimg-thumbnail" style="border-color:${borderColor};" id="${res.imgId}" lang="${res.videoId}|${res.videoId}|${res.videoUrlPreview}" onclick='avsCleanManuallySelected(); avsToggle(${avsObj}, event)'>
-
-
-		<img loading="lazy" id="img${res.imgId}" class="myimg"  src="${res.thumb}"/>
+		<div class="result-border" style="border-color: ${borderColor};">
+			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
+				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${selectedItem}, event)' />
+			</div>
+			<div  id="toolbar_icons_${res.imgId}">
+				<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
+				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+				<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+				<a href="#" title="image similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+			
+				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
+			<div>
 		</div>
 		`
 }
@@ -1589,6 +1598,8 @@ function displayAdvanced(isAdv) {
 		setDisplayTo = "block";
 		$('#block0').css('display', 'block');
 		$('#block1').css('display', 'block');
+		$('#advSim1').css('display', 'block');
+		$('#advSim1').css('display', 'block');
 		//$('#textualOptions0').css('display', 'block');
 		//$('#textualOptions1').css('display', 'block');
 
@@ -1599,6 +1610,8 @@ function displayAdvanced(isAdv) {
 		setDisplayTo = "none";
 		$('#block0').css('display', 'none');
 		$('#block1').css('display', 'none');
+		$('#advSim1').css('display', 'none');
+		$('#advSim1').css('display', 'none');
 		//$('#textualOptions0').css('display', 'none');
 		//$('#textualOptions1').css('display', 'none');
 
@@ -1606,6 +1619,9 @@ function displayAdvanced(isAdv) {
 		$('.sidebarGrid').css('width', '0');
 		$('.bodyGrid').css('grid-template-columns', '0fr 4.2fr 0.3fr');
 	}
+
+	$('.advanced').css('display', setDisplayTo);
+
 
 	//if (latestQuery != "" || isAdvanced) {
 	//$('#sceneDes1').css('display', 'block');
@@ -1747,7 +1763,7 @@ function translateText(textQuery, idx) {
 		type: "POST",
 		async: true,
 		crossDomain: true,
-		data: { text: textQuery },
+		data: { text: textQuery, lang: localStorage.getItem("selectedLang") },
 		dataType: "text",
 		url: translateService + "/text",
 		success: function (data) {
@@ -1760,6 +1776,68 @@ function translateText(textQuery, idx) {
 		}
 	});
 	//return JSON.parse('{"lang":"it","translated":true,"translation":"the pipo"}');
+}
+
+function initSupportedLanguages() {
+	localStorage.setItem("supportedLanguages", '{"AutoDetect": "auto", "Afrikaans": "afr", "Arabic": "arb", "Armenian": "hye", "Belarusian": "bel", "Bosnian": "bos", "Bulgarian": "bul", "Chinese": "cmn", "Croatian": "hrv", "Czech": "ces", "Danish": "dan", "Dutch": "nld", "Estonian": "est", "Finnish": "fin", "French": "fra", "Georgian": "kat", "German": "deu", "Greek": "ell", "Hebrew": "heb", "Hindi": "hin", "Hungarian": "hun", "Icelandic": "isl", "Indonesian": "ind", "Irish": "gle", "Italian": "ita", "Japanese": "jpn", "Korean": "kor", "Lithuanian": "lit", "Macedonian": "mkd", "Malayalam": "mal", "Maltese": "mlt", "Nepali": "npi", "Norwegian": "nno", "Polish": "pol", "Portuguese": "por", "Romanian": "ron", "Russian": "rus", "Serbian": "srp", "Slovak": "slk", "Slovenian": "slv", "Spanish": "spa", "Swedish": "swe", "Turkish": "tur", "Ukrainian": "ukr", "Vietnamese": "vie"}');
+
+	if (localStorage.getItem("supportedLanguages") ==  null) {
+		$.ajax({
+			type: "POST",
+			async: true,
+			crossDomain: true,
+			data: {},
+			dataType: "text",
+			url: translateService + "/supported_languages",
+			success: function (data) {
+				console.log(data)
+				localStorage.setItem('supportedLanguages', isQA);
+				setSupportedLanguages(0);
+				setSupportedLanguages(1);
+			},
+			error: function (data) {
+				console.log("Error loading supported languages " + data);
+			}
+		});
+	} else {
+		setSupportedLanguages(0);
+		setSupportedLanguages(1);
+	}
+	//return JSON.parse('{"lang":"it","translated":true,"translation":"the pipo"}');
+}
+
+function setSupportedLanguages(id) {
+	supportedLanguages = JSON.parse(localStorage.getItem("supportedLanguages"))
+
+	var selectElement = document.getElementById('supportedLang' + id);
+
+	// Popola l'elemento select con le opzioni del dizionario
+	/*for (var key in supportedLanguages) {
+	  if (supportedLanguages.hasOwnProperty(key)) {
+		var option = document.createElement('option');
+		option.value = supportedLanguages[key];
+		option.text = key;
+		selectElement.add(option);
+	  }
+	}*/
+
+
+	$.each(supportedLanguages, function(key, value) {
+		var isSelected = (value === localStorage.getItem("selectedLang")); 
+		$('#supportedLang' + id).append($('<option>', {
+			text: key,
+			value: value,
+		  	selected: isSelected 
+		}));
+	  });
+
+	  $('#supportedLang0, #supportedLang1').on('change', function() {
+		var selectedValue = $(this).val();
+		localStorage.setItem("selectedLang", selectedValue);
+		var otherSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
+		otherSelect.val(selectedValue);
+	  });
+
 }
 
 function checkKey(e) {
@@ -2035,7 +2113,7 @@ function selectNextResult() {
 
 
 async function init() {
-	localStorage.setItem('isQA', false);
+
 
 	document.onkeydown = checkKey;
 
@@ -2047,9 +2125,9 @@ async function init() {
 	includeHTML();
 
 	await loadConfig();
+	localStorage.setItem('isQA', false);
 if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	loadPalette();
-
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
 	//$("#searchTab").append(addButton);
@@ -2293,6 +2371,9 @@ if (config?.main?.collection_name) document.title = config.main.collection_name 
 	initLayout();
 
 	//displayAdvanced(false);
+
+	initSupportedLanguages();
+
 
 
 	var script = document.createElement('script');

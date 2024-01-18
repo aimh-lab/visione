@@ -92,7 +92,8 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 			<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
 				<span style="padding-right: 4em;" id="translate${canvasID}">
 					<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
-					<label for="isTranslate${canvasID}" class="font-tiny">Translate Query</label>
+					<label for="isTranslate${canvasID}" class="font-tiny">Translate </label>
+					<select id="supportedLang${canvasID}"></select>
 				</span>`;
 
 	config['ui']['textual-modes'].forEach((mode) => {
