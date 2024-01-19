@@ -56,14 +56,15 @@
 		}
 
 		function submit(imgId, videoId) {
-			if (submitAlert()) {
-				if (isAVS)
-					submitResult(imgId, videoId, isAsync=true);
-				else {
-					res = submitResult(imgId, videoId);
-					alert('Server response: ' + res);
+			if (!checkQA())
+				if (submitAlert()) {
+					if (isAVS)
+						submitResult(imgId, videoId, isAsync=true);
+					else {
+						res = submitResult(imgId, videoId);
+						alert('Server response: ' + res);
+					}
 				}
-			}
 		}
 
 		$.urlParam = function(name) {

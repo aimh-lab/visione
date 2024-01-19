@@ -447,6 +447,16 @@ video::-webkit-media-controls {
 .advanced {
   display: none;
 }
+
+.isSimplified {
+  display: inline-block;
+}
+
+.isAdvanced {
+  display: none;
+
+}
+
 /*
 #simplified0 {
   width: 25vw;

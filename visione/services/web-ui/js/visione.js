@@ -622,28 +622,32 @@ function setResults(data) {
 }
 
 function search2(query) {
-	loadingSpinner = document.getElementById('loading-spinner');
+	try {
+		loadingSpinner = document.getElementById('loading-spinner');
 
-	loadingSpinner.style.display = 'block';
-	latestQuery = query
-	if (query == "") {
-		setResults(query)
-	} else {
-		console.log(query);
+		loadingSpinner.style.display = 'block';
+		latestQuery = query
+		if (query == "") {
+			setResults(query)
+		} else {
+			console.log(query);
 
-		$.ajax({
-			type: "POST",
-			async: true,
-			data: { query: query, simreorder: simreorder },
-			dataType: "text",
-			url: urlVBSService + "/search",
-			success: function (data) {
-				setResults(data)
-			},
-			error: function (data) {
-				setResults(data);
-			}
-		});
+			$.ajax({
+				type: "POST",
+				async: true,
+				data: { query: query, simreorder: simreorder },
+				dataType: "text",
+				url: urlVBSService + "/search",
+				success: function (data) {
+					setResults(data)
+				},
+				error: function (data) {
+					setResults(data);
+				}
+			});
+		}
+	} catch(err) {
+		loadingSpinner.style.display = 'none';
 	}
 }
 
@@ -871,7 +875,6 @@ function set169(checkbox) {
 		is169 = true;
 		document.getElementById("is43").checked = false;
 		is43 = false;
-
 	}
 	else
 		is169 = false;
@@ -920,120 +923,159 @@ function displaySimplifiedUI() {
 	document.getElementById("visionelogo").className = 'visioneLogo'
 	document.getElementById("visionelogoImg").className = 'visionelogoImg'
 	//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-	document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-	document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
+	//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
+	//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 }
 
 function showResults(data) {
-	//displayAdvanced(isAdvanced);
-	//temporary!!!!!!!!!!!
-	avsCleanManuallySelected();
-	console.log(isAdvanced)
-	console.log($('.advanced').css('display'))
-
-
-	/*if ($('meta[name=task]').attr('content') == "AVS") {
+	try {
+		//to avoid textual boxes overlap. Why???
+		displayAdvanced(true);
+		//temporary!!!!!!!!!!!
 		avsCleanManuallySelected();
-		avsRemoveAutoselected();
-	}*/
-	//empty avsFirstCol
-	//avsAutoSelected.length = 0
-	$('html,body').scrollTop(0);
-	$("#imgGridResults").empty();
-	//$('#results').scrollTop(0);
-	$('#content').scrollTop(0);
-	resMatrix = [];
-	colIdx = 1;
-	rowIdx = -1;
-	let resColIdx = 1;
-	let resrowIdx = 0;
+		console.log(isAdvanced)
 
-	if ((data == null || data == "") && latestQuery != "") {
-		noResultsOutput();
-	} else if (data != null && data != "") {
-		if (!isAdvanced)
-			displaySimplifiedUI();
+		/*if ($('meta[name=task]').attr('content') == "AVS") {
+			avsCleanManuallySelected();
+			avsRemoveAutoselected();
+		}*/
+		//empty avsFirstCol
+		//avsAutoSelected.length = 0
+		$('html,body').scrollTop(0);
+		$("#imgGridResults").empty();
+		//$('#results').scrollTop(0);
+		$('#content').scrollTop(0);
+		resMatrix = [];
+		colIdx = 1;
+		rowIdx = -1;
+		let resColIdx = 1;
+		let resrowIdx = 0;
 
-		res = JSON.parse(data);
-		if (res.length == 0)
+		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
-		else {
-			noResultsOutput(false);
-			//document.getElementById('newsession').style.display = 'block';
+		} else if (data != null && data != "") {
+			if (!isAdvanced)
+				displaySimplifiedUI();
 
-			let prevID = '';
+			res = JSON.parse(data);
+			if (res.length == 0)
+				noResultsOutput();
+			else {
+				noResultsOutput(false);
+				//document.getElementById('newsession').style.display = 'block';
 
-			let itemPerRow = 0;
+				let prevID = '';
 
-			resMatrix[resrowIdx] = [];
-			let img_loading = "eager"
-			for (let i = 0; i < res.length; i++) {
-				if (i >= 500)
-					img_loading = "lazy"
-				var imgGridResults = ""
-				let imgId = res[i].imgId;
-				let videoId = res[i].videoId;
+				let itemPerRow = 0;
 
-				let score = res[i].score;
+				resMatrix[resrowIdx] = [];
+				let img_loading = "eager"
+				for (let i = 0; i < res.length; i++) {
+					if (i >= 500)
+						img_loading = "lazy"
+					var imgGridResults = ""
+					let imgId = res[i].imgId;
+					let videoId = res[i].videoId;
 
-				let path = videoId + "/" + imgId;
-				//let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
-				//let frameNumber = imgId.match(regex_to_match_keyframe_number)[1] || "";
+					let score = res[i].score;
 
-				let result = imgId.match(regex_to_match_keyframe_number);
-				let frameNumber = result ? result[1] || result[2] || result[3] : null;
+					let path = videoId + "/" + imgId;
+					//let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
+					//let frameNumber = imgId.match(regex_to_match_keyframe_number)[1] || "";
+
+					let result = imgId.match(regex_to_match_keyframe_number);
+					let frameNumber = result ? result[1] || result[2] || result[3] : null;
 
 
-				if (i > 0 && videoId != prevID) {
-					resMatrix[++resrowIdx] = [];
-					let spanVal = 11 - resColIdx;
-					resColIdx = 1;
-					if (spanVal > 0)
-						imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
-					imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
+					if (i > 0 && videoId != prevID) {
+						resMatrix[++resrowIdx] = [];
+						let spanVal = 11 - resColIdx;
+						resColIdx = 1;
+						if (spanVal > 0)
+							imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
+						imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
+					}
+
+					if (videoId != prevID) {
+						//imgGridResults += '<div id="video_' + videoId + '">';
+						imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+
+					}
+					let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
+					prevID = videoId;
+					let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
+					videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
+					//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
+					let thumbnailPath = thumbnailUrl + path + ".jpg";
+					let keyframePath = keyFramesUrl + path + ".png";
+					avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
+					resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
+
+					/*if (itemPerRow == 0)
+						if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
+							addToAutoSelected(avsObj)*/
+
+					imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
+					imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
+					imgGridResults += '</div>'
+					resMatrix[resrowIdx][resColIdx - 1] = res[i];
+
+					resColIdx++;
+					$("#imgGridResults").append(imgGridResults);
+
+
 				}
-
-				if (videoId != prevID) {
-					//imgGridResults += '<div id="video_' + videoId + '">';
-					imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
-
-				}
-				let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
-				prevID = videoId;
-				let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-				videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
-				//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-				let thumbnailPath = thumbnailUrl + path + ".jpg";
-				let keyframePath = keyFramesUrl + path + ".png";
-				avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
-				resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
-
-				/*if (itemPerRow == 0)
-					if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-						addToAutoSelected(avsObj)*/
-
-				imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-				imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
-				imgGridResults += '</div>'
-				resMatrix[resrowIdx][resColIdx - 1] = res[i];
-
-				resColIdx++;
-				$("#imgGridResults").append(imgGridResults);
-
-
 			}
-		}
 
-		if (res.length > 1) {
-			for (let i = 0; i < res.length; i++) {
-				let imgId = res[i].imgId;
-				let score = res[i].score;
+			if (res.length > 1) {
+				for (let i = 0; i < res.length; i++) {
+					let imgId = res[i].imgId;
+					let score = res[i].score;
 
-				let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
+					let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
 
-				function hoverVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-					$('#' + id4Regex).contextmenu(function () {
+					function hoverVideo(e) {
+						id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+						$('#' + id4Regex).contextmenu(function () {
+							imgId = 'img' + id4Regex;
+							langInfo = this.lang.split('|');
+							videoId = langInfo[0];
+							videourl = langInfo[1];
+							playerId = 'video' + videoId;
+
+							var elementExists = document.getElementById(playerId);
+
+							//var startTime = getStartTime(this.id);
+							//var endTime = getEndTime(this.id);
+							var middleTime = getMiddleTimestamp(this.id);
+							var startTime = middleTime - 2;
+							var endTime = middleTime + 2;
+							if (elementExists != null) {
+								var player = $('#' + playerId).get(0);
+								player.pause();
+								player.src = videourl + '#t=' + startTime + ',' + endTime;
+								player.load();
+								player.play();
+								return;
+							}
+							backgroundImg = "background-image: url('" + thumbnailUrl + '/' + this.id + "')";
+
+							//imgGridResults = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+							//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+							//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+							imgGridResults = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+							$('#' + imgId).css("display", "none");
+							$('#' + id4Regex).append(imgGridResults);
+							//$('#'+ playerId).get(0).currentTime = time-1;
+							//$('#'+ playerId).get(0).play();
+							return false;
+						});
+
+					}
+
+					function hideVideo(e) {
+						id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+
 						imgId = 'img' + id4Regex;
 						langInfo = this.lang.split('|');
 						videoId = langInfo[0];
@@ -1041,60 +1083,25 @@ function showResults(data) {
 						playerId = 'video' + videoId;
 
 						var elementExists = document.getElementById(playerId);
-
-						//var startTime = getStartTime(this.id);
-						//var endTime = getEndTime(this.id);
-						var middleTime = getMiddleTimestamp(this.id);
-						var startTime = middleTime - 2;
-						var endTime = middleTime + 2;
 						if (elementExists != null) {
-							var player = $('#' + playerId).get(0);
-							player.pause();
-							player.src = videourl + '#t=' + startTime + ',' + endTime;
-							player.load();
-							player.play();
-							return;
+							$('#' + playerId).remove();
+							$('#' + imgId).css("display", "block");
 						}
-						backgroundImg = "background-image: url('" + thumbnailUrl + '/' + this.id + "')";
-
-						//imgGridResults = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
-						//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-						imgGridResults = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
-						$('#' + imgId).css("display", "none");
-						$('#' + id4Regex).append(imgGridResults);
-						//$('#'+ playerId).get(0).currentTime = time-1;
-						//$('#'+ playerId).get(0).play();
-						return false;
-					});
-
-				}
-
-				function hideVideo(e) {
-					id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
-					imgId = 'img' + id4Regex;
-					langInfo = this.lang.split('|');
-					videoId = langInfo[0];
-					videourl = langInfo[1];
-					playerId = 'video' + videoId;
-
-					var elementExists = document.getElementById(playerId);
-					if (elementExists != null) {
-						$('#' + playerId).remove();
-						$('#' + imgId).css("display", "block");
 					}
 				}
 			}
 		}
-	}
-	//if ($('meta[name=task]').attr('content') == "AVS") {
-	avsHideSubmittedVideos();
-	//avsReloadManuallySelected();
-	//avsAddAutoselected();
-	//}
-	updateAVSInfo();
-	loadingSpinner.style.display = 'none';
+		//if ($('meta[name=task]').attr('content') == "AVS") {
+		avsHideSubmittedVideos();
+		//avsReloadManuallySelected();
+		//avsAddAutoselected();
+		//}
+		updateAVSInfo();
+		//repetita iuvant!!
+		resultsVisualization();
+	}   finally {
+		loadingSpinner.style.display = 'none';
+	  }
 
 }
 
@@ -1223,52 +1230,26 @@ function hideOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 0;
 }
 
-const imgResult = (res, borderColor, selectedItem, isSimplified = false, img_loading="eager") => {
-
-	displayValue= isSimplified == true ? "none" : "block";
-
-	if (!isSimplified) {
+const imgResult = (res, borderColor, selectedItem, isAdvanced = false, img_loading="eager") => {
 		return `
-			<!--<div class="img_container" onmouseover='console.log("in"); showOverlay("toolbar_icons_${res.imgId}")' onmouseout='console.log("out"); hideOverlay("toolbar_icons_${res.imgId}")'>-->
-
-				<!--<div class="toolbar_icons_over_img" id="toolbar_icons_${res.imgId}">-->
-				<div class="result-border" style="border-color: ${borderColor};">
-					<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
-						<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${selectedItem}, event)' />
-					</div>
-					<div  id="toolbar_icons_${res.imgId}">
-						<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
-						<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-						<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-						<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-						<a href="#" title="image similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-						<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-					
-						<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
-					<div>
-				</div>
-		`
-	}
-
-	return `
 		<div class="result-border" style="border-color: ${borderColor};">
 			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
 				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${selectedItem}, event)' />
 			</div>
 			<div  id="toolbar_icons_${res.imgId}">
-				<input style="display: none;" class="checkboxAvs" id="avs_${res.imgId}" type="checkbox" title="select for AVS Task" onchange="updateAVSTab('avs_${res.imgId}', '${res.thumb}', '${res.imgId} ')">&nbsp;
 				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
 				<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
 				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-				<a href="#" title="image similarity"><img loading="${img_loading}" style="display:none; padding: 2px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladin_icon.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clip_icon.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 			
 				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
 			<div>
 		</div>
 		`
+
 }
 
 function playVideoWindow(videoURL, videoId, imgId) {
@@ -1559,11 +1540,22 @@ function canvasCleanUndo(idx) {
 }
 
 function displayAdvancedToggle() {
+	isAdvanced = !isAdvanced;
+	displayAdvanced();
+	resultsVisualization();
+
+
+}
+
+function resultsVisualization() {
 	if (isAdvanced) {
-		displayAdvanced(false);
+		$('.isAdvanced').css('display', 'inline-block');
+		$('.isSimplified').css('display', 'none');
 	}
+
 	else {
-		displayAdvanced(true);
+		$('.isSimplified').css('display', 'inline-block');
+		$('.isAdvanced').css('display', 'none');
 	}
 }
 
@@ -1591,9 +1583,7 @@ function initLayout() {
 	//-----
 }
 
-function displayAdvanced(isAdv) {
-	isAdvanced = isAdv;
-
+function displayAdvanced() {
 	if (isAdvanced) {
 		setDisplayTo = "block";
 		$('#block0').css('display', 'block');
