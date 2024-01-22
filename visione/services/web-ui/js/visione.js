@@ -126,6 +126,7 @@ var isQA = false;
 
 var config = null;
 var loadingSpinner = null;
+var numResultsPerVideo = 10;
 
 
 function handler(myObj) {
@@ -622,6 +623,7 @@ function setResults(data) {
 }
 
 function search2(query) {
+	res = null;
 	try {
 		loadingSpinner = document.getElementById('loading-spinner');
 
@@ -635,7 +637,7 @@ function search2(query) {
 			$.ajax({
 				type: "POST",
 				async: true,
-				data: { query: query, simreorder: simreorder },
+				data: { query: query, simreorder: simreorder, n_frames_per_row: numResultsPerVideo },
 				dataType: "text",
 				url: urlVBSService + "/search",
 				success: function (data) {
@@ -767,7 +769,8 @@ function setTextualMode(checkboxId, mode) {
 
 function setTextualMode(checkboxId, mode) {
 	textualMode[checkboxId] = mode;
-	searchByForm();
+	if ($("#textual" + checkboxId) > 0)
+		searchByForm();
 }
 /*
 function setTextualMode(checkboxId) {
@@ -948,8 +951,7 @@ function showResults(data) {
 		resMatrix = [];
 		colIdx = 1;
 		rowIdx = -1;
-		let resColIdx = 1;
-		let resrowIdx = 0;
+		visibleImages = 0
 
 		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
@@ -963,133 +965,12 @@ function showResults(data) {
 			else {
 				noResultsOutput(false);
 				//document.getElementById('newsession').style.display = 'block';
-
-				let prevID = '';
-
-				let itemPerRow = 0;
-
-				resMatrix[resrowIdx] = [];
-				let img_loading = "eager"
-				for (let i = 0; i < res.length; i++) {
-					if (i >= 500)
-						img_loading = "lazy"
-					var imgGridResults = ""
-					let imgId = res[i].imgId;
-					let videoId = res[i].videoId;
-
-					let score = res[i].score;
-
-					let path = videoId + "/" + imgId;
-					//let frameNumber = imgId.replace(videoId + "_", "").replace('.jpg', '');
-					//let frameNumber = imgId.match(regex_to_match_keyframe_number)[1] || "";
-
-					let result = imgId.match(regex_to_match_keyframe_number);
-					let frameNumber = result ? result[1] || result[2] || result[3] : null;
-
-
-					if (i > 0 && videoId != prevID) {
-						resMatrix[++resrowIdx] = [];
-						let spanVal = 11 - resColIdx;
-						resColIdx = 1;
-						if (spanVal > 0)
-							imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
-						imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
-					}
-
-					if (videoId != prevID) {
-						//imgGridResults += '<div id="video_' + videoId + '">';
-						imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
-
-					}
-					let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
-					prevID = videoId;
-					let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-					videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
-					//videoUrlPreview = videoUrl + "videoshrink/"+videoId+".mp4";
-					let thumbnailPath = thumbnailUrl + path + ".jpg";
-					let keyframePath = keyFramesUrl + path + ".png";
-					avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
-					resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, score, videoUrl, videoUrlPreview)
-
-					/*if (itemPerRow == 0)
-						if (!avsAuto.has(imgId) && !avsSubmitted.has(videoId))
-							addToAutoSelected(avsObj)*/
-
-					imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-					imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
-					imgGridResults += '</div>'
-					resMatrix[resrowIdx][resColIdx - 1] = res[i];
-
-					resColIdx++;
-					$("#imgGridResults").append(imgGridResults);
-
-
-				}
+				resColIdx = 1;
+				resrowIdx = 0;
+				visibleImages = 0;
+				loadImages(0, batchSize);
 			}
 
-			if (res.length > 1) {
-				for (let i = 0; i < res.length; i++) {
-					let imgId = res[i].imgId;
-					let score = res[i].score;
-
-					let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
-
-					function hoverVideo(e) {
-						id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-						$('#' + id4Regex).contextmenu(function () {
-							imgId = 'img' + id4Regex;
-							langInfo = this.lang.split('|');
-							videoId = langInfo[0];
-							videourl = langInfo[1];
-							playerId = 'video' + videoId;
-
-							var elementExists = document.getElementById(playerId);
-
-							//var startTime = getStartTime(this.id);
-							//var endTime = getEndTime(this.id);
-							var middleTime = getMiddleTimestamp(this.id);
-							var startTime = middleTime - 2;
-							var endTime = middleTime + 2;
-							if (elementExists != null) {
-								var player = $('#' + playerId).get(0);
-								player.pause();
-								player.src = videourl + '#t=' + startTime + ',' + endTime;
-								player.load();
-								player.play();
-								return;
-							}
-							backgroundImg = "background-image: url('" + thumbnailUrl + '/' + this.id + "')";
-
-							//imgGridResults = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
-							//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-							//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
-							imgGridResults = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
-							$('#' + imgId).css("display", "none");
-							$('#' + id4Regex).append(imgGridResults);
-							//$('#'+ playerId).get(0).currentTime = time-1;
-							//$('#'+ playerId).get(0).play();
-							return false;
-						});
-
-					}
-
-					function hideVideo(e) {
-						id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-
-						imgId = 'img' + id4Regex;
-						langInfo = this.lang.split('|');
-						videoId = langInfo[0];
-						videourl = langInfo[1];
-						playerId = 'video' + videoId;
-
-						var elementExists = document.getElementById(playerId);
-						if (elementExists != null) {
-							$('#' + playerId).remove();
-							$('#' + imgId).css("display", "block");
-						}
-					}
-				}
-			}
 		}
 		//if ($('meta[name=task]').attr('content') == "AVS") {
 		avsHideSubmittedVideos();
@@ -1098,25 +979,159 @@ function showResults(data) {
 		//}
 		updateAVSInfo();
 		//repetita iuvant!!
+	}   finally {		
 		resultsVisualization();
-	}   finally {
 		loadingSpinner.style.display = 'none';
 	  }
 
 }
 
+var batchSize = 50;
+var visibleImages = 0;
+var resColIdx = 1;
+var resrowIdx = 0;
 
-function getResultData(videoId, imgId, thumb, frameName, frameNumber, score, videoUrl, videoUrlPreview, avsObj) {
+function loadImages(startIndex, endIndex) {
+	let prevID = '';
+
+	if (resrowIdx == 0)
+		resMatrix[resrowIdx] = [];
+	let img_loading = "eager"
+	//patch to avoid same video on two rows
+	var extendedBatch = Math.min(endIndex + numResultsPerVideo -1, res.length);
+	for (var i = startIndex; i < extendedBatch; i++) {
+		if (i >= 500)
+			img_loading = "lazy"
+		var imgGridResults = ""
+		let imgId = res[i].imgId;
+		let videoId = res[i].videoId;
+
+		let score = res[i].score;
+
+		let path = videoId + "/" + imgId;
+
+		let result = imgId.match(regex_to_match_keyframe_number);
+		let frameNumber = result ? result[1] || result[2] || result[3] : null;
+
+
+		if (i > 0 && videoId != prevID) {
+			resMatrix[++resrowIdx] = [];
+			let spanVal = 11 - resColIdx;
+			resColIdx = 1;
+			if (spanVal > 0)
+				imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
+			imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
+		}
+
+		if (videoId != prevID) {
+			//patch to avoid same video on two rows
+			if (i > endIndex )
+				break;
+			//imgGridResults += '<div id="video_' + videoId + '">';
+			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+
+		}
+		let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
+		prevID = videoId;
+		let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
+		videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
+		let thumbnailPath = thumbnailUrl + path + ".jpg";
+		let keyframePath = keyFramesUrl + path + ".png";
+		//avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
+		resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, resrowIdx, resColIdx - 1)
+
+		imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
+		//imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
+		imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], isAdvanced, img_loading)
+		imgGridResults += '</div>'
+		resMatrix[resrowIdx][resColIdx - 1] = res[i];
+
+		resColIdx++;
+		$("#imgGridResults").append(imgGridResults);
+		visibleImages++;
+
+
+
+	}
+
+	for (var i = startIndex; i < endIndex; i++) {
+		let imgId = res[i].imgId;
+		let score = res[i].score;
+
+		let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
+
+		function hoverVideo(e) {
+			id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+			$('#' + id4Regex).contextmenu(function () {
+				imgId = 'img' + id4Regex;
+				langInfo = this.lang.split('|');
+				videoId = langInfo[0];
+				videourl = langInfo[1];
+				playerId = 'video' + videoId;
+
+				var elementExists = document.getElementById(playerId);
+
+				//var startTime = getStartTime(this.id);
+				//var endTime = getEndTime(this.id);
+				var middleTime = getMiddleTimestamp(this.id);
+				var startTime = middleTime - 2;
+				var endTime = middleTime + 2;
+				if (elementExists != null) {
+					var player = $('#' + playerId).get(0);
+					player.pause();
+					player.src = videourl + '#t=' + startTime + ',' + endTime;
+					player.load();
+					player.play();
+					return;
+				}
+				backgroundImg = "background-image: url('" + thumbnailUrl + '/' + this.id + "')";
+
+				//imgGridResults = '<div class="video"><video style="' + backgroundImg + '" id="' + playerId + '" title="'+ this.alt+ '" class="myimg-thumbnail" loop preload="none"><source src="' + this.title + '" type="video/mp4"></video></div>'
+				//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" title="'  + this.title + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+				//imgGridResults = '<video style="' + backgroundImg + '" id="' + playerId + '" class="myimg video" loop muted preload="none"><source src="' + videourl + '" type="video/mp4"></video>'
+				imgGridResults = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
+				$('#' + imgId).css("display", "none");
+				$('#' + id4Regex).append(imgGridResults);
+				//$('#'+ playerId).get(0).currentTime = time-1;
+				//$('#'+ playerId).get(0).play();
+				return false;
+			});
+
+		}
+
+		function hideVideo(e) {
+			id4Regex = this.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
+
+			imgId = 'img' + id4Regex;
+			langInfo = this.lang.split('|');
+			videoId = langInfo[0];
+			videourl = langInfo[1];
+			playerId = 'video' + videoId;
+
+			var elementExists = document.getElementById(playerId);
+			if (elementExists != null) {
+				$('#' + playerId).remove();
+				$('#' + imgId).css("display", "block");
+			}
+		}
+	}
+}
+
+
+function getResultData(videoId, imgId, thumb, frameName, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, rowIdx, colIdx) {
 	let resultData = new Object();
 	resultData.videoId = videoId;
 	resultData.imgId = imgId;
 	resultData.thumb = thumb;
 	resultData.frameName = frameName;
 	resultData.frameNumber = frameNumber;
+	resultData.keyframe = keyframePath;
+
 	resultData.score = score;
 	resultData.videoUrl = videoUrl;
 	resultData.videoUrlPreview = videoUrlPreview;
-	resultData.avsObj = avsObj;
+	resultData.rowIdx = rowIdx;
+	resultData.colIdx = colIdx;
 	return resultData
 }
 
@@ -1231,10 +1246,11 @@ function hideOverlay(img_overlay) {
 }
 
 const imgResult = (res, borderColor, selectedItem, isAdvanced = false, img_loading="eager") => {
+		jsonString = JSON.stringify(res);
 		return `
 		<div class="result-border" style="border-color: ${borderColor};">
 			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
-				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${selectedItem}, event)' />
+				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${jsonString}, event)' />
 			</div>
 			<div  id="toolbar_icons_${res.imgId}">
 				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
@@ -1245,7 +1261,7 @@ const imgResult = (res, borderColor, selectedItem, isAdvanced = false, img_loadi
 				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 			
-				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedItem});'> </i></span></a>
+				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${jsonString});'> </i></span></a>
 			<div>
 		</div>
 		`
@@ -1692,7 +1708,7 @@ function scrollToRow(rowNumber) {
 	var containerBottom = containerTop + containerHeight;
 
 
-	var row = document.getElementById("img" + resMatrix[rowNumber][colIdx].imgId);
+	var row = document.getElementById("img" + resMatrix[Math.max(0, rowNumber)][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 	var rowHeight = row.offsetHeight;
@@ -1725,7 +1741,7 @@ function unscrollToRow(rowNumber) {
 	var container = document.querySelector('.resGrid2');
 	var containerTop = container.offsetTop;
 
-	var row = document.getElementById("img" + resMatrix[rowNumber][colIdx].imgId);
+	var row = document.getElementById("img" + resMatrix[Math.max(0, rowNumber)][colIdx].imgId);
 
 	var rowTop = row.offsetTop;
 
@@ -1980,6 +1996,8 @@ function checkKey(e) {
 		console.log("up arrow")
 	}
 	if (e.keyCode == '40' || goToNextResult) {
+		loadingNextResults();
+
 		selectNextResult();
 
 
@@ -2389,6 +2407,43 @@ if (config?.main?.collection_name) document.title = config.main.collection_name 
 	  console.log('Registrazione audio avviata');
 	});*/
 
+
+	var imgGridResultsElement = document.getElementById('imgGridResults');
+
+/*
+	imgGridResultsElement.addEventListener('scroll', function() {
+		// Verifica se l'utente ha raggiunto la fine della pagina
+		console.log('Scrolled!');
+		if (visibleImages < res.length && window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+			// Carica il prossimo batch di immagini (ad esempio, altre 100 immagini)
+			var nextBatchEndIndex = Math.min(visibleImages + batchSize, res.length);
+			loadImages(visibleImages, nextBatchEndIndex);
+		}
+	});*/
+
+	var resultsElement = $("#results");
+
+	resultsElement.on("mousewheel", function() {
+		console.log('wheel')
+		loadingNextResults();
+	});
+
+}
+
+function loadingNextResults() {
+	var resultsElement = $("#results");
+
+	var containerHeight = resultsElement.height();
+		var scrollableHeight = resultsElement.prop("scrollHeight");
+
+		if (res != null) {
+			if (visibleImages < res.length && resultsElement.scrollTop() + resultsElement.innerHeight() >= scrollableHeight - 200) {
+				// Carica il prossimo batch di immagini
+				var nextBatchEndIndex = Math.min(visibleImages + batchSize, res.length);
+				loadImages(visibleImages, nextBatchEndIndex);
+			}
+		}
+
 }
 
 
@@ -2404,6 +2459,10 @@ function loadPalette() {
 
 	setPalette(dataArray);
 	return dataArray;
+}
+
+function setNumResultsPerVideo() {
+	numResultsPerVideo = config?.ui?.n_frames_per_row || 10;
 }
 
 async function checkServices() {

@@ -100,7 +100,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 		let checked = (mode.mode == 'all') ? 'checked' : '';
 		console.log(checked)
 		searchFormHtml += `
-				<span onclick="setTextualMode(${canvasID}, '${mode.mode}')">
+				<span onclick="setTextualMode(${canvasID}, '${mode.mode}');">
 					<input type="radio" ${checked} name="textualMode${canvasID}" id="textualMode${canvasID}">
 					<label for="textualMode${canvasID}" class="font-tiny">${mode.name}</label>
 				</span>`;

@@ -51,7 +51,7 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 					<img id="selected_avs_${selectedItem.imgId}" title="${selectedItem.imgId}" style="padding-bottom: 10px; height: 25em;" src="${selectedItem.keyframe}">
 				</div>
 			</div>
-		</span>'
+		</span>
 	`
 }
 
@@ -183,9 +183,9 @@ function updateAVSTab(selectedItem) {
 }
 
 function avsToggle(avsJSON, event, isRemoveButton = false) {
-	var selectedItem = JSON.parse(JSON.stringify(avsJSON));
-	//rowIdx = selectedItem.rowIdx
-	//colIdx = selectedItem.colIdx
+	var selectedItem = avsJSON;
+	rowIdx = selectedItem.rowIdx
+	colIdx = selectedItem.colIdx
 
 
 
