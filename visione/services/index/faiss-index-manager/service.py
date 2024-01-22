@@ -92,7 +92,6 @@ def search():
     k = data.get('k', 100)
     img_ids, similarities = index.search(feature_vector, k=k)
     result_list = [{'imgId': img_id, 'score': round(float(score), 6)} for img_id, score in zip(img_ids, similarities)]
-    logging.debug(result_list[:10])
 
     return jsonify(result_list)
 
