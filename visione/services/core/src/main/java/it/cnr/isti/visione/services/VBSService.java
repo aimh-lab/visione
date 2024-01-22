@@ -144,41 +144,6 @@ public class VBSService {
 		return "pong";
 	}
 
-	@POST
-	@Path("/testSubmitResult")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.TEXT_PLAIN)
-	public String testSubmitResult(@FormParam("team") String team, @FormParam("video") String video, @FormParam("frame") String frame, @FormParam("shot") String shot) {
-		System.out.println(team);
-		System.out.println(video);
-		System.out.println(frame);
-		System.out.println(shot);
-		return "it works";
-	}
-
-	@POST
-	@Path("/testLogging")
-	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-	@Produces(MediaType.TEXT_PLAIN)
-	public String testLogging(@FormParam("iseq") String iseq) {
-		System.out.println(iseq);
-		return "it works";
-	}
-
-	@GET
-	@Path("/init")
-	@Consumes({ MediaType.TEXT_PLAIN })
-	@Produces(MediaType.TEXT_PLAIN)
-	public String init() {
-		// try {
-		// 	visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log
-		// } catch (IOException e) {
-		// 	e.printStackTrace();
-		// }
-		System.out.println("New Session Started");
-		return "New Session Started";
-	}
-
 	private SearchResults[] lastHits;
 
 	@POST
@@ -449,24 +414,6 @@ public class VBSService {
 	}
 
 	@GET
-	@Path("/getField")
-	@Consumes({ MediaType.TEXT_PLAIN })
-	@Produces(MediaType.TEXT_PLAIN)
-	public String getField(@QueryParam("id") String id, @QueryParam("field") String field) {
-
-		String response = "";
-		try {
-			response = searcher.get(id, field);
-			// System.out.println(field + " ------------------RESPONSE " + response);
-
-		} catch (IOException e) {
-			e.printStackTrace();
-			return response;
-		}
-		return response;
-	}
-
-	@GET
 	@Path("/getStartTime")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
@@ -518,22 +465,6 @@ public class VBSService {
 			return response;
 		}
 		return response;
-	}
-
-	@GET
-	@Path("/getKeyframeNumber")
-	@Consumes({ MediaType.TEXT_PLAIN })
-	@Produces(MediaType.TEXT_PLAIN)
-	public String getKeyframeNumber(@QueryParam("id") String id) {
-		String response = "";
-		try {
-			response = searcher.getTerms(id, Fields.START_FRAME, false);
-			// System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return response;
-		}
-		return response.trim();
 	}
 
 	@GET
@@ -633,15 +564,5 @@ public class VBSService {
 			System.out.println("Failed to save logs of submission:" + Settings.MEMBER_ID + "," + submittedItem);
 		}
 		return response;
-	}
-
-	@GET
-	@Path("/setSimilarity")
-	@Consumes({ MediaType.TEXT_PLAIN })
-	@Produces(MediaType.TEXT_PLAIN)
-	public String setSimilarity(@QueryParam("txtSim") String txtSim, @QueryParam("mifileSim") String mifileSim, @QueryParam("objSim") String objSim, @QueryParam("defaultSim") String defaultSim) {
-		// searcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
-		// rmacsearcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
-		return txtSim + "," + mifileSim + "," + objSim + "," + defaultSim;
 	}
 }
