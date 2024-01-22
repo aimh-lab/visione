@@ -56,8 +56,8 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 }
 
 function selectImg(selectedItem) {		
-	let videoUrl = videoUrlPrefix +selectedItem.videoId+".mp4";
-	let videoUrlPreview = videoshrinkUrl + selectedItem.videoId+".mp4";
+	let videoUrl = videoUrlPrefix + selectedItem.videoId + "-medium.mp4";
+	let videoUrlPreview = videoshrinkUrl + selectedItem.videoId + "-tiny.mp4";
 	//let id = selectedItem.imgId.replaceAll(".jpg", "");
 	/*let img = '<span id="avsList_' + selectedItem.imgId + '">'
 	
@@ -233,7 +233,7 @@ function avsRemoveSelected(selectedItem) {
 }
 
 function avsSubmittedTab(selectedItem) {
-	videoUrl = videoUrlPrefix + selectedItem.videoId+".mp4";
+	videoUrl = videoUrlPrefix + selectedItem.videoId + "-medium.mp4";
 	//let id = selectedItem.imgId;.replaceAll(".jpg", "");
 
 	img = '<div id="avsSubmittedList_' + selectedItem.imgId + '">';
