@@ -1,9 +1,7 @@
 package it.cnr.isti.visione.services;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -14,8 +12,24 @@ import java.util.HashSet;
 public class ObjectQueryPreprocessing {
 	private HashMap<String, ObjectHyperset> hypersetHM;
 
-	private static HashSet<String> ignore = new HashSet<String>(Arrays.asList("black", "blue", "brown", "green", "grey",
-			"orange", "pink", "purple", "red", "white", "yellow", "*", "colorkeyframe", "graykeyframe"));
+	private static HashSet<String> ignore = new HashSet<String>(
+		Arrays.asList(
+			"black",
+			"blue",
+			"brown",
+			"green",
+			"grey",
+			"orange",
+			"pink",
+			"purple",
+			"red",
+			"white",
+			"yellow",
+			"*",
+			"colorkeyframe",
+			"graykeyframe"
+		)
+	);
 
 	private class ObjectHyperset {
 
@@ -56,7 +70,7 @@ public class ObjectQueryPreprocessing {
 		}
 
 	}
-	
+
 	public ObjectQueryPreprocessing(InputStream hyperset) {
 		hypersetHM = new HashMap<>();
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(hyperset))) {
@@ -66,33 +80,32 @@ public class ObjectQueryPreprocessing {
 				hypersetHM.put(data.getClassname(), data);
 			}
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	//older version getting hypersets from a file
+	// older version getting hypersets from a file
 	/*
-	public ObjectQueryPreprocessing(File hypersetFile) {
-		hypersetHM = new HashMap<>();
-		try (BufferedReader reader = new BufferedReader(new FileReader(hypersetFile))) {
-			String line = null;
-			while ((line = reader.readLine()) != null) {
-				ObjectHyperset data = new ObjectHyperset(line);
-				hypersetHM.put(data.getClassname(), data);
-			}
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	*/
+	 * public ObjectQueryPreprocessing(File hypersetFile) {
+	 * hypersetHM = new HashMap<>();
+	 * try (BufferedReader reader = new BufferedReader(new
+	 * FileReader(hypersetFile))) {
+	 * String line = null;
+	 * while ((line = reader.readLine()) != null) {
+	 * ObjectHyperset data = new ObjectHyperset(line);
+	 * hypersetHM.put(data.getClassname(), data);
+	 * }
+	 * } catch (FileNotFoundException e) {
+	 * // TODO Auto-generated catch block
+	 * e.printStackTrace();
+	 * } catch (IOException e) {
+	 * // TODO Auto-generated catch block
+	 * e.printStackTrace();
+	 * }
+	 * }
+	 */
 	public String processingLucene(String objectTxt, String field, String occur) {
 		String prefix = " " + occur + field + ":4wc";
 		String prefixMinus = " -" + field + ":4wc";
@@ -111,8 +124,8 @@ public class ObjectQueryPreprocessing {
 			}
 			if (obj.startsWith("-")) {
 				obj = obj.replaceAll("-", prefixMinus);
-				if(!obj.matches("^.*\\d$")){
-					obj+="1";
+				if (!obj.matches("^.*\\d$")) {
+					obj += "1";
 				}
 				notObj.append(obj);
 			} else {
@@ -121,7 +134,6 @@ public class ObjectQueryPreprocessing {
 				hmObjCount.put(obj, count);
 				res.append(prefix).append(obj).append(count);
 
-				
 				res.append(prefix).append(obj).append(count);
 				ObjectHyperset hypersetObj = hypersetHM.get(obj);
 				if (hypersetObj != null) {
@@ -142,7 +154,6 @@ public class ObjectQueryPreprocessing {
 		res.append(" ").append(notObj);
 		return res.toString().trim();
 	}
-	
 
 	public String processing(String objectTxt, boolean extend) {
 		StringBuilder res = new StringBuilder();
@@ -159,8 +170,8 @@ public class ObjectQueryPreprocessing {
 			}
 			if (obj.startsWith("-")) {
 				obj = obj.replaceAll("-", "-4wc");
-				if(!obj.matches("^.*\\d$")){
-					obj+="1";
+				if (!obj.matches("^.*\\d$")) {
+					obj += "1";
 				}
 				notObj.append(" ").append(obj);
 			} else {
@@ -190,13 +201,15 @@ public class ObjectQueryPreprocessing {
 		res.append(" ").append(notObj);
 		return res.toString().trim();
 	}
-/*
-	public static void main(String[] args) {
-		File hypersetFile = new File("/media/ssd2/data/vbs2022/classname_hyperset_definition.csv");
-		ObjectQueryPreprocessing objectPrerocessing = new ObjectQueryPreprocessing(hypersetFile);
-		String test = "red orange person man -pers* -man";
-		System.out.println(objectPrerocessing.processing(test, false));
-		System.out.println(objectPrerocessing.processing(test, true));
-	}
-	*/
+	/*
+	 * public static void main(String[] args) {
+	 * File hypersetFile = new
+	 * File("/media/ssd2/data/vbs2022/classname_hyperset_definition.csv");
+	 * ObjectQueryPreprocessing objectPrerocessing = new
+	 * ObjectQueryPreprocessing(hypersetFile);
+	 * String test = "red orange person man -pers* -man";
+	 * System.out.println(objectPrerocessing.processing(test, false));
+	 * System.out.println(objectPrerocessing.processing(test, true));
+	 * }
+	 */
 }

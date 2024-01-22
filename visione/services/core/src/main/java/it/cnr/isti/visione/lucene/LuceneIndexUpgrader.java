@@ -1,4 +1,5 @@
 package it.cnr.isti.visione.lucene;
+
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexUpgrader;
@@ -13,7 +14,7 @@ public class LuceneIndexUpgrader {
 
     public static void main(String[] args) {
         String indexPath = "/media/ssd2/data/vbs2023/v3c_index";
-        
+
         try {
             Path indexDir = Paths.get(indexPath);
             Directory directory = FSDirectory.open(indexDir);

@@ -7,8 +7,6 @@ import javax.net.ssl.TrustManager;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 
-import it.cnr.isti.visione.services.Settings;
-
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -26,11 +24,11 @@ class JerseyHttpClientFactory {
     }
 
     private static SSLContext getSslContext() throws NoSuchAlgorithmException,
-                                                     KeyManagementException {
+            KeyManagementException {
         SSLContext sslContext = SSLContext.getInstance("SSL");
 
         KeyManager[] keyManagers = null;
-        TrustManager[] trustManager = {new NoOpTrustManager()};
+        TrustManager[] trustManager = { new NoOpTrustManager() };
         SecureRandom secureRandom = new SecureRandom();
 
         sslContext.init(keyManagers, trustManager, secureRandom);

@@ -4,9 +4,8 @@ import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 
-
 public class Tools {
-	
+
 	public static String convertTimeToVBSFormat(String time) {
 		long timestamp = (long) (Double.parseDouble(time)*1000);
         long hours = TimeUnit.MILLISECONDS.toHours(timestamp);
@@ -20,7 +19,7 @@ public class Tools {
 
 		return String.format("%02d:%02d:%02d:%02d", hours, minutes, seconds, hundredths);
 	}
-/*	
+/*
 	public class Comp implements Comparator<String> {
 
 		public int compare(String o1, String o2) {
@@ -36,7 +35,7 @@ public class Tools {
 		}
 	}
 */
-	
+
 	public class Comp implements Comparator<String[]> {
 
 		public int compare(String[] o1, String[] o2) {
@@ -44,7 +43,7 @@ public class Tools {
 				return 1;
 			else if (Float.parseFloat(o1[1]) == Float.parseFloat(o2[1]))
 				return 0;
-			
+
 			return -1;
 		}
 	}

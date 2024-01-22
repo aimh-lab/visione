@@ -47,7 +47,7 @@ public class VisioneLogging {
 	public void setFrameNum(int frameNum) {
 		this.frameNum = frameNum;
 	}
-	
+
 	public long getTimeNum() {
 		return timeNum;
 	}
@@ -65,35 +65,35 @@ public class VisioneLogging {
 	}
 
 	public long getTimestamp() {
-	return timestamp;
+		return timestamp;
 	}
 
 	public void setTimestamp(long timestamp) {
-	this.timestamp = timestamp;
+		this.timestamp = timestamp;
 	}
 
 	public String getType() {
-	return type;
+		return type;
 	}
 
 	public void setType(String type) {
-	this.type = type;
+		this.type = type;
 	}
 
 	public List<Query> getQueries() {
-	return queries;
+		return queries;
 	}
 
 	public void setQueries(List<Query> queries) {
-	this.queries = queries;
+		this.queries = queries;
 	}
-	
+
 	public List<ResultSet> getResults() {
-	return results;
+		return results;
 	}
 
 	public void setResults(List<ResultSet> results) {
-	this.results = results;
+		this.results = results;
 	}
 
 }

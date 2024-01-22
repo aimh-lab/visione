@@ -1,7 +1,6 @@
 package it.cnr.isti.visione.services;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -26,12 +25,11 @@ public class QueryParser {
 			}
 			queries.add(query);
 		}
-		
+
 		if (!obj.isNull("parameters")) {
 			JSONArray parametersArr = obj.getJSONArray("parameters");
 			System.out.println(parametersArr);
-	
-			
+
 			for (int i = 0; i < parametersArr.length(); i++) {
 				VisioneQuery query = queries.get(i);
 				JSONObject jsonObject = parametersArr.getJSONObject(i);
@@ -46,7 +44,7 @@ public class QueryParser {
 		}
 		return queries;
 	}
-	
+
 	public static void main(String args[]) {
 		String json = "{\"field\":\"objects\", \"similarity\":\"DotProduct\", \"weight\":\"1.0\"}";
 		JSONObject arr = new JSONObject(json);
@@ -54,4 +52,3 @@ public class QueryParser {
 		System.out.println(field);
 	}
 }
-

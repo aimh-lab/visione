@@ -75,7 +75,7 @@ public class SearchResults implements Comparable<SearchResults> {
 						// create a column -> idx map using first line header
 						String[] header = lines.get(0).split(",");
 						Map<String, Integer> colMap = IntStream.range(0, header.length).boxed().collect(Collectors.toMap(i -> header[i], i -> i));
-						
+
 						lines.stream().skip(1).forEach(line -> {
 							String[] fields = line.split(",");
 							int sceneNumber = Integer.parseInt(fields[colMap.get("Scene Number")]);
@@ -87,7 +87,7 @@ public class SearchResults implements Comparable<SearchResults> {
 							String imgId = videoId + "-" + String.format("%0" + nDigits + "d", sceneNumber);
 							int middleFrame = (startFrame + endFrame) / 2;
 							long middleTime = (startTimeMs + endTimeMs) / 2;
-							
+
 							// add to field cache
 							FieldCache fc = new FieldCache();
 							fc.videoId = videoId;
@@ -100,7 +100,7 @@ public class SearchResults implements Comparable<SearchResults> {
 						e.printStackTrace();
 					}
 				});
-			
+
 			// save field cache to file
 			try {
 				new ObjectOutputStream(new FileOutputStream(fieldCacheFile)).writeObject(fieldCache);
@@ -186,10 +186,14 @@ public class SearchResults implements Comparable<SearchResults> {
 
 	public Document getLuceneDoc() {
 		if (luceneDoc == null)
-			try {luceneDoc = searcher.doc(getLuceneDocId()); } catch (IOException e) { e.printStackTrace(); }
+			try {
+				luceneDoc = searcher.doc(getLuceneDocId());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		return luceneDoc;
 	}
-	
+
 	public String getImgId() {
 		if (imgId == null) imgId = getLuceneDoc().get(Fields.IMG_ID);
 		return imgId;
@@ -204,7 +208,7 @@ public class SearchResults implements Comparable<SearchResults> {
 				return videoId;
 			}
 		}
-		
+
 		// fallback to lucene doc
 		videoId = getLuceneDoc().get(Fields.VIDEO_ID);
 		return videoId;

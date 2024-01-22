@@ -6,64 +6,64 @@ import com.google.gson.annotations.SerializedName;
 
 public class Result {
 
-@SerializedName("item")
-@Expose
-private String item;
+    @SerializedName("item")
+    @Expose
+    private String item;
 
-@SerializedName("frame")
-@Expose
-private int frame;
+    @SerializedName("frame")
+    @Expose
+    private int frame;
 
-@SerializedName("startTime")
-@Expose
-private long startTime;
+    @SerializedName("startTime")
+    @Expose
+    private long startTime;
 
-@SerializedName("score")
-@Expose
-private float score;
+    @SerializedName("score")
+    @Expose
+    private float score;
 
-@SerializedName("rank")
-@Expose
-private int rank;
+    @SerializedName("rank")
+    @Expose
+    private int rank;
 
-public String getItem() {
-return item;
-}
+    public String getItem() {
+        return item;
+    }
 
-public void setItem(String item) {
-this.item = item;
-}
+    public void setItem(String item) {
+        this.item = item;
+    }
 
-public int getFrame() {
-return frame;
-}
+    public int getFrame() {
+        return frame;
+    }
 
-public void setFrame(int frame) {
-this.frame = frame;
-}
+    public void setFrame(int frame) {
+        this.frame = frame;
+    }
 
-public long  getStartTime() {
-return startTime;
-}
-    
-public void setStartTime(long startTime) {
-this.startTime = startTime;
-}
+    public long getStartTime() {
+        return startTime;
+    }
 
-public float getScore() {
-return score;
-}
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
 
-public void setScore(float score) {
-this.score = score;
-}
+    public float getScore() {
+        return score;
+    }
 
-public int getRank() {
-return rank;
-}
+    public void setScore(float score) {
+        this.score = score;
+    }
 
-public void setRank(int rank) {
-this.rank = rank;
-}
+    public int getRank() {
+        return rank;
+    }
+
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
 
 }

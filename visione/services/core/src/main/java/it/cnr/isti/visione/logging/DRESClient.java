@@ -22,7 +22,7 @@ import dev.dres.client.UserApi;
 import it.cnr.isti.visione.services.Settings;
 
 public class DRESClient {
-	
+
 	private UserApi userApi;
 	private EvaluationClientApi runInfoApi;
 	private SubmissionApi submissionApi;
@@ -31,7 +31,7 @@ public class DRESClient {
 	private Gson gson = new Gson();
 	private File LOGGING_FOLDER_DRES;
 
-	
+
 	public static void main(String[] args) {
 		String videoId = "06809";
 		double timestamp = 1753.385;
@@ -39,9 +39,9 @@ public class DRESClient {
 		int frameNumber = 35460;
 		System.out.println(time);
 		//time = "00:29:13:10";
-		
+
 		DRESClient client = new DRESClient();
-		
+
 //		client.dresSubmitResultByFrameNumber(videoId, frameNumber);
 		try {
 			client.dresSubmitResultByTime(videoId, time, time);
@@ -50,9 +50,9 @@ public class DRESClient {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public DRESClient() {
-		
+
 		LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 
 		ApiClient client = new ApiClient().setBasePath(Settings.SUBMIT_SERVER);
@@ -95,11 +95,11 @@ public class DRESClient {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public String getSessionId() {
 		return sessionId;
 	}
-	
+
 	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
 		List<ApiClientEvaluationInfo> currentRuns;
@@ -163,7 +163,7 @@ public class DRESClient {
         }
         return submissionResponse.getDescription();
 	}
-	
+
 	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { //used in Question Aswering Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
 		List<ApiClientEvaluationInfo> currentRuns;
@@ -191,7 +191,7 @@ public class DRESClient {
                     new ApiClientSubmission().addAnswerSetsItem(
                         new ApiClientAnswerSet().addAnswersItem(
                             new ApiClientAnswer()
-                                .text(userAnswer) 
+                                .text(userAnswer)
                         )
                     ), sessionId);
         } catch (ApiException e) {
@@ -230,7 +230,7 @@ public class DRESClient {
 	//public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
 	//	return null;
 	//}
-	
+
 	/*public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
         SuccessfulSubmissionsStatus res = null;
         System.out.println("submitting " + video + " @ frame " + frameNumber);
@@ -284,17 +284,17 @@ public class DRESClient {
         }
         return res.getDescription();
 	}*/
-	
+
 	public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 		DresQueryLogging queryLogging = new DresQueryLogging(eventLog);
         new Thread(queryLogging).start();
 	}
-	
+
 	public void dresSubmitLog(QueryResultLog resultLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 		DresResultsLogging resultLogging = new DresResultsLogging(resultLog);
         new Thread(resultLogging).start();
 	}
-	
+
 	public SuccessStatus dresLogout() throws ApiException {
 		 SuccessStatus logout = null;
 
@@ -306,10 +306,10 @@ public class DRESClient {
         }
         return logout;
 	}
-	
-	
-	
-	public synchronized void saveSessionInfo(String sessionId, String username, String memberID, String role) throws IOException {		
+
+
+
+	public synchronized void saveSessionInfo(String sessionId, String username, String memberID, String role) throws IOException {
 		if (!LOGGING_FOLDER_DRES.exists())
 			LOGGING_FOLDER_DRES.mkdir();
 		String text = "{\"session_id\": \"" + sessionId + "\", \"username\": \"" + username + "\", \"memberID\": \"" + memberID  + "\" , \"role\": \"" + role + "\" }";
@@ -317,17 +317,17 @@ public class DRESClient {
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(LOGGING_FOLDER_DRES, "session_" + time + ".json")))) {
 			writer.write(text.toString());
 		}
-		
+
 	}
-	
+
 	private class DresQueryLogging implements Runnable {
-		
+
 		QueryEventLog eventLog;
-		
+
 		public DresQueryLogging(QueryEventLog eventLog) {
 			this.eventLog = eventLog;
 		}
-		
+
 		public String submitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	        SuccessStatus res = null;
 			try {
@@ -351,16 +351,16 @@ public class DRESClient {
 			}
 	    }
 	}
-	
-	
+
+
 	private class DresResultsLogging implements Runnable {
-		
+
 		QueryResultLog resultsLog;
-		
+
 		public DresResultsLogging(QueryResultLog resultsLog) {
 			this.resultsLog = resultsLog;
 		}
-		
+
 		public String submitResults(QueryResultLog resultsLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	        SuccessStatus res = null;
 			try {
@@ -384,5 +384,5 @@ public class DRESClient {
 			}
 	    }
 	}
-	
+
 }

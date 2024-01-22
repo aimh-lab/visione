@@ -3,13 +3,13 @@ package it.cnr.isti.visione.lucene;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class LRUCache<K,V> extends LinkedHashMap<K, V>{
+public class LRUCache<K, V> extends LinkedHashMap<K, V> {
     /**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	private int maxSize;
-    
+     * 
+     */
+    private static final long serialVersionUID = 1L;
+    private int maxSize;
+
     public LRUCache(int capacity) {
         super(capacity, 0.75f, true);
         this.maxSize = capacity;
@@ -28,6 +28,6 @@ public class LRUCache<K,V> extends LinkedHashMap<K, V>{
 
     @Override
     protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return this.size() > maxSize; //must override it if used in a fixed cache
+        return this.size() > maxSize; // must override it if used in a fixed cache
     }
 }

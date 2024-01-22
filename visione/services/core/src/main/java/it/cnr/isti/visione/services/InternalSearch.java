@@ -1,9 +1,6 @@
 package it.cnr.isti.visione.services;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 import java.util.concurrent.Callable;
 
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -37,8 +34,8 @@ public class InternalSearch implements Callable<SearchResults[]> {
             .create();
 
     private static Gson gson = new GsonBuilder()
-        .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
-        .create();
+            .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .create();
 
     public InternalSearch(String featureName, LucTextSearch searcher) {
         this.featureName = featureName;
@@ -52,7 +49,6 @@ public class InternalSearch implements Callable<SearchResults[]> {
         this.extractorEndpoint = extractorEndpoint;
     }
 
-    
     public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k) throws IOException {
         // FIXME: this is hardcoded to use the ALADIN field for now
         try {
@@ -63,7 +59,7 @@ public class InternalSearch implements Callable<SearchResults[]> {
             return null;
         }
     }
-    
+
     public SearchResults[] searchByVector(Float[] queryVector, int k) {
         // Encode vector query
         String surrogateTextQuery = null;
@@ -74,7 +70,7 @@ public class InternalSearch implements Callable<SearchResults[]> {
                     .setEntity(new StringEntity(gsonUnderscore.toJson(new StrEncoderRequest(featureName, queryVector))))
                     .build();
             System.out.println(request);
-    
+
             ClassicHttpResponse response = httpClient.execute(request);
             int statusCode = response.getCode();
             if (statusCode == HttpStatus.SC_OK) {
@@ -87,7 +83,7 @@ public class InternalSearch implements Callable<SearchResults[]> {
             e.printStackTrace();
             return null;
         }
-        
+
         try {
             return searchBySurrogateText(surrogateTextQuery, k);
         } catch (IOException e) {
@@ -112,9 +108,9 @@ public class InternalSearch implements Callable<SearchResults[]> {
                 String responseBody = EntityUtils.toString(response.getEntity());
                 queryVector = gson.fromJson(responseBody, Float[].class);
             } else {
-            System.err.println("HTTP error occurred. Status code: " + statusCode);
-            return null;
-        }
+                System.err.println("HTTP error occurred. Status code: " + statusCode);
+                return null;
+            }
         } catch (IOException | ParseException e) {
             e.printStackTrace();
             return null;
@@ -131,7 +127,7 @@ public class InternalSearch implements Callable<SearchResults[]> {
     private class StrEncoderRequest {
         public String type;
         public Float[] featureVector;
-        
+
         public StrEncoderRequest(String type, Float[] featureVector) {
             this.type = type;
             this.featureVector = featureVector;

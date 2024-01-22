@@ -21,41 +21,41 @@ public class VBSLogging {
 	@SerializedName("events")
 	@Expose
 	private List<QueryEventLog> events = null;
-	
+
 	@SerializedName("results")
 	@Expose
 	private List<QueryResultLog> results = null;
 
 	public long getTimestamp() {
-	return timestamp;
+		return timestamp;
 	}
 
 	public void setTimestamp(long timestamp) {
-	this.timestamp = timestamp;
+		this.timestamp = timestamp;
 	}
 
 	public String getType() {
-	return type;
+		return type;
 	}
 
 	public void setType(String type) {
-	this.type = type;
+		this.type = type;
 	}
 
 	public List<QueryEventLog> getEvents() {
-	return events;
+		return events;
 	}
 
 	public void setEvents(List<QueryEventLog> events) {
-	this.events = events;
+		this.events = events;
 	}
-	
+
 	public List<QueryResultLog> getResults() {
-	return results;
+		return results;
 	}
 
 	public void setResults(List<QueryResultLog> results) {
-	this.results = results;
+		this.results = results;
 	}
 
 }

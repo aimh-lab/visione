@@ -1,20 +1,19 @@
 package it.cnr.isti.visione.services;
 
 public class FeatureExtractorResponse {
-	
+
 	private String featureID;
 
-	
 	private float[] features;
-	
+
 	private String queryURL;
-	
+
 	public FeatureExtractorResponse(String featureID, float[] features, String queryURL) {
 		this.featureID = featureID;
 		this.features = features;
 		this.queryURL = queryURL;
 	}
-	
+
 	public String getFeatureID() {
 		return featureID;
 	}
@@ -38,7 +37,5 @@ public class FeatureExtractorResponse {
 	public void setQueryURL(String queryURL) {
 		this.queryURL = queryURL;
 	}
-	
-	
 
 }

@@ -235,5 +235,4 @@ public class ExternalSearch implements Callable<SearchResults[]> {
             executor.shutdown();
         }
     }
-    */
 }
