@@ -22,20 +22,9 @@ static_files_urls:
   resized_frames_url: null  # URL to which 'frames/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
   palette_url:        null  # URL to which 'palette/...' requests will be redirected. Set to 'null' for serving them locally.
 
-# (deprecated) URLs for externally hosted backend services. If null, use the locally hosted service.
+# URLs for externally hosted backend services.
 services_urls:
-  gem_url:                        null
-  aladin_url:                     null
-  clip_url:                       null
-  clip_internal_search_url:       null
-  clip_laion_url:                 null
-  clip_laion_internal_search_url: null
-  clip_datacomp_url:              null
-  clip_datacomp_internal_search_url: null
-  clip2video_url:                 null
-  clip2video_internal_search_url: null
   translate_url: null
-
 
 core:
   K: 10000  # Number of results to return in searches.
@@ -338,6 +327,12 @@ index:
       index_type: Flat  
 
 ui:
+  textual-modes:
+    - {name: "ClipVideo", mode: "clip2video"}
+    - {name: "ClipLAION", mode: "clip-laion"}
+    - {name: "Aladin", mode: "aladin"}
+    - {name: "use all", mode: "all"}
+
   objects:
     # Object categories to display in the UI.
     palette:
