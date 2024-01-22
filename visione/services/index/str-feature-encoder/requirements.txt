@@ -7,4 +7,4 @@ pyyaml
 #scipy==1.6.0
 scikit-learn>=1.2
 scipy
-git+https://github.com/fabiocarrara/str-encoders.git@v0.1.1
+git+https://github.com/fabiocarrara/str-encoders.git
