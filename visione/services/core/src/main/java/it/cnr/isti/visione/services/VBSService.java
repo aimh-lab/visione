@@ -5,13 +5,23 @@ import java.io.FileInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.inject.Singleton;
 import javax.servlet.ServletContext;
@@ -31,6 +41,11 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.TopDocs;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
 
 import dev.dres.ApiException;
 import it.cnr.isti.visione.logging.DRESClient;
@@ -48,12 +63,12 @@ import it.cnr.isti.visione.lucene.LucTextSearch;
 @Path("/")
 @Singleton
 public class VBSService {
-	
+
 	private Gson gson;
 
 	private static final int K_MERGE = 200000;
 	private DRESClient client;
-	private static 	ObjectQueryPreprocessing objectPreprocessing;
+	private static ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
 	private static final String VISIONE_CONF = "/data/config.yaml";
 	// private static File LOGGING_FOLDER;
@@ -61,9 +76,8 @@ public class VBSService {
 	private static String MEMBER_ID;
 	private static Boolean SEND_LOG_TO_DRES;
 	private LucTextSearch searcher = new LucTextSearch();
-	private LogParserDRES dresLog; //saved at each query
-	//private Logging visioneLog; //saved at submission time and at each new session (if not empty)
-
+	private LogParserDRES dresLog; // saved at each query
+	// private Logging visioneLog; //saved at submission time and at each new session (if not empty)
 
 	@Context
 	private HttpServletRequest httpServletRequest;
@@ -73,7 +87,7 @@ public class VBSService {
 		try (InputStream is = context.getResourceAsStream(HYPERSETS)) {
 			objectPreprocessing = new ObjectQueryPreprocessing(is);
 		}
-		
+
 		File configFile = new File(VISIONE_CONF);
 		try (InputStream is = new FileInputStream(configFile)) {
 			Settings.init(is);
@@ -86,16 +100,31 @@ public class VBSService {
 
 		LucTextSearch.setPreprocessing(objectPreprocessing);
 		searcher.openSearcher(Settings.LUCENE);
-		
-		gson = new Gson();
+		SearchResults.searcher = searcher.s;
+
+		// gson = new Gson();
+		gson = new GsonBuilder()
+				.registerTypeAdapter(SearchResults.class, new JsonSerializer<SearchResults>() {
+					@Override
+					public JsonElement serialize(SearchResults src, Type typeOfSrc, JsonSerializationContext context) {
+						JsonObject obj = new JsonObject();
+						obj.addProperty("imgId", src.getImgId());
+						obj.addProperty("videoId", src.getVideoId());
+						obj.addProperty("score", src.score);
+						obj.addProperty("middleFrame", src.getMiddleFrame());
+						// obj.addProperty("middleTime", src.getMiddleTime());
+						return obj;
+					}
+				})
+				.create();
 		// if (!LOGGING_FOLDER.exists())
-		// 	LOGGING_FOLDER.mkdir();
+		// LOGGING_FOLDER.mkdir();
 		if (!LOGGING_FOLDER_DRES.exists())
 			LOGGING_FOLDER_DRES.mkdir();
 		dresLog = new LogParserDRES(LOGGING_FOLDER_DRES);
-		//visioneLog = new Logging(LOGGING_FOLDER);
+		// visioneLog = new Logging(LOGGING_FOLDER);
 		client = new DRESClient();
-		
+
 		System.out.println("started...");
 	}
 
@@ -126,7 +155,7 @@ public class VBSService {
 		System.out.println(shot);
 		return "it works";
 	}
-	
+
 	@POST
 	@Path("/testLogging")
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -135,261 +164,270 @@ public class VBSService {
 		System.out.println(iseq);
 		return "it works";
 	}
-	
-	
+
 	@GET
 	@Path("/init")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String init() {
 		// try {
-		// 	visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log 
+		// 	visioneLog.savePreviousSessionLogs(client.getSessionId(),System.currentTimeMillis()); //to prevent log
 		// } catch (IOException e) {
 		// 	e.printStackTrace();
 		// }
 		System.out.println("New Session Started");
 		return "New Session Started";
 	}
-	
-	private TopDocs hits;
 
-	
+	private SearchResults[] lastHits;
+
 	@POST
 	@Path("/search")
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	@Produces(MediaType.TEXT_PLAIN)
 	public String search(
-		@FormParam("query") String query,
-		@DefaultValue("-1") @FormParam("k") int k,
-		@DefaultValue("false") @FormParam("simreorder") boolean simReorder,
-		@DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row,
-		@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
-		@DefaultValue("1500") @FormParam("maxres") int maxRes,
-		@DefaultValue("lucia") @FormParam("fusion") String fusionMode
-	) {
+			@FormParam("query") String query,
+			@DefaultValue("-1") @FormParam("k") int k,
+			@DefaultValue("false") @FormParam("simreorder") boolean simReorder,
+			@DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row,
+			@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
+			@DefaultValue("1500") @FormParam("maxres") int maxRes,
+			@DefaultValue("lucia") @FormParam("fusion") String fusionMode) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
+		int kMerge = k;
 		List<VisioneQuery> queries = QueryParser.getQueries(query);
 		List<VisioneQuery> logQueries = QueryParser.getQueries(query);
-		
+
 		if (queries.size() > 1)
-			k = K_MERGE;
-		List<TopDocs> tabHits = new ArrayList<>();
-		
-		TopDocs hitsToReorder = null;
+			kMerge = K_MERGE;
+		List<SearchResults[]> tabHits = new ArrayList<>();
+
+		SearchResults[] hitsToReorder = null;
 		if (simReorder)
-			hitsToReorder = hits;
-		
-	
+			hitsToReorder = lastHits;
+
 		for (int i = 0; i < queries.size(); i++) {
-			System.out.println("^^^^^^^^^ TAB "+(i+1)+" ^^^^^^^^");
+			System.out.println("--------------------------------");
+			System.out.println("^^^^^^^^^ TAB " + (i + 1) + " ^^^^^^^^");
+			System.out.println("--------------------------------");
 			VisioneQuery queryObj = queries.get(i);
 			if (queryObj.getQuery().size() == 0)
 				continue;
 			try {
 				if (queryObj.getQuery().containsKey("comboVisualSim")) {
-					BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
+					List<SearchResults[]> hits_tmp = new ArrayList<>(3);
+					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
 
-					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by GeM
-					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, hitsToReorder));//search by Aladin
-					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k));//search by Clip4Video
-					TopDocs res = searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k, false, fusionMode);
-					log(res, query, logQueries);
+					// TODO: perform all the searches in parallel
+					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, topDocsToReorder)); // search by GeM
+					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, topDocsToReorder)); // search by Aladin
+					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k)); // search by Clip4Video
+
+					SearchResults[] searchResults = searcher.mergeResults(hits_tmp, k, false, fusionMode);
+
+					log(searchResults, query, logQueries); // logging query and search results
+
 					if (sortByVideo)
-						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
-					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
-				}
-				else if (queryObj.getQuery().containsKey("vf")) {
-					TopDocs res = searcher.searchByID(queryObj.getQuery().get("vf"), k, hitsToReorder);
-					log(res, query, logQueries);
+						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
+					else
+						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
+					return gson.toJson(searchResults);
+				} else if (queryObj.getQuery().containsKey("vf")) {
+					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
+					SearchResults[] searchResults = searcher.searchByID(queryObj.getQuery().get("vf"), k, topDocsToReorder);
+
+					log(searchResults, query, logQueries); // logging query and search results
+
 					if (sortByVideo)
-						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
-					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
-				}
-				else if (queryObj.getQuery().containsKey("qbe")) { // FIXME: QueryByExample to be rewritten 
+						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
+					else
+						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
+					return gson.toJson(searchResults);
+				} else if (queryObj.getQuery().containsKey("qbe")) { // FIXME: QueryByExample to be rewritten
 					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
-					TopDocs res = searcher.searchByExample(features, k, hitsToReorder);
-					log(res, query, logQueries);
+					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
+					SearchResults[] searchResults = searcher.searchByExample(features, k, topDocsToReorder);
+
+					log(searchResults, query, logQueries); // logging query and search results
+
 					if (sortByVideo)
-						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
-					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
-				}
-				else if (queryObj.getQuery().containsKey("aladinSim")) {
-					TopDocs res = searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, hitsToReorder);
-					log(res, query, logQueries);
-					if (sortByVideo)
-						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
-					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
-				}
-				else if (queryObj.getQuery().containsKey("clipSim")) {
-					TopDocs res = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k);//TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder 
-					log(res, query, logQueries);
-					if (sortByVideo)
-						return gson.toJson(searcher.sortByVideo(res, n_frames_per_row, maxRes));
-					return gson.toJson(searcher.topDocs2SearchResults(res, maxRes));
-				}
-				else {
+						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
+					else
+						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
+					return gson.toJson(searchResults);
+				} else if (queryObj.getQuery().containsKey("aladinSim")) {
+					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
+					SearchResults[] searchResults = searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, topDocsToReorder);
 					
-					
-					if(queryObj.getQuery().containsKey("textual")) {//we have a text query
-						BlockingQueue<TopDocs> hits_tmp=new ArrayBlockingQueue<TopDocs>(3);
-						String textQuery = queryObj.getQuery().get("textual");
-						queryObj.getQuery().remove("textual");
-						Boolean doALADIN=queryObj.getParameters().get("textualMode").indexOf("alad") >= 0;
-						Boolean doCLIPPONE=queryObj.getParameters().get("textualMode").indexOf("cl") >= 0;
-						Boolean doCLIP=queryObj.getParameters().get("textualMode").indexOf("cv") >= 0;
-						Boolean doAll=queryObj.getParameters().get("textualMode").indexOf("all") >= 0;
-						if (doAll) {
-							doALADIN = true;
-							doCLIPPONE = true;
-							doCLIP = true;
-						}
-						Boolean doOBJECTS=queryObj.getQuery().containsKey(Fields.OBJECTS);
-						String objectquery="";
-						
-						List<Thread> threadedCombo = new ArrayList<>();
-						
-						if (doALADIN || doOBJECTS)  {
-							if(doOBJECTS) {
-								String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
-								objectquery=CLIPExtractor.getObjectTxt4CLIP(preprocessed);
+					log(searchResults, query, logQueries); // logging query and search results
+
+					if (sortByVideo)
+						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
+					else
+						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
+					return gson.toJson(searchResults);
+				} else if (queryObj.getQuery().containsKey("clipSim")) {
+					SearchResults[] searchResults = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k); //TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder
+
+					log(searchResults, query, logQueries); // logging query and search results
+
+					if (sortByVideo)
+						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
+					else
+						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
+					return gson.toJson(searchResults);
+				} else {
+					if (queryObj.getQuery().containsKey("textual")) {// we have a text query
+						String textQuery = queryObj.getQuery().remove("textual");
+						String textualMode = queryObj.getParameters().get("textualMode");
+						System.out.println("textualMode: " + textualMode);
+
+						long elapsed = -System.currentTimeMillis();
+						List<Callable<SearchResults[]>> searches = new ArrayList<>();
+
+						Boolean doOBJECTS = queryObj.getQuery().containsKey(Fields.OBJECTS);
+						if (doOBJECTS) {
+							// If we have objects, textual queries are expanded:
+							// - an ALADIN search is performed as well
+							searches.add(new InternalSearch("aladin", searcher).setQueryByText(textQuery, kMerge));
+
+							// - CLIP-based queries are expanded with the objects
+							String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
+							String clipQuery = textQuery + CLIPExtractor.getObjectTxt4CLIP(preprocessed);
+							if (textualMode.equals("all")) {
+								searches.add(new ExternalSearch("clip-laion").setQueryByText(clipQuery, k));
+								searches.add(new ExternalSearch("clip2video").setQueryByText(clipQuery, k));
+							} else if (textualMode.contains("clip")) {
+								searches.add(new ExternalSearch(textualMode).setQueryByText(clipQuery, k));
+							} else { // non-clip textual mode, leave it as it is for now
+								searches.add(new ExternalSearch(textualMode).setQueryByText(textQuery, k));
 							}
-							
-							/*System.out.println("ALADIN");
-							String features = ALADINExtractor.text2Features(textQuery, K_Q_ALADIN).trim();
-							queryObj.getQuery().put(Fields.ALADIN, features);
-
-						}else {
-							queryObj.getQuery().remove(Fields.ALADIN);
-						}
-						
-						hits_tmp.add(searcher.search(queryObj, k));//adding OBJECT and ALADIN (if applicable)
-						*/
-							Thread aladinThread = new Thread(new AladinSearchThreaded(hits_tmp, searcher, textQuery, queryObj, k));
-							aladinThread.start();
-							threadedCombo.add(aladinThread);
-						}
-						// CLip and Clippone query changes if objects are in the canvas. In such cases Aladin is used as well
-						String clipQuery=textQuery+objectquery;							
-						if (doCLIP)  {
-							Thread clipThread = new Thread(new CLIPSearchThreaded(hits_tmp, searcher, clipQuery));
-							clipThread.start();
-							threadedCombo.add(clipThread);
-							//hits_tmp.add(searcher.searchByCLIP(clipQuery)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
-						}
-						if (doCLIPPONE)  {
-							Thread clipponeThread = new Thread(new CLIPOneSearchThreaded(hits_tmp, searcher, clipQuery));
-							clipponeThread.start();
-							threadedCombo.add(clipponeThread);
-
-							//hits_tmp.add(searcher.searchByCLIPOne(clipQuery)); //adding CLIP--nb CLIP is always added as first element in hits_tmp
+						} else {
+							// If we don't have objects, textual queries are performed as usual
+							if (textualMode.equals("all")) {
+								searches.add(new InternalSearch("aladin", searcher).setQueryByText(textQuery, k));
+								searches.add(new ExternalSearch("clip-laion").setQueryByText(textQuery, k));
+								searches.add(new ExternalSearch("clip2video").setQueryByText(textQuery, k));
+							} else if (textualMode.equals("aladin")) {
+								searches.add(new InternalSearch(textualMode, searcher).setQueryByText(textQuery, k));
+							} else {
+								searches.add(new ExternalSearch(textualMode).setQueryByText(textQuery, k));
+							}
 						}
 
-						for (Thread t: threadedCombo)
-							t.join();
-						tabHits.add(searcher.mergeResults(new ArrayList<TopDocs>(hits_tmp),k,false, fusionMode));//merging lucene res with clip res and adding it to tabHits	
+						// concurrent execution of the searches
+						ExecutorService executor = Executors.newFixedThreadPool(searches.size());
+						List<Future<SearchResults[]>> futures = executor.invokeAll(searches);
 
-					}else {//here we need to call Lucene without text 
-						tabHits.add(searcher.search(queryObj, k));
+						// gather results as SearchResults[]
+						List<SearchResults[]> hits = futures.stream().map(f -> {
+							try { return f.get(); } catch (InterruptedException | ExecutionException e) {
+								e.printStackTrace();
+								return null;
+							}
+						}).collect(Collectors.toList());
+
+						elapsed += System.currentTimeMillis();
+						System.out.println("*** all searches: " + elapsed + "ms");
+
+						// merge results
+						SearchResults[] mergedResults = searcher.mergeResults(hits, k, false, fusionMode);
+						tabHits.add(mergedResults);
+
+					} else {// here we need to call Lucene without text
+						tabHits.add(searcher.search(queryObj, kMerge)); // in this case the search results are already populated
 					}
-											
-					
-					/*String objectClassesTxt=queryObj.getQuery().get(Fields.OBJECTS);
-					if(objectClassesTxt!=null)
-						queryObj.addQuery(Fields.OBJECTS, objectPrerocessing.processing(objectClassesTxt, true));*/
-					
-
 				}
 			} catch (IOException | ParseException | org.apache.hc.core5.http.ParseException | InterruptedException e) {
 				e.printStackTrace();
 			}
-			
+
 		}
 		System.out.println("^^^^^^^^^ RES ^^^^^^^^");
 		try {
 			if (tabHits.size() > 1) {
-				hits = searcher.mergeResults(tabHits, Settings.K, true, fusionMode);
+				lastHits = searcher.mergeResults(tabHits, Settings.K, true, fusionMode);
+			} else if (tabHits.size() == 1) {
+				lastHits = tabHits.get(0);
 			}
-			else if (tabHits.size() == 1) {
-				hits = tabHits.get(0);
-			}
-			
-			log(hits, query, logQueries);
-			
+
+			log(lastHits, query, logQueries); // logging query and search results
+
+			SearchResults[] hitsToReturn;
 			if (sortByVideo)
-				response = gson.toJson(searcher.sortByVideo(hits, n_frames_per_row, maxRes));
+				hitsToReturn = searcher.sortByVideo(lastHits, n_frames_per_row, maxRes);
 			else
-				response = gson.toJson(searcher.topDocs2SearchResults(hits, maxRes));
+				hitsToReturn = Arrays.copyOfRange(lastHits, 0, Math.min(lastHits.length, maxRes));
+
+			long elapsed = -System.currentTimeMillis();
+			Stream.of(hitsToReturn).parallel().map(sr -> sr.populate());
+			elapsed += System.currentTimeMillis();
+			System.out.println("*** Pre-populate: " + elapsed + "ms");
+
+			System.out.println("*** Starting Gson ...");
+			elapsed = -System.currentTimeMillis();
+			response = gson.toJson(hitsToReturn);
+			elapsed += System.currentTimeMillis();
+			System.out.println("*** gson.toJson: " + elapsed + "ms");
 
 			if (response == null)
-				response = "";//new
-//				response = gson.toJson(searcher.topDocs2SearchResults(hits));
+				response = "";
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		System.out.println("--End Java--");
-		return response	;
+		return response;
 	}
-	
-	
+
 	/**
-	 * Write Dres QueryResultLog, save it to a file 
-	 * @param hits
+	 * Write Dres QueryResultLog, save it to a file
+	 * 
+	 * @param searchResults
 	 * @param query
 	 * @param queries
 	 */
-	public void log(TopDocs hits, String query, List<VisioneQuery> queries) {
-		try {
-			long elapsed = -System.currentTimeMillis();
-			ArrayList<SearchResults> searchResults = searcher.topDocs2SearchResults(hits, 10000);
-			String resLog = gson.toJson(searchResults);
-			Long clientTimestamp = dresLog.query2Log(queries, searchResults); 
-			if(SEND_LOG_TO_DRES)
-				client.dresSubmitLog(dresLog.getResultLog());
-			dresLog.save(clientTimestamp,client.getSessionId(), MEMBER_ID);
-			elapsed += System.currentTimeMillis();
-			System.out.println("- Log saved: " + elapsed + "ms");
-			// visioneLog.query2Log(query, resLog); //not saving logs in visione format anymore
-		} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e1 ) {
-			System.out.println("Error in saving logging");
-			e1.printStackTrace();
-		}
+	public void log(SearchResults[] searchResults, String query, List<VisioneQuery> queries) {
+		// SearchResults[] sr = Arrays.copyOf(searchResults); // FIXME
+		new Thread(
+				new Runnable() {
+					@Override
+					public void run() {
+						try {
+							long elapsed = -System.currentTimeMillis();
+							Long clientTimestamp = dresLog.query2Log(queries, searchResults);
+							if (SEND_LOG_TO_DRES) client.dresSubmitLog(dresLog.getResultLog());
+							dresLog.save(clientTimestamp, client.getSessionId(), MEMBER_ID);
+							elapsed += System.currentTimeMillis();
+							System.out.println("*** Log saved: " + elapsed + "ms");
+						} catch (IOException | KeyManagementException | NumberFormatException | NoSuchAlgorithmException e) {
+							System.out.println("Error in saving logging");
+							e.printStackTrace();
+						}
+					}
+				}).start();
 	}
-	
+
 	@POST
 	@Path("/log")
-	@Consumes({MediaType.APPLICATION_FORM_URLENCODED })
+	@Consumes({ MediaType.APPLICATION_FORM_URLENCODED })
 	@Produces(MediaType.TEXT_PLAIN)
-	public String log(@FormParam("query") String query) { //TODO fix this also in the UI to log Browsing and  translate
+	public String log(@FormParam("query") String query) { // TODO fix this also in the UI to log Browsing and translate
 		System.out.println("Logging service");
 		String response = "logging service";
 		List<VisioneQuery> logQueries = QueryParser.getQueries(query);
-        log(null, query, logQueries);
+		log(null, query, logQueries);
 		return response;
 	}
-/*	
-	@GET
-	@Path("/toJSON")
-	@Consumes({ MediaType.TEXT_PLAIN })
-	@Produces(MediaType.TEXT_PLAIN)
-	public String toJSON(@QueryParam("query") String query) {
-		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " jsonify " + query);
-		String response = "";
-		try {
-			if (query.startsWith("vf"))
-				response = searcher.TopDocs2String(searcher.searchByID(query, K, null), K);
-			else
-				response = searcher.TopDocs2String(searcher.search(query, K, ""), K);
-		} catch (IOException | ParseException e) {
-			e.printStackTrace();
-			return response;
-		}
-		return response;
-	}
-*/
+
 	@GET
 	@Path("/getText")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -401,7 +439,7 @@ public class VBSService {
 			response = searcher.getTerms(id, field, false);
 			if (field.equals(Fields.OBJECTS))
 				response = response.replaceAll("4wc", "");
-//			System.out.println(field + " ------------------RESPONSE " + response);
+			// System.out.println(field + " ------------------RESPONSE " + response);
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -409,7 +447,7 @@ public class VBSService {
 		}
 		return response;
 	}
-	
+
 	@GET
 	@Path("/getField")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -419,7 +457,7 @@ public class VBSService {
 		String response = "";
 		try {
 			response = searcher.get(id, field);
-//			System.out.println(field + " ------------------RESPONSE " + response);
+			// System.out.println(field + " ------------------RESPONSE " + response);
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -436,9 +474,8 @@ public class VBSService {
 		String response = "";
 		try {
 			response = searcher.get(id, Fields.START_TIME);
-//			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
-//			System.out.println(getKeyframeNumber(id));
-			
+			// System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
+			// System.out.println(getKeyframeNumber(id));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -446,7 +483,7 @@ public class VBSService {
 		}
 		return response;
 	}
-	
+
 	@GET
 	@Path("/getEndTime")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -455,9 +492,8 @@ public class VBSService {
 		String response = "";
 		try {
 			response = searcher.get(id, Fields.END_TIME);
-//			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
-//			System.out.println(getKeyframeNumber(id));
-			
+			// System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
+			// System.out.println(getKeyframeNumber(id));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -465,7 +501,7 @@ public class VBSService {
 		}
 		return response;
 	}
-	
+
 	@GET
 	@Path("/getMiddleTimestamp")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -474,9 +510,8 @@ public class VBSService {
 		String response = "";
 		try {
 			response = searcher.get(id, Fields.MIDDLE_TIME);
-//			System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
-//			System.out.println(getKeyframeNumber(id));
-			
+			// System.out.println(Fields.START_TIME + " ------------------RESPONSE " + response);
+			// System.out.println(getKeyframeNumber(id));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -484,7 +519,7 @@ public class VBSService {
 		}
 		return response;
 	}
-	
+
 	@GET
 	@Path("/getKeyframeNumber")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -493,14 +528,14 @@ public class VBSService {
 		String response = "";
 		try {
 			response = searcher.getTerms(id, Fields.START_FRAME, false);
-//			System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
+			// System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
 		} catch (IOException e) {
 			e.printStackTrace();
 			return response;
 		}
 		return response.trim();
 	}
-	
+
 	@GET
 	@Path("/getAllVideoKeyframes")
 	@Consumes({ MediaType.TEXT_PLAIN })
@@ -511,7 +546,7 @@ public class VBSService {
 			List<String> keyframes = searcher.getAllVideoKeyframes(videoId);
 			response = gson.toJson(keyframes);
 
-//			System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
+			// System.out.println(Fields.START_FRAME + " ------------------RESPONSE " + response);
 		} catch (IOException e) {
 			e.printStackTrace();
 			return response;
@@ -524,63 +559,60 @@ public class VBSService {
 
 	@GET
 	@Path("/submitResult")
-	@Consumes({MediaType.TEXT_PLAIN })
+	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String submitResult(@DefaultValue("kis") @QueryParam("taskType") String taskTypeParam,  @QueryParam("videoid") String videoIdParam, @QueryParam("id") String keyframeIdParam, @QueryParam("textAnswer") String textAnswer, @QueryParam("time") String videoAtTime) {
 
 		long clientSubmissionTimestamp = System.currentTimeMillis();
 		String response = "";
-		String taskType= taskTypeParam;
+		String taskType = taskTypeParam;
 		String videoId = videoIdParam;
-		String keyframeId=keyframeIdParam;
+		String keyframeId = keyframeIdParam;
 		int middleFrame = -1;
 		long timeToSubmit = -1;
-		long value=-1;
-		System.out.println("Submitting - task: "+ taskType);
+		long value = -1;
+		System.out.println("Submitting - task: " + taskType);
 
-		if(!taskType.equals("qa")){
+		if (!taskType.equals("qa")) {
 			if (keyframeId != null) {
-				try {		
-					timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeId, Fields.MIDDLE_TIME))*1000);
+				try {
+					timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeId, Fields.MIDDLE_TIME)) * 1000);
 					middleFrame = Integer.parseInt(searcher.get(keyframeId, Fields.MIDDLE_FRAME));
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-
-			}
-			else{
-				timeToSubmit = (long) (Double.parseDouble(videoAtTime)*1000);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				timeToSubmit = (long) (Double.parseDouble(videoAtTime) * 1000);
 			}
 		}
-	
+
 		boolean exit = false;
 		int counter = 0;
-		String submittedItem="";
-		while(!exit) {
+		String submittedItem = "";
+		while (!exit) {
 			try {
-				switch(taskType){
-						case "qa":
-						    response = client.dresSubmitTextAnswer(textAnswer);
-							exit = true;
-							submittedItem="text: "+ textAnswer;
-							break;
-						case "avs":
-							long startTime = timeToSubmit; //Math.max(timeToSubmit-1000,0);
-							long endTime = timeToSubmit; 
-							response = client.dresSubmitResultByTime(videoId, startTime,endTime); 
-							exit = true;
-							submittedItem=videoId+", starttime"+startTime+", endtime"+endTime; 
-							break;
-						default: //all tasks that are not qa and avs are handled as kis
-							response = client.dresSubmitResultByTime(videoId,timeToSubmit,timeToSubmit);
-							exit = true;
-							submittedItem=videoId+", starttime"+timeToSubmit+", endtime"+timeToSubmit; 
-				
-					} 
+				switch (taskType) {
+					case "qa":
+						response = client.dresSubmitTextAnswer(textAnswer);
+						exit = true;
+						submittedItem = "text: " + textAnswer;
+						break;
+					case "avs":
+						long startTime = timeToSubmit; // Math.max(timeToSubmit-1000,0);
+						long endTime = timeToSubmit;
+						response = client.dresSubmitResultByTime(videoId, startTime, endTime);
+						exit = true;
+						submittedItem = videoId + ", starttime" + startTime + ", endtime" + endTime;
+						break;
+					default: // all tasks that are not qa and avs are handled as kis
+						response = client.dresSubmitResultByTime(videoId, timeToSubmit, timeToSubmit);
+						exit = true;
+						submittedItem = videoId + ", starttime" + timeToSubmit + ", endtime" + timeToSubmit;
+				}
 
 			} catch (ApiException e) {
 				System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-				if (counter++ <= 3 )
+				if (counter++ <= 3)
 					client = new DRESClient();
 				else {
 					System.err.println("Error unable to initialize DRES client");
@@ -588,94 +620,28 @@ public class VBSService {
 				}
 			}
 		}
-							
-		//visioneLog.saveResponse(response);
+
+		// visioneLog.saveResponse(response);
 		System.out.println(Settings.TEAM_ID + "," + submittedItem);
-				
-		//saving logs
+
+		// saving logs
 		try {
-			//visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
+			// visioneLog.save(videoId, middleFrame, timeToSubmit,// client.getSessionId(),clientSubmissionTimestamp);
 			dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, submittedItem);
 		} catch (IOException | NumberFormatException e1) {
 			e1.printStackTrace();
-			System.out.println("Failed to save logs of submission:" +Settings.MEMBER_ID + "," + submittedItem);
+			System.out.println("Failed to save logs of submission:" + Settings.MEMBER_ID + "," + submittedItem);
 		}
 		return response;
 	}
-	
-    	
-    
-	// @GET
-	// @Path("/submitResult")
-	// @Consumes({ MediaType.TEXT_PLAIN })
-	// @Produces(MediaType.TEXT_PLAIN)
-	// public String submitResult(@QueryParam("videoid") String videoIdParam, @QueryParam("time") String videoAtTime,  @QueryParam("id") String keyframeIdParam, @DefaultValue("false") @QueryParam("isAVS") boolean isAVS, @DefaultValue("and") @QueryParam("occur") String occur, @DefaultValue("false") @QueryParam("simreorder") boolean simreorder) {
-	// 	long clientSubmissionTimestamp = System.currentTimeMillis();
-	// 	String response = "";
-	// 	System.out.println("isAVS " + isAVS );
-	// 	String videoId = videoIdParam;
-	// 	int middleFrame = -1;
-	// 	long timeToSubmit = -1;
-	// 	long value=-1;
 
-	// 	if (keyframeIdParam != null) {
-	// 		try {		
-	// 			timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeIdParam, Fields.MIDDLE_TIME))*1000);
-	// 			middleFrame = Integer.parseInt(searcher.get(keyframeIdParam, Fields.MIDDLE_FRAME));
-	// 			} catch (IOException e) {
-	// 				e.printStackTrace();
-	// 			}
-
-	// 	}
-	// 	else{
-	// 		timeToSubmit=  (long) (Double.parseDouble(videoAtTime)*1000);
-	// 	}
-		
-	// 	boolean exit = false;
-	// 	int counter = 0;
-	// 	while(!exit) {
-	// 		try {
-	// 			long startTime = timeToSubmit;
-	// 			long endTime = timeToSubmit;
-	// 			if(isAVS) {
-	// 				startTime = timeToSubmit - 1000;
-	// 				endTime = timeToSubmit + 1000;
-	// 			}
-	// 			response = client.dresSubmitResultByTime(videoId, startTime,endTime);
-	// 			exit = true;
-	// 		} catch (ApiException e) {
-	// 			System.err.println("Error with DRES authentication. Trying to init DRES clien again...");
-	// 			if (counter++ <= 3 )
-	// 				client = new DRESClient();
-	// 			else {
-	// 				System.err.println("Error unable to initialize DRES client");
-	// 				exit = true;
-	// 			}
-	// 		}
-	// 	}
-							
-	// 	//visioneLog.saveResponse(response);
-	// 	System.out.println(Settings.TEAM_ID + "," + videoId + "," + timeToSubmit);
-				
-	// 	//saving logs
-	// 	try {
-	// 		//visioneLog.save(videoId, middleFrame, timeToSubmit, client.getSessionId(),clientSubmissionTimestamp);
-	// 		dresLog.save_submission_log(clientSubmissionTimestamp, client.getSessionId(), MEMBER_ID, videoId+": "+timeToSubmit );
-	// 	} catch (IOException | NumberFormatException e1) {
-	// 		e1.printStackTrace();
-	// 		System.out.println(Settings.MEMBER_ID + "," + videoId + "," + timeToSubmit);
-	// 	}
-
-	// 	return response;
-	// }
-	
 	@GET
 	@Path("/setSimilarity")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)
 	public String setSimilarity(@QueryParam("txtSim") String txtSim, @QueryParam("mifileSim") String mifileSim, @QueryParam("objSim") String objSim, @QueryParam("defaultSim") String defaultSim) {
-		//searcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
-		//rmacsearcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
-		return txtSim + "," +  mifileSim + "," + objSim + "," + defaultSim;
+		// searcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
+		// rmacsearcher.setFieldSimilarities(txtSim, mifileSim, objSim, defaultSim);
+		return txtSim + "," + mifileSim + "," + objSim + "," + defaultSim;
 	}
 }

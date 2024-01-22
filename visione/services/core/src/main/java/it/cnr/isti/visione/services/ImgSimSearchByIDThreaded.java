@@ -9,13 +9,13 @@ import it.cnr.isti.visione.lucene.LucTextSearch;
 
 public class ImgSimSearchByIDThreaded implements Runnable {
 
-	private BlockingQueue<TopDocs> hits_tmp;
+	private BlockingQueue<SearchResults[]> hits_tmp;
 	private LucTextSearch searcher;
 	private int k;
 	private String queryId;
 	private TopDocs hitsToReorder;
 
-	public ImgSimSearchByIDThreaded(BlockingQueue<TopDocs> hits_tmp, LucTextSearch searcher, String queryId, int k, TopDocs hitsToReorder) {
+	public ImgSimSearchByIDThreaded(BlockingQueue<SearchResults[]> hits_tmp, LucTextSearch searcher, String queryId, int k, TopDocs hitsToReorder) {
 		this.hits_tmp = hits_tmp;
 		this.hitsToReorder = hitsToReorder;
 		this.searcher = searcher;
@@ -29,7 +29,6 @@ public class ImgSimSearchByIDThreaded implements Runnable {
 		try {
 			hits_tmp.add(searcher.searchByID(queryId, k, hitsToReorder));// adding OBJECT and ALADIN (if applicable)
 		} catch (IOException | org.apache.lucene.queryparser.classic.ParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

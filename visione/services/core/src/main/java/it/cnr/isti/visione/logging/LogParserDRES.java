@@ -20,8 +20,6 @@ import org.openapitools.client.model.QueryResultLog;
 import org.openapitools.client.model.CurrentTime;
 import dev.dres.client.StatusApi;
 
-import com.google.gson.Gson;
-
 import it.cnr.isti.visione.lucene.Fields;
 import it.cnr.isti.visione.services.SearchResults;
 import it.cnr.isti.visione.services.Settings;
@@ -93,28 +91,31 @@ public class LogParserDRES {
 		}
 	}
 	
-	
+	public synchronized long query2Log(List<VisioneQuery> queries, SearchResults[] resultset) throws IOException {
+		long clientTimestamp = System.currentTimeMillis();
+		return query2Log(queries,resultset,clientTimestamp);
+	}
+
 	/**
 	 * Create a DRES QueryResultLog event given the VISIONE query and results
 	 * @param queries Lucene queries used to get the current resultset
-	 * @param resultset  ranked SearchResults
+	 * @param resultSet  ranked SearchResults
 	 * @return clientTimestamp timestamp of the log
 	 * @throws IOException
 	 */
-	public synchronized long query2Log(List<VisioneQuery> queries, ArrayList<SearchResults> resultset) throws IOException {
+	public synchronized long query2Log(List<VisioneQuery> queries, SearchResults[] resultSet, long clientTimestamp) throws IOException {
 		int rank = 1;
 		this.resultLog = new QueryResultLog();
-		long clientTimestamp = System.currentTimeMillis();
 		resultLog.setTimestamp(clientTimestamp);
 		resultLog.setResultSetAvailability("Top10000");
 		resultLog.setSortType("rankingModel");
 		//creating result list 
-		if(resultset!=null){
-			for (int i = 0; i < resultset.size(); i ++) {
+		if(resultSet!=null){
+			for (int i = 0; i < resultSet.length; i ++) {
 				QueryResult resultItem = new QueryResult();
-				SearchResults res=resultset.get(i);
-				resultItem.setItem(res.videoId);
-				resultItem.setFrame(res.middleFrame);
+				SearchResults res = resultSet[i];
+				resultItem.setItem(res.getVideoId());
+				resultItem.setFrame(res.getMiddleFrame());
 				resultItem.setRank(rank++);
 				resultItem.setScore((double) res.score);
 				resultLog.addResultsItem(resultItem);
