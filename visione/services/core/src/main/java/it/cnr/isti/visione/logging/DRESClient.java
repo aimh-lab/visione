@@ -100,27 +100,37 @@ public class DRESClient {
 		return sessionId;
 	}
 
-	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
-        System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+	public String getEvaluationId() {
 		List<ApiClientEvaluationInfo> currentRuns;
 		try {
-		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
+		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
-		  System.out.println("Error during request: '" + e.getMessage() + "', exiting");
-		  return e.getMessage();
+		System.out.println("Error during request: '" + e.getMessage() + "', exiting");
+		return e.getMessage();
 		}
 
 		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
 
 		for (ApiClientEvaluationInfo run : currentRuns) {
-		  System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
-		  if (run.getTemplateDescription() != null) {
+		System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
+		if (run.getTemplateDescription() != null) {
 			System.out.println(run.getTemplateDescription());
-		  }
-		  System.out.println();
 		}
+		System.out.println();
+		}
+
 		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
-        System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
+		//print evaluation id
+		//evaluationId="dcc9ded7-da92-499e-aafd-9b54bb41b6b5"; 
+		System.out.println("Using evaluationId: " + evaluationId);
+		return evaluationId;
+		}
+
+
+	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
+        System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+		String evaluationId = getEvaluationId();
+		System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
 		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
         	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
@@ -147,7 +157,7 @@ public class DRESClient {
                     break;
                 }
                 case 412: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
+                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
                     System.err.println(message);
                     break;
                 }
@@ -166,24 +176,7 @@ public class DRESClient {
 
 	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { //used in Question Aswering Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
-		List<ApiClientEvaluationInfo> currentRuns;
-		try {
-		  currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
-		} catch (Exception e) {
-		  System.out.println("Error during request: '" + e.getMessage() + "', exiting");
-		  return e.getMessage();
-		}
-
-		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
-
-		for (ApiClientEvaluationInfo run : currentRuns) {
-		  System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
-		  if (run.getTemplateDescription() != null) {
-			System.out.println(run.getTemplateDescription());
-		  }
-		  System.out.println();
-		}
-		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+		String evaluationId = getEvaluationId();
         System.out.println("Submitting userAnswer");
 		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
@@ -226,84 +219,29 @@ public class DRESClient {
         return submissionResponse.getDescription();
 	}
 
-	//TODO Remove its call in VBSService
-	//public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
-	//	return null;
-	//}
-
-	/*public String dresSubmitResultByFrameNumber(String video, int frameNumber) throws ApiException {
-        SuccessfulSubmissionsStatus res = null;
-        System.out.println("submitting " + video + " @ frame " + frameNumber);
-        try {
-	        //TODO
-        	res = submissionApi.getApiV1Submit(
-	                null, //does not usually need to be set
-	                video, //item which is to be submitted
-                    null, //in case the task is not targeting a particular content object but plaintext
-                    frameNumber, // for items with temporal components, such as video
-                    null,  // only one of the time fields needs to be set.
-                    null, //in this case, we use the timestamp in the form HH:MM:SS:FF
-	                sessionId
-	        );
-        	res = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
-                    new ApiClientSubmission().addAnswerSetsItem(
-                        new ApiClientAnswerSet().addAnswersItem(
-                            new ApiClientAnswer()
-                                .mediaItemId("some_item_name"). //item which is to be submitted
-                                .start(10_000L) //start time in milliseconds
-                        )
-                    ), sessionId);
-        } catch (ApiException e) {
-        	String message = "";
-            ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
-            switch (e.getCode()) {
-                case 401: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
-                    System.err.println(message);
-                    throw new ApiException(message);
-                }
-                case 404: {
-                    message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
-                    System.err.println(message);
-                    break;
-                }
-                case 412: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
-                    System.err.println(message);
-                    break;
-                }
-                default: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
-                    System.err.println(message);                }
-            }
-            return message;
-        }
-
-        if (res != null && res.getStatus()) {
-            System.out.println("The submission was successfully sent to the server.");
-        }
-        return res.getDescription();
-	}*/
-
-	public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
-		DresQueryLogging queryLogging = new DresQueryLogging(eventLog);
-        new Thread(queryLogging).start();
-	}
+	// public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
+	// 	DresQueryLogging queryLogging = new DresQueryLogging(eventLog);
+    //     new Thread(queryLogging).start();
+	// }
 
 	public void dresSubmitLog(QueryResultLog resultLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
-		DresResultsLogging resultLogging = new DresResultsLogging(resultLog);
+		DresResultsLogging resultLogging = new DresResultsLogging(resultLog, getSessionId(), getEvaluationId());
         new Thread(resultLogging).start();
 	}
 
 	public SuccessStatus dresLogout() throws ApiException {
 		 SuccessStatus logout = null;
 
-//         logout = userApi.getApiLogout(sessionId);
-         logout = userApi.getApiV2Logout(sessionId);
+		try {
+		logout = userApi.getApiV2Logout(sessionId);
+		} catch (ApiException e) {
+			System.err.println("Error during request: '" + e.getMessage() + "'");
+		}
 
-        if (logout.getStatus()) {
-            System.out.println("Successfully logged out");
-        }
+		if (logout != null && logout.getStatus()) {
+			System.out.println("Successfully logged out");
+		}
+
         return logout;
 	}
 
@@ -320,51 +258,60 @@ public class DRESClient {
 
 	}
 
-	private class DresQueryLogging implements Runnable {
+	// private class DresQueryLogging implements Runnable { //FIXME
 
-		QueryEventLog eventLog;
+	// 	QueryEventLog eventLog;
 
-		public DresQueryLogging(QueryEventLog eventLog) {
-			this.eventLog = eventLog;
-		}
+	// 	public DresQueryLogging(QueryEventLog eventLog) {
+	// 		this.eventLog = eventLog;
+	// 	}
 
-		public String submitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
-	        SuccessStatus res = null;
-			try {
-	           res = logApi.postApiV2LogQuery(sessionId, eventLog);
-	        } catch (ApiException e) {
-	        	String message = "Error during request: '" + e.getMessage() + "'";
-	            System.err.println(message);
-	            return message;
-	        }
-	        return res.getDescription();
-		}
+	// 	public String submitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
+	//         SuccessStatus res = null;
+	// 		try {
+	//            res = logApi.postApiV2LogQuery(sessionId, eventLog);
+	//         } catch (ApiException e) {
+	//         	String message = "Error during request: '" + e.getMessage() + "'";
+	//             System.err.println(message);
+	//             return message;
+	//         }
+	//         return res.getDescription();
+	// 	}
 
-	    @Override
-	    public void run() {
-	    	try {
-				String res = submitQuery(eventLog);
-		        System.out.println(res);
-			} catch (KeyManagementException | NumberFormatException | NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	    }
-	}
+	//     @Override
+	//     public void run() {
+	//     	try {
+	// 			String res = submitQuery(eventLog);
+	// 	        System.out.println(res);
+	// 		} catch (KeyManagementException | NumberFormatException | NoSuchAlgorithmException e) {
+	// 			// TODO Auto-generated catch block
+	// 			e.printStackTrace();
+	// 		}
+	//     }
+	// }
 
 
 	private class DresResultsLogging implements Runnable {
 
 		QueryResultLog resultsLog;
+		String sessionId;
+		String evaluationId;
 
-		public DresResultsLogging(QueryResultLog resultsLog) {
+		public DresResultsLogging(QueryResultLog resultsLog, String sessionId,String evaluationId) {
 			this.resultsLog = resultsLog;
+			this.sessionId = sessionId;
+			this.evaluationId = evaluationId;
 		}
 
-		public String submitResults(QueryResultLog resultsLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
+		public String submitResults() throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	        SuccessStatus res = null;
 			try {
-	           res = logApi.postApiV2LogResult(sessionId, resultsLog);
+	           //res = logApi.postApiV2LogResult(sessionId, resultsLog);
+			   logApi.postApiV2LogResultByEvaluationId(
+                        evaluationId,
+                        sessionId,
+						resultsLog
+                );
 	        } catch (ApiException e) {
 	        	String message = "Error during request: '" + e.getMessage() + "'";
 	            System.err.println(message);
@@ -376,7 +323,7 @@ public class DRESClient {
 	    @Override
 	    public void run() {
 	    	try {
-				String res = submitResults(resultsLog);
+				String res = submitResults();
 		        System.out.println(res);
 			} catch (KeyManagementException | NumberFormatException | NoSuchAlgorithmException e) {
 				// TODO Auto-generated catch block

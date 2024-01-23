@@ -14,7 +14,8 @@ import com.google.gson.Gson;
 import org.openapitools.client.model.QueryEvent;
 import org.openapitools.client.model.QueryEventCategory;
 import org.openapitools.client.model.QueryEventLog;
-import org.openapitools.client.model.QueryResult;
+import org.openapitools.client.model.RankedAnswer;
+import org.openapitools.client.model.ApiClientAnswer;
 import org.openapitools.client.model.QueryResultLog;
 import org.openapitools.client.model.CurrentTime;
 import dev.dres.client.StatusApi;
@@ -105,19 +106,22 @@ public class LogParserDRES {
 	public synchronized long query2Log(List<VisioneQuery> queries, SearchResults[] resultSet, long clientTimestamp)
 			throws IOException {
 		int rank = 1;
-		this.resultLog = new QueryResultLog();
+		this.resultLog = new QueryResultLog(); 
 		resultLog.setTimestamp(clientTimestamp);
 		resultLog.setResultSetAvailability("Top10000");
 		resultLog.setSortType("rankingModel");
 		// creating result list
 		if (resultSet != null) {
 			for (int i = 0; i < resultSet.length; i++) {
-				QueryResult resultItem = new QueryResult();
+				
 				SearchResults res = resultSet[i];
-				resultItem.setItem(res.getVideoId());
-				resultItem.setFrame(res.getMiddleFrame());
-				resultItem.setRank(rank++);
-				resultItem.setScore((double) res.score);
+				Long middletime= res.getMiddleTime();
+				ApiClientAnswer answer= new ApiClientAnswer().mediaItemName(res.getVideoId()).start(middletime).end(middletime);
+				RankedAnswer resultItem = new RankedAnswer().rank(rank++).answer(answer);
+				//resultItem.setItem(res.getVideoId());
+				//resultItem.setFrame(res.getMiddleFrame());
+				//resultItem.setRank(rank++);
+				//resultItem.setScore((double) res.score); //score not supported anymore
 				resultLog.addResultsItem(resultItem);
 			}
 		}
