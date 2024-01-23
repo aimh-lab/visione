@@ -998,7 +998,10 @@ function loadImages(startIndex, endIndex) {
 		resMatrix[resrowIdx] = [];
 	let img_loading = "eager"
 	//patch to avoid same video on two rows
+
 	var extendedBatch = Math.min(endIndex + numResultsPerVideo -1, res.length);
+	//patch to align same video on more rows
+	let newLine = 0;
 	for (var i = startIndex; i < extendedBatch; i++) {
 		if (i >= 500)
 			img_loading = "lazy"
@@ -1017,6 +1020,7 @@ function loadImages(startIndex, endIndex) {
 		if (i > 0 && videoId != prevID) {
 			resMatrix[++resrowIdx] = [];
 			let spanVal = 11 - resColIdx;
+			newLine = 0;
 			resColIdx = 1;
 			if (spanVal > 0)
 				imgGridResults += '<div data-videoid="' + prevID + '" class="contentGrid-item column-span-' + spanVal + '"></div>';
@@ -1039,6 +1043,11 @@ function loadImages(startIndex, endIndex) {
 		let keyframePath = keyFramesUrl + path + ".png";
 		//avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
 		resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, resrowIdx, resColIdx - 1)
+
+		if (resColIdx > 0 && (resColIdx+newLine) % 11 == 0) {
+			imgGridResults += '<div class="item column-span-1"></div>';
+			newLine = 1;
+		}
 
 		imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
 		//imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)

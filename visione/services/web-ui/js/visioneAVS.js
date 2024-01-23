@@ -43,7 +43,7 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 				<a style="font-size:12px; padding-left: 5px;" title="View annotations of ${selectedItem.imgId}" href="indexedData.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}" target="_blank">${selectedItem.imgId}</a>
 				<a title="Video summary" href="showVideoKeyframes.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}#${selectedItem.imgId}" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 5px;"></i></a>
 				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${videoUrl}', '${selectedItem.videoId}', '${selectedItem.imgId}'); return false;"></i></a>
-				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/gem_icon.svg" width=20 title="Visual similarity (dinov2)" alt="${selectedItem.imgId}" id="gemSim${selectedItem.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${selectedItem.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="Visual similarity" alt="${selectedItem.imgId}" id="comboSim${selectedItem.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${selectedItem.imgId}'; searchByLink(queryObj); return false;"></a>
 				<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedString});'> </i></span></a>
 
 				<br>
@@ -240,7 +240,7 @@ function avsSubmittedTab(selectedItem) {
 	
 	img += '<a title="View annotations of ' + selectedItem.imgId  + '" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<i title="Play Video" class="fa fa-play" style="font-size:10px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i>'
-			+'<img style="padding-left: 5px;" src="img/gem_icon.svg" width=20 title="image similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
+			+'<img style="padding-left: 5px;" src="img/comboSim.svg" width=20 title="Visual similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;">'
 			+'<br>'
 	
 	
