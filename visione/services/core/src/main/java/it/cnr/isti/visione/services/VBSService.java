@@ -333,7 +333,7 @@ public class VBSService {
 				hitsToReturn = Arrays.copyOfRange(lastHits, 0, Math.min(lastHits.length, maxRes));
 
 			long elapsed = -System.currentTimeMillis();
-			Stream.of(hitsToReturn).parallel().map(sr -> sr.populate());
+			Arrays.stream(hitsToReturn).parallel().map(sr -> sr.populate());
 			elapsed += System.currentTimeMillis();
 			System.out.println("*** Pre-populate: " + elapsed + "ms");
 
@@ -369,7 +369,10 @@ public class VBSService {
 						try {
 							long elapsed = -System.currentTimeMillis();
 							Long clientTimestamp = dresLog.query2Log(queries, searchResults);
-							if (SEND_LOG_TO_DRES) client.dresSubmitLog(dresLog.getResultLog());
+							if (SEND_LOG_TO_DRES){ 
+								System.out.print("Sending log to DRES...");
+								client.dresSubmitLog(dresLog.getResultLog());
+							}
 							dresLog.save(clientTimestamp, client.getSessionId(), MEMBER_ID);
 							elapsed += System.currentTimeMillis();
 							System.out.println("*** Log saved: " + elapsed + "ms");

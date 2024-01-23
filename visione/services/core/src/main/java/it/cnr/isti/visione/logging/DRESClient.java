@@ -121,7 +121,7 @@ public class DRESClient {
 
 		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
 		//print evaluation id
-		//evaluationId="dcc9ded7-da92-499e-aafd-9b54bb41b6b5"; 
+		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
 		System.out.println("Using evaluationId: " + evaluationId);
 		return evaluationId;
 		}
@@ -307,11 +307,12 @@ public class DRESClient {
 	        SuccessStatus res = null;
 			try {
 	           //res = logApi.postApiV2LogResult(sessionId, resultsLog);
-			   logApi.postApiV2LogResultByEvaluationId(
+			   	res= logApi.postApiV2LogResultByEvaluationId(
                         evaluationId,
                         sessionId,
 						resultsLog
                 );
+				//System.out.println("--->LogResults sent to DRES");
 	        } catch (ApiException e) {
 	        	String message = "Error during request: '" + e.getMessage() + "'";
 	            System.err.println(message);

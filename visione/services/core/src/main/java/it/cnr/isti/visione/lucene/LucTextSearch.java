@@ -283,6 +283,7 @@ public class LucTextSearch {
 
 		long elapsed = -System.currentTimeMillis();
 		SearchResults[] results = Arrays.stream(hits.scoreDocs)
+			.limit(k)
 			.parallel()
 			.map(sd -> new SearchResults(sd))
 			.toArray(SearchResults[]::new);
@@ -512,6 +513,161 @@ public class LucTextSearch {
 		}
 	}
 
+	public ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> getVideoHashMap_th(SearchResults[] hits,
+			int quantizer, Set<String> video_keys) throws NumberFormatException, IOException {
+		ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm = new ConcurrentHashMap<>();
+		int nDocs = hits.length;
+		int bookedThreads = Runtime.getRuntime().availableProcessors() - 1;
+		final int nObjsPerThread = (int) Math.ceil((double) nDocs / (bookedThreads));
+		final int nThread = (int) Math.ceil((double) nDocs / nObjsPerThread);
+
+		int ti = 0;
+		Thread[] thread = new Thread[nThread];
+
+		if (video_keys == null) {
+			for (int from = 0; from < nDocs; from += nObjsPerThread) {
+				int to = from + nObjsPerThread - 1;
+				if (to >= nDocs)
+					to = nDocs - 1;
+				thread[ti] = new Thread(new VideoHashMapThread(hits, from, to, hm, quantizer));
+				thread[ti].start();
+				ti++;
+			}
+		} else {
+			for (int from = 0; from < nDocs; from += nObjsPerThread) {
+				int to = from + nObjsPerThread - 1;
+				if (to >= nDocs)
+					to = nDocs - 1;
+				thread[ti] = new Thread(new SelectedVideoHashMapThread(hits, from, to, hm, video_keys, quantizer));
+				thread[ti].start();
+				ti++;
+			}
+		}
+
+		for (Thread t : thread) {
+			if (t != null)
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
+		return hm;
+
+	}
+
+	public class VideoHashMapThread implements Runnable {
+		private final int from;
+		private final int to;
+		private final SearchResults[] hits;
+		private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm;
+		private final int quantizer;
+		private final Object sem = new Object();
+
+		public VideoHashMapThread(SearchResults[] hits, int from, int to,
+				ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm, int quantizer) {
+			this.from = from;
+			this.to = to;
+			this.hits = hits;
+			this.hm = hm;
+			this.quantizer = quantizer;
+
+		}
+
+		@Override
+		public void run() {
+			for (int iO = from; iO <= to; iO++) {
+				try {
+					SearchResults sr=hits[iO];
+					float score = sr.score;
+					float timestamp = sr.getMiddleFrame()/1000.0f;// this is in millisecond
+					String videoId = sr.getVideoId();
+					Integer id_quantized_timestamp = (int) (timestamp / (quantizer)); // quantize timestamp
+					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
+					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
+					keyframes.putIfAbsent(id_quantized_timestamp, sr);
+					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
+					if (representative_keyframe.score > score)
+						continue; // We keep just one keyframe for each quantized time interval
+	
+					synchronized (sem) {
+						keyframes = hm.get(videoId); 
+						if( keyframes.get(id_quantized_timestamp).score<score) {
+							keyframes.put(id_quantized_timestamp, sr);		
+							hm.put(videoId, keyframes);
+						}
+					}
+					
+			
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	public class SelectedVideoHashMapThread implements Runnable {
+		private final int from;
+		private final int to;
+		private final SearchResults[] hits;
+		private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm;
+		private final int quantizer;
+		private final Set<String> video_keys;
+		private final Object sem = new Object();
+
+		public SelectedVideoHashMapThread(SearchResults[] hits, int from, int to,
+				ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm, Set<String> video_keys,
+				int quantizer) {
+			this.from = from;
+			this.to = to;
+			this.hits = hits;
+			this.hm = hm;
+			this.quantizer = quantizer;
+			this.video_keys = video_keys;
+
+		}
+
+		@Override
+		public void run() {
+			for (int iO = from; iO <= to; iO++) {
+				try {
+					SearchResults sr=hits[iO];
+					float score = sr.score;
+					
+					String videoId = sr.getVideoId();
+					if (!video_keys.contains(videoId))
+						continue;
+					float timestamp = sr.getMiddleFrame()/1000.0f;// this is in millisecond
+					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
+					
+					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
+					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
+					keyframes.putIfAbsent(id_quantized_timestamp, sr);
+					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
+					if (representative_keyframe.score > score)
+						continue; // We keep just one keyframe for each quantized time interval
+	
+					synchronized (sem) {
+						keyframes = hm.get(videoId); 
+						if( keyframes.get(id_quantized_timestamp).score<score) {
+							keyframes.put(id_quantized_timestamp, sr);		
+							hm.put(videoId, keyframes);
+					
+						}
+					}
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+		}
+	}
+
+
+
 	public ConcurrentMap<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMap(SearchResults[] hits, int quantizer, Set<String> videoKeys) {
 		Map<String, ConcurrentMap<Integer, SearchResults>> hashedHits = Arrays.stream(hits)  // get hits as a stream
 			.parallel()  // run in parallel
@@ -536,7 +692,7 @@ public class LucTextSearch {
 			return null;
 
 		long totalTime = -System.currentTimeMillis();
-
+		
 		SearchResults[] sortedResults = Stream.of(results) // get results as a stream
 			.limit(maxRes) // limit to at most maxRes results
 			.collect(Collectors.groupingBy(r -> r.getVideoId())) // group by videoId, creates a Map<String, List<SearchResults>>
@@ -548,10 +704,10 @@ public class LucTextSearch {
 			.sorted((r1, r2) -> -Float.compare(r1.get(0).score, r2.get(0).score)) // sort the lists of SearchResults by the score of the first element
 			.flatMap(List::stream) // flatten the list of lists to a single list
 			.collect(Collectors.toList()) // collect the list
-			.toArray(results); // convert to array
+			.toArray(new SearchResults[0]); // convert to array
 
 		totalTime += System.currentTimeMillis();
-		System.out.println("**sortByVideo: " + totalTime + "ms" + "\t res size:" + sortedResults.length);
+		System.out.println("**sortByVideo: ("+maxRes +" maxRes) " + totalTime + "ms" + "\t res size:" + sortedResults.length);
 
 		return sortedResults;
 
