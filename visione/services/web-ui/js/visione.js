@@ -1019,7 +1019,7 @@ function loadImages(startIndex, endIndex) {
 
 		if (i > 0 && videoId != prevID) {
 			resMatrix[++resrowIdx] = [];
-			let spanVal = 11 - resColIdx;
+			let spanVal = 11 - resColIdx + newLine;
 			newLine = 0;
 			resColIdx = 1;
 			if (spanVal > 0)
@@ -2143,7 +2143,8 @@ async function init() {
 
 	await loadConfig();
 	localStorage.setItem('isQA', false);
-if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
+	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
+	setNumResultsPerVideo();
 	loadPalette();
 	$("#searchTab").append(searchForm(0, 'Objects & colors of the scene', " Describe the scene you are looking for...", "fa fa-hourglass-start fa-1x"));
 	//$("#searchTab").append("<div><img src='img/bug.gif' width=30 height=15></div>")
@@ -2156,10 +2157,8 @@ if (config?.main?.collection_name) document.title = config.main.collection_name 
 	}
 	//$("#searchTab").append(addButton);
 	// loadConfig().then(loadPalette)//.then(checkServices);
-	canvas0 = get_canvas('canvas0', 'annotations0',
-		'not0');
-	canvas1 = get_canvas('canvas1', 'annotations1',
-		'not1');
+	canvas0 = get_canvas('canvas0', 'annotations0', 'not0');
+	canvas1 = get_canvas('canvas1', 'annotations1', 'not1');
 	canvases = [canvas0, canvas1];
 
 	$('#content').on('drop', dropImage);
@@ -2471,7 +2470,7 @@ function loadPalette() {
 }
 
 function setNumResultsPerVideo() {
-	numResultsPerVideo = config?.ui?.n_frames_per_row || 10;
+	numResultsPerVideo = config?.ui?.['max-results-per-video'] ?? 10;
 }
 
 async function checkServices() {
