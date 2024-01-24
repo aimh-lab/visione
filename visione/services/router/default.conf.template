@@ -41,7 +41,13 @@ server {
 
 	location ^~ /videos       { access_log off; alias /data/resized-videos/medium/; }
 	location ^~ /videos/tiny  { access_log off; alias /data/resized-videos/tiny/; }
-	location ^~ /frames       { access_log off; alias /data/selected-frames/; }
+	# location ^~ /frames       { access_log off; alias /data/selected-frames/; }
+	location ^~ /frames {
+		access_log off;
+		alias /data/selected-frames/;
+		location ~* ^/frames/(.*)(\..*)$ { try_files $uri /frames/$1.jpg =404; }  # try original request, then .jpg, then fail with 404
+	}
+
 	location ^~ /frames/tiny  { access_log off; alias /data/thumbnails/; }
 	location ^~ /palette      { access_log off; alias /data/palette/; }
 
