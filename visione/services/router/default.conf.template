@@ -23,7 +23,7 @@ server {
 		rewrite ^/services/(?<service>[^/]+)(.*)$ $2 break;
 		proxy_pass $url;
 	}
-	location ^~ /translate { set $url "${VISIONE_TRANSLATE_URL}"; proxy_pass $url$is_args$args; }
+	location /translate/ { proxy_pass ${VISIONE_TRANSLATE_URL}; }
 
 	location / {
 		root /usr/share/nginx/html;
