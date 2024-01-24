@@ -127,6 +127,8 @@ var isQA = false;
 var config = null;
 var loadingSpinner = null;
 var numResultsPerVideo = 10;
+var defaultLanguage = "ita";
+var framesCache = [];
 
 
 function handler(myObj) {
@@ -769,8 +771,13 @@ function setTextualMode(checkboxId, mode) {
 
 function setTextualMode(checkboxId, mode) {
 	textualMode[checkboxId] = mode;
-	if ($("#textual" + checkboxId) > 0)
+	tmp = $("#textual" + checkboxId);
+	textQuery = $("#textual" + checkboxId).val();
+	if (textQuery.length > 0) {
+		if (document.getElementById("isTranslate" + checkboxId).checked)
+			translateText(textQuery, 0);
 		searchByForm();
+	}
 }
 /*
 function setTextualMode(checkboxId) {
@@ -952,23 +959,29 @@ function showResults(data) {
 		colIdx = 1;
 		rowIdx = -1;
 		visibleImages = 0
+		framesCache = []
 
 		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
 		} else if (data != null && data != "") {
 			if (!isAdvanced)
 				displaySimplifiedUI();
-
-			res = JSON.parse(data);
-			if (res.length == 0)
+			try {
+				res = JSON.parse(data);
+				if (res.length == 0)
+					noResultsOutput();
+				else {
+					noResultsOutput(false);
+					//document.getElementById('newsession').style.display = 'block';
+					resColIdx = 1;
+					resrowIdx = 0;
+					visibleImages = 0;
+					loadImages(0, batchSize);
+				}
+			} catch (e){
+				console.log(e);
 				noResultsOutput();
-			else {
-				noResultsOutput(false);
-				//document.getElementById('newsession').style.display = 'block';
-				resColIdx = 1;
-				resrowIdx = 0;
-				visibleImages = 0;
-				loadImages(0, batchSize);
+
 			}
 
 		}
@@ -986,7 +999,7 @@ function showResults(data) {
 
 }
 
-var batchSize = 50;
+var batchSize = 80;
 var visibleImages = 0;
 var resColIdx = 1;
 var resrowIdx = 0;
@@ -1003,8 +1016,6 @@ function loadImages(startIndex, endIndex) {
 	//patch to align same video on more rows
 	let newLine = 0;
 	for (var i = startIndex; i < extendedBatch; i++) {
-		if (i >= 500)
-			img_loading = "lazy"
 		var imgGridResults = ""
 		let imgId = res[i].imgId;
 		let videoId = res[i].videoId;
@@ -1018,6 +1029,9 @@ function loadImages(startIndex, endIndex) {
 
 
 		if (i > 0 && videoId != prevID) {
+			//patch to avoid same video on two rows
+			if (i > endIndex )
+				break;
 			resMatrix[++resrowIdx] = [];
 			let spanVal = 11 - resColIdx + newLine;
 			newLine = 0;
@@ -1027,12 +1041,14 @@ function loadImages(startIndex, endIndex) {
 			imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
 		}
 
+		let keyframePath = keyFramesUrl + path + ".png";
+
 		if (videoId != prevID) {
-			//patch to avoid same video on two rows
-			if (i > endIndex )
-				break;
 			//imgGridResults += '<div id="video_' + videoId + '">';
 			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+			var preloadedImage = new Image();
+			preloadedImage.src = keyframePath;
+		  	framesCache[resrowIdx] = preloadedImage
 
 		}
 		let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
@@ -1040,7 +1056,7 @@ function loadImages(startIndex, endIndex) {
 		let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
 		videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
 		let thumbnailPath = thumbnailUrl + path + ".jpg";
-		let keyframePath = keyFramesUrl + path + ".png";
+		keyframePath = keyFramesUrl + path + ".png";
 		//avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
 		resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, resrowIdx, resColIdx - 1)
 
@@ -1148,6 +1164,7 @@ function submitQA() {
 	let answ = prompt("Please enter your answering", "");
   	if (answ != null) {
 		submitResult(id=null, videoId=null, textAnswer=answ, isAsync=true)
+		qaSubmittedTab(answ);
 	}
 }
 
@@ -1856,9 +1873,11 @@ function setSupportedLanguages(id) {
 }
 
 function checkKey(e) {
+	if (!resMatrix || resMatrix.length == 0)
+		return;
 
 	e = e || window.event;
-	console.log(e.keyCode)
+	//console.log(e.keyCode)
 	var goToNextResult = false;
 
 	/*var activeElement = document.activeElement;
@@ -1880,7 +1899,8 @@ function checkKey(e) {
 		return;
 	}*/
 	var activeElement = document.activeElement;
-	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0)
+	//if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0)
+	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA")
 		return;
 
 	if (e.keyCode == '65') {
@@ -1954,7 +1974,7 @@ function checkKey(e) {
 	else if (e.keyCode == '38') {
 		colIdx = 0;
 		rowIdx = Math.max(0, rowIdx - 1);
-		console.log(resCursor)
+		//console.log(resCursor)
 		//$("#" + res[resCursor--].imgId).click();
 		var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
 		if (lastSelected != null) {
@@ -2002,7 +2022,7 @@ function checkKey(e) {
 		rowHeight = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId).offsetHeight + scrollOffset;*/
 
 
-		console.log("up arrow")
+		//console.log("up arrow")
 	}
 	if (e.keyCode == '40' || goToNextResult) {
 		loadingNextResults();
@@ -2061,7 +2081,7 @@ function checkKey(e) {
 						}*/
 
 
-		console.log("down arrow")
+		//console.log("down arrow")
 	}
 	else if (e.keyCode == '37') {
 		colIdx = Math.max(0, colIdx - 1);
@@ -2081,7 +2101,7 @@ function checkKey(e) {
 		//gridContent.animate({ scrollLeft: 0 }, 0);
 
 
-		console.log("left arrow")
+		//console.log("left arrow")
 	}
 	else if (e.keyCode == '39') {
 		++colIdx
@@ -2105,7 +2125,7 @@ function checkKey(e) {
 		gridContent.animate({ scrollLeft: gridOffsetX }, 100);*/
 		//var gridContent = $("#content").find(".contentGrid");
 		//gridContent.animate({ scrollLeft: 0 }, 0);
-		console.log("right arrow")
+		//console.log("right arrow")
 
 	}
 
@@ -2114,7 +2134,7 @@ function checkKey(e) {
 function selectNextResult() {
 	colIdx = 0;
 	rowIdx++;
-	console.log(rowIdx)
+	//console.log(rowIdx)
 
 	//$("#" + res[resCursor++].imgId).click();
 	var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
@@ -2131,8 +2151,10 @@ function selectNextResult() {
 
 async function init() {
 
-
 	document.onkeydown = checkKey;
+	if (localStorage.getItem("selectedLang") ==  null) {
+		localStorage.setItem('selectedLang', defaultLanguage);
+	}
 
 	$(function () {
 		$("#dialog").dialog({

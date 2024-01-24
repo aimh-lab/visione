@@ -36,6 +36,7 @@ function submitAVS(selectedItem) {
 
 const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager") => {
 	selectedString = JSON.stringify(selectedItem);
+  
 	return `
 		<span id="avsList_${selectedItem.imgId}">
 			<div style="float: left; padding: 2px;">
@@ -47,7 +48,7 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 				<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedString});'> </i></span></a>
 
 				<br>
-				<div id="avsdiv_${selectedItem.imgId}" lang="${selectedItem.videoId}|${videoUrlPreview} " style="height: 25em;">
+				<div id="avsdiv_${selectedItem.imgId}" lang="${selectedItem.videoId}|${videoUrlPreview}" style="height: 25em;">
 					<img id="selected_avs_${selectedItem.imgId}" title="${selectedItem.imgId}" style="padding-bottom: 10px; height: 25em;" src="${selectedItem.keyframe}">
 				</div>
 			</div>
@@ -246,6 +247,14 @@ function avsSubmittedTab(selectedItem) {
 	
 	img += '<img title="' + selectedItem.imgId + '"style="padding-bottom: 10px;" width="110" height="80" src="' + selectedItem.thumb + '"></div>';
 	$("#avsSubmittedTab").append(img);
+}
+
+function qaSubmittedTab(answerTxt) {
+	text = '<div>';
+	
+	text += '<p>' + answerTxt + '</p>'
+		+'</div><br>'
+	$("#avsSubmittedTab").append(text);
 }
 
 function avsHideSubmittedVideos() {
