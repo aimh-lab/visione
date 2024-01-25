@@ -173,7 +173,7 @@ body {
     margin: 2px;
 }
 
-.myborder {   border-width: 5px;   border-color: red;   border-style: solid; }
+.videoSummarySelected {   border-width: 6px;   border-color: red;   border-style: dashed; }
 
 .myimg-thumbnail{
 	padding: 0.1rem;

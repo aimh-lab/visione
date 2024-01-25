@@ -78,8 +78,6 @@
 
 		function loadPage() {
 
-			
-			
 			id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
 			
 			videoId = $.urlParam('videoId');
@@ -106,7 +104,7 @@
 				}
 
 				let imgAttrs = (imgId == keyframes[i]) ?
-					`class="rounded myborder" id="${keyframes[i].split("\\.")[0]}"` :
+					`class="rounded videoSummarySelected" id="${keyframes[i].split("\\.")[0]}"` :
 					`class="rounded"`;
 
 				// hack to replace .jpg with .png if the image is not found

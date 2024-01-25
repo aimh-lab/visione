@@ -986,14 +986,16 @@ function showResults(data) {
 
 		}
 		//if ($('meta[name=task]').attr('content') == "AVS") {
-		avsHideSubmittedVideos();
+		if (isAVS)
+			avsHideSubmittedVideos();
+		else
+			avsHilightlighSubmittedVideos();
 		//avsReloadManuallySelected();
 		//avsAddAutoselected();
 		//}
 		updateAVSInfo();
 		//repetita iuvant!!
 	}   finally {		
-		resultsVisualization();
 		loadingSpinner.style.display = 'none';
 	  }
 
@@ -1067,17 +1069,16 @@ function loadImages(startIndex, endIndex) {
 
 		imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
 		//imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
-		imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], isAdvanced, img_loading)
+		imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], img_loading)
 		imgGridResults += '</div>'
 		resMatrix[resrowIdx][resColIdx - 1] = res[i];
 
 		resColIdx++;
 		$("#imgGridResults").append(imgGridResults);
 		visibleImages++;
-
-
-
 	}
+
+	resultsVisualization();
 
 	for (var i = startIndex; i < endIndex; i++) {
 		let imgId = res[i].imgId;
@@ -1231,13 +1232,15 @@ function submitVersion2(selectedItem) {
 
 			//che fa? boh!
 			updateAVSInfo();
-
-			avsHilightlighSubmittedVideos();
+			if (isAVS)
+				avsHideSubmittedVideos();
+			else
+				avsHilightlighSubmittedVideos();
 		}
 	}
 	return res;
 }
-
+/*
 function unifiedSubmit(avsObj, ev) {
 	if (isQA) {
 		submitQA();
@@ -1257,11 +1260,11 @@ function unifiedSubmit(avsObj, ev) {
 	//avsToggle(avsObj, ev);
 	submitAVS(avsObj);
 
-	/*if (currentSelected != null) {
-		//avsToggle(currentSelected, ev);
-	}*/
+	//if (currentSelected != null) {
+	//	//avsToggle(currentSelected, ev);
+	//}
 
-}
+}*/
 
 function showOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 1;
@@ -1271,7 +1274,7 @@ function hideOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 0;
 }
 
-const imgResult = (res, borderColor, selectedItem, isAdvanced = false, img_loading="eager") => {
+const imgResult = (res, borderColor, img_loading="eager") => {
 		jsonString = JSON.stringify(res);
 		return `
 		<div class="result-border" style="border-color: ${borderColor};">
@@ -2453,7 +2456,7 @@ async function init() {
 
 	var resultsElement = $("#results");
 
-	resultsElement.on("mousewheel", function() {
+	resultsElement.on("scroll mousewheel", function() {
 		console.log('wheel')
 		loadingNextResults();
 	});
