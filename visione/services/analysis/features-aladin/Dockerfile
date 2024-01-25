@@ -1,4 +1,4 @@
-FROM docker.io/continuumio/anaconda3:2022.10
+FROM docker.io/condaforge/mambaforge:22.11.1-4
 
 RUN apt-get update && apt-get install -y build-essential
 
@@ -15,14 +15,16 @@ WORKDIR /usr/src/app/scene_graph_benchmark
 RUN sed -i -e 's|if torch._six.PY3:|if True:|' maskrcnn_benchmark/utils/imports.py
 RUN sed -i -e 's|from torch.hub import _download_url_to_file|from torch.hub import download_url_to_file|' maskrcnn_benchmark/utils/model_zoo.py
 
-RUN conda create --name sg_benchmark python=3.7 -y && \
-    conda install -n sg_benchmark pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge && \
-    conda install -n sg_benchmark ipython h5py nltk joblib jupyter pandas scipy && \
-    conda run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython==0.29.34 matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
-    conda install -n sg_benchmark -c conda-forge timm einops && \
-    conda install -n sg_benchmark -c conda-forge pycocotools && \
-    conda run --no-capture-output -n sg_benchmark python -m pip install cityscapesscripts && \
-    conda run --no-capture-output -n sg_benchmark python setup.py build develop
+RUN mamba create --name sg_benchmark python=3.7 -y && \
+    mamba install -y -n sg_benchmark pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch && \
+    mamba install -y -n sg_benchmark ipython h5py nltk joblib jupyter pandas scipy && \
+    mamba run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython==0.29.34 matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
+    mamba install -y -n sg_benchmark timm einops && \
+    mamba install -y -n sg_benchmark pycocotools && \
+    mamba run --no-capture-output -n sg_benchmark python -m pip install cityscapesscripts && \
+    mamba run --no-capture-output -n sg_benchmark python setup.py build develop
+
+RUN apt-get install -y curl
 
 # Download weights and labelmaps
 RUN --mount=type=secret,id=asset_token,required \
@@ -42,11 +44,11 @@ WORKDIR /usr/src/app/
 RUN git clone --recursive https://github.com/mesnico/ALADIN
 WORKDIR /usr/src/app/ALADIN
 RUN git checkout feature_extraction
-RUN conda create --name oscar python=3.7 && \
-    conda install -n oscar pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge && \
-    conda run --no-capture-output -n oscar pip install -r requirements.txt && \
-    conda run --no-capture-output -n oscar pip install Flask && \
-    conda run --no-capture-output -n oscar python setup.py build develop
+RUN mamba create --name oscar python=3.7 && \
+    mamba install -y -n oscar pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch && \
+    mamba run --no-capture-output -n oscar pip install -r requirements.txt && \
+    mamba run --no-capture-output -n oscar pip install Flask && \
+    mamba run --no-capture-output -n oscar python setup.py build develop
 
 # Download weights
 RUN --mount=type=secret,id=asset_token,required \
@@ -72,4 +74,4 @@ WORKDIR /usr/src/app/ALADIN
 COPY extract.py .
 COPY service.py ./alad
 
-CMD ["conda", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]
+CMD ["mamba", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]
