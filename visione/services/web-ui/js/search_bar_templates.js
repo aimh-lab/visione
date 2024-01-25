@@ -70,7 +70,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 							<i class="fa fa-undo"></i>
 						</button>
 					</div>
-					<div class="canvasCleanItem">
+					<div class="canvasCleanItem" style="display: none;">
 						<div>
 							<span title="Black & White Keyframe"> 
 								<input id='isGray${canvasID}' type="checkbox" onchange="setGray(${canvasID})">
@@ -90,9 +90,9 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 
 			</div>
 			<div class="textualOptions${canvasID}" id="textualOptions${canvasID}">
-				<span style="padding-right: 3em;" id="translate${canvasID}">
+				<span style="padding-right: 1em;" id="translate${canvasID}">
 					<input type="checkbox" checked name="isTranslate${canvasID}" id="isTranslate${canvasID}">
-					<label for="isTranslate${canvasID}" class="font-tiny">Translate </label>
+					<label for="isTranslate${canvasID}" class="font-tiny"><img width="26" src="img/translate.png"></label>
 					<select id="supportedLang${canvasID}"></select>
 				</span>`;
 
