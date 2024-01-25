@@ -129,6 +129,7 @@ var loadingSpinner = null;
 var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
 var framesCache = [];
+var collectionName;
 
 
 function handler(myObj) {
@@ -2165,9 +2166,12 @@ async function init() {
 		});
 	});
 	includeHTML();
-
 	await loadConfig();
 	localStorage.setItem('isQA', false);
+	collectionName = config?.main?.collection_name;
+	$("#visionelogo").append("<div align='right'><h2>" + collectionName + "<h2></div>");
+
+
 	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	setNumResultsPerVideo();
 	loadPalette();
