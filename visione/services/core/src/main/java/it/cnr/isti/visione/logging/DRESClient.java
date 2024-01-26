@@ -75,7 +75,7 @@ public class DRESClient {
         ApiUser login = null;
         try {
             login = userApi.postApiV2Login(new LoginRequest().username(Settings.SUBMIT_USER).password(Settings.SUBMIT_PWD));
-            System.out.println("login successful");
+            System.out.println("-->DRES:login successful");
             System.out.println("user: " + login.getUsername());
             System.out.println("role: " + login.getRole().getValue());
             System.out.println("session: " + login.getSessionId());
@@ -86,9 +86,9 @@ public class DRESClient {
         } catch (ApiException e) {
 
             if (e.getCause() instanceof ConnectException) {
-                System.err.println("Could not connect to " + Settings.SUBMIT_SERVER + ", exiting");
+                System.err.println("-->DRES: Could not connect to " + Settings.SUBMIT_SERVER + ", exiting");
             } else {
-                System.err.println("Error during login request: '" + e.getMessage() + "', exiting");
+                System.err.println("-->DRES: Error during login request: '" + e.getMessage() + "', exiting");
             }
         } catch (IOException e) {
             System.err.println("Error, unable to write DRES logging info file for sessionId " + sessionId);
@@ -105,7 +105,7 @@ public class DRESClient {
 		try {
 		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
-		System.out.println("Error during request: '" + e.getMessage() + "', exiting");
+			System.out.println("-->DRES: Error during request: '" + e.getMessage() + "', exiting");
 		return e.getMessage();
 		}
 
@@ -119,10 +119,10 @@ public class DRESClient {
 		System.out.println();
 		}
 
-		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null).getId();
+		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null)?.getId();
 		//print evaluation id
 		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
-		System.out.println("Using evaluationId: " + evaluationId);
+		System.out.println("-->DRES: Using evaluationId: " + evaluationId);
 		return evaluationId;
 		}
 
@@ -147,29 +147,29 @@ public class DRESClient {
             ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
             switch (e.getCode()) {
                 case 401: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
                     System.err.println(message);
                     throw new ApiException(message);
                 }
                 case 404: {
-                    message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
+                    message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
                     System.err.println(message);
                     break;
                 }
                 case 412: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
                     System.err.println(message);
                     break;
                 }
                 default: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
                     System.err.println(message);                }
             }
             return message;
         }
 
         if (submissionResponse  != null && submissionResponse.getStatus()) {
-            System.out.println("The submission was successfully sent to the server.");
+            System.out.println("-->DRES: The submission was successfully sent to the server.");
         }
         return submissionResponse.getDescription();
 	}
@@ -192,29 +192,29 @@ public class DRESClient {
             ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
             switch (e.getCode()) {
                 case 401: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
                     System.err.println(message);
                     throw new ApiException(message);
                 }
                 case 404: {
-                    message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
+                    message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
                     System.err.println(message);
                     break;
                 }
                 case 412: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".";
                     System.err.println(message);
                     break;
                 }
                 default: {
-                	message = "Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
+                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
                     System.err.println(message);                }
             }
             return message;
         }
 
         if (submissionResponse  != null && submissionResponse.getStatus()) {
-            System.out.println("The submission was successfully sent to the server.");
+            System.out.println("-->DRES: The submission was successfully sent to the server.");
         }
         return submissionResponse.getDescription();
 	}
@@ -235,11 +235,11 @@ public class DRESClient {
 		try {
 		logout = userApi.getApiV2Logout(sessionId);
 		} catch (ApiException e) {
-			System.err.println("Error during request: '" + e.getMessage() + "'");
+			System.err.println("-->DRES: Error during request: '" + e.getMessage() + "'");
 		}
 
 		if (logout != null && logout.getStatus()) {
-			System.out.println("Successfully logged out");
+			System.out.println("-->DRES: Successfully logged out");
 		}
 
         return logout;
@@ -314,7 +314,7 @@ public class DRESClient {
                 );
 				//System.out.println("--->LogResults sent to DRES");
 	        } catch (ApiException e) {
-	        	String message = "Error during request: '" + e.getMessage() + "'";
+	        	String message = "-->DRES: Error during request: '" + e.getMessage() + "'";
 	            System.err.println(message);
 	            return message;
 	        }
@@ -325,7 +325,7 @@ public class DRESClient {
 	    public void run() {
 	    	try {
 				String res = submitResults();
-		        System.out.println(res);
+		        System.out.println("-->DRES: "+res);
 			} catch (KeyManagementException | NumberFormatException | NoSuchAlgorithmException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

@@ -502,7 +502,7 @@ public class VBSService {
 		String taskType = taskTypeParam;
 		String videoId = videoIdParam;
 		String keyframeId = keyframeIdParam;
-		int middleFrame = -1;
+		// int middleFrame = -1;
 		long timeToSubmit = -1;
 		long value = -1;
 		System.out.println("Submitting - task: " + taskType);
@@ -511,7 +511,7 @@ public class VBSService {
 			if (keyframeId != null) {
 				try {
 					timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeId, Fields.MIDDLE_TIME)) * 1000);
-					middleFrame = Integer.parseInt(searcher.get(keyframeId, Fields.MIDDLE_FRAME));
+					// middleFrame = Integer.parseInt(searcher.get(keyframeId, Fields.MIDDLE_FRAME));
 				} catch (IOException e) {
 					e.printStackTrace();
 				}

@@ -581,7 +581,7 @@ public class LucTextSearch {
 				try {
 					SearchResults sr=hits[iO];
 					float score = sr.score;
-					float timestamp = sr.getMiddleFrame()/1000.0f;// this is in millisecond
+					float timestamp = sr.getMiddleTime()/1000.0f;// this is in millisecond
 					String videoId = sr.getVideoId();
 					Integer id_quantized_timestamp = (int) (timestamp / (quantizer)); // quantize timestamp
 					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
@@ -639,7 +639,7 @@ public class LucTextSearch {
 					String videoId = sr.getVideoId();
 					if (!video_keys.contains(videoId))
 						continue;
-					float timestamp = sr.getMiddleFrame()/1000.0f;// this is in millisecond
+					float timestamp = sr.getMiddleTime()/1000.0f;// this is in millisecond
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
 					
 					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
