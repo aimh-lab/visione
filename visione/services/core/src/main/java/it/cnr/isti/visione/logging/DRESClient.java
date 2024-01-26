@@ -121,7 +121,7 @@ public class DRESClient {
 
 		String evaluationId=null;
 		ApiClientEvaluationInfo firstRun= currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null);
-		if(evaluationId!=null){
+		if(firstRun!=null){
 			evaluationId=firstRun.getId();
 		}
 		
