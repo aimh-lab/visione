@@ -119,7 +119,12 @@ public class DRESClient {
 		System.out.println();
 		}
 
-		String evaluationId = currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null)?.getId();
+		String evaluationId=null;
+		ApiClientEvaluationInfo firstRun= currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null);
+		if(evaluationId!=null){
+			evaluationId=firstRun.getId();
+		}
+		
 		//print evaluation id
 		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
 		System.out.println("-->DRES: Using evaluationId: " + evaluationId);
