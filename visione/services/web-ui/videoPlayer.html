@@ -32,8 +32,7 @@
 	  		myPlayer.pause();
 	  		var whereYouAt = myPlayer.currentTime();
 	  		videoid = $.urlParam('videoid');
-	  		if (confirm('Are you sure you want to submit ' + videoid + ' @ ' + whereYouAt + '?')) {
-	  			
+			if (submitAlert()) {
 	  			res = submitAtTime(videoid, whereYouAt);
 				console.log(res);
 				alert('Server response: ' + res);
