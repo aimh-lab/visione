@@ -1189,8 +1189,8 @@ function setTaskType(taskType) {
 	else
 		sessionStorage.setItem('taskType', taskType);
 
-	localStorage.setItem('taskType', taskType);
-	$('input[name="option"][value="' + taskType + '"]').prop('checked', true);
+	localStorage.setItem('taskType', getTaskType());
+	$('input[name="option"][value="' + getTaskType() + '"]').prop('checked', true);
 	$('#taskTypeLabel').text(getTaskType().toUpperCase() );
 
 }
