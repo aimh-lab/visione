@@ -121,13 +121,14 @@ var resCursor = 0;
 var resMatrix = [];
 var colIdx = 1;
 var rowIdx = 0;
-var isAVS = false;
-var isQA = false;
+//var isAVS = false;
+//var isQA = false;
 
 var config = null;
 var loadingSpinner = null;
 var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
+var defaultTaskType = "kis";
 var framesCache = [];
 var collectionName;
 
@@ -147,6 +148,7 @@ function handler(myObj) {
 	//localStorage.setItem('isQA', isQA);
 }
 
+/*
 function setAVS(isAvsSel) {
 	isAVS = isAvsSel;
 	isQA = false;
@@ -161,7 +163,7 @@ function setQA(isQASel) {
 	localStorage.setItem('isQA', isQA);
 	//document.cookie = 'isQA=' + isQA + '; path=/';
 
-}
+}*/
 
 function loadConfig() {
 	promise1 = fetch("config.yaml").then(response => response.text()).then(data => { config = jsyaml.load(data); });
@@ -251,7 +253,6 @@ draggedLabel = '';
 
 function drag(ev) {
 	ev.dataTransfer.setData("text", ev.target.id);
-	console.log("drag " + ev.target.title);
 	draggedLabel = ev.target.title;
 }
 
@@ -309,7 +310,7 @@ function getMiddleTimestamp(id) {
 		}).responseText
 }
 
-
+/*
 function submitWithAlert(id, videoId) {
 	if (!isAVS) {
 		if (confirm('Are you sure you want to submit?')) {
@@ -336,7 +337,7 @@ function submitWithAlert2(selectedItem, isConfirm) {
 	avsSubmitted.set(selectedItem.videoId, selectedItem);
 	avsSubmittedTab(selectedItem);
 }
-
+*/
 
 //to remove
 function startNewSession() {
@@ -465,7 +466,6 @@ function cell2Text(idx) {
 		let query = '';
 		let colors = [];
 
-		console.log(idx);
 		canvases[idx].getObjects().forEach(
 			function (o) {
 				if (o.get('type') == 'rect') {
@@ -566,9 +566,6 @@ function cell2Text(idx) {
 			queryParameters['simReorder'] = simreorder.toString();
 		}
 	}
-
-	console.log("Query " + queryObj);
-	console.log("Query Parameters " + queryParameters);
 
 	if (Object.keys(queryObj).length === 0)
 		return null;
@@ -944,7 +941,6 @@ function showResults(data) {
 		displayAdvanced(true);
 		//temporary!!!!!!!!!!!
 		avsCleanManuallySelected();
-		console.log(isAdvanced)
 
 		/*if ($('meta[name=task]').attr('content') == "AVS") {
 			avsCleanManuallySelected();
@@ -987,7 +983,7 @@ function showResults(data) {
 
 		}
 		//if ($('meta[name=task]').attr('content') == "AVS") {
-		if (isAVS)
+		if (localStorage.getItem('taskType') === 'avs')
 			avsHideSubmittedVideos();
 		else
 			avsHilightlighSubmittedVideos();
@@ -1081,7 +1077,7 @@ function loadImages(startIndex, endIndex) {
 
 	resultsVisualization();
 
-	for (var i = startIndex; i < endIndex; i++) {
+	for (var i = startIndex; i < visibleImages; i++) {
 		let imgId = res[i].imgId;
 		let score = res[i].score;
 
@@ -1166,12 +1162,16 @@ function submitQA() {
 	let answ = prompt("Please enter your answering", "");
   	if (answ != null) {
 		submitResult(id=null, videoId=null, textAnswer=answ, isAsync=true)
-		qaSubmittedTab(answ);
+		try {
+			qaSubmittedTab(answ);
+		} catch (e) {
+			console.log(e);
+		}
 	}
 }
 
 function submitAlert() {
-	if (!isAVS) {
+	if (localStorage.getItem('taskType') != 'avs') {
 		if (!confirm('Are you sure you want to submit?')) {
 			return false;
 		}
@@ -1180,12 +1180,19 @@ function submitAlert() {
 }
 
 function getTaskType() {
-	if (isAVS)
-		return "avs"
-	else if (isQA)
-		return "qa"
+	return localStorage.getItem('taskType');
+}
+
+function setTaskType(taskType) {
+	if (taskType == null)
+		sessionStorage.setItem('taskType', defaultTaskType);
 	else
-		return "kis"
+		sessionStorage.setItem('taskType', taskType);
+
+	localStorage.setItem('taskType', taskType);
+	$('input[name="option"][value="' + taskType + '"]').prop('checked', true);
+	$('#taskTypeLabel').text(getTaskType().toUpperCase() );
+
 }
 
 function submitResult(id, videoId, textAnswer=null, isAsync=false) {
@@ -1207,11 +1214,11 @@ function submitAtTime(videoId, time) {
 function submitVersion2(selectedItem) {
 	$('#submitted_bar').css("display", "block");
 	let res = null;
-	if (isQA) {
+	if (localStorage.getItem('taskType') === 'qa') {
 		submitQA();
 	} else {
 		if (submitAlert()) {
-			if (isAVS)
+			if (localStorage.getItem('taskType') === 'avs')
 				submitResult(selectedItem.imgId, selectedItem.videoId, isAsync=true);
 			else {
 				res = submitResult(selectedItem.imgId, selectedItem.videoId);
@@ -1233,7 +1240,7 @@ function submitVersion2(selectedItem) {
 
 			//che fa? boh!
 			updateAVSInfo();
-			if (isAVS)
+			if (localStorage.getItem('taskType') === 'avs')
 				avsHideSubmittedVideos();
 			else
 				avsHilightlighSubmittedVideos();
@@ -1284,7 +1291,7 @@ const imgResult = (res, borderColor, img_loading="eager") => {
 			</div>
 			<div  id="toolbar_icons_${res.imgId}">
 				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-				<a title="Video summary" href="showVideoKeyframes.html?videoId=${res.videoId}&id=${res.imgId}#${res.frameName}" target="_blank"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
+				<a title="Video summary" href="javascript:void(0);" onclick="openChildWindow('${res.videoId}', '${res.imgId}', '${res.frameName}')"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
 				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
 				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
@@ -1298,10 +1305,20 @@ const imgResult = (res, borderColor, img_loading="eager") => {
 
 }
 
+function openChildWindow(videoId, imgId, frameName) {
+    var childWindow = window.open("showVideoKeyframes.html?videoId=" + videoId + "&id=" + imgId + "#" + frameName, "_blank");
+
+    // Assegna la funzione o la variabile alla finestra figlia
+    childWindow.submitFromChild = function(arg1) {
+        // Implementazione della funzione nella finestra figlia
+        console.log("submitResults chiamato nella finestra figlia con argomenti:");
+    };
+}
+
 function playVideoWindow(videoURL, videoId, imgId) {
 	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
 	var time = getStartTime(imgId);
-	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&frameid=" + imgId + "&url=" + videoURL + "&t=" + time + "&isQA=" + isQA, "playvideo", params);
+	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&frameid=" + imgId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
 }
 
 function generateUUID(color) {
@@ -1361,7 +1378,6 @@ dropImage = function (e) {
 			let origY = pointer.y;
 			let imgElement = document.getElementById(draggedLabel);
 			let color = imgElement.alt == 'color' ? true : false;
-			console.log(scale + "------------------ELEMENTO " + imgElement.src)
 
 			rect = new fabric.Image(imgElement, {
 				left: origX - 25,
@@ -1827,7 +1843,7 @@ function initSupportedLanguages() {
 			url: translateService + "/supported_languages",
 			success: function (data) {
 				console.log(data)
-				localStorage.setItem('supportedLanguages', isQA);
+				localStorage.setItem('supportedLanguages', data);
 				setSupportedLanguages(0);
 				setSupportedLanguages(1);
 			},
@@ -1976,6 +1992,8 @@ function checkKey(e) {
 	}
 
 	else if (e.keyCode == '38') {
+		selectPrevResult();
+		/*
 		colIdx = 0;
 		rowIdx = Math.max(0, rowIdx - 1);
 		//console.log(resCursor)
@@ -1988,7 +2006,7 @@ function checkKey(e) {
 		lastSelected = element;
 
 		// Chiamare l'evento onclick
-		element.click();
+		element.click();*/
 
 		//scrollToRow(rowIdx);
 
@@ -2136,24 +2154,60 @@ function checkKey(e) {
 }
 
 function selectNextResult() {
-	colIdx = 0;
-	rowIdx++;
-	//console.log(rowIdx)
-
-	//$("#" + res[resCursor++].imgId).click();
-	var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
-	if (lastSelected != null) {
-		lastSelected.click();
+	while (rowIdx < (resMatrix.length - 1)) {
+		try {
+				//if (rowIdx >= (resMatrix.length - 1))
+				//return;
+			colIdx = 0;
+			rowIdx++;
+			//console.log(rowIdx)
+		
+			//$("#" + res[resCursor++].imgId).click();
+			var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
+			if (lastSelected != null) {
+				lastSelected.click();
+			}
+			prevSelected = lastSelected;
+			lastSelected = element;
+		
+			// Chiamare l'evento onclick
+			element.click();
+			break;	
+		} catch (error) {
+			console.log(error);
+		}
 	}
-	prevSelected = lastSelected;
-	lastSelected = element;
 
-	// Chiamare l'evento onclick
-	element.click();
+}
+
+function selectPrevResult() {
+	while (rowIdx > 0) {
+		try {
+			colIdx = 0;
+			//rowIdx = Math.max(0, rowIdx - 1);
+			rowIdx--;
+			//console.log(resCursor)
+			//$("#" + res[resCursor--].imgId).click();
+			var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
+			if (lastSelected != null) {
+				lastSelected.click();
+			}
+			prevSelected = lastSelected;
+			lastSelected = element;
+	
+			// Chiamare l'evento onclick
+			element.click();
+			break;	
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
 }
 
 
 async function init() {
+	setTaskType(sessionStorage.getItem('taskType'));
 
 	document.onkeydown = checkKey;
 	if (localStorage.getItem("selectedLang") ==  null) {
@@ -2167,9 +2221,11 @@ async function init() {
 	});
 	includeHTML();
 	await loadConfig();
-	localStorage.setItem('isQA', false);
+	//localStorage.setItem('isQA', false);
 	collectionName = config?.main?.collection_name;
-	$("#visionelogo").append("<div align='right'><h2>" + collectionName + "<h2></div>");
+	//$("#visionelogo").append("<div align='right'><h2>" + collectionName + " - " + localStorage.getItem('taskType').toUpperCase() + "<h2></div>");
+	$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
+
 
 
 	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
@@ -2461,7 +2517,6 @@ async function init() {
 	var resultsElement = $("#results");
 
 	resultsElement.on("scroll mousewheel", function() {
-		console.log('wheel')
 		loadingNextResults();
 	});
 

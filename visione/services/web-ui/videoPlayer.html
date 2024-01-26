@@ -14,18 +14,8 @@
 <body>
 	<script type="text/javascript">
 
-		function checkQA2() {
-			var urlParams = new URLSearchParams(window.location.search);
-			var isQA = urlParams.get('isQA') === 'true' ? true : false;
-
-			if (isQA)
-				submitQA();
-			return isQA;
-		}
-
 		function checkQA() {
-			console.log(localStorage.getItem('isQA'));
-			let isQA = localStorage.getItem('isQA') === 'true' ? true : false;
+			let isQA = localStorage.getItem('taskType') === 'qa' ? true : false;
 
 			if (isQA)
 				submitQA();
@@ -71,7 +61,7 @@
 		      <a href="https://videojs.com/html5-video-support/" target="_blank"
 		        >supports HTML5 video</a>
 		    </p>
-		  </video>	
+		  </video>
 	</div>
 
 <script type="text/javascript">

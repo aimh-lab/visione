@@ -24,7 +24,7 @@
 		<script src="js/search_bar_templates.js"></script>
 	</head>
 
-	<body oncontextmenu="return true;">
+	<body oncontextmenu="return false;">
 		<div id="content" class="containerGrid">
 			<div class="headerGrid">
 				<div class="headerItem column-span-4">
@@ -38,13 +38,13 @@
 									<div class="top-line"></div>
 									<span class="task-text">Task</span>
 									<label class="radio-label">
-									  <input type="radio" name="option" value="KIS" checked onclick="setAVS(false)"> KIS
+									  <input type="radio" name="option" value="kis" onclick="setTaskType('kis')"> KIS
 									</label>
 									<label class="radio-label">
-									  <input type="radio" name="option" value="AVS" onclick="setAVS(true)"> AVS
+									  <input type="radio" name="option" value="avs" onclick="setTaskType('avs')"> AVS
 									</label>
 									<label class="radio-label">
-										<input type="radio" name="option" value="Q&A" onclick="setQA(true)"> Q&A
+										<input type="radio" name="option" value="qa" onclick="setTaskType('qa')"> Q&A
 									  </label>
 								  </div>
 							</div>
@@ -121,6 +121,8 @@
 
 		<script>
 			init();
+			
+
 			const channel = new BroadcastChannel('app-data');
 			channel.addEventListener ('message', (event) => {
 				window.focus();
