@@ -115,7 +115,7 @@
 				<!--<div class='col-2 with-margin'>-->
 				<div class="result-border" style="border-color: red; padding: 1px; margin: 2px;">
 
-					<img id="${keyframes[i]}" height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
+					<img loading="lazy" id="${keyframes[i]}" height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
 					<div class='myalign'>
 						<a style="font-size:12px;" href="indexedData.html?videoId=${videoId}&id=${keyframes[i]}" title="Show Indexed Data" target="_blank" >${keyframes[i]}</a>
 						<i class="fa fa-play" style="font-size: 16px; color: #007bff; padding-left: 5px; padding-right: 5px;" onclick="playVideoWindow('${videoUrl}', '${videoId}', '${keyframes[i]}'); return false;"></i>
