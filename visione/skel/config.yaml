@@ -327,6 +327,9 @@ index:
       index_type: Flat  
 
 ui:
+  # Maximum number of results per video to display in a row.
+  max-results-per-video: 10
+
   textual-modes:
     - {name: "ClipVideo", mode: "clip2video"}
     - {name: "ClipLAION", mode: "clip-laion"}
