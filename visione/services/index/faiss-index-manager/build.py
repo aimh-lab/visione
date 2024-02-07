@@ -56,7 +56,7 @@ def create(args):
         # get number of lines in idmap file
         with open(args.idmap_file, 'r') as idmap_file:
             num_lines = sum(1 for line in idmap_file)
-        
+
         CliProgress(initial=num_lines, total=num_lines).print()
         return
 

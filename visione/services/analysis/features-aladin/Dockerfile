@@ -34,7 +34,7 @@ RUN --mount=type=secret,id=asset_token,required \
     test -f vinvl_vg_x152c4.pth && \
     curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022837 && \
     test -f VG-SGG-dicts-vgoi6-clipped.json
-    
+
 ###########################################
 # ----- Download and install ALADIN ----- #
 ###########################################

@@ -72,7 +72,7 @@ fi
 TMP_H5=tmp_output.h5
 cd $ALADIN_PATH
 
-#conda run --no-capture-output -n oscar python 
+#conda run --no-capture-output -n oscar python
 PYTHONPATH=. conda run --no-capture-output -n oscar python alad/extraction/extract_visual_features.py \
 --img_feat_file ${SG_BENCHMARK_PATH}/output/X152C5_test/inference/vinvl_vg_x152c4/predictions.tsv \
 --eval_model_dir checkpoint-0132780 \

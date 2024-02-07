@@ -174,7 +174,7 @@ class ImportCommand(BaseCommand):
 
                 if do_resize:
                     thread.join()
-                
+
                 progress.console.log(f"- '{video_id}' imported.")
                 for subtask in subtasks:
                     progress.remove_task(subtask)
@@ -204,7 +204,7 @@ class ImportCommand(BaseCommand):
         progress_cols = [SpinnerColumn(), *Progress.get_default_columns(), MofNCompleteColumn(), TimeElapsedColumn()]
         with Progress(*progress_cols, transient=not self.develop_mode) as progress, \
              concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as executor:
-            
+
             def map_with_progress(func, iterable, description=None, total=None):
                 total = total if total else len(iterable) if hasattr(iterable, '__len__') else None
                 task = progress.add_task(description, total=total)

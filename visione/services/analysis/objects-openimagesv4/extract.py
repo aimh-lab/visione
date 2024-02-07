@@ -54,12 +54,12 @@ def load_image_tf(image_path):
 def output_to_record(y, is_numpy=False):
     if not is_numpy:
         y = {k: v.numpy() for k, v in y.items()}
-    
+
     y = {k: v.tolist() for k, v in y.items()}
-    
+
     for i in ('detection_class_names', 'detection_class_entities'):
         y[i] = [l.decode('utf8') for l in y[i]]
-    
+
     record = {
         'object_class_labels': y['detection_class_labels'],
         'object_class_names': y['detection_class_entities'],  # fixes a swap in tensorflow model output

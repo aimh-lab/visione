@@ -13,11 +13,11 @@
 	  document.getElementById('queryImage').src=imageURL;
 	  document.getElementById('objId').value=objectID;
 	  document.getElementById('objId').name="id";
-	  
+
 	  //document.getElementById('imageQueryCheckbox').checked='checked';
 	  document.getElementById('objId').name="id";
 	  document.getElementById('queryImage').style.display = '';
-	  
+
 	  if (document.getElementById('imageToUpload') != null) {
 		  document.getElementById('imageToUpload').value="";
 	  }
@@ -48,25 +48,25 @@ function changeQueryBySampleMod(mode) {
 			document.getElementById("imageToUpload").style.display = 'none';
 			document.getElementById("urlToUpload").style.display = '';
 			document.getElementById("imageToUpload").value = '';
-			
+
 //			document.getElementById("imageToUpload").type="text";
 //			document.getElementById("imageToUpload").name="url";
 //			document.getElementById("imageToUpload").size="49";
 			document.getElementById("searchbar").action="./searchByURL"
 			document.getElementById("searchbar").enctype="";
 			document.getElementById("searchbar").method="GET";
-			
+
 
 		} else {
 			document.getElementById("uploadText").style.display = '';
 			document.getElementById("uploadLink").style.display = 'none';
 			document.getElementById("urlText").style.display = 'none';
 			document.getElementById("urlLink").style.display = '';
-			
+
 			document.getElementById("urlToUpload").style.display = 'none';
 			document.getElementById("imageToUpload").style.display = '';
 			document.getElementById("urlToUpload").value = '';
-			
+
 //			document.getElementById("imageToUpload").type="file";
 //			document.getElementById("imageToUpload").name="imgFile";
 //			document.getElementById("imageToUpload").size="38";
@@ -81,24 +81,24 @@ function queryImg() {
 	let queryUrl =  $('#urlToUpload').val();
 
 	if (queryUrl != null && queryUrl.trim() != '') {
-		document.getElementById('qbeblock').style.display = 'block'; 
+		document.getElementById('qbeblock').style.display = 'block';
 
 		$('#qbeImg').attr('src', queryUrl);
 		console.log(document.getElementById('qbeImg').src);
 		console.log($('#qbeImg').attr('src'));
-	
-		//document.getElementById('qbe').src=document.getElementById('urlToUpload').value; 
+
+		//document.getElementById('qbe').src=document.getElementById('urlToUpload').value;
 		queryByExample(document.getElementById('urlToUpload').value);
 	} else {
 		var fileInput = $('#imageToUpload')[0];
 		var file = fileInput.files[0];
 		var reader = new FileReader();
-		
+
 		reader.onload = function(e) {
 		  var base64Data = e.target.result;
 		  // Utilizza la base64Data come desideri
 		  console.log(base64Data);
-		  document.getElementById('qbeblock').style.display = 'block'; 
+		  document.getElementById('qbeblock').style.display = 'block';
 
 		  $('#qbeImg').attr('src', base64Data);
 		  queryByExample(base64Data);
@@ -112,15 +112,15 @@ function queryImg() {
 }
 
 function resetQueryImg() {
-	document.getElementById('qbe').src=''; 
-	document.getElementById('urlToUpload').value=''; 
-	document.getElementById('qbeblock').style.display = 'none'; 
+	document.getElementById('qbe').src='';
+	document.getElementById('urlToUpload').value='';
+	document.getElementById('qbeblock').style.display = 'none';
 	showResults(null);
 }
 
 function clearQuery() {
-	if (document.getElementById('urlToUpload').value.trim() == '') 
-		document.getElementById('qbe').style.display = 'none'; 
+	if (document.getElementById('urlToUpload').value.trim() == '')
+		document.getElementById('qbe').style.display = 'none';
 		document.getElementById('queryImage').value='';
 }
 

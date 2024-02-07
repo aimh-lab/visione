@@ -1,6 +1,6 @@
 import argparse
 from visione.savers import HDF5File
-import h5py 
+import h5py
 
 def main(args):
     with h5py.File(args.input, 'r') as h5fr:

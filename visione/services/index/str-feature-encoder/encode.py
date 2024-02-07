@@ -133,13 +133,13 @@ def main(args):
     if args.video_ids_list_path:
         with args.video_ids_list_path.open() as f:
             video_ids = list(map(str.strip, f))
-    
+
     if args.video_ids:
         video_ids = args.video_ids
-    
+
     # peek features names and training set
     features_dim, features_name, features = get_features(args.features_input_template, video_ids)
-    
+
     # get encoder config
     encoder_config = load_config(args.config_file)['index']['features'][features_name]
     encoder = load_or_build_encoder(args.features_encoder_file, encoder_config, features_dim, features, args.train_size, args.force_encoder)

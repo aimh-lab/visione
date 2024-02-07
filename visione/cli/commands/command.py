@@ -159,7 +159,7 @@ class BaseCommand(ABC):
 
         except Exception:
             return False
-    
+
     def create_services_containers(self):
         command = self.compose_cmd.copy()
         # selects mandatory services needed to respond to queries
@@ -201,7 +201,7 @@ class BaseCommand(ABC):
 
         return subprocess.run(command, env=self.compose_env, check=True)
 
-    
+
     def progress_callback(self, progress, task_id):
         def _func(line, **kwargs):
             if line.startswith('progress:'):

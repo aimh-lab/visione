@@ -10,32 +10,32 @@ import org.openapitools.client.model.SuccessStatus;
 import dev.dres.ApiException;
 
 public class DRESClient {
-	
+
 	private String sessionId = "nudd";
-	
+
 	public DRESClient() {
 	}
-	
+
 	public String getSessionId() {
 		return sessionId;
 	}
-	
+
 	public String dresSubmitResultByTime(String video, long starttime, long endtime) throws ApiException {
         return "";
 	}
 
-	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { 
+	public String dresSubmitTextAnswer(String userAnswer) throws ApiException {
      return "";
 	}
-	
+
 	// public void dresSubmitQuery(QueryEventLog eventLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	// }
-	
+
 	public void dresSubmitLog(QueryResultLog resultLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
 	}
-	
+
 	public SuccessStatus dresLogout() throws ApiException {
         return null;
 	}
-	
+
 }

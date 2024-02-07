@@ -195,7 +195,6 @@ public class ObjectQueryPreprocessing {
 					}
 				}
 			}
-
 		}
 
 		res.append(" ").append(notObj);

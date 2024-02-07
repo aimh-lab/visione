@@ -75,7 +75,7 @@ def load_shot(
         print("Error in processing video {}, shot {}".format(video_path, shot_id), file=sys.stderr)
         print(f"{video_id} {shot_id} {video_path} {start_frame} {start_time} {end_frame} {end_time}", file=sys.stderr)
         raise
-        
+
     video = video.permute(0, 3, 1, 2)  # T x 3 x H x W
     video = video[::sample_framerate, ...]
     video = video / 255.0  # convert to [0, 1]
@@ -91,7 +91,7 @@ def load_shot(
     else:
         pad = torch.zeros(max_frames - video_len, 3, size, size)
         video = torch.cat((video, pad), dim=0)
-    
+
     # video is (T, 3, H, W)
     video = video.unsqueeze(1)  # T x 1 x 3 x H x W
     video = video.unsqueeze(0)  # 1 x T x 1 x 3 x H x W
@@ -104,10 +104,10 @@ class C2VDataset(torch.utils.data.Dataset):
     def __init__(self, shot_infos, **kwargs):
         self.shot_infos = shot_infos
         self.kwargs = kwargs
-    
+
     def __len__(self):
         return len(self.shot_infos)
-    
+
     def __getitem__(self, item_id):
         return load_shot(self.shot_infos[item_id], **self.kwargs)
 
@@ -117,11 +117,11 @@ class C2VIterableDataset(torch.utils.data.IterableDataset):
         self.iterable = iterable
         self.batch_size = batch_size
         self.kwargs = kwargs
-    
+
     def process(self, batch):
         batch = [load_shot(item, **self.kwargs) for item in batch]
         return batch
-  
+
     def __iter__(self):
         # chunk by batch size
         itr = more_itertools.chunked(self.iterable, self.batch_size)
@@ -130,7 +130,7 @@ class C2VIterableDataset(torch.utils.data.IterableDataset):
         if worker_info:
             worker_id = worker_info.id
             num_workers = worker_info.num_workers
-        
+
             # skip batches for other workers
             itr = itertools.islice(itr, worker_id, None, num_workers)
 
@@ -188,7 +188,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
 
             self.model = self.model.to(self.device)
             self.model.eval()
-    
+
     def forward_batch(self, batch):
         video, video_mask, shot_ids = batch
         video, video_mask = video.to(self.device), video_mask.to(self.device)
@@ -207,7 +207,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         with torch.no_grad():
             records = [self.forward_batch(batch) for batch in dataloader]
             records = list(itertools.chain.from_iterable(records))
-            
+
         return records
 
     def extract_iterable(self, shot_paths_and_times):

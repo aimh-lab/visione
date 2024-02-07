@@ -91,13 +91,13 @@ class C2VDataset(torch.utils.data.Dataset):
     def __init__(self, shot_infos, **kwargs):
         self.shot_infos = shot_infos
         self.kwargs = kwargs
-    
+
     def __len__(self):
         return len(self.shot_infos)
-    
+
     def __getitem__(self, item_id):
         return load_shot(self.shot_infos[item_id], **self.kwargs)
-    
+
 
 class VideoCollate():
     def __init__(self, processor):
@@ -114,11 +114,11 @@ class C2VIterableDataset(torch.utils.data.IterableDataset):
         self.iterable = iterable
         self.batch_size = batch_size
         self.kwargs = kwargs
-    
+
     def process(self, batch):
         batch = [load_shot(item, **self.kwargs) for item in batch]
         return batch
-  
+
     def __iter__(self):
         # chunk by batch size
         itr = more_itertools.chunked(self.iterable, self.batch_size)
@@ -127,7 +127,7 @@ class C2VIterableDataset(torch.utils.data.IterableDataset):
         if worker_info:
             worker_id = worker_info.id
             num_workers = worker_info.num_workers
-        
+
             # skip batches for other workers
             itr = itertools.islice(itr, worker_id, None, num_workers)
 
@@ -177,7 +177,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
             self.model.eval()
 
             self.processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch16")
-    
+
     def forward_batch(self, video):
         video = video.to(self.device)
         inputs = {"if_norm": True, "pixel_values": video}
@@ -196,7 +196,7 @@ class CLIP2VideoExtractor(BaseVideoExtractor):
         with torch.no_grad():
             records = [self.forward_batch(batch) for batch in dataloader]
             records = list(itertools.chain.from_iterable(records))
-            
+
         return records
 
     def extract_iterable(self, shot_paths_and_times):

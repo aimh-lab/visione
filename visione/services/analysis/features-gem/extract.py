@@ -22,7 +22,7 @@ class GeMExtractor(BaseExtractor):
     def setup(self):
         if self.net is not None:
             return
-        
+
         # lazy load libraries and models
         os.environ['DB_ROOT'] = ''
         import dirtorch.nets as nets

@@ -116,7 +116,7 @@ class IndexCommand(BaseCommand):
                 for subtask in subtasks:
                     progress.remove_task(subtask)
                 progress.advance(task)
-            
+
             # generate object count
             if objects_count:
                 subtask = progress.add_task('- Object count', total=None)
@@ -182,7 +182,7 @@ class IndexCommand(BaseCommand):
                 n_tasks += 2 if update_lucene else 0
                 n_tasks += len(faiss_features)
                 task = progress.add_task('Bulk indexing', total=n_tasks)
-                
+
                 # generate surrogate text representation of objects & colors
                 if str_objects:
                     subtask = progress.add_task('- STR Encoding: objects', total=None)
@@ -210,7 +210,7 @@ class IndexCommand(BaseCommand):
                     subtask = progress.add_task(f"- Adding features '{features_name}' to FAISS index", total=None)
                     self.add_to_faiss_index(features_name, force=replace, stdout_callback=self.progress_callback(progress, subtask))
                     progress.advance(task)
-                
+
                 # generate object count
                 if objects_count:
                     subtask = progress.add_task('- Object count', total=None)
@@ -578,7 +578,7 @@ class IndexCommand(BaseCommand):
                 count += collections.Counter(json.load(f))
                 if progress:
                     progress()
-        
+
         # save to CSV in alphabetical order
         with count_objects_file.open('w') as f:
             writer = csv.writer(f)

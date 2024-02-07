@@ -20,10 +20,10 @@ class ImageListDataset(torch.utils.data.Dataset):
     def __init__(self, paths, processor):
         self.paths = paths
         self.processor = processor
-    
+
     def __len__(self):
         return len(self.paths)
-    
+
     def __getitem__(self, idx):
         path = self.paths[idx]
         image = Image.open(path)
@@ -39,19 +39,19 @@ class WrapIterableDataset(torch.utils.data.IterableDataset):
 
         if preload:
             self.iterable = list(self.iterable)
-    
+
     def process(self, item):
         images = [Image.open(i) for i in item]
         images_pt = self.processor(images=images, return_tensors="pt")
         return images_pt
-  
+
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
 
         itr = self.iterable
         if worker_info is not None:
             itr = itertools.islice(self.iterable, worker_info.id, None, worker_info.num_workers)
-        
+
         itr = more_itertools.chunked(itr, self.batch_size)
         itr = map(self.process, itr)
         yield from itr
@@ -96,7 +96,7 @@ class OpenCLIPExtractor(BaseExtractor):
         image_paths = list(image_paths)
         dataset = ImageListDataset(image_paths, self.processor)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=self.args.batch_size, num_workers=self.args.num_workers)
-        
+
         with torch.no_grad():
             for images_pt in dataloader:
                 images_pt = images_pt.to(self.device)

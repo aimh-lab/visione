@@ -11221,7 +11221,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, /** @lends fab
         }
         return;
       }*/
-      
+
 
 
       if (checkClick(e, MIDDLE_CLICK)) {
@@ -11455,7 +11455,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, /** @lends fab
         }
         return;
       }*/
-      
+
       if (checkClick(e, RIGHT_CLICK)) {
     	  this.selection=true;
       }

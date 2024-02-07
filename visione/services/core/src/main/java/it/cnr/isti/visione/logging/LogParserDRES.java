@@ -97,7 +97,7 @@ public class LogParserDRES {
 
 	/**
 	 * Create a DRES QueryResultLog event given the VISIONE query and results
-	 * 
+	 *
 	 * @param queries   Lucene queries used to get the current resultset
 	 * @param resultSet ranked SearchResults
 	 * @return clientTimestamp timestamp of the log
@@ -106,14 +106,14 @@ public class LogParserDRES {
 	public synchronized long query2Log(List<VisioneQuery> queries, SearchResults[] resultSet, long clientTimestamp)
 			throws IOException {
 		int rank = 1;
-		this.resultLog = new QueryResultLog(); 
+		this.resultLog = new QueryResultLog();
 		resultLog.setTimestamp(clientTimestamp);
 		resultLog.setResultSetAvailability("Top10000");
 		resultLog.setSortType("rankingModel");
 		// creating result list
 		if (resultSet != null) {
 			for (int i = 0; i < resultSet.length; i++) {
-				
+
 				SearchResults res = resultSet[i];
 				Long middletime= res.getMiddleTime();
 				ApiClientAnswer answer= new ApiClientAnswer().mediaItemName(res.getVideoId()).start(middletime).end(middletime);

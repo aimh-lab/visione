@@ -3,19 +3,19 @@
     display: flex;
     align-items: center;
   }
-  
+
   .tg-list-item {
     margin: 0 2em;
   }
-  
+
   h2 {
     color: #777;
   }
-  
+
   h4 {
     color: #999;
   }
-  
+
   .tgl {
     display: none;
   }
@@ -56,7 +56,7 @@
   .tgl:checked + .tgl-btn:after {
     left: 50%;
   }
-  
+
   .tgl-light + .tgl-btn {
     background: #f0f0f0;
     border-radius: 2em;
@@ -71,7 +71,7 @@
   .tgl-light:checked + .tgl-btn {
     background: #9FD6AE;
   }
-  
+
   .tgl-ios + .tgl-btn {
     background: #fbfbfb;
     border-radius: 2em;
@@ -103,7 +103,7 @@
   .tgl-ios:checked + .tgl-btn:active:after {
     margin-left: -0.8em;
   }
-  
+
   .tgl-skewed + .tgl-btn {
     overflow: hidden;
     transform: skew(-10deg);
@@ -151,7 +151,7 @@
   .tgl-skewed:checked + .tgl-btn:active:after {
     left: 10%;
   }
-  
+
   .tgl-flat + .tgl-btn {
     padding: 2px;
     transition: all 0.2s ease;
@@ -172,7 +172,7 @@
     left: 50%;
     background: #7FC6A6;
   }
-  
+
   .tgl-flip + .tgl-btn {
     padding: 2px;
     transition: all 0.2s ease;

@@ -21,7 +21,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 				<label for="canvas${canvasID}_disabled" style="color: gray; font-weight: bold;">Disabled &nbsp;</label>
 			</span>
 			<span>
-				Objects in 
+				Objects in
 				<input type="radio" id="and${canvasID}" name="occur${canvasID}" value="and" checked onchange="setOccur(this, ${canvasID})">
 				<label for="and${canvasID}">AND</label>
 				<input type="radio" id="or${canvasID}" name="occur${canvasID}" value="or" onchange="setOccur(this, ${canvasID})">
@@ -48,7 +48,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 
 
 					<div id="div_textual${canvasID}">
-						<!--<i id="sceneDes${canvasID}" aria-hidden="true"></i>-->	
+						<!--<i id="sceneDes${canvasID}" aria-hidden="true"></i>-->
 						<div  class="Icon-inside">
 							<textarea id="textual${canvasID}" type="text" class="textualquery${canvasID} font-normal" cols="40" placeholder="${txtSearchTitle}" on></textarea>
 							<!--<i id="recordButton${canvasID}" class="fa fa-microphone fa-lg fa-fw" aria-hidden="true"></i>-->
@@ -72,7 +72,7 @@ const searchForm = (canvasID = 0, infoText = '', txtSearchTitle = '', css_class 
 					</div>
 					<div class="canvasCleanItem" style="display: none;">
 						<div>
-							<span title="Black & White Keyframe"> 
+							<span title="Black & White Keyframe">
 								<input id='isGray${canvasID}' type="checkbox" onchange="setGray(${canvasID})">
 							</span>
 							<span title="Black & White Keyframe">B/W</span>

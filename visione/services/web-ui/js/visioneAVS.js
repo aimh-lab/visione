@@ -12,7 +12,7 @@ function getAvsObj(videoId, imgId, avsTagId, thumb, keyframe, rowIdx, colIdx) {
 	avsObj.keyframe = keyframe;
 	avsObj.rowIdx = rowIdx;
 	avsObj.colIdx = colIdx;
-	return avsObj 
+	return avsObj
 }*/
 
 /*
@@ -24,7 +24,7 @@ function submitAVS(selectedItem) {
 	else
 		submitResult(selectedItem.imgId, selectedItem.videoId);
 	avsRemoveSelected(selectedItem)
-	
+
 	updateAVSTab(selectedItem)
 	avsSubmitted.set(selectedItem.videoId, selectedItem);
 	avsSubmittedTab(selectedItem);
@@ -38,7 +38,7 @@ function submitAVS(selectedItem) {
 
 const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager") => {
 	selectedString = JSON.stringify(selectedItem);
-  
+
 	return `
 		<span id="avsList_${selectedItem.imgId}">
 			<div style="float: left; padding: 2px;">
@@ -58,12 +58,12 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 	`
 }
 
-function selectImg(selectedItem) {		
+function selectImg(selectedItem) {
 	let videoUrl = videoUrlPrefix + selectedItem.videoId + "-medium.mp4";
 	let videoUrlPreview = videoshrinkUrl + selectedItem.videoId + "-tiny.mp4";
 	//let id = selectedItem.imgId.replaceAll(".jpg", "");
 	/*let img = '<span id="avsList_' + selectedItem.imgId + '">'
-	
+
 	img += '<div style="float: left; padding: 2px;">'
 			+'<img id="remove_' + selectedItem.imgId + '"  style="padding-left: 5px;" title="remove ' + selectedItem.imgId + '" width="30" src="img/Actions-dialog-close-icon.png" onclick=\'avsToggle(' + JSON.stringify(selectedItem)  + ', null, true)\'>'
 
@@ -84,7 +84,7 @@ function selectImg(selectedItem) {
 	let avsTagId = document.getElementById(selectedItem.avsTagId);
 	if (avsTagId != null)
 		avsTagId.checked = true;
-	
+
 	let selImgId = document.getElementById(selectedItem.imgId)
 	if (selImgId != null) {
 		selImgId.style.borderWidth = "6px";
@@ -92,9 +92,9 @@ function selectImg(selectedItem) {
 	}
 
 	let imgId4Regex = selectedItem.imgId.replaceAll(".", "\\.")
-			
+
 	var cip = $("#avsdiv_" + imgId4Regex).hover( hoverVideoAVS, hideVideoAVS );
-	
+
 	function hoverVideoAVS(e) {
 		let avsdivNoRegex = this.id
 		let avsdiv = avsdivNoRegex.replaceAll(".", "\\.")
@@ -123,14 +123,14 @@ function selectImg(selectedItem) {
 				return;
 			}
 			let backgroundImg = "background-image: url('" + thumbnailUrl + '/'+ imgIdNoRegex + "')";
-		
+
 			let imgtable = '<video id="' + playerId + '" class="myimg video" autoplay loop muted preload="none"><source src="' + videourl + '#t=' + startTime + ',' + endTime + '" type="video/mp4"></video>'
 			$('#' + avsdiv).append(imgtable);
 			$('#' + imgId).css("display", "none");
 
 			return false;
-		});	
-	}	
+		});
+	}
 
 	function hideVideoAVS(e) {
 		let avsdivNoRegex = this.id
@@ -154,12 +154,12 @@ function unselectImg(selectedItem) {
 	if (avsListElement) {
 	  avsListElement.remove();
 	}
-	
+
 	var avsTagElement = document.getElementById(selectedItem.avsTagId);
 	if (avsTagElement) {
 	  avsTagElement.checked = false;
 	}
-	
+
 	var imgElement = document.getElementById(selectedItem.imgId);
 	if (imgElement) {
 	  imgElement.style.borderWidth = "3px";
@@ -241,20 +241,20 @@ function avsSubmittedTab(selectedItem) {
 	//let id = selectedItem.imgId;.replaceAll(".jpg", "");
 
 	img = '<div id="avsSubmittedList_' + selectedItem.imgId + '">';
-	
+
 	img += '<a title="View annotations of ' + selectedItem.imgId  + '" href="showVideoKeyframes.html?videoId=' + selectedItem.videoId + '&id='+ selectedItem.imgId + '#'+ selectedItem.imgId + '" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 3px;"></i></a>'
 			+'<a href="#"><i title="Play Video" class="fa fa-play" style="font-size:10px; color:#007bff;padding-left: 3px;" onclick="playVideoWindow(\''+ videoUrl+ '\', \''+ selectedItem.videoId+ '\', \''+selectedItem.imgId+'\'); return false;"></i><a>'
 			+'<a href="#"><img style="padding-left: 5px;" src="img/comboSim.svg" width=20 title="Visual similarity" alt="' + selectedItem.imgId + '" id="avs_comboSim'+ selectedItem.imgId + '" onclick="var queryObj=new Object(); queryObj.comboVisualSim=\'' + selectedItem.imgId + '\'; searchByLink(queryObj); return false;"><a>'
 			+'<br>'
-	
-	
+
+
 	img += '<img title="' + selectedItem.imgId + '"style="padding-bottom: 10px;" width="110" height="80" src="' + selectedItem.thumb + '"></div>';
 	$("#avsSubmittedTab").append(img);
 }
 
 function qaSubmittedTab(answerTxt) {
 	text = '<div>';
-	
+
 	text += '<p>' + answerTxt + '</p>'
 		+'</div><br>'
 	$("#avsSubmittedTab").append(text);

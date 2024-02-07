@@ -762,7 +762,7 @@ function setOccur(radioButton, canvasId) {
 function setTextualMode(checkboxId, mode) {
 	if (textualMode[checkboxId].includes(mode))
 		textualMode[checkboxId] = textualMode[checkboxId].replace(mode, "")
-	else 
+	else
 		textualMode[checkboxId] += mode;
 	searchByForm();
 }*/
@@ -992,7 +992,7 @@ function showResults(data) {
 		//}
 		updateAVSInfo();
 		//repetita iuvant!!
-	}   finally {		
+	}   finally {
 		loadingSpinner.style.display = 'none';
 	  }
 
@@ -1225,15 +1225,15 @@ function submitVersion2(selectedItem) {
 				alert('Server response: ' + res);
 			}
 
-			
+
 			//remove selected image preview
 			unselectImg(selectedItem);
 			//avsRemoveSelected(selectedItem)
-	
+
 			//updateAVSTab(selectedItem)
-			
+
 			avsSubmitted.set(selectedItem.videoId, selectedItem);
-			
+
 			//add submitted image to the sidebar on the right
 			avsSubmittedTab(selectedItem);
 			$( "#submitted_num" ).text(avsSubmitted.size)
@@ -1297,7 +1297,7 @@ const imgResult = (res, borderColor, img_loading="eager") => {
 				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-			
+
 				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${jsonString});'> </i></span></a>
 			<div>
 		</div>
@@ -1522,7 +1522,7 @@ function canvasClean(idx) {
 	/*
 		prevTextual[idx] = $("#textual" + idx).val();
 		$("#textual" + idx).val('');
-	
+
 		if ($('#textualMode' + idx).is(':checked')) {
 			prevTextualMode[idx] = "aladin";
 		}
@@ -1698,7 +1698,7 @@ function displayAdvanced() {
 
 	//$('#newsession').css('display', 'block');
 
-	//} 
+	//}
 	/*else {
 		//$('#sceneDes1').css('display', 'none');
 		$('#simplified1').css('display', 'none');
@@ -1875,11 +1875,11 @@ function setSupportedLanguages(id) {
 
 
 	$.each(supportedLanguages, function(key, value) {
-		var isSelected = (value === localStorage.getItem("selectedLang")); 
+		var isSelected = (value === localStorage.getItem("selectedLang"));
 		$('#supportedLang' + id).append($('<option>', {
 			text: key,
 			value: value,
-		  	selected: isSelected 
+		  	selected: isSelected
 		}));
 	  });
 
@@ -1939,7 +1939,7 @@ function checkKey(e) {
 
 		console.log(testElement);
 		var rightClickEvent = $.Event("contextmenu");
-		
+
 		testElement.trigger(rightClickEvent);*/
 
 		if (prevSelected != null) {
@@ -1971,7 +1971,7 @@ function checkKey(e) {
 		testDiv.dispatchEvent(rightClickEvent);
 
 		/*
-		
+
 				testDiv.addEventListener("contextmenu", function(event) {
 					event.preventDefault(); // Opzionale: previene il menu contestuale predefinito
 					// Inserisci qui il tuo codice per l'evento click del tasto destro del mouse
@@ -2013,16 +2013,16 @@ function checkKey(e) {
 
 		/*
 				var container = document.querySelector('.resGrid2');
-		
+
 				var containerTop = container.getBoundingClientRect().top;
 				var containerBottom = containerTop + container.offsetHeight;
-		
+
 				var percentVisible = 0;
 				numCycle = 0;
 				while (percentVisible < 100 && numCycle++ < 10) {
 					var elementTop = element.getBoundingClientRect().top;
 					var elementBottom = elementTop + element.offsetHeight;
-		
+
 					if (elementTop >= containerTop && elementTop <= containerBottom) {
 						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
 						var elementHeight = element.offsetHeight;
@@ -2055,19 +2055,19 @@ function checkKey(e) {
 		//scrollToRow(rowIdx);
 
 		/*
-		
+
 				var container = document.querySelector('.resGrid2');
-		
+
 				var containerTop = container.getBoundingClientRect().top;
 				var containerBottom = containerTop + container.offsetHeight;
-		
+
 				var percentVisible = 0;
 				numCycle = 0;
 				while (percentVisible < 100 && numCycle++ < 10) {
-		
+
 					var elementTop = element.getBoundingClientRect().top;
 					var elementBottom = elementTop + element.offsetHeight;
-		
+
 					if (elementTop >= containerTop && elementTop <= containerBottom) {
 						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
 						var elementHeight = element.offsetHeight;
@@ -2081,14 +2081,14 @@ function checkKey(e) {
 					console.log("percentVisible: " + percentVisible);
 				}
 				/*
-				
+
 						var gridItems = container.querySelectorAll('.item');
 						var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
-				
+
 						var containerTop = container.getBoundingClientRect().top;
 						var containerHeight = container.offsetHeight;
 						var selectedRowTop = selectedRow.getBoundingClientRect().top;
-				
+
 						if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
 						console.log("La riga 25 è visibile");
 						} else {
@@ -2097,7 +2097,7 @@ function checkKey(e) {
 							var gridContent = $("#content").find(".contentGrid");
 							//gridContent.animate({ scrollTop: gridOffsetY }, 0);
 							gridContent.animate({ scrollTop: 200 }, 0);
-				
+
 							resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
 							rowHeight = resRow.offsetHeight - scrollOffset
 						}*/
@@ -2161,7 +2161,7 @@ function selectNextResult() {
 			colIdx = 0;
 			rowIdx++;
 			//console.log(rowIdx)
-		
+
 			//$("#" + res[resCursor++].imgId).click();
 			var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
 			if (lastSelected != null) {
@@ -2169,10 +2169,10 @@ function selectNextResult() {
 			}
 			prevSelected = lastSelected;
 			lastSelected = element;
-		
+
 			// Chiamare l'evento onclick
 			element.click();
-			break;	
+			break;
 		} catch (error) {
 			console.log(error);
 		}
@@ -2194,10 +2194,10 @@ function selectPrevResult() {
 			}
 			prevSelected = lastSelected;
 			lastSelected = element;
-	
+
 			// Chiamare l'evento onclick
 			element.click();
-			break;	
+			break;
 		} catch (error) {
 			console.log(error);
 		}
@@ -2455,7 +2455,7 @@ async function init() {
 															.getElementById("stopButton0").style.display = 'none';
 													stopRecording(0);
 												});
-	
+
 								$("#stopButton1")
 										.on(
 												'click',
@@ -2494,7 +2494,7 @@ async function init() {
 
 	const microphoneIcon = document.querySelector('.microphone-icon');
 	const inputText = document.querySelector('input[type="text"]');
-  
+
 	microphoneIcon.addEventListener('click', () => {
 	  // Avvia la registrazione audio
 	  console.log('Registrazione audio avviata');

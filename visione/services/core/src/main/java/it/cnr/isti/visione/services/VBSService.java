@@ -229,7 +229,7 @@ public class VBSService {
 				} else if (queryObj.getQuery().containsKey("aladinSim")) {
 					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
 					SearchResults[] searchResults = searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, topDocsToReorder);
-					
+
 					log(searchResults, query, logQueries); // logging query and search results
 
 					if (sortByVideo)
@@ -355,7 +355,7 @@ public class VBSService {
 
 	/**
 	 * Write Dres QueryResultLog, save it to a file
-	 * 
+	 *
 	 * @param searchResults
 	 * @param query
 	 * @param queries
@@ -369,7 +369,7 @@ public class VBSService {
 						try {
 							long elapsed = -System.currentTimeMillis();
 							Long clientTimestamp = dresLog.query2Log(queries, searchResults);
-							if (SEND_LOG_TO_DRES){ 
+							if (SEND_LOG_TO_DRES){
 								System.out.print("Sending log to DRES...");
 								client.dresSubmitLog(dresLog.getResultLog());
 							}

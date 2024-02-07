@@ -34,7 +34,7 @@ class DinoV2Extractor():
             image_features = self.model(inputs)
             if normalized:
                 image_features = F.normalize(image_features, dim=-1)
-            
+
         image_features = image_features.cpu().numpy().squeeze()
         return image_features
 

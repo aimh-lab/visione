@@ -16,7 +16,7 @@
 
 <body>
 	<div align="center" style="font-size: x-large; padding: 15px;">
-		<span style="color: navy;">Video</span> 
+		<span style="color: navy;">Video</span>
 		<span><a id="videoURL" style="color: red;" title='Play video' href=""></a></span>
 		<span style="color: navy;">- Keyframe</span>
 		<span><a id="imgId" style="color: red;" title="go to keyframe" href=""></a></span>
@@ -75,15 +75,15 @@
 		function loadPage() {
 
 			id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
-			
+
 			videoId = $.urlParam('videoId');
-			
+
 			console.log('====ID' + imgId);
 			toLog = '{"query":[{"videosummary":"' + videoId + '"}], "parameters":[{}]}'
 			log(toLog)
 			res = getAllVideoKeyframes(videoId);
 			var keyframes = JSON.parse(res);
-			
+
 			videoUrl = videoUrlPrefix + videoId + "-medium.mp4"
 			$("#videoURL").attr("href", videoUrl)
 			$("#videoURL").text(videoId)
@@ -131,7 +131,7 @@
 		}
 
 		loadConfig().then(loadPage).then(function () {window.location.href = '#' + imgId;}).catch(function (error) {console.error('Error:', error);});
-		
+
 
 	</script>
 </body>

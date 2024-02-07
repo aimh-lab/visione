@@ -17,7 +17,7 @@ RUN pip uninstall -y opencv-python && \
     pip install --no-cache-dir opencv-python-headless
 
 # setuptool needs a downgrade for mim commands to work
-RUN pip install --upgrade setuptools==59.8.0 
+RUN pip install --upgrade setuptools==59.8.0
 
 WORKDIR /usr/src/mmdetection/checkpoints
 

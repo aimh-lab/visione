@@ -19,16 +19,16 @@ class ImageListDataset(torch.utils.data.Dataset):
     def __init__(self, paths, processor):
         self.paths = paths
         self.processor = processor
-    
+
     def __len__(self):
         return len(self.paths)
-    
+
     def __getitem__(self, idx):
         path = self.paths[idx]
         image = Image.open(path)
         image_pt = self.processor(images=[image], return_tensors="pt")
         return image_pt
-    
+
     @staticmethod
     def collate_fn(batch):
         return {k: torch.concat([item[k] for item in batch]) for k in batch[0].keys()}
@@ -42,19 +42,19 @@ class WrapIterableDataset(torch.utils.data.IterableDataset):
 
         if preload:
             self.iterable = list(self.iterable)
-    
+
     def process(self, item):
         images = [Image.open(i) for i in item]
         images_pt = self.processor(images=images, return_tensors="pt")
         return images_pt
-  
+
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
 
         itr = self.iterable
         if worker_info is not None:
             itr = itertools.islice(self.iterable, worker_info.id, None, worker_info.num_workers)
-        
+
         itr = more_itertools.chunked(itr, self.batch_size)
         itr = map(self.process, itr)
         yield from itr
@@ -103,7 +103,7 @@ class CLIPExtractor(BaseExtractor):
             num_workers=self.args.num_workers,
             collate_fn=ImageListDataset.collate_fn
         )
-        
+
         with torch.no_grad():
             for images_pt in dataloader:
                 images_pt = {k: v.to(self.device) for k, v in images_pt.items()}

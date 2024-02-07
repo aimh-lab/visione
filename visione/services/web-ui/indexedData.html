@@ -12,13 +12,13 @@
 	<div class="container" style="visibility: hidden;">
 	<div style="padding-left: 20px;">
 		<h3 id='imgID' align="center" style="color: navy;"></h3>
-		
+
 		<div >
-			<span id='img'></span>			
+			<span id='img'></span>
 		</div>
 	</div>
 
-		
+
 		<div style="padding-top: 10px;" id='txt'></div>
 
 		<h2 style="color: navy;">Objects</h2>
@@ -26,12 +26,12 @@
 
 		<h2 style="color: navy;">Objects Info</h2>
 		<div id='objectsInfo'></div>
-	
+
 		<!-- <h2 style="color: navy;">Grayscale: <span style="color: red;" id='isgray'></span></h2> -->
 	</div>
 
 	<script>
-	
+
 	function loadPage() {
 	$.urlParam = function(name) {
 		var results = new RegExp('[\?&]' + name + '=([^&#]*)')
@@ -50,7 +50,7 @@
 	if (imgIdTokens.length > 1)
 		frameName = imgIdTokens[1];
 	path = videoId + "/"+ frameName;
-	
+
 
 
 	img = '<img id="preview" width=1024 src="'+keyFramesUrl+ videoId + "/" + frameName + '.png">'
@@ -64,7 +64,7 @@
 
 	//annotations = getText(imgId, 'mifile');
 	//console.log('====annotations' + annotations);
-	
+
 	//isgray = getText(imgId, 'isgray');
 	//console.log('====isgray ' + isgray);
 	$('.container').css('visibility', 'visible');

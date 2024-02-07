@@ -27,16 +27,16 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 
 	canvas.on('mouse:down', function(o) {
 		console.log('mouse:down');
-		
+
 		draggedLabel = '';
 		if (!o.target && !activeCanvas.selection) {
 			isDrawing = true;
 			var pointer = activeCanvas.getPointer(o.e);
 			origX = pointer.x;
 			origY = pointer.y;
-				    
+
 			var imgElement = document.getElementById(draggedLabel);
-			
+
 			rect = new fabric.Image(imgElement, {
 				left: origX,
 				top: origY,
@@ -47,11 +47,11 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 				type : 'rect',
 				uuid : generateUUID(),
 				strokeWidth : 1,// FRANCA
-	
+
 			});
 			activeCanvas.add(rect);
 		}
-		
+
 		if (o.target) {
 		 	if (o.target.get('type') == 'rect') {
 				$("#" + o.target.get('uuid')).hide();
@@ -64,7 +64,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 			}
 		}
 	});
-		
+
 	canvas.on('mouse:move', function(o) {
 				activeCanvas = canvas0;
 		activeCanvasIdx = 0;
@@ -76,10 +76,10 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 			activeCanvas = canvas1;
 			activeCanvasIdx = 1;
 		}
-		
+
 	    if (isDrawing && !activeCanvas.selection && rect != null) {
 		    var pointer = activeCanvas.getPointer(o.e);
-			
+
 		   	if(origX>pointer.x){
 		        rect.set({ left: Math.abs(pointer.x) });
 		    }
@@ -91,7 +91,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 		    activeCanvas.renderAll();
 	   }
 	});
-		
+
 	canvas.on('mouse:dblclick', function(o) {
 		if (o.target) {
 			if (o.target.get('type') == 'rect') {
@@ -100,12 +100,12 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 			}
 		}
 	});
-		
+
 	canvas.on('mouse:up', function(o) {
 		console.log('mouse:up');
 
 		groupObjects = null;
-	
+
 		if (isDrawing && !activeCanvas.selection) {
 			isDrawing = false;
 			activeCanvas.remove(rect);
@@ -117,7 +117,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 				 });
 			} else
 				return;
-	
+
 		} else if (o.target) {
 			if (o.target.get('type') == 'rect') {
 				label =$("#" + o.target.get('uuid')).attr('title');
@@ -140,27 +140,27 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 		query1 = cell2Text(0);
 		query2 = cell2Text(1);
 		searchByForm();
-		
+
 		if (groupObjects != null) {
 			for (thing in groupObjects) {
 				obj = groupObjects[thing];
 				o.target.addWithUpdate(obj);
 		    }
 		}
-	
+
 		//set coordinates for proper mouse interaction
 		var objs = activeCanvas.getObjects();
 		for (var i = 0 ; i < objs.length; i++) {
 			objs[i].setCoords();
 		}
 	});
-		
-		
-		
+
+
+
 		$("#" + annotations_id).autocomplete({
 		      source: null
 		 });
-		
+
 		//var canvasWrapper = document.getElementById('canvas');
 		$("#" + annotations_id).keyup(function(e) {
 			annotations = $("#" + annotations_id).val();
@@ -192,7 +192,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 				          this.value = terms.join( " " );
 						query1 = cell2Text(0);
 						query2 = cell2Text(1);
-			
+
 						searchByForm();
 				          return false;
 				        }
@@ -204,18 +204,18 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 			 if(e.which == 13 || annotations.trim() == '') {
 						query1 = cell2Text(0);
 						query2 = cell2Text(1);
-			
+
 						searchByForm();
 			 }
 		});
-		
+
 		/*
 		$("#not").keyup(function(e) {
 			notField = $("#not").val();
 			cell2Text();
 		});
 		*/
-		
+
 		$("#" + not_id).keyup(function(e) {
 			notField = $("#" + not_id).val();
 			if (notField != '') {
@@ -264,7 +264,7 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 ;
 			 }
 		});
-		
+
 		//workaround to avoid twice calls of #diagog event, maybe a bug of  jquery
 		$("#dialog").off();
 		$("#dialog").keyup(function(e) {
@@ -304,14 +304,14 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 					addDeleteBtn(textVal.trim(), rect);
 				    rect = null;
 				}
-		
-				$(this).closest('.ui-dialog-content').dialog('close'); 
+
+				$(this).closest('.ui-dialog-content').dialog('close');
 				$("#tag").val('');
-				 
+
 						query1 = cell2Text(0);
 						query2 = cell2Text(1);
 						searchByForm();
-					
+
 				//set coordinates for proper mouse interaction
 				var objs = activeCanvas.getObjects();
 			    for (var i = 0 ; i < objs.length; i++) {
@@ -319,11 +319,11 @@ function get_canvas(canvas_id, annotations_id, not_id) {
 				}
 			}
 		});
-		
+
 		 $('#dialog').on('dialogclose', function(event) {
 			 $("#tag").val('');
 		 });
-			
+
 	return canvas;
-		
+
 }

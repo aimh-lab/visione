@@ -590,16 +590,16 @@ public class LucTextSearch {
 					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
 					if (representative_keyframe.score > score)
 						continue; // We keep just one keyframe for each quantized time interval
-	
+
 					synchronized (sem) {
-						keyframes = hm.get(videoId); 
+						keyframes = hm.get(videoId);
 						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, sr);		
+							keyframes.put(id_quantized_timestamp, sr);
 							hm.put(videoId, keyframes);
 						}
 					}
-					
-			
+
+
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -635,26 +635,26 @@ public class LucTextSearch {
 				try {
 					SearchResults sr=hits[iO];
 					float score = sr.score;
-					
+
 					String videoId = sr.getVideoId();
 					if (!video_keys.contains(videoId))
 						continue;
 					float timestamp = sr.getMiddleTime()/1000.0f;// this is in millisecond
 					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
-					
+
 					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
 					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
 					keyframes.putIfAbsent(id_quantized_timestamp, sr);
 					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
 					if (representative_keyframe.score > score)
 						continue; // We keep just one keyframe for each quantized time interval
-	
+
 					synchronized (sem) {
-						keyframes = hm.get(videoId); 
+						keyframes = hm.get(videoId);
 						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, sr);		
+							keyframes.put(id_quantized_timestamp, sr);
 							hm.put(videoId, keyframes);
-					
+
 						}
 					}
 				} catch (Exception e) {
@@ -692,7 +692,7 @@ public class LucTextSearch {
 			return null;
 
 		long totalTime = -System.currentTimeMillis();
-		
+
 		SearchResults[] sortedResults = Stream.of(results) // get results as a stream
 			.limit(maxRes) // limit to at most maxRes results
 			.collect(Collectors.groupingBy(r -> r.getVideoId())) // group by videoId, creates a Map<String, List<SearchResults>>

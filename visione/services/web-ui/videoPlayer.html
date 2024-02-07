@@ -27,7 +27,7 @@
 					.exec(window.location.href);
 			return results[1] || 0;
 		}
-		
+
 	  	function submitAtCurrentPlayTime() {
 	  		myPlayer.pause();
 	  		var whereYouAt = myPlayer.currentTime();
@@ -39,10 +39,10 @@
 	  		}
 	  	}
 	</script>
-	
+
 	<div id='videoDiv'>
 		<video
-	
+
 		id="vbsvideo"
 		    class="video-js"
 		    controls
@@ -71,7 +71,7 @@
 		frameID = $.urlParam('frameid');
 		toLog = '{"query":[{"videoplayer":"' + frameID + '"}], "parameters":[{}]}'
 		log(toLog)
-		myPlayer = videojs('vbsvideo'); 
+		myPlayer = videojs('vbsvideo');
 		myPlayer.src({ type: "video/mp4", src: url});
 		myPlayer.currentTime(t);
 		myPlayer.muted(true);//	myPlayer.autoplay(true);

@@ -36,7 +36,7 @@ services:
     volumes: *common_volumes
     profiles: ["analysis", "objects-mrcnn-lvis"]
     deploy: *needs_gpu
-  
+
   objects-vfnet64-coco:
     build: ./analysis/objects-mmdet
     image: visione/objects-mmdet
@@ -81,7 +81,7 @@ services:
     profiles: ["analysis", "features-clip-laion"]
     deploy: *needs_gpu
     shm_size: 16g
-  
+
   features-clip-datacomp:
     build: ./analysis/features-clip
     image: visione/features-clip
@@ -121,7 +121,7 @@ services:
     profiles: ["analysis", "features-aladin"]
     deploy: *needs_gpu
     shm_size: 16g
-  
+
   features-dinov2:
     build: ./analysis/features-dinov2
     image: visione/features-dinov2

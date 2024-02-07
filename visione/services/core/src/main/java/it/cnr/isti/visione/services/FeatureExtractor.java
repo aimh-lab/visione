@@ -33,11 +33,11 @@ import java.util.Base64;
 
 
 public class FeatureExtractor {
-	
+
 	private static final int THRESHOLD = 100;
 
 
-	public static String url2Features(String imgUrl) throws IOException, ParseException {		
+	public static String url2Features(String imgUrl) throws IOException, ParseException {
 		String features = null;
 		byte[] targetArray = null;
 		if (imgUrl.startsWith("http")) {
@@ -81,7 +81,7 @@ public class FeatureExtractor {
 		}
 		return features;
 	}
-	
+
 	public static String url2FeaturesUrl(String imgUrl) throws IOException, ParseException {
 		String features = null;
 			try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
@@ -106,7 +106,7 @@ public class FeatureExtractor {
 		return features;
 
 	}
-	
+
 	public static String rmac2Txt(String row) {
 		return row.trim().replaceAll("\\|", "\\^").replaceAll("\"", "");
 	}

@@ -39,7 +39,7 @@ core:
   # log_dres_path: /data/logs_dres  # LOG_FOLDER_DRES
 
   #-------QUERY & FIELDS SETTINGS-------#
-  # OBJECTS: {"field":"objects", "similarity":"DotProduct", "weight":"1.0"} 
+  # OBJECTS: {"field":"objects", "similarity":"DotProduct", "weight":"1.0"}
   # BB: {"field":"txt", "similarity":"CosineSimilarity", "weight":"1.0"}
   # ALADIN: {"field":"aladin", "similarity":"DotProduct", "weight":"0.00005"}
   # CLIP: {"field":"clip", "similarity":"CosineSimilarity", "weight":"1.0"}
@@ -290,7 +290,7 @@ index:
       index_params:
         keep: 0.5
         dim_multiplier: 2
-    
+
     dinov2:
       index_engine: faiss
       index_type: Flat
@@ -313,7 +313,7 @@ index:
     clip-laion:
       index_engine: faiss
       index_type: Flat
-    
+
     clip-datacomp:
       index_engine: faiss
       index_type: Flat
@@ -324,7 +324,7 @@ index:
 
     biomed-clip:
       index_engine: faiss
-      index_type: Flat  
+      index_type: Flat
 
 ui:
   # Maximum number of results per video to display in a row.

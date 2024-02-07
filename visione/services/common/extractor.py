@@ -206,7 +206,7 @@ class BaseVideoExtractor(object):
                 scenes_reader = csv.DictReader(scenes)
                 frame_id_to_timeinfo_dict = {
                     int(row['Scene Number']): (
-                        int(row['Start Frame']), 
+                        int(row['Start Frame']),
                         float(row['Start Time (seconds)']),
                         int(row['End Frame']),
                         float(row['End Time (seconds)'])
