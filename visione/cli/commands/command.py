@@ -118,20 +118,22 @@ class BaseCommand(ABC):
             stderr=subprocess.PIPE,
             env=self.compose_env,
         )
-        with subprocess.Popen(command, **popen_kws) as service_process, selectors.DefaultSelector() as selector:
-            selector.register(service_process.stdout, selectors.EVENT_READ, stdout_callback)
-            selector.register(service_process.stderr, selectors.EVENT_READ, stderr_callback)
+        with subprocess.Popen(command, **popen_kws) as service_process:
+            if stdout_callback or stderr_callback:
+                with selectors.DefaultSelector() as selector:
+                    selector.register(service_process.stdout, selectors.EVENT_READ, stdout_callback)
+                    selector.register(service_process.stderr, selectors.EVENT_READ, stderr_callback)
 
-            while selector.get_map():
-                for key, mask in selector.select():
-                    line = key.fileobj.readline()
-                    if not line:
-                        selector.unregister(key.fileobj)
-                        continue
+                    while selector.get_map():
+                        for key, mask in selector.select():
+                            line = key.fileobj.readline()
+                            if not line:
+                                selector.unregister(key.fileobj)
+                                continue
 
-                    callback = key.data
-                    if callback:
-                        callback(line)
+                            callback = key.data
+                            if callback:
+                                callback(line)
 
             # check if the process exited with an error
             service_process.wait()
