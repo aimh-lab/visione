@@ -1207,7 +1207,7 @@ function submitAtTime(videoId, time) {
 	return $.ajax({
 		type: "GET",
 		async: false,
-		url: urlVBSService + "/submitResult?videoid=" + videoId + "&time=" + time,
+		url: urlVBSService + "/submitResult?videoid=" + videoId + "&time=" + time  + "&taskType=" + getTaskType(),
 	}).responseText;
 }
 
