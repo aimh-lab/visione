@@ -159,6 +159,9 @@ def compute_monochromaticity(image_np, eps=1e-7):
 
     # if most variance is in a single direction, pixels are mostly collinear in the RGB cube
     # => monochrome image
+
+    var1 = var1 or 1.0  # var1 is 0 if all pixels are the same color, set to 1 in this case
+
     return {
         'monochrome': var1
     }
