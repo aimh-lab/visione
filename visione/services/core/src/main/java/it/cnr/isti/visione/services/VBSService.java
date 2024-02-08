@@ -361,6 +361,7 @@ public class VBSService {
 	 * @param queries
 	 */
 	public void log(SearchResults[] searchResults, String query, List<VisioneQuery> queries) {
+		if (!Settings.SAVE_LOGS) return;
 		// SearchResults[] sr = Arrays.copyOf(searchResults); // FIXME
 		new Thread(
 				new Runnable() {

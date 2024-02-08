@@ -22,6 +22,7 @@ public class Settings {
 
 	// paths
 	public static String LUCENE;
+	public static Boolean SAVE_LOGS;
 	public static String LOG_FOLDER;
 	public static String LOG_FOLDER_DRES;
 
@@ -68,6 +69,7 @@ public class Settings {
 
 		// Paths
 		LUCENE = (String) coreConfig.getOrDefault("index_path", "/data/lucene-index");
+		SAVE_LOGS = (Boolean) coreConfig.getOrDefault("save_logs", false);
 		LOG_FOLDER = (String) coreConfig.getOrDefault("log_path", "/data/logs");
 		LOG_FOLDER_DRES = (String) coreConfig.getOrDefault("log_dres_path", "/data/logs_dres");
 

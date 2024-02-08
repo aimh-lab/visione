@@ -35,6 +35,7 @@ core:
 
   #-------PATH SETTINGS-------#
   # index_path: /data/lucene-index  # LUCENE
+  # save_logs: false  # SAVE_LOGS
   # log_path: /data/logs  # LOG_FOLDER
   # log_dres_path: /data/logs_dres  # LOG_FOLDER_DRES
 
