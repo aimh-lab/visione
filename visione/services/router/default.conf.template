@@ -1,7 +1,13 @@
+server {
+	# if the server name does not match, return 444
+    listen 80 default_server;
+    return 444;
+}
+
 # handles requests coming from outside
 server {
-	listen 80 default_server;
-    server_name  _;
+	listen 80;
+    server_name ${VISIONE_SERVER_NAME};
 	resolver 127.0.0.11;
 
 	### Static File Routing

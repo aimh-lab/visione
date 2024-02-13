@@ -13,6 +13,7 @@ services:
       - VISIONE_RESIZED_FRAMES_URL
       - VISIONE_PALETTE_URL
       - VISIONE_TRANSLATE_URL
+      - VISIONE_SERVER_NAME
     volumes:
       - ./router:/etc/nginx/templates/
       - ./web-ui:/usr/share/nginx/html:ro
