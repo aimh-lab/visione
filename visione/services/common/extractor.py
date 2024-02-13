@@ -125,7 +125,8 @@ class BaseExtractor(object):
 
         # unzip ids and paths
         ids_and_paths = more_itertools.unzip(ids_and_paths)
-        video_ids, image_ids, image_paths = more_itertools.padded(ids_and_paths, fillvalue=(), n=3)
+        ids_and_paths = more_itertools.padded(ids_and_paths, fillvalue=(), n=3)  # pad with empty values on empty iterable
+        video_ids, image_ids, image_paths = ids_and_paths
 
         # process images in batches
         records = self.extract_iterable(image_paths)
@@ -199,7 +200,9 @@ class BaseVideoExtractor(object):
             candidates = (scenes_file.parents[2] / 'videos').glob(f'{video_id}.*')
             # candidates = list(candidates)
             # print(video_id, group[0][2], candidates)
-            video_path = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)][0]
+            video_paths = [c for c in candidates if re.match(rf'{escaped_video_id}\.[0-9a-zA-Z]+', c.name)]
+            assert len(video_paths) > 0, f'No video found for {video_id}'
+            video_path = video_paths[0]
 
             # read the scenes.csv file
             with scenes_file.open() as scenes:
@@ -286,6 +289,7 @@ class BaseVideoExtractor(object):
 
         # unzip ids and paths
         shot_paths_and_times_unzipped = more_itertools.unzip(other_infos)
+        shot_paths_and_times_unzipped = more_itertools.padded(shot_paths_and_times_unzipped, fillvalue=(), n=9)  # pad with empty values on empty iterable
         video_ids, image_ids, image_paths, *_ = shot_paths_and_times_unzipped
 
         shot_ids_and_records = zip(video_ids, image_ids, records)
