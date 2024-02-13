@@ -355,7 +355,7 @@ ui:
       - {name: truck}
       - {name: boat}
       - {name: parachute}
-      - {name: airplane}
+      - {name: airplane, url: aeroplane.png}
       - {name: bench}
       - {name: chair}
       - {name: couch, url: sofa.png}
