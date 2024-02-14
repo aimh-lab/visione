@@ -49,18 +49,29 @@ public class InternalSearch implements Callable<SearchResults[]> {
         this.extractorEndpoint = extractorEndpoint;
     }
 
-    public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k) throws IOException {
-        // FIXME: this is hardcoded to use the ALADIN field for now
+    public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k) throws IOException { return searchBySurrogateText(surrogateTextQuery, k, null); }
+    public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k, TopDocs hits) throws IOException {
         try {
-            TopDocs td = searcher.searchByALADIN(surrogateTextQuery, k, null);
-            return searcher.topDocs2SearchResults(td, k);
+            // FIXME: this should be dynamic based on configuration
+            switch (featureName) {
+                case "aladin":
+                    TopDocs td = searcher.searchByALADIN(surrogateTextQuery, k, hits);
+                    return searcher.topDocs2SearchResults(td, k);
+
+                case "dinov2":
+                    return searcher.searchByExample(surrogateTextQuery, k, hits);
+
+                default:
+                    throw new IOException("Feature " + featureName + " not supported for surrogate text search.");
+            }
         } catch (org.apache.lucene.queryparser.classic.ParseException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    public SearchResults[] searchByVector(Float[] queryVector, int k) {
+    public SearchResults[] searchByVector(Float[] queryVector, int k) { return searchByVector(queryVector, k, null); }
+    public SearchResults[] searchByVector(Float[] queryVector, int k, TopDocs hits) {
         // Encode vector query
         String surrogateTextQuery = null;
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -92,7 +103,8 @@ public class InternalSearch implements Callable<SearchResults[]> {
         }
     }
 
-    public SearchResults[] searchByText(String textQuery, int k) {
+    public SearchResults[] searchByText(String textQuery, int k) { return searchByText(textQuery, k, null); }
+    public SearchResults[] searchByText(String textQuery, int k, TopDocs hits) {
         // Encode text query
         Float[] queryVector = null;
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -116,12 +128,13 @@ public class InternalSearch implements Callable<SearchResults[]> {
             return null;
         }
 
-        return searchByVector(queryVector, k);
+        return searchByVector(queryVector, k, hits);
     }
 
-    public SearchResults[] searchByID(String id, int k) throws IOException {
+    public SearchResults[] searchByID(String id, int k) throws IOException { return searchByID(id, k, null); }
+    public SearchResults[] searchByID(String id, int k, TopDocs hits) throws IOException {
         String surrogateTextQuery = searcher.getTerms(id, featureName, true).trim();
-        return searchBySurrogateText(surrogateTextQuery, k);
+        return searchBySurrogateText(surrogateTextQuery, k, hits);
     }
 
     private class StrEncoderRequest {

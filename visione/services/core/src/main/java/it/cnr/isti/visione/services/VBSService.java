@@ -158,7 +158,7 @@ public class VBSService {
 			@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
 			@DefaultValue("1500") @FormParam("maxres") int maxRes,
 			@DefaultValue("lucia") @FormParam("fusion") String fusionMode) {
-		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query);
+		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query.substring(0, Math.min(100, query.length())));
 		String response = "";
 		if (k == -1)
 			k = Settings.K;
@@ -213,10 +213,25 @@ public class VBSService {
 						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
 
 					return gson.toJson(searchResults);
-				} else if (queryObj.getQuery().containsKey("qbe")) { // FIXME: QueryByExample to be rewritten
-					String features = FeatureExtractor.url2FeaturesUrl(queryObj.getQuery().get("qbe"));
+				} else if (queryObj.getQuery().containsKey("qbe")) {
+					String featureName = "dinov2";  // FIXME: use the feature name from the query
+					String queryString = queryObj.getQuery().get("qbe");
+					FeatureExtractor extractor = new FeatureExtractor(featureName);
+					Float[] features = null;
+
+					if (queryString.startsWith("http")) {
+						features = extractor.extractFromUrl(queryString);
+					} else if (queryString.startsWith("data:image")) {
+						features = extractor.extractFromImage(queryString);
+					} else {
+						System.out.println("Invalid query: " + queryString.substring(0, Math.min(50, queryString.length())) + "...");
+						return null;
+					}
+
 					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
-					SearchResults[] searchResults = searcher.searchByExample(features, k, topDocsToReorder);
+					// FIXME: choose internal or external search based on the feature name and configuration
+					InternalSearch is = new InternalSearch(featureName, searcher);
+					SearchResults[] searchResults = is.searchByVector(features, k, topDocsToReorder);
 
 					log(searchResults, query, logQueries); // logging query and search results
 

@@ -13,7 +13,10 @@ public class QueryParser {
 		List<VisioneQuery> queries = new ArrayList<>();
 		JSONObject obj = new JSONObject(jsonQuery);
 		JSONArray queryArr = obj.getJSONArray("query");
-		System.out.println(queryArr);
+		String queryArrString = queryArr.toString();
+		if (queryArrString.length() > 500)
+			queryArrString = queryArrString.substring(0, 500) + "...";
+		System.out.println(queryArrString);
 		for (int i = 0; i < queryArr.length(); i++) {
 			VisioneQuery query = new VisioneQuery();
 			JSONObject jsonObject = queryArr.getJSONObject(i);
