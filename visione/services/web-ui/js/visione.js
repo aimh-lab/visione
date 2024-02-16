@@ -127,7 +127,7 @@ var rowIdx = 0;
 var config = null;
 var loadingSpinner = null;
 var numResultsPerVideo = 10;
-var defaultLanguage = "ita";
+var defaultLanguage = "auto";
 var defaultTaskType = "kis";
 var framesCache = [];
 var collectionName;
@@ -1657,7 +1657,7 @@ function displayAdvanced() {
 
 		//Restore the width of the left sidebar
 		$('.sidebarGrid').css('width', '310');
-		$('.bodyGrid').css('grid-template-columns', '1fr 4.2fr 0.3fr');
+		$('.bodyGrid').css('grid-template-columns', '1fr 4.2fr 0fr');
 	} else {
 		setDisplayTo = "none";
 		$('#block0').css('display', 'none');
@@ -1669,7 +1669,7 @@ function displayAdvanced() {
 
 		//Set to 0 the left sidebar
 		$('.sidebarGrid').css('width', '0');
-		$('.bodyGrid').css('grid-template-columns', '0fr 4.2fr 0.3fr');
+		$('.bodyGrid').css('grid-template-columns', '0fr 4.2fr 0fr');
 	}
 
 	$('.advanced').css('display', setDisplayTo);
@@ -1981,6 +1981,7 @@ function checkKey(e) {
 		//testDiv.dispatchEvent(mouseOverEvent);
 	}
 	else if (e.keyCode == '83') {
+		return;
 		//replace img to submitBTN_
 		submitId = lastSelected.id.replace("img", "submitBTN_");
 		document.getElementById(submitId).click();
@@ -2224,7 +2225,7 @@ async function init() {
 	//localStorage.setItem('isQA', false);
 	collectionName = config?.main?.collection_name;
 	//$("#visionelogo").append("<div align='right'><h2>" + collectionName + " - " + localStorage.getItem('taskType').toUpperCase() + "<h2></div>");
-	$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
+	// $("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
 
 
 

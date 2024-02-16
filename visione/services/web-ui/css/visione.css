@@ -1,4 +1,14 @@
 @charset "UTF-8";
+
+/* DEMO VERSION -- START */
+a:has(i.fa-arrow-alt-circle-up) { display: none; }
+.dashboardGrid { grid-gap: 0 10px !important; }
+.dashboardGrid #advancedMode { position: relative; top: 53px; }
+.dashboardGrid .advancedToggle { position: relative; top: 51px; }
+.dashboardGrid .visioneLogo img { height: 40px !important; }
+.dashboardGrid .advanced.simreorder { position: relative; bottom: 5px; left: 10px; }
+/* DEMO VERSION -- END */
+
 body {
   overflow: auto;
   font-size: 11px;
