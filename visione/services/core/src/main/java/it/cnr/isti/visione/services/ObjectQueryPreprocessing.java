@@ -200,6 +200,66 @@ public class ObjectQueryPreprocessing {
 		res.append(" ").append(notObj);
 		return res.toString().trim();
 	}
+
+	public static String getObjectTxt4CLIP(String instring) {
+		instring = instring.replaceAll("\\s+", "");		
+		instring = instring.replaceAll("4wccolorkeyframe", "");
+
+		StringBuilder res = new StringBuilder();
+
+		if (instring.contains("4wcgraykeyframe")) {
+			res.append(", the video shot is in black and white tones");
+			instring = instring.replaceAll("4wcgraykeyframe", "");
+		}
+
+		instring = instring.replaceAll("-4wc", "4wc-");
+		String[] objects = instring.split("4wc");
+
+		HashMap<String, Integer> atLeastObjects = new HashMap<String, Integer>();
+		HashMap<String, Integer> atMostObjects = new HashMap<String, Integer>();
+		for (String object : objects) {
+			object = object.replaceAll("\\s+", "");
+			if (object.isEmpty() || ignore.contains(object)) continue;
+			if (object.startsWith("-")) {  // atMost objects
+				object = object.replaceAll("-", "");
+				String label = object.replaceAll("[^A-Za-z]", "");
+				Integer occurrence = Integer.parseInt(object.replaceAll("[^0-9]", "")) - 1;
+				if (occurrence > 0) {
+					int atmost = atMostObjects.getOrDefault(label, Integer.MAX_VALUE);
+					occurrence = Math.min(atmost, occurrence);
+					atMostObjects.put(label, occurrence);
+				}
+
+			} else { // atLeast objects
+				Integer occurrence = Integer.parseInt(object.replaceAll("[^0-9]", ""));
+				String label = object.replaceAll("[^A-Za-z]", "");
+				int atmost = atLeastObjects.getOrDefault(label, 0);
+				occurrence = Math.max(atmost, occurrence);
+				atLeastObjects.put(label, occurrence);
+			}
+		}
+
+		
+		String[] atLeastPhrases = atLeastObjects.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).toArray(String[]::new);
+		String atLeastSentence = String.join(", ", atLeastPhrases);
+		
+		String[] atMostPhrases = atMostObjects.entrySet().stream().map(e -> "at most " + e.getValue() + " " + e.getKey()).toArray(String[]::new);
+		String atMostSentence = String.join(", ", atMostPhrases);
+		
+		boolean hasAtLeast = atLeastObjects.size() > 0;
+		boolean hasAtMost = atMostObjects.size() > 0;
+
+		res.append(", The image contains ");
+		if (hasAtLeast && hasAtMost) {
+			res.append(atLeastSentence).append(", and ").append(atMostSentence);
+		} else if (hasAtLeast) {
+			res.append(atLeastSentence);
+		} else if (hasAtMost) {
+			res.append(atMostSentence);
+		}
+
+		return res.toString();
+	}
 	/*
 	 * public static void main(String[] args) {
 	 * File hypersetFile = new

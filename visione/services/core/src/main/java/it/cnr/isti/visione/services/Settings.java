@@ -31,14 +31,6 @@ public class Settings {
 	public static String[] RESCORER_PIPELINE;
 	public static FieldParameters[] RESCORER_PIPELINE_FIELDS;
 
-	// service URLs
-	public static String RMAC_SERVICE;
-	public static String ALADIN_SERVICE;
-	public static String CLIP_SERVICE;
-	public static String CLIP_INTERNAL_IMG_SEARCH_SERVICE;
-	public static String CLIP_ONE_SERVICE;
-	public static String CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE;
-
 	public static Map<String, FieldParameters> FIELD_PARAMETERS_MAP = new HashMap<String, FieldParameters>();
 
 	// default values
@@ -90,14 +82,5 @@ public class Settings {
 		for (int i = 0; i < RESCORER_PIPELINE.length; i++) {
 			RESCORER_PIPELINE_FIELDS[i] = FIELD_PARAMETERS_MAP.get(RESCORER_PIPELINE[i]);
 		}
-
-		// Service URLs (TODO)
-		RMAC_SERVICE = (String) coreConfig.get("RMAC_SERVICE");
-		ALADIN_SERVICE = (String) coreConfig.get("ALADIN_SERVICE");
-		CLIP_SERVICE = (String) coreConfig.get("CLIP_SERVICE");
-		CLIP_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_INTERNAL_IMG_SEARCH_SERVICE");
-		CLIP_ONE_SERVICE = (String) coreConfig.get("CLIP_ONE_SERVICE");
-		CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE = (String) coreConfig.get("CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE");
 	}
-
 }

@@ -48,12 +48,6 @@ core:
   #
   # RESCORER_PIPELINE: [OBJECTS, ALADIN, BB]
 
-  RMAC_SERVICE: http://features-gem:8080/gem
-  ALADIN_SERVICE: http://features-aladin:8080/aladin
-  CLIP_SERVICE: http://features-clip2video:8080/text-to-image-search
-  CLIP_INTERNAL_IMG_SEARCH_SERVICE: http://features-clip2video:8080/internal-image-search
-  CLIP_ONE_SERVICE: http://features-clip-laion:8080/text-to-image-search
-  CLIP_ONE_INTERNAL_IMG_SEARCH_SERVICE: http://features-clip-laion:8080/internal-image-search
 
 analysis:
   # Object detectors to employ (with optional parameters)

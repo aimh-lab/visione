@@ -183,15 +183,26 @@ public class VBSService {
 				continue;
 			try {
 				if (queryObj.getQuery().containsKey("comboVisualSim")) {
-					List<SearchResults[]> hits_tmp = new ArrayList<>(3);
+					String queryId = queryObj.getQuery().get("comboVisualSim");
 					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
+					List<Callable<SearchResults[]>> searches = new ArrayList<>(3);
 
-					// TODO: perform all the searches in parallel
-					hits_tmp.add(searcher.searchByID(queryObj.getQuery().get("comboVisualSim"), k, topDocsToReorder)); // search by GeM
-					hits_tmp.add(searcher.searchByALADINid(queryObj.getQuery().get("comboVisualSim"), k, topDocsToReorder)); // search by Aladin
-					hits_tmp.add(searcher.searchByCLIPID(queryObj.getQuery().get("comboVisualSim"), k)); // search by Clip4Video
+					searches.add(new InternalSearch("dinov2", searcher).setQueryByID(queryId, k, topDocsToReorder));
+					searches.add(new InternalSearch("aladin", searcher).setQueryByID(queryId, k, topDocsToReorder));
+					searches.add(new ExternalSearch("clip2video").setQueryByID(queryId, k));
 
-					SearchResults[] searchResults = searcher.mergeResults(hits_tmp, k, false, fusionMode);
+					ExecutorService executor = Executors.newFixedThreadPool(searches.size());
+					List<Future<SearchResults[]>> futures = executor.invokeAll(searches);
+
+					// gather results as SearchResults[]
+					List<SearchResults[]> hits = futures.stream().map(f -> {
+						try { return f.get(); } catch (InterruptedException | ExecutionException e) {
+							e.printStackTrace();
+							return null;
+						}
+					}).collect(Collectors.toList());
+
+					SearchResults[] searchResults = searcher.mergeResults(hits, k, false, fusionMode);
 
 					log(searchResults, query, logQueries); // logging query and search results
 
@@ -202,8 +213,10 @@ public class VBSService {
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("vf")) {
+					String queryId = queryObj.getQuery().get("vf");
 					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
-					SearchResults[] searchResults = searcher.searchByID(queryObj.getQuery().get("vf"), k, topDocsToReorder);
+
+					SearchResults[] searchResults = new InternalSearch("dinov2", searcher).searchByID(queryId, k, topDocsToReorder);
 
 					log(searchResults, query, logQueries); // logging query and search results
 
@@ -242,8 +255,10 @@ public class VBSService {
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("aladinSim")) {
+					String queryId = queryObj.getQuery().get("aladinSim");
 					TopDocs topDocsToReorder = searcher.searchResults2TopDocs(hitsToReorder);
-					SearchResults[] searchResults = searcher.searchByALADINid(queryObj.getQuery().get("aladinSim"), k, topDocsToReorder);
+
+					SearchResults[] searchResults = new InternalSearch("aladin", searcher).searchByID(queryId, k, topDocsToReorder);
 
 					log(searchResults, query, logQueries); // logging query and search results
 
@@ -254,7 +269,13 @@ public class VBSService {
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("clipSim")) {
-					SearchResults[] searchResults = searcher.searchByCLIPID(queryObj.getQuery().get("clipSim"), k); //TODO il k non viene usato e si potrebbe modificare usando il merge conhitsToReorder per fare una sorta di simn reorder
+					String queryId = queryObj.getQuery().get("clipSim");
+					SearchResults[] searchResults = new ExternalSearch("clip-laion").searchByID(queryId, k);
+
+					if (hitsToReorder != null) {  // approximate reordering of the previous results by merging them with the new ones
+						List<SearchResults[]> hitsToMerge = Arrays.asList(searchResults, hitsToReorder);
+						searchResults = searcher.mergeResults(hitsToMerge, k, false, fusionMode);
+					}
 
 					log(searchResults, query, logQueries); // logging query and search results
 
@@ -281,7 +302,7 @@ public class VBSService {
 
 							// - CLIP-based queries are expanded with the objects
 							String preprocessed = objectPreprocessing.processing(queryObj.getQuery().get(Fields.OBJECTS), false);
-							String clipQuery = textQuery + CLIPExtractor.getObjectTxt4CLIP(preprocessed);
+							String clipQuery = textQuery + ObjectQueryPreprocessing.getObjectTxt4CLIP(preprocessed);
 							if (textualMode.equals("all")) {
 								searches.add(new ExternalSearch("clip-laion").setQueryByText(clipQuery, k));
 								searches.add(new ExternalSearch("clip2video").setQueryByText(clipQuery, k));
@@ -326,7 +347,7 @@ public class VBSService {
 						tabHits.add(searcher.search(queryObj, kMerge)); // in this case the search results are already populated
 					}
 				}
-			} catch (IOException | ParseException | org.apache.hc.core5.http.ParseException | InterruptedException e) {
+			} catch (IOException | ParseException | InterruptedException e) {
 				e.printStackTrace();
 			}
 

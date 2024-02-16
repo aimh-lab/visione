@@ -43,8 +43,6 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.BytesRef;
 
 import it.cnr.isti.visione.logging.Tools;
-import it.cnr.isti.visione.services.CLIPExtractor;
-import it.cnr.isti.visione.services.CLIPOneExtractor;
 import it.cnr.isti.visione.services.FieldParameters;
 import it.cnr.isti.visione.services.ObjectQueryPreprocessing;
 import it.cnr.isti.visione.services.SearchResults;
@@ -259,6 +257,7 @@ public class LucTextSearch {
 		}.rescore(searcher, topDocs, topN);
 	}
 
+	public SearchResults[] topDocs2SearchResults(TopDocs hits) throws IOException { return topDocs2SearchResults(hits, hits.scoreDocs.length); }
 	public SearchResults[] topDocs2SearchResults(TopDocs hits, int k) throws IOException {
 		if (hits == null)
 			return new SearchResults[0];
@@ -274,116 +273,36 @@ public class LucTextSearch {
 		return results;
 	}
 
-	public SearchResults[] topDocs2SearchResults(TopDocs hits) throws IOException {
-		return topDocs2SearchResults(hits, hits.scoreDocs.length);
-	}
-
-	public SearchResults[] searchByID(String query, int k, TopDocs hits) throws ParseException, IOException {
-//		String[] queries = query.toLowerCase().split(Settings.QUERY_SPLIT);
-
-		System.out.println("vf: " + query);
-		if (query == null)
-			return null;
-
-		String visualFeatures = getTerms(query, Fields.VISUAL_FEATURES, true).trim();
-//		String visualFeatures = get(query, Fields.VISUAL_FEATURES);
-		SearchResults[] res = searchByExample(visualFeatures, k, hits);
-//		System.out.println(visualFeatures);
-		return res;
-	}
-
-	public SearchResults[] searchByALADINid(String query, int k, TopDocs hits) throws ParseException, IOException {
-//		String[] queries = query.toLowerCase().split(Settings.QUERY_SPLIT);
-		System.out.println("aladinID: " + query);
-		if (query == null)
-			return null;
-		String visualFeatures = getTerms(query, Fields.ALADIN, true).trim();
-//		String visualFeatures = get(query, Fields.ALADIN + "_vector");
-
-		TopDocs res = searchByALADIN(visualFeatures, k, hits);
-//		System.out.println(visualFeatures);
-		SearchResults[] results = topDocs2SearchResults(res, k);
-		return results;
-	}
-
-	public SearchResults[] searchByExample(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
-		// s.setSimilarity(dotProduct);
-		Similarity sim = fieldSimilaties.get(Settings.FIELD_PARAMETERS_MAP.get("IMG_SIM").getSimilarity());
-
-		s.setSimilarity(sim);
-		String occur = "";
-
-		TopDocs simHits = null;
-		String booleanQuery = occur + Fields.VISUAL_FEATURES + ":"
-				+ visualFeatures.replaceAll(" ", " " + occur + Fields.VISUAL_FEATURES + ":");
-//		System.out.println(booleanQuery);
-		Query luceneQuery = null;
+	public SearchResults[] searchByExample(String featureName, String querySurrogateText, int k, TopDocs previousHits) throws ParseException, IOException {
+		// query parsing
 		long qptime = -System.currentTimeMillis();
-		synchronized (queryParserSemaphore) {
-			luceneQuery = parser.parse(booleanQuery);
-		}
+		QueryParser parser = new QueryParser(featureName, new WhitespaceAnalyzer());
+		Query luceneQuery = parser.parse(querySurrogateText);
 		qptime += System.currentTimeMillis();
 		System.out.println("img sim qptime: " + qptime + " ms");
-		if (hits == null) {
-			long time = -System.currentTimeMillis();
-			simHits = s.search(luceneQuery, k);
-			time += System.currentTimeMillis();
-			System.out.println("Search time: " + time + " ms");
-		} else {
-//			simHits = QueryRescorer.rescore(s, hits, luceneQuery, similarityRescorerWeight, k);
-			ScoreDoc[] scoredocs = new ScoreDoc[hits.scoreDocs.length];
-			for (int i = 0; i < hits.scoreDocs.length; i++) {
-				scoredocs[i] = new ScoreDoc(hits.scoreDocs[i].doc, 0);
-			}
-//			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery, similarityRescorerWeight, k);
 
-			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs, hits.getMaxScore()), luceneQuery,
-					similarityRescorerWeight, k);
-//			simHits = QueryRescorer.rescore(s, hits, luceneQuery, similarityRescorerWeight, k);
-		}
-
-		SearchResults[] results = topDocs2SearchResults(simHits, k);
-		return results;
-	}
-
-	public TopDocs searchByALADIN(String visualFeatures, int k, TopDocs hits) throws ParseException, IOException {
+		// set similarity
 		Similarity sim = fieldSimilaties.get(Settings.FIELD_PARAMETERS_MAP.get("IMG_SIM").getSimilarity());
 		s.setSimilarity(sim);
 
-		String occur = "";
+		// search
+		long time = -System.currentTimeMillis();
+		TopDocs hits = null;
+		if (previousHits == null)
+			hits = s.search(luceneQuery, k);
+		else {
+			// zero out scores of previous hits to reorder
+			ScoreDoc[] zeroedScoreDocs = Arrays.stream(previousHits.scoreDocs).map(sd -> new ScoreDoc(sd.doc, 0)).toArray(ScoreDoc[]::new);
+			TopDocs zeroedHits = new TopDocs(previousHits.totalHits, zeroedScoreDocs, previousHits.getMaxScore());
 
-		TopDocs simHits = null;
-		String booleanQuery = occur + Fields.ALADIN + ":"
-				+ visualFeatures.replaceAll(" ", " " + occur + Fields.ALADIN + ":");
-		//System.out.println(booleanQuery);
-		Query luceneQuery = null;
-		long qptime = -System.currentTimeMillis();
-		synchronized (queryParserSemaphore) {
-			luceneQuery = parser.parse(booleanQuery);
+			hits = QueryRescorer.rescore(s, zeroedHits, luceneQuery, similarityRescorerWeight, k);
 		}
-		qptime += System.currentTimeMillis();
-		System.out.println("** ALADIN qptime: " + qptime + " ms");
-		if (hits == null) {
-			long time = -System.currentTimeMillis();
-			simHits = s.search(luceneQuery, k);
-			time += System.currentTimeMillis();
-			System.out.println("** ALADIN Search time: " + time + " ms");
-		} else {
-			ScoreDoc[] scoredocs = new ScoreDoc[hits.scoreDocs.length];
-			for (int i = 0; i < hits.scoreDocs.length; i++) {
-				scoredocs[i] = new ScoreDoc(hits.scoreDocs[i].doc, 0);
-			}
-//			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs), luceneQuery, similarityRescorerWeight, k);
-			simHits = QueryRescorer.rescore(s, new TopDocs(hits.totalHits, scoredocs, hits.getMaxScore()), luceneQuery,
-					similarityRescorerWeight, k);
+		time += System.currentTimeMillis();
+		System.out.println("Search time: " + time + " ms");
 
-			// simHits = QueryRescorer.rescore(s, hits, luceneQuery,
-			// similarityRescorerWeight, k);
-		}
-
-		return simHits;
+		SearchResults[] results = topDocs2SearchResults(hits, k);
+		return results;
 	}
-
 
 	public String getTerms(String id, String field, boolean boosting) throws IOException {
 //		System.out.println(id + ", " + field);
@@ -775,36 +694,8 @@ public class LucTextSearch {
 		return res;
 	}
 
+	// TODO move cache in static Internal/ExternalSearch classes
 	private LRUCache<Integer, SearchResults[]> cvCache = new LRUCache<>(10);
 	private LRUCache<Integer, SearchResults[]> clCache = new LRUCache<>(10);
-
-	public SearchResults[] searchByCLIP(String textQuery) throws IOException, org.apache.hc.core5.http.ParseException {
-		SearchResults[] res = null;
-		if (cvCache.containsKey(textQuery.hashCode()))
-			res = cvCache.get(textQuery.hashCode());
-		else {
-			res = CLIPExtractor.text2CLIPResults(textQuery);
-			cvCache.put(textQuery.hashCode(), res);
-		}
-
-		return res;
-	}
-
-	public SearchResults[] searchByCLIPOne(String textQuery) throws IOException, org.apache.hc.core5.http.ParseException {
-		SearchResults[] res = null;
-		if (clCache.containsKey(textQuery.hashCode()))
-			res = clCache.get(textQuery.hashCode());
-		else {
-			res = CLIPOneExtractor.text2CLIPResults(textQuery);
-			clCache.put(textQuery.hashCode(), res);
-		}
-
-		return res;
-	}
-
-	public SearchResults[] searchByCLIPID(String queryId, int k) throws org.apache.hc.core5.http.ParseException, IOException {
-		System.out.println("clipID: " + queryId);
-		return CLIPExtractor.id2CLIPResults(queryId);
-	}
 
 }

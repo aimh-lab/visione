@@ -18,6 +18,7 @@ import org.apache.lucene.search.TopDocs;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import it.cnr.isti.visione.lucene.Fields;
 import it.cnr.isti.visione.lucene.LucTextSearch;
 
 import com.google.gson.FieldNamingPolicy;
@@ -52,18 +53,8 @@ public class InternalSearch implements Callable<SearchResults[]> {
     public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k) throws IOException { return searchBySurrogateText(surrogateTextQuery, k, null); }
     public SearchResults[] searchBySurrogateText(String surrogateTextQuery, int k, TopDocs hits) throws IOException {
         try {
-            // FIXME: this should be dynamic based on configuration
-            switch (featureName) {
-                case "aladin":
-                    TopDocs td = searcher.searchByALADIN(surrogateTextQuery, k, hits);
-                    return searcher.topDocs2SearchResults(td, k);
-
-                case "dinov2":
-                    return searcher.searchByExample(surrogateTextQuery, k, hits);
-
-                default:
-                    throw new IOException("Feature " + featureName + " not supported for surrogate text search.");
-            }
+            String field = (featureName.equals("dinov2")) ? Fields.VISUAL_FEATURES : featureName;  // FIXME: remove this mapping when the new index is ready
+            return searcher.searchByExample(field, surrogateTextQuery, k, hits);
         } catch (org.apache.lucene.queryparser.classic.ParseException e) {
             e.printStackTrace();
             return null;
@@ -133,7 +124,8 @@ public class InternalSearch implements Callable<SearchResults[]> {
 
     public SearchResults[] searchByID(String id, int k) throws IOException { return searchByID(id, k, null); }
     public SearchResults[] searchByID(String id, int k, TopDocs hits) throws IOException {
-        String surrogateTextQuery = searcher.getTerms(id, featureName, true).trim();
+        String field = (featureName.equals("dinov2")) ? Fields.VISUAL_FEATURES : featureName; // FIXME: remove this mapping when the new index is ready
+        String surrogateTextQuery = searcher.getTerms(id, field, true).trim();
         return searchBySurrogateText(surrogateTextQuery, k, hits);
     }
 
@@ -154,44 +146,53 @@ public class InternalSearch implements Callable<SearchResults[]> {
     private String callQueryText;
     private String callQueryId;
     private int callQueryK;
+    private TopDocs callHits;
 
-    public InternalSearch setQueryBySurrogateText(String surrogateTextQuery, int k) {
+    public InternalSearch setQueryBySurrogateText(String surrogateTextQuery, int k) { return setQueryBySurrogateText(surrogateTextQuery, k, null); }
+    public InternalSearch setQueryBySurrogateText(String surrogateTextQuery, int k, TopDocs hits) {
         this.callQueryType = "surrogate";
         this.callSurrogateQueryText = surrogateTextQuery;
         this.callQueryVector = null;
         this.callQueryText = null;
         this.callQueryId = null;
         this.callQueryK = k;
+        this.callHits = hits;
         return this;
     }
 
-    public InternalSearch setQueryByVector(Float[] queryVector, int k) {
+    public InternalSearch setQueryByVector(Float[] queryVector, int k) { return setQueryByVector(queryVector, k, null); }
+    public InternalSearch setQueryByVector(Float[] queryVector, int k, TopDocs hits) {
         this.callQueryType = "vector";
         this.callSurrogateQueryText = null;
         this.callQueryVector = queryVector;
         this.callQueryId = null;
         this.callQueryText = null;
         this.callQueryK = k;
+        this.callHits = hits;
         return this;
     }
 
-    public InternalSearch setQueryByID(String id, int k) {
+    public InternalSearch setQueryByID(String id, int k) { return setQueryByID(id, k, null); }
+    public InternalSearch setQueryByID(String id, int k, TopDocs hits) {
         this.callQueryType = "id";
         this.callSurrogateQueryText = null;
         this.callQueryVector = null;
         this.callQueryId = id;
         this.callQueryText = null;
         this.callQueryK = k;
+        this.callHits = hits;
         return this;
     }
 
-    public InternalSearch setQueryByText(String textQuery, int k) {
+    public InternalSearch setQueryByText(String textQuery, int k) { return setQueryByText(textQuery, k, null); }
+    public InternalSearch setQueryByText(String textQuery, int k, TopDocs hits) {
         this.callQueryType = "text";
         this.callSurrogateQueryText = null;
         this.callQueryVector = null;
         this.callQueryId = null;
         this.callQueryText = textQuery;
         this.callQueryK = k;
+        this.callHits = hits;
         return this;
     }
 
@@ -201,13 +202,13 @@ public class InternalSearch implements Callable<SearchResults[]> {
 
         switch (callQueryType) {
             case "surrogate":
-                return searchBySurrogateText(callSurrogateQueryText, callQueryK);
+                return searchBySurrogateText(callSurrogateQueryText, callQueryK, callHits);
             case "vector":
-                return searchByVector(callQueryVector, callQueryK);
+                return searchByVector(callQueryVector, callQueryK, callHits);
             case "id":
-                return searchByID(callQueryId, callQueryK);
+                return searchByID(callQueryId, callQueryK, callHits);
             case "text":
-                return searchByText(callQueryText, callQueryK);
+                return searchByText(callQueryText, callQueryK, callHits);
             default:
                 throw new Exception("Invalid query type");
         }
