@@ -166,24 +166,6 @@ public class LucTextSearch {
 					booleanQuery = value.trim();
 					booleanQuery = booleanQuery.replaceAll(" ", " " + occur + fieldName + ":");
 					booleanQuery = occur + fieldName + ":" + booleanQuery;
-//					int minusIdx = value.indexOf("-");
-//					if (minusIdx < 0) {
-//						booleanQuery = value.trim();
-//						booleanQuery = booleanQuery.replaceAll(" ", " " + occur + fieldName + ":");
-//						booleanQuery = occur + fieldName + ":" + booleanQuery;
-//					} else {
-//						String query1 = value.substring(0, minusIdx).trim();
-//						if (!query1.equals("")) {
-//							booleanQuery = query1.replaceAll(" ", " " + occur + fieldName + ":");
-//							booleanQuery = occur + fieldName + ":" + booleanQuery;
-//						}
-//						String query2 = value.trim().substring(minusIdx).replaceAll("-", "") + " ";
-//						if (fieldName.equals(Fields.OBJECTS))
-//							query2 = query2.replaceAll("(?<![0-9]) ", "1 ").trim();
-//						query2 = query2.trim().replaceAll(" ", " " + "-" + fieldName + ":");
-//						query2 = "-" + fieldName + ":" + query2;
-//						booleanQuery += " " + query2;
-//					}
 				}
 
 				booleanQuery = booleanQuery.replaceAll("\\(", "\\\\(").replaceAll("\\)", "\\\\)");
@@ -238,7 +220,7 @@ public class LucTextSearch {
 
 					}
 					//luceneCache.put(query4Cache, topDocsClone(hits));
-					luceneCache.put(query4Cache.hashCode(), hits);//LUCIA
+					luceneCache.put(query4Cache.hashCode(), hits);
 				}
 
 			pipelineIdx++;
@@ -513,162 +495,30 @@ public class LucTextSearch {
 		}
 	}
 
-	public ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> getVideoHashMap_th(SearchResults[] hits,
-			int quantizer, Set<String> video_keys) throws NumberFormatException, IOException {
-		ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm = new ConcurrentHashMap<>();
-		int nDocs = hits.length;
-		int bookedThreads = Runtime.getRuntime().availableProcessors() - 1;
-		final int nObjsPerThread = (int) Math.ceil((double) nDocs / (bookedThreads));
-		final int nThread = (int) Math.ceil((double) nDocs / nObjsPerThread);
+	// public ConcurrentMap<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMapRRF(SearchResults[] hits, int quantizer, Set<String> videoKeys) {
+	// 	int k_rrf=100;
+	// 	Map<String, ConcurrentMap<Integer, SearchResults>> hashedHits = IntStream.range(0, hits.length)  // get hits as a stream
+	// 		.parallel()  // run in parallel
+	// 		.filter(i -> videoKeys == null || videoKeys.contains(hits[i].getVideoId()))  // filter out hits not belonging to selected videos
+	// 		.boxed()  // convert to Integer stream
+	// 		.collect(
+	// 			Collectors.groupingByConcurrent(  // group search results ...
+	// 				i-> hits[i].getVideoId(),  // .. by videoId, generates a Map<String, List<SearchResults>>
+	// 				Collectors.toConcurrentMap(  // map each List<SearchResults> to a Map<Integer, SearchResults> ...
+	// 					i -> (int) (hits[i].getMiddleTime() / (quantizer*1000)), // ... using qauntized timestamp as key ...
+	// 					i -> {
+	// 						SearchResults sr = new SearchResults(hits[i]);
+	// 						sr.score = k_rrf / (float) (i + k_rrf);  // ... and SearchResults where the score is RRF..
+	// 						return sr;
+	// 					},  // ... and SearchResults where the score is 1/ranl ...
+	// 					(sr1, sr2) -> sr1.score > sr2.score ? sr1 : sr2  // ... and merge SearchResults with same key by keeping the one with highest score
+	// 				)
+	// 			)
+	// 		);
+	// 	return new ConcurrentHashMap<>(hashedHits);
+	// }
 
-		int ti = 0;
-		Thread[] thread = new Thread[nThread];
-
-		if (video_keys == null) {
-			for (int from = 0; from < nDocs; from += nObjsPerThread) {
-				int to = from + nObjsPerThread - 1;
-				if (to >= nDocs)
-					to = nDocs - 1;
-				thread[ti] = new Thread(new VideoHashMapThread(hits, from, to, hm, quantizer));
-				thread[ti].start();
-				ti++;
-			}
-		} else {
-			for (int from = 0; from < nDocs; from += nObjsPerThread) {
-				int to = from + nObjsPerThread - 1;
-				if (to >= nDocs)
-					to = nDocs - 1;
-				thread[ti] = new Thread(new SelectedVideoHashMapThread(hits, from, to, hm, video_keys, quantizer));
-				thread[ti].start();
-				ti++;
-			}
-		}
-
-		for (Thread t : thread) {
-			if (t != null)
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		}
-		return hm;
-
-	}
-
-	public class VideoHashMapThread implements Runnable {
-		private final int from;
-		private final int to;
-		private final SearchResults[] hits;
-		private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm;
-		private final int quantizer;
-		private final Object sem = new Object();
-
-		public VideoHashMapThread(SearchResults[] hits, int from, int to,
-				ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm, int quantizer) {
-			this.from = from;
-			this.to = to;
-			this.hits = hits;
-			this.hm = hm;
-			this.quantizer = quantizer;
-
-		}
-
-		@Override
-		public void run() {
-			for (int iO = from; iO <= to; iO++) {
-				try {
-					SearchResults sr=hits[iO];
-					float score = sr.score;
-					float timestamp = sr.getMiddleTime()/1000.0f;// this is in millisecond
-					String videoId = sr.getVideoId();
-					Integer id_quantized_timestamp = (int) (timestamp / (quantizer)); // quantize timestamp
-					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
-					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
-					keyframes.putIfAbsent(id_quantized_timestamp, sr);
-					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
-					if (representative_keyframe.score > score)
-						continue; // We keep just one keyframe for each quantized time interval
-
-					synchronized (sem) {
-						keyframes = hm.get(videoId);
-						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, sr);
-							hm.put(videoId, keyframes);
-						}
-					}
-
-
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-	}
-
-	public class SelectedVideoHashMapThread implements Runnable {
-		private final int from;
-		private final int to;
-		private final SearchResults[] hits;
-		private final ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm;
-		private final int quantizer;
-		private final Set<String> video_keys;
-		private final Object sem = new Object();
-
-		public SelectedVideoHashMapThread(SearchResults[] hits, int from, int to,
-				ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>> hm, Set<String> video_keys,
-				int quantizer) {
-			this.from = from;
-			this.to = to;
-			this.hits = hits;
-			this.hm = hm;
-			this.quantizer = quantizer;
-			this.video_keys = video_keys;
-
-		}
-
-		@Override
-		public void run() {
-			for (int iO = from; iO <= to; iO++) {
-				try {
-					SearchResults sr=hits[iO];
-					float score = sr.score;
-
-					String videoId = sr.getVideoId();
-					if (!video_keys.contains(videoId))
-						continue;
-					float timestamp = sr.getMiddleTime()/1000.0f;// this is in millisecond
-					Integer id_quantized_timestamp = (int) (timestamp / quantizer); // quantize timestamp
-
-					hm.putIfAbsent(videoId, new ConcurrentHashMap<Integer, SearchResults>());
-					ConcurrentHashMap<Integer, SearchResults> keyframes = hm.get(videoId); // video keyframes (one for each quantized time interval)
-					keyframes.putIfAbsent(id_quantized_timestamp, sr);
-					SearchResults representative_keyframe = keyframes.get(id_quantized_timestamp);
-					if (representative_keyframe.score > score)
-						continue; // We keep just one keyframe for each quantized time interval
-
-					synchronized (sem) {
-						keyframes = hm.get(videoId);
-						if( keyframes.get(id_quantized_timestamp).score<score) {
-							keyframes.put(id_quantized_timestamp, sr);
-							hm.put(videoId, keyframes);
-
-						}
-					}
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-
-		}
-	}
-
-
-
-	public ConcurrentMap<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMap(SearchResults[] hits, int quantizer, Set<String> videoKeys) {
+	public Map<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMap(SearchResults[] hits, int quantizer, Set<String> videoKeys) {
 		Map<String, ConcurrentMap<Integer, SearchResults>> hashedHits = Arrays.stream(hits)  // get hits as a stream
 			.parallel()  // run in parallel
 			.filter(sr -> videoKeys == null || videoKeys.contains(sr.getVideoId()))  // filter out hits not belonging to selected videos
@@ -683,8 +533,7 @@ public class LucTextSearch {
 				)
 			);
 
-		// XXX: this is here to adhere to the old interface, check if it is still needed
-		return new ConcurrentHashMap<>(hashedHits);
+		return hashedHits;
 	}
 
 	public SearchResults[] sortByVideo(SearchResults[] results, int n_frames_per_row, int maxRes) {
@@ -727,11 +576,6 @@ public class LucTextSearch {
 		if (temporalQuery)
 			 return combineResults_temporal(resultsList, topK, 3, 12);
 			 //note: temporal combination using RRF scores instead of normalized scores semmes to work worse
-
-		// if (fusionMode.toLowerCase().equals("rrf"))
-		// return mergeResultsRRF(topDocsList, topK, temporalquery);
-
-		// //if (fusionMode.toLowerCase().equals("rrf_with_boost"))
 		return mergeResultsRRFwithBoostTopN(resultsList, topK);
 	}
 
@@ -743,15 +587,8 @@ public class LucTextSearch {
 		float maxScores[] = new float[nListsToMerge];
 
 		long time = -System.currentTimeMillis();
-		// Collections.sort(resultsList, new Comparator<SearchResults[]>() {
-		// 	@Override
-		// 	public int compare(SearchResults[] o1, SearchResults[] o2) {
-		// 		return Long.compare(o1.length, o2.length);
-		// 	}
-		// });
-
-		ConcurrentMap<String, ConcurrentMap<Integer, SearchResults>>[] shmap = new ConcurrentHashMap[nListsToMerge];
-		//ConcurrentHashMap<String, ConcurrentHashMap<Integer, SearchResults>>[] shmap = new ConcurrentHashMap[nListsToMerge];
+	
+		Map<String, ConcurrentMap<Integer, SearchResults>>[] shmap = new Map[nListsToMerge];
 		Set<String> videoIds = null;
 		for (int i = 0; i < nListsToMerge; i++) {
 			SearchResults[] hits_i = resultsList.get(i);
@@ -761,7 +598,7 @@ public class LucTextSearch {
 				videoIds = shmap[i].keySet();
 			else
 				videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
-			//videoIds.addAll(shmap[i].keySet()); //video ids is the union
+			
 			maxScores[i] = hits_i[0].score;
 			System.out.print("[list"+i+":" + hits_i.length+" max_score:"+maxScores[i]+"]\n");
 		}
@@ -772,7 +609,7 @@ public class LucTextSearch {
 		time = -System.currentTimeMillis();
 		ArrayList<SearchResults> resultsSD = new ArrayList<>();
 		for (String videoId : videoIds) {
-			ConcurrentMap<Integer, SearchResults>[] hm = new ConcurrentHashMap[nListsToMerge];
+			Map<Integer, SearchResults>[] hm = new Map[nListsToMerge];
 			for (int i = 0; i < nListsToMerge; i++) {
 				hm[i] = shmap[i].get(videoId);
 			}
@@ -791,8 +628,8 @@ public class LucTextSearch {
 				Integer best_id_t[] = new Integer[nListsToMerge];
 				best_sr[0] = k0.getValue();
 				best_id_t[0] = id_t0;
-				float aggregated_score = best_sr[0].score / maxScores[0]; /// max_scores[0]
-
+				float aggregated_score = best_sr[0].score / maxScores[0]; 
+		
 				for (int i = 1; i < nListsToMerge; i++) {
 					best_sr[i] = null;
 					float best_score = -1;
@@ -803,12 +640,9 @@ public class LucTextSearch {
 						SearchResults sr_i = hm[i].get(id_t_i); // matching keyframe
 						if (sr_i == null || idResTime.contains(id_t_i))
 							continue;
-						float score = // sr_i.score* aggregated_score; //geometric mean without sqrt(since sqrt is
-										// monotonic)
-								// 2*(sr_i.score* aggregated_score)/(sr_i.score+ aggregated_score); //harmonic
-								// mean
-								sr_i.score / maxScores[i] + aggregated_score; // arithmetic mean NOTE: you should
-																				// normalize the score in the hashmap!!
+						float score = sr_i.score / maxScores[i] + aggregated_score; // arithmetic mean 
+						// sr_i.score* aggregated_score; //geometric mean without sqrt(since sqrt is monotonic)
+						// 2*(sr_i.score* aggregated_score)/(sr_i.score+ aggregated_score); //harmonic mean
 						// (float) ((Math.exp(1+sr_i.score)+ Math.exp(1+aggregated_score)));
 						if (score > best_score) {
 							best_score = score;
@@ -971,15 +805,6 @@ public class LucTextSearch {
 	public SearchResults[] searchByCLIPID(String queryId, int k) throws org.apache.hc.core5.http.ParseException, IOException {
 		System.out.println("clipID: " + queryId);
 		return CLIPExtractor.id2CLIPResults(queryId);
-	}
-
-	public static void main(String[] args) throws NumberFormatException, IOException {
-		String res1 = "6.567852 03551/shot03551_83.png 6.3930883 07053/shot07053_41.png 6.3930883 01009/shot01009_24.png 6.1475897 05709/shot05709_1205.png 6.1475897 02254/shot02254_6.png 6.1475897 07053/shot07053_109.png 6.1475897 06853/shot06853_46.png 6.1475897 05565/shot05565_167.png 6.09558 03249/shot03249_63.png 6.09558 03119/shot03119_160.png 6.09558 02218/shot02218_178.png";
-		String res2 = "6.09558 05709/shot05709_3.png 6.09558 03513/shot03513_83.png 6.09558 07342/shot07342_545.png 6.09558 03378/shot03378_76.png 6.09558 02138/shot02138_431.png 6.09558 00670/shot00670_48.png 6.09558 02254/shot02254_3.png 6.09558 03249/shot03249_7.png";
-		LucTextSearch test = new LucTextSearch();
-		test.openSearcher("/home/paolo/development/java-projects/mim/VBS_2018/out/lucene_vbs");
-		// String res = test.mergeResults(res1, res2);
-		// System.out.println(res);
 	}
 
 }
