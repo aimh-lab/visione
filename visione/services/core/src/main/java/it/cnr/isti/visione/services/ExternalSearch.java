@@ -1,6 +1,7 @@
 package it.cnr.isti.visione.services;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -22,7 +23,11 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.FieldNamingPolicy;
 
 public class ExternalSearch implements Callable<SearchResults[]> {
@@ -41,7 +46,19 @@ public class ExternalSearch implements Callable<SearchResults[]> {
 
     private static Gson gson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+            .registerTypeAdapter(SearchResults.class, new SearchResultsDeserializer())
             .create();
+
+    static class SearchResultsDeserializer implements JsonDeserializer<SearchResults> {
+        @Override
+        public SearchResults deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            JsonObject jsonObject = json.getAsJsonObject();
+            String imgId = jsonObject.get("imgId").getAsString();
+            Float score = jsonObject.get("score").getAsFloat();
+            SearchResults sr = new SearchResults(imgId, score);
+            return sr;
+        }
+    }
 
     public ExternalSearch(String featureName) {
         this.featureName = featureName;
