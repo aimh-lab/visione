@@ -547,7 +547,8 @@ public class LucTextSearch {
 				Integer best_id_t[] = new Integer[nListsToMerge];
 				best_sr[0] = k0.getValue();
 				best_id_t[0] = id_t0;
-				float aggregated_score = best_sr[0].score / maxScores[0]; 
+				//float aggregated_score = best_sr[0].score / maxScores[0]; //was used before
+				float aggregated_score = best_sr[0].score; 
 		
 				for (int i = 1; i < nListsToMerge; i++) {
 					best_sr[i] = null;
@@ -559,10 +560,11 @@ public class LucTextSearch {
 						SearchResults sr_i = hm[i].get(id_t_i); // matching keyframe
 						if (sr_i == null || idResTime.contains(id_t_i))
 							continue;
-						float score = sr_i.score / maxScores[i] + aggregated_score; // arithmetic mean 
-						// sr_i.score* aggregated_score; //geometric mean without sqrt(since sqrt is monotonic)
-						// 2*(sr_i.score* aggregated_score)/(sr_i.score+ aggregated_score); //harmonic mean
-						// (float) ((Math.exp(1+sr_i.score)+ Math.exp(1+aggregated_score)));
+						float score = 
+						//sr_i.score / maxScores[i] + aggregated_score/ maxScores[0]; // arithmetic mean //was used when aggregating actual scores (not RRF derived) 
+						sr_i.score * aggregated_score; //geometric mean without sqrt(since sqrt is monotonic)
+						//2*(sr_i.score* aggregated_score)/(sr_i.score+ aggregated_score); //harmonic mean 
+						 //(float) ((Math.exp(1+sr_iScoreNormalized)+ Math.exp(1+aggregated_score)));
 						if (score > best_score) {
 							best_score = score;
 							best_sr[i] = sr_i;
