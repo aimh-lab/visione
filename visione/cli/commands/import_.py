@@ -92,7 +92,7 @@ class ImportCommand(BaseCommand):
             video_paths = [str(v) for v in video_paths]
         else:
             # import a single video
-            video_paths = [Path(video_path_or_url)]
+            video_paths = [urllib.parse.urlparse(video_path_or_url)]
 
         common = (
             replace,
@@ -249,7 +249,7 @@ class ImportCommand(BaseCommand):
         # XXX this is for supporting the 'add' cli command but the interface needs to be improved
         return []
 
-    def get_video_id_and_path(self, video_path_or_url, video_id=None):
+    def get_video_id_and_path(self, video_path, video_id=None):
         """ Returns the video ID and path given a video path or URL.
 
         Args:
@@ -262,8 +262,7 @@ class ImportCommand(BaseCommand):
         """
 
         # get the URL path to extract the video filename and extension
-        url_parts = urllib.parse.urlparse(video_path_or_url)
-        video_filename = Path(url_parts.path)
+        video_filename = Path(video_path.path)
 
         video_id = str(video_filename.stem) if not video_id else video_id
         video_ext = str(video_filename.suffix)
@@ -294,15 +293,15 @@ class ImportCommand(BaseCommand):
             return video_id, video_out
 
         video_url = video_path_or_url
-        if not url_parts.scheme:  # convert local path to file:// URI
-            video_url = Path(video_path_or_url).resolve().as_uri()
+        if not video_url.scheme:  # convert local path to file:// URI
+            video_url = video_url._replace(scheme='file')
 
         show_progress_fn = None
         if show_progress:
             show_progress_fn = lambda block_num, block_size, total_size: show_progress(block_num * block_size, total_size)
 
         # use urlretrieve
-        urllib.request.urlretrieve(video_url, video_out, show_progress_fn)
+        urllib.request.urlretrieve(video_url.geturl(), video_out, show_progress_fn)
         return video_id, video_out
 
     def create_resized_videos(self, video_path, video_id, force=False, gpu=False, show_progress=None):
