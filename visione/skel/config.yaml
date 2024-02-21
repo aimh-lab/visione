@@ -59,8 +59,6 @@ analysis:
 
   # Feature vector extractors to employ (with optional parameters)
   features:
-    gem:
-      chunk-size: 200
     dinov2:
       chunk-size: 1000
     aladin:
@@ -279,12 +277,6 @@ index:
 
   # Feature-specific indexing parameters.
   features:
-    gem:
-      index_engine: str
-      index_type: topk-sq
-      index_params:
-        keep: 0.5
-        dim_multiplier: 2
 
     dinov2:
       index_engine: faiss

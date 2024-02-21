@@ -52,14 +52,6 @@ services:
     profiles: ["analysis", "objects-frcnn-oiv4"]
     deploy: *needs_gpu
 
-  features-gem:
-    build: ./analysis/features-gem
-    image: visione/features-gem
-    volumes: *common_volumes
-    profiles: ["analysis", "features-gem"]
-    deploy: *needs_gpu
-    shm_size: 16g
-
   features-clip-openai:
     build: ./analysis/features-clip
     image: visione/features-clip
