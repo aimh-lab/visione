@@ -17,11 +17,11 @@ RUN sed -i -e 's|from torch.hub import _download_url_to_file|from torch.hub impo
 
 RUN mamba create --name sg_benchmark python=3.7 -y && \
     mamba install -y -n sg_benchmark pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch && \
-    mamba install -y -n sg_benchmark ipython h5py nltk joblib jupyter pandas scipy && \
-    mamba run --no-capture-output -n sg_benchmark pip install ninja yacs>=0.1.8 cython==0.29.34 matplotlib tqdm opencv-python-headless numpy>=1.19.5 && \
-    mamba install -y -n sg_benchmark timm einops && \
-    mamba install -y -n sg_benchmark pycocotools && \
-    mamba run --no-capture-output -n sg_benchmark python -m pip install cityscapesscripts && \
+    mamba install -y -n sg_benchmark h5py==3.7.0 nltk==3.8.1 joblib==1.3.2 scipy==1.7.3 && \
+    mamba run --no-capture-output -n sg_benchmark pip install ninja==1.11.1.1 yacs>=0.1.8 cython==0.29.34 tqdm opencv-python-headless==4.9.0.80 numpy>=1.19.5 && \
+    mamba install -y -n sg_benchmark timm==0.6.13 einops==0.6.1 && \
+    mamba install -y -n sg_benchmark pycocotools==2.0.4 && \
+    mamba run --no-capture-output -n sg_benchmark pip install cityscapesscripts==2.2.2 && \
     mamba run --no-capture-output -n sg_benchmark python setup.py build develop
 
 RUN apt-get install -y curl
@@ -44,10 +44,10 @@ WORKDIR /usr/src/app/
 RUN git clone --recursive https://github.com/mesnico/ALADIN
 WORKDIR /usr/src/app/ALADIN
 RUN git checkout feature_extraction
-RUN mamba create --name oscar python=3.7 && \
+RUN mamba create --name oscar python=3.8 && \
     mamba install -y -n oscar pytorch==1.12.1 torchvision==0.13.1 cudatoolkit=11.6 -c pytorch && \
     mamba run --no-capture-output -n oscar pip install -r requirements.txt && \
-    mamba run --no-capture-output -n oscar pip install Flask && \
+    mamba run --no-capture-output -n oscar pip install Flask==3.0.2 more_itertools==10.2.0 && \
     mamba run --no-capture-output -n oscar python setup.py build develop
 
 # Download weights
@@ -67,11 +67,11 @@ RUN --mount=type=secret,id=asset_token,required \
 # FIXME: use build-args to pass UID and GID to docker build to inject the host user id during image build
 RUN chmod -R a+rw /usr/src/app/
 
-RUN pip install more_itertools
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/"
 
 WORKDIR /usr/src/app/ALADIN
 COPY extract.py .
 COPY service.py ./alad
 
+ENTRYPOINT ["mamba", "run", "--no-capture-output", "-n", "oscar"]
 CMD ["mamba", "run", "--no-capture-output", "-n", "oscar", "python", "alad/service.py"]

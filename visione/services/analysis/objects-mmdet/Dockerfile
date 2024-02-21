@@ -14,10 +14,10 @@ RUN git clone https://github.com/open-mmlab/mmdetection.git /usr/src/mmdetection
 
 # substitute cv2 with the headless version
 RUN pip uninstall -y opencv-python && \
-    pip install --no-cache-dir opencv-python-headless
+    pip install --no-cache-dir opencv-python-headless==4.9.0.80
 
-# setuptool needs a downgrade for mim commands to work
-RUN pip install --upgrade setuptools==59.8.0
+# setuptool and yapf need a downgrade for mim commands to work
+RUN pip install --upgrade setuptools==59.8.0 yapf==0.40.1
 
 WORKDIR /usr/src/mmdetection/checkpoints
 
@@ -30,8 +30,8 @@ RUN wget https://download.openmmlab.com/mmdetection/v2.0/lvis/mask_rcnn_x101_64x
 
 # app requirements
 RUN pip install \
-        h5py \
-        more-itertools
+        h5py==3.10.0 \
+        more_itertools==10.2.0
 
 WORKDIR /usr/src/app/
 

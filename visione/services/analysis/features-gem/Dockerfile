@@ -4,11 +4,10 @@ RUN conda install -y python=3.7 scikit-learn=0.20.2 -c pytorch
 
 RUN pip install \
         flask-restful==0.3.9 \
-        h5py \
-        matplotlib \
-        more-itertools \
-        numpy \
-        opencv-python \
+        h5py==3.8.0 \
+        more-itertools==9.1.0 \
+        numpy==1.21.6 \
+        opencv-python-headless==4.9.0.80 \
         tqdm
 
 RUN apt update; apt install -y git unzip && rm -rf /var/lib/apt/lists/*

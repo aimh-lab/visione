@@ -1,5 +1,5 @@
-more_itertools
-Pillow
+more_itertools==10.2.0
+Pillow==9.0.1
 protobuf==3.20.*
-pyyaml
+pyyaml==6.0
 tensorflow_hub==0.13.0

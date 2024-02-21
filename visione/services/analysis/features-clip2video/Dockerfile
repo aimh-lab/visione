@@ -1,21 +1,21 @@
-FROM docker.io/continuumio/anaconda3:2022.10
+FROM docker.io/pytorch/pytorch:1.13.0-cuda11.6-cudnn8-runtime
 
 WORKDIR /usr/src/app/
+
+# Install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg git wget
 
 # Clone repo and pin to specific version
 RUN git clone https://github.com/CryhanFang/CLIP2Video && \
     cd CLIP2Video && \
     git checkout e94131800a3a1434f6d00b89b7301d741db8ba06
 
-# Install CLIP2Video dependencies
-RUN pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116
-# remove torch from original requirements.txt
+# Remove torch from original requirements.txt
 RUN sed -i '/torch/d' CLIP2Video/requirements.txt
 RUN pip install -r CLIP2Video/requirements.txt
 
 # Install other dependencies
-RUN pip install gdown more_itertools av flask==2.2.3 "Werkzeug>=2.2,<3.0"
-RUN conda install -c conda-forge ffmpeg
+RUN pip install gdown more_itertools==10.2.0 av==11.0.0 h5py==3.10.0 flask==2.2.3 "Werkzeug>=2.2,<3.0"
 
 # Download CLIP and CLIP2Video models
 RUN mkdir -p checkpoint && \

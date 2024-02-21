@@ -1,7 +1,7 @@
 flask==2.2.3
 Werkzeug>=2.2,<3.0
-h5py
-more_itertools
-Pillow
-pyyaml
+h5py==3.10.0
+more_itertools==10.2.0
+Pillow==9.0.1
+pyyaml==6.0
 transformers==4.27.4
