@@ -89,7 +89,7 @@ class ImportCommand(BaseCommand):
             video_paths = [v for v in videos_dir.glob('*') if v.suffix.lower() in SUPPORTED_VIDEO_FORMATS]
             video_paths.sort()
             assert len({v.stem for v in video_paths}) == len(video_paths), "Duplicate video IDs found in collection 'videos' directory."
-            video_paths = [str(v) for v in video_paths]
+            video_paths = [urllib.parse.urlparse(str(v)) for v in video_paths]
         else:
             # import a single video
             video_paths = [urllib.parse.urlparse(video_path_or_url)]
