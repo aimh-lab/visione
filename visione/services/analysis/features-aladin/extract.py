@@ -20,7 +20,6 @@ class AladinExtractor(BaseExtractor):
 
             # 2. Run object detector to get visual features
             command = [
-                'conda', 'run', '--no-capture-output', '-n', 'sg_benchmark',
                 'python', 'extraction_service/test_sg_net.py',
                 '--config-file', 'sgg_configs/vgattr/vinvl_x152c4.yaml',
                 '--img_folder', '/',
@@ -45,7 +44,6 @@ class AladinExtractor(BaseExtractor):
             # 3. Extract ALADIN features
             out_h5_file = os.path.join(temp_dir, 'out.h5')
             command = [
-                'conda', 'run', '--no-capture-output', '-n', 'oscar',
                 'python', 'alad/extraction/extract_visual_features.py',
                 '--img_feat_file', f'{sg_benchmark_path}/output/X152C5_test/inference/vinvl_vg_x152c4/predictions.tsv',
                 '--eval_model_dir', 'checkpoint-0132780',
