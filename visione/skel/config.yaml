@@ -279,8 +279,12 @@ index:
   features:
 
     dinov2:
-      index_engine: faiss
-      index_type: Flat
+      index_engine: str
+      index_type: topk-sq
+      index_params:
+        keep: 0.25
+        dim_multiplier: 100
+        rectify_negatives: true
 
     aladin:
       index_engine: str

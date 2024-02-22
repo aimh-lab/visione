@@ -422,8 +422,9 @@ class IndexCommand(BaseCommand):
             record['objectsinfo'] = record.pop('object_info')
 
             # features
-            # record['features'] = record.pop('features_gem_str')
-            record['features'] = record.pop('features_dinov2_str')
+            if 'features_dinov2_str' in record:
+                # TODO: choose which feature to use for visual similarity search in the config
+                record['features'] = record.pop('features_dinov2_str')
             record['aladin'] = record.pop('features_aladin_str')
             return record
 
