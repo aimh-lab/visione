@@ -4,37 +4,56 @@
 #   \ \ /   | \__ \  |  (   |  |   |   __/
 #    \_/   _| ____/ _| \___/  _|  _| \___|  Configuration File
 #
+# This file contains the configuration for this VISIONE collection.
+
 
 main:
-  collection_name: null   # Label for this collection (optional).
-  server_name: localhost  # Server name to which this instance will respond, use _ for all.
-  port: 8000              # Port to which this instance will respond.
+  # Label for this collection (optional).
+  collection_name: null
 
-  username: admin         # Access credentials.
+  # Server name to which this instance will respond. You can specify a list
+  # space-separated domain names or IP addresses.
+  server_name: localhost
+
+  # Port to which this instance will bind.
+  port: 8000
+
+  # Set to true to enable the development mode. In this mode, the code of
+  # services of editable installs will be mounted to docker containers, allowing
+  # for live code changes.
+  develop_mode: false
+
+  # (DEPRECATED) Access credentials for the internal tomcat server.
+  username: admin
   password: visione
 
-  develop_mode: false     # if true, enable code mounts for editable installs
-
+# This section contains URL overrides for the directories where the static files
+# are stored. You can modify these URLs to point to an external server, or set
+# them to 'null' to serve the files locally from the collection directory.
 static_files_urls:
-  videos_url:         null  # URL to which 'videos/...' requests will be redirected. Set to 'null' for serving them locally.
-  resized_videos_url: null  # URL to which 'videos/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
-  frames_url:         null  # URL to which 'frames/...' requests will be redirected. Set to 'null' for serving them locally.
-  resized_frames_url: null  # URL to which 'frames/(medium|tiny)/...' requests will be redirected. Set to 'null' for serving them locally.
-  palette_url:        null  # URL to which 'palette/...' requests will be redirected. Set to 'null' for serving them locally.
+  videos_url:         null  # URL to which 'videos/...' requests will be redirected.
+  resized_videos_url: null  # URL to which 'videos/(medium|tiny)/...' requests will be redirected.
+  frames_url:         null  # URL to which 'frames/...' requests will be redirected.
+  resized_frames_url: null  # URL to which 'frames/(medium|tiny)/...' requests will be redirected.
+  palette_url:        null  # URL to which 'palette/...' requests will be redirected.
 
-# URLs for externally hosted backend services.
+# This section contains URL overides for the backend services. You can modify
+# these URLS to point to externally hosted services, or set them to 'null' to
+# use the locally hosted services.
 services_urls:
-  translate_url: null
+  translate_url: null  # URL to which 'translate' requests will be redirected.
 
+# This section contains the configuration for the search service.
 core:
-  K: 10000  # Number of results to return in searches.
+  # The defautl number of results to return in searches if not specified
+  # otherwise.
+  K: 10000
 
-  ## Advanced stuff, don't touch unless you know what you're doing.
-  ## Commented values are the default ones.
-  ## Uncomment and change them if you want to override them.
+  ## Advanced stuff, don't touch unless you know what you're doing. Commented
+  ## values are the default ones. Uncomment and change them if you want to
+  ## override them.
 
-  #-------PATH SETTINGS-------#
-  # index_path: /data/lucene-index  # LUCENE
+  #-------PATH SETTINGS-------# index_path: /data/lucene-index  # LUCENE
   # save_logs: false  # SAVE_LOGS
   # log_path: /data/logs  # LOG_FOLDER
   # log_dres_path: /data/logs_dres  # LOG_FOLDER_DRES
@@ -49,20 +68,27 @@ core:
   # RESCORER_PIPELINE: [OBJECTS, ALADIN, BB]
 
 
+# This section contains the configuration for the analysis stage ('visione
+# analyze' commands).
 analysis:
-  # Object detectors to employ (with optional parameters)
+
+  # Object detectors to run on the collection. For each detector, you can
+  # specify overrides for the default parameters. To disable a detector, remove
+  # or comment its entry.
   object_detectors:
     colors: {}
     mrcnn-lvis: {}
     vfnet64-coco: {}
     frcnn-oiv4: {}
 
-  # Feature vector extractors to employ (with optional parameters)
+  # Feature extractors to run on the collection. For each feature extractor, you
+  # can specify overrides for the default parameters. To disable a feature
+  # extractor, remove or comment its entry.
   features:
     dinov2:
-      chunk-size: 1000
+      chunk-size: 1000  # Frames are processed in chunks of this size.
     aladin:
-      chunk-size: 1000
+      chunk-size: 1000  # Frames are processed in chunks of this size.
     clip-openai:
       batch-size: 1   # Batch size
       num-workers: 8  # Number of workers
@@ -84,15 +110,27 @@ analysis:
       batch-size: 1   # Batch size
       num-workers: 8  # Number of workers
 
+  # Frame clustering parameters. These parameters are used to cluster similar
+  # frames in a video. To disable frame clustering, comment or remove the
+  # 'frame_cluster' entry. (Currently not used in the system, but kept for
+  # future use.)
   frame_cluster:
-    feature: dinov2  # Which feature vector to employ in frames clustering.
+    # Which feature vector to employ in frames clustering. Must be one of the
+    # feature extractors defined above.
+    feature: dinov2
 
+
+# This section contains the configuration for the indexing stage ('visione
+# index' commands).
 index:
-  # Object-specific indexing parameters.
+
+  # Object-specific indexing parameters. These parameters are used to index the
+  # detected objects in the collection.
   objects:
 
-    # Labels to exclude. Labels specified in 'all' are excluded post-label-mapping.
-    # You can specify detector-specific exclusion lists that will be applied pre-label-mapping.
+    # Labels to exclude. Labels specified in 'all' are excluded after label
+    # mapping. You can specify detector-specific exclusion lists that will be
+    # applied before label mapping.
     exclude_labels:
       all: []
       # Example of detector-specific exclusion list:
@@ -100,7 +138,10 @@ index:
       #  - person
       #  - tv
 
-    # Per-detector label mapping.
+    # Per-detector label mapping. These mappings are used to map the labels of
+    # the detected objects to a common set of labels. The mappings are applied
+    # before the exclusion lists. Default mappings are provided for the
+    # available detectors.
     label_map:
       frcnn-oiv4:
         accordion: accordion_(musical_instrument)
@@ -264,18 +305,32 @@ index:
         tv: television
 
     # Exclude detections having a normalized area smaller than this value.
+    # Normalized area is the area of the detection bounding box divided by the
+    # area of the entire image.
     min_area: 0.001
 
     # Exclude detections having a score smaller than this value.
     threshold:
+      # The 'monochrome' object is a special object extracted by the 'colors' object detector, and is used to detect monochrome frames.
       monochrome: 0.01
       colors: 0.1
-      fish_detector: 0.75
       frcnn-oiv4: 0.6
       mrcnn-lvis: 0.5
       vfnet64-coco: 0.5
 
-  # Feature-specific indexing parameters.
+  # Feature-specific indexing parameters. These parameters are used to index the
+  # feature vectors in the collection. Each entry in the 'analysis.features'
+  # section must have a corresponding entry in this section to be available
+  # during search. Conversely, each entry in this section must have a
+  # corresponding entry in the 'analysis.features' section. For each feature,
+  # you can specify two types of indexing: 'str' and 'faiss'.
+  #  - 'str' (Surrogate Text Representation) indexing uses a disk-based Lucene
+  #    indexing as backend and can scale beyond RAM size. For index types and
+  #    parameters, see https://github.com/fabiocarrara/str-encoders.
+  #  - 'faiss' indexing uses an in-memory Faiss index and is usually faster but
+  #    requires the entire index to fit in memory. For index types see FAISS
+  #    index factory documentation
+  #    (https://github.com/facebookresearch/faiss/wiki/The-index-factory)
   features:
 
     dinov2:
@@ -289,7 +344,7 @@ index:
     aladin:
       index_engine: str
       index_type: topk-sq
-      index_params:  # TODO: change these params, copied from GEM
+      index_params:
         keep: 0.5
         dim_multiplier: 2
 
@@ -317,18 +372,26 @@ index:
       index_engine: faiss
       index_type: Flat
 
+# This section contains the configuration for the user interface.
 ui:
   # Maximum number of results per video to display in a row.
   max-results-per-video: 10
 
+  # The default text-to-image similarity modes to display in the UI as radio
+  # buttons.
   textual-modes:
     - {name: "ClipVideo", mode: "clip2video"}
     - {name: "ClipLAION", mode: "clip-laion"}
     - {name: "Aladin", mode: "aladin"}
     - {name: "use all", mode: "all"}
 
+  # Parameters of the object search UI.
   objects:
-    # Object categories to display in the UI.
+    # Object categories to display in the UI for fast drag-and-drop selection.
+    # Each category can have a custom icon URL relative to the 'palette'
+    # directory in the collection folder. If no URL is specified, the default
+    # icon is assumed to be '<name>.png'. You can add a 'break: true' entry to
+    # add a line break in the object icons in the UI.
     palette:
       - {name: person}  # by default, urls are assumed to be '<name>.png'
       - {name: man}
@@ -376,6 +439,10 @@ ui:
       - {name: white}
       - {name: yellow}
 
+# This section contains the configuration for the DRES submission service
+# (https://github.com/dres-dev/DRES) when VISIONE is used as a DRES client. It
+# is used only during competitions and is not needed for normal VISIONE
+# operation.
 dres:
   endpoint: http://router/dres  # SUBMIT_SERVER=http://router/dres
   username: visione  # SUBMIT_USER
