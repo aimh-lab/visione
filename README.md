@@ -16,7 +16,6 @@
 - :video_camera: Video and keyframe **browsing** (with video playback)
 - :rocket: **Dockerized** and **GPU-enabled** video analysis
 
-
 ## Requirements
 You need:
 - Python >= 3.7
@@ -179,4 +178,17 @@ visione serve  # start all services (`serve` is a wrapper around `docker compose
 visione compose restart features-clip2video router  # restart the clip2video and router services
 visione compose build core  # rebuild only the core service
 visione compose up -d core  # restart the core service with the newly built image
+```
+
+## Citation
+
+```
+@inproceedings{amato2024visione,
+  title={VISIONE 5.0: Enhanced User Interface and AI Models for VBS2024},
+  author={Amato, Giuseppe and Bolettieri, Paolo and Carrara, Fabio and Falchi, Fabrizio and Gennaro, Claudio and Messina, Nicola and Vadicamo, Lucia and Vairo, Claudio},
+  booktitle={International Conference on Multimedia Modeling},
+  pages={332--339},
+  year={2024},
+  organization={Springer}
+}
 ```
