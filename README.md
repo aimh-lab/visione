@@ -84,9 +84,14 @@ The `import` subcommand executes the following actions:
 You can skip any of the importing steps by manually putting the needed files in the appropriate folders and run `visione import` with flags, e.g., `--no-copy`, `--no-thumbs`, etc.
 For example, you can manually place/mount video files in the `videos/` collection folder and import them by providing their path in the `videos/` folder and the `--no-copy` flag:
 ```bash
-visione import --id bunny --no-copy videos/bunny.mp4
+# for importing a single file
+visione import --id bunny --no-copy videos/bunny.mp4 
 visione import --id grand --no-copy videos/grand.mov
+
+# for bulk import of all the videos in the test-collection/videos folder
+visione import --no-copy --bulk
 ```
+
 Similarly, you can provide pre-detected scenes and pre-extracted keyframes in the `selected-frames/` folder and import them with the `--no-scenes` and `--no-frames` flags.
 
 See `visione import -h` for more options.
