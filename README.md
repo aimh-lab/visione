@@ -16,6 +16,20 @@
 - :video_camera: Video and keyframe **browsing** (with video playback)
 - :rocket: **Dockerized** and **GPU-enabled** video analysis
 
+
+## Citation
+We kindly ask you to refer to the following paper in publications mentioning or employing VISIONE
+```
+@inproceedings{amato2024visione,
+  title={VISIONE 5.0: Enhanced User Interface and AI Models for VBS2024},
+  author={Amato, Giuseppe and Bolettieri, Paolo and Carrara, Fabio and Falchi, Fabrizio
+          and Gennaro, Claudio and Messina, Nicola and Vadicamo, Lucia and Vairo, Claudio},
+  booktitle={International Conference on Multimedia Modeling},
+  pages={332--339},
+  year={2024},
+  organization={Springer}
+}
+```
 ## Requirements
 You need:
 - Python >= 3.7
@@ -49,6 +63,12 @@ This should install the `visione` executable. Be sure the folder where pip insta
 
 
 ## Getting Started
+To start VISIONE, five main steps, described in the following sections, must be followed in sequence:
+1)	Initialize the collection (`visione init [options]`)
+2)	Import videos (`visione import [options]`)
+3)	Analyze videos (`visione analyze [options]`)
+4)	Index the analyzed videos (`visione index [options]`)
+5)	Start the VISIONE system (`visione serve [options]`)
 
 ### 1. Initialize a new empty collection
 The `visione init` command creates a new directory with a default configuration.
@@ -57,7 +77,7 @@ All subsequent commands should be run from within the collection directory.
 visione init test-collection
 cd test-collection
 ```
-You can change the default configuration by editing the [`config.yaml`](visione/skel/config.yaml) file, e.g., to select the analyses to perform on the videos and how to index them.
+Please check and eventually change the default configuration by editing the file [`config.yaml`](visione/skel/config.yaml) file, e.g., to select the analyses to perform on the videos and how to index them.
 Once you are done, you can import videos to the collection.
 
 > **Note**: The first time you run other subcommands other than `init`, it will take a while to download and build the necessary Docker images. Subsequent runs will be faster.
@@ -100,7 +120,7 @@ After videos are imported, they are ready to be analyzed.
 
 ### 3. Analyze videos
 The `visione analyze` command runs analyses on the imported videos.
-Without additional arguments, it performs all analyses specified in the configuration file on all the imported videos.
+Without additional arguments, it performs all analyses specified in the configuration file [`config.yaml`](visione/skel/config.yaml) on all the imported videos.
 ```bash
 visione analyze
 ```
@@ -185,15 +205,5 @@ visione compose build core  # rebuild only the core service
 visione compose up -d core  # restart the core service with the newly built image
 ```
 
-## Citation
-
-```
-@inproceedings{amato2024visione,
-  title={VISIONE 5.0: Enhanced User Interface and AI Models for VBS2024},
-  author={Amato, Giuseppe and Bolettieri, Paolo and Carrara, Fabio and Falchi, Fabrizio and Gennaro, Claudio and Messina, Nicola and Vadicamo, Lucia and Vairo, Claudio},
-  booktitle={International Conference on Multimedia Modeling},
-  pages={332--339},
-  year={2024},
-  organization={Springer}
-}
-```
+## Need Help or Have Feedback? 
+We encourage you to [open a discussion](https://github.com/aimh-lab/visione/discussions) to request assistance with using this project, make suggestions, or report any issues. 
