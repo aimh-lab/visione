@@ -437,15 +437,19 @@ public class LucTextSearch {
 	// 	return new ConcurrentHashMap<>(hashedHits);
 	// }
 
-	public Map<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMap(SearchResults[] hits, int quantizer, Set<String> videoKeys) {
+	public Map<String, ConcurrentMap<Integer, SearchResults>> getVideoHashMap(SearchResults[] hits, int quantizer, Set<String> dayKeys) {
+		//Note: this is different from teh methos used usually in visones since here we are using the time encoded in the filename to do the quantization 
+		//we aggregate per day, quantize every 3 minutes and search in a 24 hours window within teh same day
+		// for each sr the correspondig dayKey is ectracted from sr.getVideoId() by splitting it using _ and taking the first part
 		Map<String, ConcurrentMap<Integer, SearchResults>> hashedHits = Arrays.stream(hits)  // get hits as a stream
 			.parallel()  // run in parallel
-			.filter(sr -> videoKeys == null || videoKeys.contains(sr.getVideoId()))  // filter out hits not belonging to selected videos
+			.filter(sr -> dayKeys == null || dayKeys.contains(sr.getVideoId().split("_")[0]))  // filter out hits not belonging to selected days
 			.collect(
 				Collectors.groupingByConcurrent(  // group search results ...
-					sr -> sr.getVideoId(),  // .. by videoId, generates a Map<String, List<SearchResults>>
+					sr -> sr.getVideoId().split("_")[0],  // .. by dayID, generates a Map<String, List<SearchResults>>
 					Collectors.toConcurrentMap(  // map each List<SearchResults> to a Map<Integer, SearchResults> ...
-						sr -> (int) (sr.getMiddleTime() / (quantizer*1000)), // ... using qauntized timestamp as key ...
+						sr -> (int) ((Integer.parseInt(sr.getImgId().split("_")[1].split("-")[0])*60+ Integer.parseInt(sr.getImgId().split("_")[1].split("-")[1])/10 )/quantizer ),// ... using quantized time (in minutes) as key ...
+						//sr -> (int) (sr.getMiddleTime() / (quantizer*1000)), // ... using qauntized timestamp as key ...
 						sr -> sr,  // ... and SearchResults as value (identity function) ...
 						(sr1, sr2) -> sr1.score > sr2.score ? sr1 : sr2  // ... and merge SearchResults with same key by keeping the one with highest score
 					)
@@ -480,6 +484,32 @@ public class LucTextSearch {
 		return sortedResults;
 
 	}
+		public SearchResults[] sortByDay(SearchResults[] results, int n_frames_per_row, int maxRes) {
+		if (results == null)
+			return null;
+
+		long totalTime = -System.currentTimeMillis();
+
+		SearchResults[] sortedResults = Stream.of(results) // get results as a stream
+			.limit(maxRes) // limit to at most maxRes results
+			.collect(Collectors.groupingBy(r -> r.getVideoId().split("_")[0])) // //FIXME group by videoId, creates a Map<String, List<SearchResults>>
+			.values() // get the values of the map, i.e., a List<SearchResults>
+			.parallelStream().map(videoResults -> { // sort and limit each SearchResults
+				videoResults.sort(new SearchResultsComparator());
+				return videoResults.subList(0, Math.min(n_frames_per_row, videoResults.size()));
+			})
+			.sorted((r1, r2) -> -Float.compare(r1.get(0).score, r2.get(0).score)) // sort the lists of SearchResults by the score of the first element
+			.flatMap(List::stream) // flatten the list of lists to a single list
+			.collect(Collectors.toList()) // collect the list
+			.toArray(new SearchResults[0]); // convert to array
+
+		totalTime += System.currentTimeMillis();
+		System.out.println("**sortByDay: ("+maxRes +" maxRes) " + totalTime + "ms" + "\t res size:" + sortedResults.length);
+
+		return sortedResults;
+
+	}
+
 
 	public SearchResults[] mergeResults(List<SearchResults[]> resultsList, int topK, boolean temporalQuery, String fusionMode) throws NumberFormatException, IOException {
 		resultsList = resultsList.stream().filter(x -> x != null).collect(Collectors.toList());
@@ -493,7 +523,7 @@ public class LucTextSearch {
 
 		// nRankings > 1
 		if (temporalQuery)
-			 return combineResults_temporal(resultsList, topK, 3, 12);
+			 return combineResults_temporal(resultsList, topK, 2, 1440); //TODO quantizzo ogni due minuti e e cerco in max 1440 minuti=24 ore)
 			 //note: temporal combination using RRF scores instead of normalized scores semmes to work worse
 		return mergeResultsRRFwithBoostTopN(resultsList, topK);
 	}
@@ -508,29 +538,29 @@ public class LucTextSearch {
 		long time = -System.currentTimeMillis();
 	
 		Map<String, ConcurrentMap<Integer, SearchResults>>[] shmap = new Map[nListsToMerge];
-		Set<String> videoIds = null;
+		Set<String> dayIds = null;
 		for (int i = 0; i < nListsToMerge; i++) {
 			SearchResults[] hits_i = resultsList.get(i);
-			shmap[i] = getVideoHashMap(hits_i, timeQuantizer, videoIds); // hashing  hits_i
+			shmap[i] = getVideoHashMap(hits_i, timeQuantizer, dayIds); // hashing  hits_i
 			//TODO add a cache for the hashing?
 			if(i==0)
-				videoIds = shmap[i].keySet();
+				dayIds = shmap[i].keySet();
 			else
-				videoIds.retainAll(shmap[i].keySet()); // videoIds is already the intersection of the videos
+				dayIds.retainAll(shmap[i].keySet()); // dayIds is already the intersection of the videos
 			
 			maxScores[i] = hits_i[0].score;
 			System.out.print("[list"+i+":" + hits_i.length+" max_score:"+maxScores[i]+"]\n");
 		}
 		time += System.currentTimeMillis();
-		System.out.print("**TEMPORAL MERGE: [hashing:" + time + "ms], ");
+		System.out.print("**++TEST++ TEMPORAL MERGE: [hashing:" + time + "ms], ");
 
 		// matching
 		time = -System.currentTimeMillis();
 		ArrayList<SearchResults> resultsSD = new ArrayList<>();
-		for (String videoId : videoIds) {
+		for (String dayId : dayIds) {
 			Map<Integer, SearchResults>[] hm = new Map[nListsToMerge];
 			for (int i = 0; i < nListsToMerge; i++) {
-				hm[i] = shmap[i].get(videoId);
+				hm[i] = shmap[i].get(dayId);
 			}
 
 			List<Entry<Integer, SearchResults>> listOfEntries0 = new ArrayList(hm[0].entrySet());
@@ -554,7 +584,7 @@ public class LucTextSearch {
 					best_sr[i] = null;
 					float best_score = -1;
 
-					for (int interval = 0; interval < qi + 1; interval++) {
+					for (int interval = -qi; interval < qi + 1; interval++) {
 						// searching a match in the i-th list
 						Integer id_t_i = id_t0 + interval;
 						SearchResults sr_i = hm[i].get(id_t_i); // matching keyframe

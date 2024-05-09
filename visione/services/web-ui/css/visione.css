@@ -98,6 +98,28 @@ body {
   transform: translateX(-50%);
 }
 
+.sortby_bounding-box {
+  margin-top: 12px;
+  border: 1px solid #074a88;
+  border-radius: 10px;
+  position: relative;
+  padding: 5px;
+  text-align: center;
+  /*font-size: 12px;*/
+  width: 13em;
+  height: 2.5em
+}
+
+.sortby-text {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  background-color: #fff;
+  color: #074a88;
+  /*font-size: 14px;*/
+  transform: translateX(-50%);
+}
+
 
 
 .avsSelected {

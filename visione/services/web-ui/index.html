@@ -47,6 +47,21 @@
 										<input type="radio" name="option" value="qa" onclick="setTaskType('qa')"> Q&A
 									  </label>
 								  </div>
+
+
+								  <div class="sortby_bounding-box">
+									<div class="top-line"></div>
+									<span class="sortby-text">GroupBy</span>
+									<label class="radio-label">
+									  <input type="radio" name="sortByOption" value="hour" onclick="setSortByType('hour'); searchByForm();"> Hour
+									</label>
+									<label class="radio-label">
+									  <input type="radio" name="sortByOption" value="day" onclick="setSortByType('day'); searchByForm();"> Day
+									</label>
+								  </div>
+
+
+
 							</div>
 							<div id="dialog" title="Tag Name">
 								<label>tag</label> <input id="tag" name="tag" type="text">

@@ -129,6 +129,7 @@ var loadingSpinner = null;
 var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
 var defaultTaskType = "kis";
+var defaultSortByType = "hour";
 var framesCache = [];
 var collectionName;
 
@@ -637,7 +638,7 @@ function search2(query) {
 			$.ajax({
 				type: "POST",
 				async: true,
-				data: { query: query, simreorder: simreorder, n_frames_per_row: numResultsPerVideo },
+				data: { query: query, simreorder: simreorder, n_frames_per_row: numResultsPerVideo, sortBy: getSortByType() },
 				dataType: "text",
 				url: urlVBSService + "/search",
 				success: function (data) {
@@ -1003,6 +1004,23 @@ var visibleImages = 0;
 var resColIdx = 1;
 var resrowIdx = 0;
 
+function checkId(videoID, prevID) {
+	if (getSortByType() === "hour") {
+		if (videoID != prevID)
+			return true;
+		return false;
+	} 
+	else {
+		let dayID = videoID.split("_")[0]
+		let prevDayID = ""
+		if (prevID != "")
+			prevDayID = prevID.split("_")[0]
+		if (dayID != prevDayID)
+			return true;
+		return false;
+	}
+}
+
 function loadImages(startIndex, endIndex) {
 	let prevID = '';
 
@@ -1027,8 +1045,9 @@ function loadImages(startIndex, endIndex) {
 		let frameNumber = result ? result[1] || result[2] || result[3] : null;
 
 
-		if (i > 0 && videoId != prevID) {
-			//patch to avoid same video on two rows
+		//if (i > 0 && videoId != prevID) {
+		if (i > 0 && checkId(videoId, prevID)) {
+				//patch to avoid same video on two rows
 			if (i > endIndex )
 				break;
 			resMatrix[++resrowIdx] = [];
@@ -1041,10 +1060,18 @@ function loadImages(startIndex, endIndex) {
 		}
 
 		let keyframePath = keyFramesUrl + path + ".png";
-
-		if (videoId != prevID) {
+		let videoIdParts = videoId.split("_");
+		let fullDayVideoUrl = videoUrlPrefix +"fullday/" +videoIdParts[0] + ".mp4";
+		//if (videoId != prevID) {
+		if (checkId(videoId, prevID)) {
+				//imgGridResults += '<div id="video_' + videoId + '">';
+			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + getLSCFolderName(videoId) + '<a>';
 			//imgGridResults += '<div id="video_' + videoId + '">';
-			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
+			imgGridResults += '<p align="center"><a href="#" title="Play Video"><i title="Play Video" class="fa fa-solid fa-video font-normal" style="color:navy;" onclick="playFullDayVideoWindow(\'' + fullDayVideoUrl + '\', \'' + videoIdParts[0] + '\'); return false;"></i></a></p></div>';
+			/*document.querySelector('.fa-video').addEventListener('click', function() {
+				playVideoWindow(videoUrl, videoId, imgId);
+				return false;
+			});*/
 			var preloadedImage = new Image();
 			preloadedImage.src = keyframePath;
 		  	framesCache[resrowIdx] = preloadedImage
@@ -1195,6 +1222,23 @@ function setTaskType(taskType) {
 
 }
 
+function getSortByType() {
+	return localStorage.getItem('sortByType');
+}
+
+function setSortByType(sortByType) {
+	if (sortByType == null)
+		sessionStorage.setItem('sortByType', defaultSortByType);
+	else
+		sessionStorage.setItem('sortByType', sortByType);
+
+	localStorage.setItem('sortByType', sessionStorage.getItem('sortByType'));
+	$('input[name="sortByOption"][value="' + getSortByType() + '"]').prop('checked', true);
+	$('#sortByTypeLabel').text(getSortByType() );
+}
+
+
+
 function submitResult(id, videoId, textAnswer=null, isAsync=false) {
 	return $.ajax({
 		type: "GET",
@@ -1284,19 +1328,21 @@ function hideOverlay(img_overlay) {
 
 const imgResult = (res, borderColor, img_loading="eager") => {
 		jsonString = JSON.stringify(res);
+		lscId = getLSCId(res.frameName);
 		return `
 		<div class="result-border" style="border-color: ${borderColor};">
 			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
 				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${jsonString}, event)' />
 			</div>
 			<div  id="toolbar_icons_${res.imgId}">
-				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-				<a title="Video summary" href="javascript:void(0);" onclick="openChildWindow('${res.videoId}', '${res.imgId}', '${res.frameName}')"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${lscId}</a>
+				<a title="Video summary" href="javascript:void(0);" onclick="openChildWindow('${res.videoId}', '${res.imgId}', '${res.frameName}')"><i class="fa fa-th font-normal" style="padding-left: 1px;"></i></a>
+				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 1px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+				<!--<a href="#" title="Play Video"><i title="Play Video" class="fa fa-solid fa-video font-normal" style="color:red;padding-left: 1px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>-->
+				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 1px;  vertical-align: top;" src="img/comboSim.svg" width=16 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 1px;  vertical-align: top;" src="img/imgSim.png" width=16 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 1px; vertical-align: top;" src="img/aladinSim.svg" width=16 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 1px;  vertical-align: top;" src="img/clipSim.svg" width=16 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 
 				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${jsonString});'> </i></span></a>
 			<div>
@@ -1319,6 +1365,11 @@ function playVideoWindow(videoURL, videoId, imgId) {
 	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
 	var time = getStartTime(imgId);
 	var myWindow = window.open("videoPlayer.html?videoid=" + videoId + "&frameid=" + imgId + "&url=" + videoURL + "&t=" + time, "playvideo", params);
+}
+
+function playFullDayVideoWindow(fulldayVideoURL, videoId) { //FIXME Lucia
+	let params = `scrollbars=no,status=no,location=no,toolbar=no,menubar=no,width=850,height=710,left=50,top=50`;
+	var myWindow = window.open("fullDayVideoPlayer.html?videoid=" + videoId +  "&url=" + fulldayVideoURL + "&t=0.0" , "playvideo", params);
 }
 
 function generateUUID(color) {
@@ -2208,6 +2259,7 @@ function selectPrevResult() {
 
 async function init() {
 	setTaskType(sessionStorage.getItem('taskType'));
+	setSortByType(sessionStorage.getItem('sortByType'));
 
 	document.onkeydown = checkKey;
 	if (localStorage.getItem("selectedLang") ==  null) {
@@ -2646,3 +2698,29 @@ function noResultsOutput(isNoResult = true) {
 
 }
 
+function getLSCFolderName(originalString) {
+    // Extract year, month, day, hour, and minute from the original string
+    var year = originalString.substring(0, 4);
+    var month = originalString.substring(4, 6);
+    var day = originalString.substring(6, 8);
+    var hour = originalString.substring(9, 11);
+    var minute = originalString.substring(12, 14);
+
+    // Construct the modified string in the desired format
+	var modifiedString = year + "-" + month + "-" + day + "_" + hour + ":00";
+
+	if (getSortByType() == "day")
+    	modifiedString = year + "-" + month + "-" + day;
+
+    return modifiedString;
+}
+
+function getLSCId(originalString) {
+    // Extract hour and minute from the original string
+    var hour = originalString.substring(9, 11);
+    var minute = originalString.substring(12, 14);
+
+    // Construct the modified string in the desired format
+    var modifiedString = hour + ":" + minute;
+    return modifiedString;
+}

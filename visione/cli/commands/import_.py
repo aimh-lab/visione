@@ -27,6 +27,16 @@ SUPPORTED_VIDEO_FORMATS = [
     ".m4v",
 ]
 
+# TODO test supported image formats
+SUPPORTED_IMAGE_FORMATS = [
+    ".jpg", ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".tiff", ".tif",
+    ".webp",
+]
+
 DEFAULT_DETECTION_PARAMS = [
     'detect-adaptive',
     'detect-threshold',
@@ -519,7 +529,7 @@ class ImportCommand(BaseCommand):
 
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
-        selected_frames_list = sorted(selected_frames_dir.glob('*.png'))
+        selected_frames_list = sorted(p for p in selected_frames_dir.glob('*') if p.suffix.lower() in SUPPORTED_IMAGE_FORMATS)
         thumbnails_list = sorted(thumbnail_dir.glob('*.jpg'))
 
         if not force and [i.stem for i in selected_frames_list] == [i.stem for i in thumbnails_list]:
@@ -529,25 +539,28 @@ class ImportCommand(BaseCommand):
             return 0
 
         n_frames = len(selected_frames_list)
-        n_digits = len(selected_frames_list[0].stem.split('-')[-1])
 
-        selected_frames = '/data' / selected_frames_dir.relative_to(self.collection_dir) / f'{video_id}-%0{n_digits}d.png'
-        thumbnails = '/data' / thumbnail_dir.relative_to(self.collection_dir) / f'{video_id}-%0{n_digits}d.jpg'
+        selected_frames_dir = '/data' / selected_frames_dir.relative_to(self.collection_dir)
+        thumbnail_dir = '/data' / thumbnail_dir.relative_to(self.collection_dir)
+        find_command_options = ' -o '.join([f"-iname '*{ext}'" for ext in SUPPORTED_IMAGE_FORMATS])
 
         service = 'ffmpeg'
+        # we use bash loops in ffmpeg container to avoid adding dependencies
+        # FIXME: not very elegant, but it works
+        # TODO: add progress printing
         command = [
-            'ffmpeg',
-            '-y', '-hide_banner',
-            '-loglevel', 'error',
-            '-progress', '-', '-nostats',
-            '-i', str(selected_frames),
-            '-vf', 'scale=192:-1',
-            str(thumbnails),
+            'bash', '-c',
+            f"""\
+            cd "{selected_frames_dir}"; \
+            find -type f {find_command_options} | sort -h | while read -r IMAGE; do \
+                echo ffmpeg -y -hide_banner -loglevel error -i "$IMAGE" -vf scale=192:-1 "{thumbnail_dir}/${{IMAGE%.*}}.jpg"; \
+            done | xargs -P {os.cpu_count()} -I CMD bash -c "CMD" \
+            """
         ]
 
         def stdout_callback(line):
-            if show_progress and line.startswith('frame'):
-                current_frame = int(line.rstrip().split('=')[1])
+            if show_progress and line.startswith('progress'):
+                current_frame = int(line.rstrip().split(':')[1])
                 show_progress(current_frame, n_frames)
 
         return self.compose_run(service, command, stdout_callback=stdout_callback, stderr_callback=print)

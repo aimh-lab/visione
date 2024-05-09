@@ -132,6 +132,54 @@ public class DRESClient {
 		}
 
 
+
+		public String dresSubmitLSC(String imagefilename) throws ApiException {//used in KIS and AVS Tasks in LSC
+			System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+			String evaluationId = getEvaluationId();
+			System.out.println("Submitting " + imagefilename );
+			SuccessfulSubmissionsStatus submissionResponse = null;
+			try {
+				submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+						new ApiClientSubmission().addAnswerSetsItem(
+							new ApiClientAnswerSet().addAnswersItem(
+								new ApiClientAnswer()
+									.mediaItemName(imagefilename)
+									.start((long) 0) //start time in milliseconds
+									.end((long) 0)
+							)
+						), sessionId);
+			} catch (ApiException e) {
+				String message = "";
+				ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
+				switch (e.getCode()) {
+					case 401: {
+						message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
+						System.err.println(message);
+						throw new ApiException(message);
+					}
+					case 404: {
+						message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
+						System.err.println(message);
+						break;
+					}
+					case 412: {
+						message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
+						System.err.println(message);
+						break;
+					}
+					default: {
+						message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
+						System.err.println(message);                }
+				}
+				return message;
+			}
+	
+			if (submissionResponse  != null && submissionResponse.getStatus()) {
+				System.out.println("-->DRES: The submission was successfully sent to the server.");
+			}
+			return submissionResponse.getDescription();
+		}
+
 	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
 		String evaluationId = getEvaluationId();

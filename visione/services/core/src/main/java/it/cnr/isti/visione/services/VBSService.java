@@ -1,17 +1,21 @@
 package it.cnr.isti.visione.services;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -71,6 +75,8 @@ public class VBSService {
 	private static ObjectQueryPreprocessing objectPreprocessing;
 	private static final String HYPERSETS = "/WEB-INF/hypersets.csv";
 	private static final String VISIONE_CONF = "/data/config.yaml";
+	private static final String MAPPING2LSCID_FN = "/data/mapping2LSCid.csv";
+	private static Map<String, String> MAPPING2LSCID;
 	// private static File LOGGING_FOLDER;
 	private static File LOGGING_FOLDER_DRES;
 	private static String MEMBER_ID;
@@ -78,6 +84,24 @@ public class VBSService {
 	private LucTextSearch searcher = new LucTextSearch();
 	private LogParserDRES dresLog; // saved at each query
 	// private Logging visioneLog; //saved at submission time and at each new session (if not empty)
+
+	public Map<String, String> getMapping2LscId(InputStream is) {
+		Map<String, String> hm = new HashMap<>();
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+			String line = null;
+			while ((line = reader.readLine()) != null) {
+				String[] parts = line.split(",");
+				String key = parts[0];
+                String idLSC = parts[1];
+				hm.put(key, idLSC);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return hm ;
+	}
 
 	@Context
 	private HttpServletRequest httpServletRequest;
@@ -91,6 +115,10 @@ public class VBSService {
 		File configFile = new File(VISIONE_CONF);
 		try (InputStream is = new FileInputStream(configFile)) {
 			Settings.init(is);
+		}
+		
+		try (InputStream is = new FileInputStream(MAPPING2LSCID_FN)) {
+			MAPPING2LSCID=getMapping2LscId(is);//TODO check it
 		}
 
 		// LOGGING_FOLDER = new File(Settings.LOG_FOLDER);
@@ -155,7 +183,8 @@ public class VBSService {
 			@DefaultValue("-1") @FormParam("k") int k,
 			@DefaultValue("false") @FormParam("simreorder") boolean simReorder,
 			@DefaultValue("10") @FormParam("n_frames_per_row") int n_frames_per_row,
-			@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
+			@DefaultValue("hour") @FormParam("sortBy") String sortBy,
+			//@DefaultValue("true") @FormParam("sortbyvideo") boolean sortByVideo,
 			@DefaultValue("1500") @FormParam("maxres") int maxRes,
 			@DefaultValue("lucia") @FormParam("fusion") String fusionMode) {
 		System.out.println(new Date() + " - " + httpServletRequest.getRemoteAddr() + " - " + query.substring(0, Math.min(100, query.length())));
@@ -206,10 +235,13 @@ public class VBSService {
 
 					log(searchResults, query, logQueries); // logging query and search results
 
-					if (sortByVideo)
+					if (sortBy.contains("hour"))
 						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
 					else
-						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+						if (sortBy.contains("day"))
+							searchResults = searcher.sortByDay(searchResults, n_frames_per_row, maxRes);
+						else
+							searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("vf")) {
@@ -220,10 +252,14 @@ public class VBSService {
 
 					log(searchResults, query, logQueries); // logging query and search results
 
-					if (sortByVideo)
+					if (sortBy.contains("hour"))
 						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
 					else
-						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+						if (sortBy.contains("day"))
+							searchResults = searcher.sortByDay(searchResults, n_frames_per_row, maxRes);
+						else
+							searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("qbe")) {
@@ -248,10 +284,14 @@ public class VBSService {
 
 					log(searchResults, query, logQueries); // logging query and search results
 
-					if (sortByVideo)
+					if (sortBy.contains("hour"))
 						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
 					else
-						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+						if (sortBy.contains("day"))
+							searchResults = searcher.sortByDay(searchResults, n_frames_per_row, maxRes);
+						else
+							searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("aladinSim")) {
@@ -262,10 +302,14 @@ public class VBSService {
 
 					log(searchResults, query, logQueries); // logging query and search results
 
-					if (sortByVideo)
+					if (sortBy.contains("hour"))
 						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
 					else
-						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+						if (sortBy.contains("day"))
+							searchResults = searcher.sortByDay(searchResults, n_frames_per_row, maxRes);
+						else
+							searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+
 
 					return gson.toJson(searchResults);
 				} else if (queryObj.getQuery().containsKey("clipSim")) {
@@ -279,10 +323,13 @@ public class VBSService {
 
 					log(searchResults, query, logQueries); // logging query and search results
 
-					if (sortByVideo)
+					if (sortBy.contains("hour"))
 						searchResults = searcher.sortByVideo(searchResults, n_frames_per_row, maxRes);
 					else
-						searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
+						if (sortBy.contains("day"))
+							searchResults = searcher.sortByDay(searchResults, n_frames_per_row, maxRes);
+						else
+							searchResults = Arrays.copyOfRange(searchResults, 0, Math.min(searchResults.length, maxRes));
 
 					return gson.toJson(searchResults);
 				} else {
@@ -363,10 +410,13 @@ public class VBSService {
 			log(lastHits, query, logQueries); // logging query and search results
 
 			SearchResults[] hitsToReturn;
-			if (sortByVideo)
+			if (sortBy.contains("hour"))
 				hitsToReturn = searcher.sortByVideo(lastHits, n_frames_per_row, maxRes);
 			else
-				hitsToReturn = Arrays.copyOfRange(lastHits, 0, Math.min(lastHits.length, maxRes));
+				if (sortBy.contains("day"))
+					hitsToReturn = searcher.sortByDay(lastHits, n_frames_per_row, maxRes);
+				else
+					hitsToReturn = Arrays.copyOfRange(lastHits, 0, Math.min(lastHits.length, maxRes));
 
 			long elapsed = -System.currentTimeMillis();
 			Arrays.stream(hitsToReturn).parallel().map(sr -> sr.populate());
@@ -543,23 +593,28 @@ public class VBSService {
 		long timeToSubmit = -1;
 		long value = -1;
 		System.out.println("Submitting - task: " + taskType);
-
+		String lscID="";
 		if (!taskType.equals("qa")) {
 			if (keyframeId != null) {
-				try {
-					timeToSubmit = (long) (Double.parseDouble(searcher.get(keyframeId, Fields.MIDDLE_TIME)) * 1000);
-					// middleFrame = Integer.parseInt(searcher.get(keyframeId, Fields.MIDDLE_FRAME));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				lscID=MAPPING2LSCID.get(keyframeId);
+				System.out.println("converted keyframe "+keyframeId+" to LSC id "+lscID);
 			} else {
-				timeToSubmit = (long) (Double.parseDouble(videoAtTime) * 1000);
+				//need to convert time into LSCid
+				//we use the following mapping: take the videoAtTime, convert into float then muliply it for 4 and round to teh closest even integer
+				//then we use the mapping to get the LSCid
+				Double time=Double.parseDouble(videoAtTime);
+				long middleframe=(long) Math.floor(time*4);
+				if (middleframe%2==0) middleframe++;
+				String key=videoIdParam+"_mf"+middleframe;
+				lscID=MAPPING2LSCID.get(key);
+				System.out.println("converted time "+time+" of video "+videoIdParam+" (key "+key+") to LSC id "+lscID);
 			}
 		}
 
 		boolean exit = false;
 		int counter = 0;
 		String submittedItem = "";
+		//FIXME use dresSubmitLSC 
 		while (!exit) {
 			try {
 				switch (taskType) {
@@ -571,14 +626,14 @@ public class VBSService {
 					case "avs":
 						long startTime = timeToSubmit; // Math.max(timeToSubmit-1000,0);
 						long endTime = timeToSubmit;
-						response = client.dresSubmitResultByTime(videoId, startTime, endTime);
+						response = client.dresSubmitLSC(lscID);
 						exit = true;
-						submittedItem = videoId + ", starttime" + startTime + ", endtime" + endTime;
+						submittedItem = lscID ;
 						break;
 					default: // all tasks that are not qa and avs are handled as kis
-						response = client.dresSubmitResultByTime(videoId, timeToSubmit, timeToSubmit);
+						response = client.dresSubmitLSC(lscID);
 						exit = true;
-						submittedItem = videoId + ", starttime" + timeToSubmit + ", endtime" + timeToSubmit;
+						submittedItem = lscID;
 				}
 
 			} catch (ApiException e) {

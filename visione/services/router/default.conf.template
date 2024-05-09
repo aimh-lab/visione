@@ -50,6 +50,7 @@ server {
 
 	location ^~ /videos       { access_log off; alias /data/resized-videos/medium/; }
 	location ^~ /videos/tiny  { access_log off; alias /data/resized-videos/tiny/; }
+	location ^~ /videos/fullday  { access_log off; alias /data/resized-videos/full-day-videos/; }
 	# location ^~ /frames       { access_log off; alias /data/selected-frames/; }
 	location ^~ /frames {
 		access_log off;

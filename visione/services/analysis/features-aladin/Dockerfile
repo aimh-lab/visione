@@ -27,12 +27,11 @@ RUN python setup.py build develop
 RUN apt-get install -y curl
 
 # Download weights and labelmaps
-RUN --mount=type=secret,id=asset_token,required \
-    mkdir -p models/vinvl && \
+RUN mkdir -p models/vinvl && \
     cd models/vinvl && \
-    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022853 && \
+    curl -LJO -H "Accept:application/octet-stream" https://github.com/aimh-lab/visione/releases/download/v0.5.1/vinvl_vg_x152c4.pth && \
     test -f vinvl_vg_x152c4.pth && \
-    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022837 && \
+    curl -LJO -H "Accept:application/octet-stream" https://github.com/aimh-lab/visione/releases/download/v0.5.1/VG-SGG-dicts-vgoi6-clipped.json && \
     test -f VG-SGG-dicts-vgoi6-clipped.json
 
 ###########################################
@@ -47,17 +46,14 @@ RUN git checkout feature_extraction
 RUN python setup.py build develop
 
 # Download weights
-RUN --mount=type=secret,id=asset_token,required \
-    mkdir -p weights && \
+RUN mkdir -p weights && \
     cd weights && \
-    curl -LJO -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" -H "Accept:application/octet-stream" https://api.github.com/repos/aimh-lab/visione/releases/assets/112022681 && \
+    curl -LJO -H "Accept:application/octet-stream" https://github.com/aimh-lab/visione/releases/download/v0.5.1/best_model_align_and_distill.pth.tar && \
     test -f best_model_align_and_distill.pth.tar
 
 # Download OSCAR checkpoints
-RUN --mount=type=secret,id=asset_token,required \
-    curl -L \
-    -H "Authorization: token $(cat /run/secrets/asset_token | tr -d '\n')" \
-    -H "Accept:application/octet-stream" -o - https://api.github.com/repos/aimh-lab/visione/releases/assets/112024381 \
+RUN curl -L \
+    -H "Accept:application/octet-stream" -o - https://github.com/aimh-lab/visione/releases/download/v0.5.1/checkpoint-0132780.tar.xz.arch \
     | tar -xvJf -
 
 # FIXME: use build-args to pass UID and GID to docker build to inject the host user id during image build
