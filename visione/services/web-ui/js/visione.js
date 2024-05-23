@@ -93,7 +93,7 @@ var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
 var textualMode = ["all", "all"];
-var simreorder = false;
+var simreorder = true;
 
 //var qbeUrl = ''
 var is43 = false;
@@ -613,12 +613,134 @@ function searchByForm() {
 	search2(jsonString);
 }
 
+let dateParts = {};
+
+function parseDateInput(input) {
+	input = input.trim();
+	const regex = /([ymdh])[: ]?(\d+)/gi;
+	const matches = input.matchAll(regex);
+	dateParts = {};
+  
+	for (const match of matches) {
+	  const key = match[1];
+	  let value = match[2];
+  
+	  switch (key.toLowerCase()) {
+		case 'y':
+		  if (value.length === 2) {
+			value = '20' + value; // Add prefix "20" if year is 2 characters
+		  }
+		  dateParts.y = parseInt(value, 10);
+		  break;
+		case 'm':
+		case 'd':
+		case 'h':
+		  if (value.length === 1) {
+			value = '0' + value; // Add prefix "0" if month, day, or hour is 1 character
+		  }
+		  dateParts[key.toLowerCase()] = parseInt(value, 10);
+		  break;
+	  }
+	}
+  
+	return dateParts;
+  }
+  
+  function handleParseInput() {
+	const input = document.getElementById('date-input').value;
+	const parsedDate = parseDateInput(input);
+	console.log(parsedDate);
+	if (results != null) {
+		setResults(results);
+	}
+  }
+
+  function filterResults(res) {
+    let filteredResults = res;
+
+    if (dateParts.y !== undefined) {
+        filteredResults = filterResultsByYear(filteredResults, dateParts.y.toString().padStart(4, '0'));
+    }
+    if (dateParts.m !== undefined) {
+        filteredResults = filterResultsByMonth(filteredResults, dateParts.m.toString().padStart(2, '0'));
+    }
+    if (dateParts.d !== undefined) {
+        filteredResults = filterResultsByDay(filteredResults, dateParts.d.toString().padStart(2, '0'));
+    }
+    if (dateParts.h !== undefined) {
+        filteredResults = filterResultsByHour(filteredResults, dateParts.h.toString().padStart(2, '0'));
+    }
+
+    return filteredResults;
+}
+
+
+function filterResultsByYear(results, year) {
+    // Parse the JSON string into an array of objects
+    const data = JSON.parse(results);
+
+    // Filter the objects based on the year in the 'imgId' field
+    const filteredData = data.filter(item => {
+        const match = item.imgId.match(/^(\d{4})/);
+        return match && match[1] === year;
+    });
+
+    // Convert the filtered array back to a JSON string (if needed)
+    return JSON.stringify(filteredData, null, 2);
+}
+
+function filterResultsByMonth(results, month) {
+    // Parse the JSON string into an array of objects
+    const data = JSON.parse(results);
+
+    // Filter the objects based on the month in the 'imgId' field
+    const filteredData = data.filter(item => {
+        const match = item.imgId.match(/^\d{4}(\d{2})/);
+        return match && match[1] === month;
+    });
+
+    // Convert the filtered array back to a JSON string (if needed)
+    return JSON.stringify(filteredData, null, 2);
+}
+
+function filterResultsByDay(results, day) {
+    // Parse the JSON string into an array of objects
+    const data = JSON.parse(results);
+
+    // Filter the objects based on the day in the 'imgId' field
+    const filteredData = data.filter(item => {
+        const match = item.imgId.match(/^\d{6}(\d{2})/);
+        return match && match[1] === day;
+    });
+
+    // Convert the filtered array back to a JSON string (if needed)
+    return JSON.stringify(filteredData, null, 2);
+}
+
+function filterResultsByHour(results, hour) {
+    // Parse the JSON string into an array of objects
+    const data = JSON.parse(results);
+
+    // Filter the objects based on the hour in the 'imgId' field
+    const filteredData = data.filter(item => {
+        const match = item.imgId.match(/^\d{8}_(\d{2})/);
+        return match && match[1] === hour;
+    });
+
+    // Convert the filtered array back to a JSON string (if needed)
+    return JSON.stringify(filteredData, null, 2);
+}
+
 function setResults(data) {
 	//data ='[{"score":13.926777,"videoId":"05188","imgId":"05188_12","middleFrame":919,"collection":"v3c"},{"score":13.917663,"videoId":"17058","imgId":"17058_85","middleFrame":5345,"collection":"v3c"}]'
-
-	results = data;
+	results = data
 	//results = sortByVideo(data);
-	resultsSortedByVideo = results;
+	try {
+		resultsSortedByVideo = filterResults(results);
+	} catch (error) {
+		console.log(error)
+		resultsSortedByVideo = null;
+	}
 	groupResults(document.getElementById("group"));
 	// history.pushState(JSON.stringify($(this)),'List',window.location.href);
 }
@@ -1065,9 +1187,9 @@ function loadImages(startIndex, endIndex) {
 		//if (videoId != prevID) {
 		if (checkId(videoId, prevID)) {
 				//imgGridResults += '<div id="video_' + videoId + '">';
-			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + getLSCFolderName(videoId) + '<a>';
+			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + getLSCFolderName(videoId)[0] + '&id=' + imgId + '" target="_blank">' + getLSCFolderName(videoId)[1] + '<a>';
 			//imgGridResults += '<div id="video_' + videoId + '">';
-			imgGridResults += '<p align="center"><a href="#" title="Play Video"><i title="Play Video" class="fa fa-solid fa-video font-normal" style="color:navy;" onclick="playFullDayVideoWindow(\'' + fullDayVideoUrl + '\', \'' + videoIdParts[0] + '\'); return false;"></i></a></p></div>';
+			imgGridResults += '<p align="center"><a href="#" title="Play Video"><i title="Play Video" class="fa fa-solid fa-video fa-lg" style="color:navy;" onclick="playFullDayVideoWindow(\'' + fullDayVideoUrl + '\', \'' + videoIdParts[0] + '\'); return false;"></i></a></p></div>';
 			/*document.querySelector('.fa-video').addEventListener('click', function() {
 				playVideoWindow(videoUrl, videoId, imgId);
 				return false;
@@ -2519,6 +2641,15 @@ async function init() {
 													stopRecording(1);
 												});
 	*/
+	
+	$(document).ready(function() {
+		$('#date-input').on('keydown', function(event) {
+		  if (event.key === 'Enter') {
+			handleParseInput();
+		  }
+		});
+
+	});
 	canvas0.renderAll();
 
 	initLayout();
@@ -2707,12 +2838,16 @@ function getLSCFolderName(originalString) {
     var minute = originalString.substring(12, 14);
 
     // Construct the modified string in the desired format
+	var videoId = year + month + day +"_" + hour;
 	var modifiedString = year + "-" + month + "-" + day + "_" + hour + ":00";
 
-	if (getSortByType() == "day")
+	if (getSortByType() == "day") {
+		videoId = year + month + day;
     	modifiedString = year + "-" + month + "-" + day;
 
-    return modifiedString;
+	}
+
+    return [videoId, modifiedString] ;
 }
 
 function getLSCId(originalString) {

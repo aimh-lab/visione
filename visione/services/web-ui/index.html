@@ -29,11 +29,10 @@
 			<div class="headerGrid">
 				<div class="headerItem column-span-4">
 					<div class="dashboardGrid">
-						<div class="dashboardGrid-item">
 							<!--<button id="newsession" class="btn btn-warning btn-sm" title="Start a new Session" onclick="startNewKISSession()">
 								<i class="fas fa-sync-alt"></i> Restart
 							</button>-->
-							<div class="dashboardGrid-item simreorder column-span-2">
+							<div class="dashboardGrid-item simreorder column-span-2" style="margin-top: 10px;">
 								<div class="task_bounding-box">
 									<div class="top-line"></div>
 									<span class="task-text">Task</span>
@@ -48,7 +47,7 @@
 									  </label>
 								  </div>
 
-
+								<!--
 								  <div class="sortby_bounding-box">
 									<div class="top-line"></div>
 									<span class="sortby-text">GroupBy</span>
@@ -61,23 +60,52 @@
 								  </div>
 
 
+								-->
 
-							</div>
+
+
 							<div id="dialog" title="Tag Name">
 								<label>tag</label> <input id="tag" name="tag" type="text">
 							</div>
 						</div>
-						<div class="dashboardGrid-item" id="advancedMode">ADVANCED</div>
+						<div class="dashboardGrid-item" id="advancedMode">
+							<div>ADVANCED</div>
+						
+						</div>
 
 
 						<div class="dashboardGrid-item tg-list-item advancedToggle">
 							<input class="tgl tgl-skewed" id="cb3" type="checkbox" onclick="displayAdvancedToggle();" />
 							<label class="tgl-btn" data-tg-off="OFF" data-tg-on="ON" for="cb3"></label>
 						</div>
-
-						<div class="dashboardGrid-item advanced simreorder column-span-2">
-							<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
+						<div class="dashboardGrid-item simreorder column-span-1">
+							<div class="sortby_bounding-box">
+								<div class="top-line"></div>
+								<span class="sortby-text">GroupBy</span>
+								<label class="radio-label">
+								  <input type="radio" name="sortByOption" value="hour" onclick="setSortByType('hour'); searchByForm();"> Hour
+								</label>
+								<label class="radio-label">
+								  <input type="radio" name="sortByOption" value="day" onclick="setSortByType('day'); searchByForm();"> Day
+								</label>
+							  </div>
 						</div>
+
+						<!--<div class="dashboardGrid-item simreorder column-span-2">
+							<input id='date-input' type="text" size="22" style="border-radius: 8px; margin-top: 0px;" placeholder="Date filter: Lucia's typo-proofing">
+						  </div>-->
+
+						  <div class="dashboardGrid-item simreorder column-span-1">
+						  </div>
+
+						<div class="dashboardGrid-item simreorder column-span-2">
+							<input id='simreorder' type="checkbox" style="border-radius: 8px; margin-top: 0px;" checked onchange="setSimReorder(this)">&nbsp;Sim Reorder
+						  </div>
+						
+
+						<!--<div class="dashboardGrid-item advanced simreorder column-span-2">
+							<input id='simreorder' type="checkbox" onchange="setSimReorder(this)">&nbsp;Sim Reorder
+						</div>-->
 					</div>
 
 				</div>
@@ -102,6 +130,9 @@
 			<div class="bodyGrid">
 				<div class="sidebarGrid" id="searchSidebar">
 					<div class="advanced">
+						<div class="dashboardGrid-item simreorder column-span-2">
+							<input class="font-normal" id='date-input' type="text" size="40" style="border-radius: 8px; margin-bottom: 15px;" placeholder="Date filter: Lucia's typo-proofing">
+						  </div>
 						<div id="palette" class="palette"></div>
 						<div id='searchTab'></div>
 						<div class="headerItem">

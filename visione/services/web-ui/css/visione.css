@@ -17,7 +17,7 @@ body {
   grid-template-columns: 70px 30px 70px 130px 15px 4fr 15px 4fr 1fr;
   /* Dimensioni delle colonne */
   grid-gap: 1px;
-  height: 100px;
+  height: 95px;
 }
 
 .headerItem {
@@ -68,13 +68,13 @@ body {
 
 .dashboardGrid {
   display: grid;
-  grid-template-columns:  150px 30px 70px 130px;
+  grid-template-columns:  150px 30px 40px 110px;
   /* Dimensioni delle colonne */
-  grid-gap: 10px;
+  grid-gap: 2px;
 }
 
 .dashboardGrid-item {
-  padding: 5px;
+  padding: 2px;
 }
 
 .task_bounding-box {
@@ -99,7 +99,7 @@ body {
 }
 
 .sortby_bounding-box {
-  margin-top: 12px;
+  margin-top: 6px;
   border: 1px solid #074a88;
   border-radius: 10px;
   position: relative;
@@ -202,7 +202,7 @@ body {
 	background-color: #fff;
 
 	border-radius: 0.25rem;
-	width: 145px;
+	width: 180px;
 }
 
 .result-border {
