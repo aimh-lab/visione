@@ -36,7 +36,7 @@ public class Tools {
 	}
 */
 
-	public class Comp implements Comparator<String[]> {
+/* 	public class Comp implements Comparator<String[]> {
 
 		public int compare(String[] o1, String[] o2) {
 			if (Float.parseFloat(o1[1]) > Float.parseFloat(o2[1]))
@@ -45,6 +45,13 @@ public class Tools {
 				return 0;
 
 			return -1;
+		}
+	}*/
+
+	public class CompByName implements Comparator<String[]> {
+
+		public int compare(String[] o1, String[] o2) {
+			return o1[0].compareTo(o2[0]);
 		}
 	}
 

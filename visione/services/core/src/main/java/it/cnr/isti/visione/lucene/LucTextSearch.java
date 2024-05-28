@@ -351,7 +351,7 @@ public class LucTextSearch {
 		}
 
 		//Collections.sort(keyframes, new Tools().new Comp());
-		Collections.sort(keyframes, new Tools().new Comp());
+		Collections.sort(keyframes, new Tools().new CompByName());
 
 		for (String[] kf: keyframes)
 			response.add(kf[0]);

@@ -93,6 +93,8 @@ public class VBSService {
 				String[] parts = line.split(",");
 				String key = parts[0];
                 String idLSC = parts[1];
+				//remove space in the idLSC
+				idLSC=idLSC.replaceAll(" ", "");
 				hm.put(key, idLSC);
 			}
 		} catch (FileNotFoundException e) {
@@ -624,8 +626,8 @@ public class VBSService {
 						submittedItem = "text: " + textAnswer;
 						break;
 					case "avs":
-						long startTime = timeToSubmit; // Math.max(timeToSubmit-1000,0);
-						long endTime = timeToSubmit;
+						// long startTime = timeToSubmit; // Math.max(timeToSubmit-1000,0);
+						// long endTime = timeToSubmit;
 						response = client.dresSubmitLSC(lscID);
 						exit = true;
 						submittedItem = lscID ;

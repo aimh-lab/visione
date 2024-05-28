@@ -83,10 +83,10 @@
 								<div class="top-line"></div>
 								<span class="sortby-text">GroupBy</span>
 								<label class="radio-label">
-								  <input type="radio" name="sortByOption" value="hour" onclick="setSortByType('hour'); searchByForm();"> Hour
+								  <input type="radio" name="sortByOption" value="hour" onclick="setSortByType('hour'); search2(latestQuery);"> Hour
 								</label>
 								<label class="radio-label">
-								  <input type="radio" name="sortByOption" value="day" onclick="setSortByType('day'); searchByForm();"> Day
+								  <input type="radio" name="sortByOption" value="day" onclick="setSortByType('day'); search2(latestQuery);"> Day
 								</label>
 							  </div>
 						</div>
@@ -131,7 +131,7 @@
 				<div class="sidebarGrid" id="searchSidebar">
 					<div class="advanced">
 						<div class="dashboardGrid-item simreorder column-span-2">
-							<input class="font-normal" id='date-input' type="text" size="40" style="border-radius: 8px; margin-bottom: 15px;" placeholder="Date filter: Lucia's typo-proofing">
+							<input class="font-normal" id='date-input' type="text" size="37" style="border-radius: 8px; margin-bottom: 15px;" placeholder="Date filter: e.g., y2019 m01 d10 h08 ">
 						  </div>
 						<div id="palette" class="palette"></div>
 						<div id='searchTab'></div>
