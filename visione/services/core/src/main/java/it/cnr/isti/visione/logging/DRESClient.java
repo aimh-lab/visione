@@ -128,6 +128,7 @@ public class DRESClient {
 		//print evaluation id
 		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
 		System.out.println("-->DRES: Using evaluationId: " + evaluationId);
+		//evaluationId="669f8cfb-9ef7-48ce-918a-f5ba235102a3"; //uncomment only when testing a specific run 
 		return evaluationId;
 		}
 
@@ -144,8 +145,6 @@ public class DRESClient {
 							new ApiClientAnswerSet().addAnswersItem(
 								new ApiClientAnswer()
 									.mediaItemName(imagefilename)
-									.start((long) 0) //start time in milliseconds
-									.end((long) 0)
 							)
 						), sessionId);
 			} catch (ApiException e) {
