@@ -1106,10 +1106,14 @@ function showResults(data) {
 
 		}
 		//if ($('meta[name=task]').attr('content') == "AVS") {
-		if (localStorage.getItem('taskType') === 'avs')
-			avsHideSubmittedVideos();
-		else
-			avsHilightlighSubmittedVideos();
+		if (localStorage.getItem('taskType') === 'avs') {
+			//avsHideSubmittedVideos();
+			hilightlighSubmittedImg();
+		}
+		else {
+			//avsHilightlighSubmittedVideos();
+			hilightlighSubmittedImg();
+		}
 		//avsReloadManuallySelected();
 		//avsAddAutoselected();
 		//}
@@ -1398,7 +1402,10 @@ function submitVersion2(selectedItem) {
 
 			//updateAVSTab(selectedItem)
 
-			avsSubmitted.set(selectedItem.videoId, selectedItem);
+			//avsSubmitted.set(selectedItem.videoId, selectedItem);
+			//LSC patch for single image highlight
+			avsSubmitted.set(selectedItem.imgId, selectedItem);
+
 
 			//add submitted image to the sidebar on the right
 			avsSubmittedTab(selectedItem);
@@ -1406,10 +1413,14 @@ function submitVersion2(selectedItem) {
 
 			//che fa? boh!
 			updateAVSInfo();
-			if (localStorage.getItem('taskType') === 'avs')
-				avsHideSubmittedVideos();
-			else
-				avsHilightlighSubmittedVideos();
+			if (localStorage.getItem('taskType') === 'avs') {
+				//avsHideSubmittedVideos();
+				hilightlighSubmittedImg();
+			}
+			else {
+				//avsHilightlighSubmittedVideos();
+				hilightlighSubmittedImg();
+			}
 		}
 	}
 	return res;
@@ -1452,7 +1463,7 @@ const imgResult = (res, borderColor, img_loading="eager") => {
 		jsonString = JSON.stringify(res);
 		lscId = getLSCId(res.frameName);
 		return `
-		<div class="result-border" style="border-color: ${borderColor};">
+		<div id="box_${res.imgId}" class="result-border" style="border-color: ${borderColor};">
 			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
 				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${jsonString}, event)' />
 			</div>

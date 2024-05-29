@@ -276,6 +276,14 @@ function avsHilightlighSubmittedVideos() {
 	}
 }
 
+function hilightlighSubmittedImg() {
+	for (let [videoId, selectedItem] of avsSubmitted) {
+		//tmp = $("[id^=video_" + videoId + "]");
+		//tmp2 = document.getElementById("video_" + videoId);
+		$("#box_" + selectedItem.imgId).css("background-color", "#fce390");
+	}
+}
+
 
 function avsCleanManuallySelected() {
 	for (let [key, selectedItem] of avsManually) {
