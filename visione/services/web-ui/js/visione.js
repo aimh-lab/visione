@@ -1314,7 +1314,8 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, keyframePa
 function submitQA() {
 	let answ = prompt("Please enter your answering", "");
   	if (answ != null) {
-		submitResult(id=null, videoId=null, textAnswer=answ, isAsync=true)
+		res = submitResult(id=null, videoId=null, textAnswer=answ, isAsync=false)
+		alert('Server response: ' + res);
 		try {
 			qaSubmittedTab(answ);
 		} catch (e) {

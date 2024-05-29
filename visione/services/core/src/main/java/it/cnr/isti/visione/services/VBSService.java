@@ -592,7 +592,6 @@ public class VBSService {
 		String videoId = videoIdParam;
 		String keyframeId = keyframeIdParam;
 		// int middleFrame = -1;
-		long timeToSubmit = -1;
 		long value = -1;
 		System.out.println("Submitting - task: " + taskType);
 		String lscID="";
@@ -626,8 +625,6 @@ public class VBSService {
 						submittedItem = "text: " + textAnswer;
 						break;
 					case "avs":
-						// long startTime = timeToSubmit; // Math.max(timeToSubmit-1000,0);
-						// long endTime = timeToSubmit;
 						response = client.dresSubmitLSC(lscID);
 						exit = true;
 						submittedItem = lscID ;

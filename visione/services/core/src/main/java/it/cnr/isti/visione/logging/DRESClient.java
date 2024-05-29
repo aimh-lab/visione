@@ -44,7 +44,7 @@ public class DRESClient {
 
 //		client.dresSubmitResultByFrameNumber(videoId, frameNumber);
 		try {
-			client.dresSubmitResultByTime(videoId, time, time);
+			client.dresSubmitLSC("20190727_121438_000");
 		} catch (ApiException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -128,7 +128,7 @@ public class DRESClient {
 		//print evaluation id
 		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
 		System.out.println("-->DRES: Using evaluationId: " + evaluationId);
-		//evaluationId="669f8cfb-9ef7-48ce-918a-f5ba235102a3"; //uncomment only when testing a specific run 
+		//evaluationId="cc790e4b-e611-4ce3-8f5b-cb25ff119923"; //uncomment only when testing a specific run 
 		return evaluationId;
 		}
 
@@ -147,6 +147,7 @@ public class DRESClient {
 									.mediaItemName(imagefilename)
 							)
 						), sessionId);
+
 			} catch (ApiException e) {
 				String message = "";
 				ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
@@ -179,52 +180,52 @@ public class DRESClient {
 			return submissionResponse.getDescription();
 		}
 
-	public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
-        System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
-		String evaluationId = getEvaluationId();
-		System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
-		SuccessfulSubmissionsStatus submissionResponse = null;
-        try {
-        	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
-                    new ApiClientSubmission().addAnswerSetsItem(
-                        new ApiClientAnswerSet().addAnswersItem(
-                            new ApiClientAnswer()
-                                .mediaItemName(video)
-                                .start(startTime) //start time in milliseconds
-								.end(endTime)
-                        )
-                    ), sessionId);
-        } catch (ApiException e) {
-        	String message = "";
-            ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
-            switch (e.getCode()) {
-                case 401: {
-                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
-                    System.err.println(message);
-                    throw new ApiException(message);
-                }
-                case 404: {
-                    message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
-                    System.err.println(message);
-                    break;
-                }
-                case 412: {
-                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
-                    System.err.println(message);
-                    break;
-                }
-                default: {
-                	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
-                    System.err.println(message);                }
-            }
-            return message;
-        }
+	// public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
+    //     System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
+	// 	String evaluationId = getEvaluationId();
+	// 	System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
+	// 	SuccessfulSubmissionsStatus submissionResponse = null;
+    //     try {
+    //     	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
+    //                 new ApiClientSubmission().addAnswerSetsItem(
+    //                     new ApiClientAnswerSet().addAnswersItem(
+    //                         new ApiClientAnswer()
+    //                             .mediaItemName(video)
+    //                             .start(startTime) //start time in milliseconds
+	// 							.end(endTime)
+    //                     )
+    //                 ), sessionId);
+    //     } catch (ApiException e) {
+    //     	String message = "";
+    //         ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
+    //         switch (e.getCode()) {
+    //             case 401: {
+    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
+    //                 System.err.println(message);
+    //                 throw new ApiException(message);
+    //             }
+    //             case 404: {
+    //                 message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
+    //                 System.err.println(message);
+    //                 break;
+    //             }
+    //             case 412: {
+    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
+    //                 System.err.println(message);
+    //                 break;
+    //             }
+    //             default: {
+    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
+    //                 System.err.println(message);                }
+    //         }
+    //         return message;
+    //     }
 
-        if (submissionResponse  != null && submissionResponse.getStatus()) {
-            System.out.println("-->DRES: The submission was successfully sent to the server.");
-        }
-        return submissionResponse.getDescription();
-	}
+    //     if (submissionResponse  != null && submissionResponse.getStatus()) {
+    //         System.out.println("-->DRES: The submission was successfully sent to the server.");
+    //     }
+    //     return submissionResponse.getDescription();
+	// }
 
 	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { //used in Question Aswering Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
