@@ -449,7 +449,10 @@ public class VBSService {
 	 * @param queries
 	 */
 	public void log(SearchResults[] searchResults, String query, List<VisioneQuery> queries) {
-		if (!Settings.SAVE_LOGS) return;
+		if (!Settings.SAVE_LOGS) {
+			System.out.print("*** log NOT saved and sent...");
+			return;
+		}
 		// SearchResults[] sr = Arrays.copyOf(searchResults); // FIXME
 		new Thread(
 				new Runnable() {
@@ -459,9 +462,12 @@ public class VBSService {
 							long elapsed = -System.currentTimeMillis();
 							Long clientTimestamp = dresLog.query2Log(queries, searchResults);
 							if (SEND_LOG_TO_DRES){
-								System.out.print("Sending log to DRES...");
+								System.out.print("*** Sending log to DRES...");
 								client.dresSubmitLog(dresLog.getResultLog());
+							}else{
+								System.out.print("*** log NOT sent to DRES...");
 							}
+
 							dresLog.save(clientTimestamp, client.getSessionId(), MEMBER_ID);
 							elapsed += System.currentTimeMillis();
 							System.out.println("*** Log saved: " + elapsed + "ms");
