@@ -12,6 +12,7 @@
 	<script src="js/jquery-ui.min.js"></script>
 	<script src="js/js-yaml.min.js"></script>
 	<script src="js/visione.js"></script>
+	<script src="js/visioneAVS.js"></script>
 </head>
 
 <body>
@@ -49,7 +50,16 @@
 						alert('Server response: ' + res);
 					}
 				}
+				
+				hilightlighSubmittedImg(imgId);
+
 		}
+
+		function hilightlighSubmittedImg(imgId) {
+			//tmp = $("[id^=video_" + videoId + "]");
+			//tmp2 = document.getElementById("video_" + videoId);
+			$("#box_" + imgId).css("background-color", "#fce390");
+	}
 
 
 		/*function submitFromChild(imgId, videoId) {
@@ -72,8 +82,6 @@
 		var imgId = $.urlParam('id');
 
 		const regex = /_(\d+)-/;
-
-
 
 		function loadPage() {
 
@@ -127,7 +135,7 @@
 
 				table += `
 				<!--<div class='col-2 with-margin'>-->
-				<div class="result-border" style="border-color: red; padding: 1px; margin: 2px;">
+				<div id="box_${keyframes[i]}"class="result-border" style="border-color: red; padding: 1px; margin: 2px;">
 
 					<img loading="lazy" id="${keyframes[i]}" height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
 					<div class='myalign'>

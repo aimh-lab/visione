@@ -8,6 +8,7 @@ import java.net.ConnectException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.openapitools.client.model.*;
 
@@ -30,6 +31,7 @@ public class DRESClient {
 	private String sessionId;
 	private Gson gson = new Gson();
 	private File LOGGING_FOLDER_DRES;
+	private String evaluationId;
 
 
 	public static void main(String[] args) {
@@ -56,6 +58,7 @@ public class DRESClient {
 		LOGGING_FOLDER_DRES = new File(Settings.LOG_FOLDER_DRES);
 
 		ApiClient client = new ApiClient().setBasePath(Settings.SUBMIT_SERVER);
+
 
         //initialize user api client
         userApi = new UserApi(client);
@@ -100,43 +103,73 @@ public class DRESClient {
 		return sessionId;
 	}
 
-	public String getEvaluationId() {
+	public void setEvaluationId (String evaluationId) {
+		this.evaluationId = evaluationId;
+	}
+
+	public List <String> getOngoingEvaluation() {
 		List<ApiClientEvaluationInfo> currentRuns;
+		List <String> ongoingEvaluationIds=new java.util.ArrayList<String>();
 		try {
 		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
 			System.out.println("-->DRES: Error during request: '" + e.getMessage() + "', exiting");
-		return e.getMessage();
+			return null;
 		}
 
 		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
-
-		for (ApiClientEvaluationInfo run : currentRuns) {
-		System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
-		if (run.getTemplateDescription() != null) {
-			System.out.println(run.getTemplateDescription());
-		}
-		System.out.println();
-		}
-
-		String evaluationId=null;
-		ApiClientEvaluationInfo firstRun= currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null);
-		if(firstRun!=null){
-			evaluationId=firstRun.getId();
-		}
 		
-		//print evaluation id
-		//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
-		System.out.println("-->DRES: Using evaluationId: " + evaluationId);
-	//	evaluationId="0b2b582d-fcec-4624-bcda-b3304f7615df"; //uncomment only when testing a specific run 
-		return evaluationId;
+	    List<ApiClientEvaluationInfo> activeRuns=currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).collect(Collectors.toList());
+		for (ApiClientEvaluationInfo run : activeRuns) {
+			if (run!=null){
+				System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
+				if (run.getTemplateDescription() != null) {
+					System.out.println(run.getTemplateDescription());
+				}
+				ongoingEvaluationIds.add(run.getId());
+				System.out.println();
+			}
 		}
+
+		return ongoingEvaluationIds;
+		}
+
+	// public String getEvaluationId() {
+	// 	List<ApiClientEvaluationInfo> currentRuns;
+	// 	try {
+	// 	currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
+	// 	} catch (Exception e) {
+	// 		System.out.println("-->DRES: Error during request: '" + e.getMessage() + "', exiting");
+	// 	return e.getMessage();
+	// 	}
+
+	// 	System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
+
+	// 	for (ApiClientEvaluationInfo run : currentRuns) {
+	// 	System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
+	// 	if (run.getTemplateDescription() != null) {
+	// 		System.out.println(run.getTemplateDescription());
+	// 	}
+	// 	System.out.println();
+	// 	}
+
+	// 	String evaluationId=null;
+	// 	ApiClientEvaluationInfo firstRun= currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).findFirst().orElseGet(null);
+	// 	if(firstRun!=null){
+	// 		evaluationId=firstRun.getId();
+	// 	}
+		
+	// 	//print evaluation id
+	// 	//evaluationId="5ffa5b86-a0d4-47cf-93cb-cb320180cd5e"; 
+	// 	System.out.println("-->DRES: Using evaluationId: " + evaluationId);
+	// //	evaluationId="0b2b582d-fcec-4624-bcda-b3304f7615df"; //uncomment only when testing a specific run 
+	// 	return evaluationId;
+	// 	}
 
 
 
 		public String dresSubmitLSC(String imagefilename) throws ApiException {//used in KIS and AVS Tasks in LSC
 			System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
-			String evaluationId = getEvaluationId();
 			System.out.println("Submitting " + imagefilename );
 			SuccessfulSubmissionsStatus submissionResponse = null;
 			try {
@@ -180,56 +213,10 @@ public class DRESClient {
 			return submissionResponse.getDescription();
 		}
 
-	// public String dresSubmitResultByTime(String video, long startTime, long endTime) throws ApiException {//used in KIS and AVS Tasks
-    //     System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
-	// 	String evaluationId = getEvaluationId();
-	// 	System.out.println("Submitting " + video + " @ start: " + startTime + " - end:"+endTime);
-	// 	SuccessfulSubmissionsStatus submissionResponse = null;
-    //     try {
-    //     	submissionResponse = submissionApi.postApiV2SubmitByEvaluationId(evaluationId,
-    //                 new ApiClientSubmission().addAnswerSetsItem(
-    //                     new ApiClientAnswerSet().addAnswersItem(
-    //                         new ApiClientAnswer()
-    //                             .mediaItemName(video)
-    //                             .start(startTime) //start time in milliseconds
-	// 							.end(endTime)
-    //                     )
-    //                 ), sessionId);
-    //     } catch (ApiException e) {
-    //     	String message = "";
-    //         ErrorMessages errorMessage = gson.fromJson(e.getResponseBody(), ErrorMessages.class);
-    //         switch (e.getCode()) {
-    //             case 401: {
-    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There was an authentication error during the submission. Check the session id.";
-    //                 System.err.println(message);
-    //                 throw new ApiException(message);
-    //             }
-    //             case 404: {
-    //                 message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". There is currently no active task which would accept submissions.";
-    //                 System.err.println(message);
-    //                 break;
-    //             }
-    //             case 412: {
-    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ". The submission was rejected by the server";
-    //                 System.err.println(message);
-    //                 break;
-    //             }
-    //             default: {
-    //             	message = "-->DRES: Error " + e.getCode() + " " +  e.getMessage() + ","  + errorMessage.description + ".Something unexpected went wrong during the submission";
-    //                 System.err.println(message);                }
-    //         }
-    //         return message;
-    //     }
-
-    //     if (submissionResponse  != null && submissionResponse.getStatus()) {
-    //         System.out.println("-->DRES: The submission was successfully sent to the server.");
-    //     }
-    //     return submissionResponse.getDescription();
-	// }
+	
 
 	public String dresSubmitTextAnswer(String userAnswer) throws ApiException { //used in Question Aswering Tasks
         System.out.println("Submission to DRES (SessionId: " + sessionId + ")");
-		String evaluationId = getEvaluationId();
         System.out.println("Submitting userAnswer");
 		SuccessfulSubmissionsStatus submissionResponse = null;
         try {
@@ -278,7 +265,7 @@ public class DRESClient {
 	// }
 
 	public void dresSubmitLog(QueryResultLog resultLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
-		DresResultsLogging resultLogging = new DresResultsLogging(resultLog, getSessionId(), getEvaluationId());
+		DresResultsLogging resultLogging = new DresResultsLogging(resultLog, getSessionId(), evaluationId);
         new Thread(resultLogging).start();
 	}
 
@@ -344,7 +331,7 @@ public class DRESClient {
 	// }
 
 
-	private class DresResultsLogging implements Runnable {
+	private class DresResultsLogging implements Runnable { //FIX THIS
 
 		QueryResultLog resultsLog;
 		String sessionId;

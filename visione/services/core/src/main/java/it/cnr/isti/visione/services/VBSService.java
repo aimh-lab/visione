@@ -587,6 +587,26 @@ public class VBSService {
 	}
 
 	@GET
+	@Path("/getDresEvaluationIdList")
+	@Consumes({ MediaType.TEXT_PLAIN })
+	@Produces(MediaType.APPLICATION_JSON)
+	public String getDresEvaluationIdList() {
+		String response = "";
+		List <String> ongoingEvaluationIds= client.getOngoingEvaluation();
+		response = gson.toJson(ongoingEvaluationIds);
+		return response;
+	}
+
+	@GET
+	@Path("/setDresEvaluationId")
+	@Consumes({ MediaType.TEXT_PLAIN })
+	@Produces(MediaType.TEXT_PLAIN)
+	public String setDresEvaluationId(@QueryParam("evaluationId") String evaluationId) {
+		client.setEvaluationId(evaluationId);
+		return "Set "+evaluationId;
+	}
+
+	@GET
 	@Path("/submitResult")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.TEXT_PLAIN)

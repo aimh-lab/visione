@@ -2,6 +2,7 @@ const avsManually = new Map();
 const avsManuallyByVideoID = new Map();
 const avsSubmitted = new Map();
 
+
 /*
 function getAvsObj(videoId, imgId, avsTagId, thumb, keyframe, rowIdx, colIdx) {
 	avsObj=new Object();

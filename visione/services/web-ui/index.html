@@ -118,13 +118,11 @@
 
 				<div id="visionelogo" class="headerItem">
 					<a href= ""><img id="visionelogoImg" src="img/logoVISIONE.png" alt="" title="Restart" onclick="startNewKISSession()"></a>
+					
 					<!--<img
 						src="img/cropped-aimh_logo5-1024x372.png" height="28px"
 						style="border-radius: 20px 20px 20px 20px;" alt="">-->
 				</div>
-
-
-
 
 			</div>
 			<div class="bodyGrid">
@@ -132,13 +130,20 @@
 					<div class="advanced">
 						<div class="dashboardGrid-item simreorder column-span-2">
 							<input class="font-normal" id='date-input' type="text" size="37" style="border-radius: 8px; margin-bottom: 15px;" placeholder="Date filter: e.g., y2019 m01 d10 h08 ">
-						  </div>
+						</div>
 						<div id="palette" class="palette"></div>
 						<div id='searchTab'></div>
 						<div class="headerItem">
 							<div id="qbe" w3-include-html="filters.html" class="font-normal"></div>
 
 						</div>
+						<div class="dashboardGrid-item simreorder column-span-2 font-normal">
+							<form action="#">
+								<label for="evaluationIds">EvaluationID</label>
+								<select name="dresEvaluationId" id="evaluationIds">
+								</select>
+						  </form>
+						  </div>
 					</div>
 
 

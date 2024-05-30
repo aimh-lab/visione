@@ -275,6 +275,24 @@ function getAllVideoKeyframes(videoId) {
 		}).responseText
 }
 
+function getDresEvaluationIdList() {
+	return $
+		.ajax({
+			type: "GET",
+			url: urlVBSService + "/getDresEvaluationIdList",
+			async: false
+		}).responseText
+}
+
+function setDresEvaluationId(evaluationId) {
+	return $
+		.ajax({
+			type: "GET",
+			url: urlVBSService + "/setDresEvaluationId?evaluationId=" + evaluationId,
+			async: true
+		}).responseText
+}
+
 function getField(id, field) {
 	return $
 		.ajax({
@@ -2412,8 +2430,6 @@ async function init() {
 	//$("#visionelogo").append("<div align='right'><h2>" + collectionName + " - " + localStorage.getItem('taskType').toUpperCase() + "<h2></div>");
 	$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
 
-
-
 	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	setNumResultsPerVideo();
 	loadPalette();
@@ -2630,6 +2646,11 @@ async function init() {
 				searchByForm();
 
 			});
+
+	$('#evaluationIds').on('change', function() {
+		var selectedValue = $(this).val();
+		setDresEvaluationId(selectedValue);
+	});
 	/*
 								$("#stopButton0")
 										.on(
@@ -2669,6 +2690,7 @@ async function init() {
 	//displayAdvanced(false);
 
 	initSupportedLanguages();
+	refreshDresEvaluationList();
 
 
 
@@ -2870,4 +2892,25 @@ function getLSCId(originalString) {
     // Construct the modified string in the desired format
     var modifiedString = hour + ":" + minute;
     return modifiedString;
+}
+
+function refreshDresEvaluationList() {
+	res = getDresEvaluationIdList();
+	var evaluationIds = JSON.parse(res);
+
+	// Reference to the select element
+	var $select = $('#evaluationIds');
+
+	// Clear existing options if any
+	$select.empty();
+
+	// Populate the select element with options
+	$.each(evaluationIds, function(index, value) {
+		var option = $('<option></option>').attr('value', value).text(value);
+		$select.append(option);
+	});
+
+	if (evaluationIds && evaluationIds.length > 0) {
+		setDresEvaluationId(evaluationIds[0]);
+	}
 }
