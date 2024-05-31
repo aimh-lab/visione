@@ -130,8 +130,9 @@ var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
 var defaultTaskType = "kis";
 var defaultSortByType = "hour";
-var framesCache = [];
+//var framesCache = [];
 var collectionName;
+var selectedEvaluationId;
 
 
 function handler(myObj) {
@@ -275,16 +276,19 @@ function getAllVideoKeyframes(videoId) {
 		}).responseText
 }
 
-function getDresEvaluationIdList() {
+function getDresEvaluationList() {
 	return $
 		.ajax({
 			type: "GET",
-			url: urlVBSService + "/getDresEvaluationIdList",
+			url: urlVBSService + "/getDresEvaluationList",
 			async: false
 		}).responseText
 }
 
-function setDresEvaluationId(evaluationId) {
+function setDresEvaluationId(evaluationName, evaluationId) {
+	localStorage.setItem('selectedEvaluationId', evaluationId);
+	$("#evaluationLabel").text(evaluationName);
+
 	return $
 		.ajax({
 			type: "GET",
@@ -1097,7 +1101,7 @@ function showResults(data) {
 		colIdx = 1;
 		rowIdx = -1;
 		visibleImages = 0
-		framesCache = []
+		//framesCache = []
 
 		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
@@ -1181,15 +1185,6 @@ function loadImages(startIndex, endIndex) {
 		let imgId = res[i].imgId;
 		let videoId = res[i].videoId;
 
-		let score = res[i].score;
-
-		let path = videoId + "/" + imgId;
-
-		let result = imgId.match(regex_to_match_keyframe_number);
-		let frameNumber = result ? result[1] || result[2] || result[3] : null;
-
-
-		//if (i > 0 && videoId != prevID) {
 		if (i > 0 && checkId(videoId, prevID)) {
 				//patch to avoid same video on two rows
 			if (i > endIndex )
@@ -1203,32 +1198,15 @@ function loadImages(startIndex, endIndex) {
 			imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
 		}
 
-		let keyframePath = keyFramesUrl + path + ".png";
 		let videoIdParts = videoId.split("_");
 		let fullDayVideoUrl = videoUrlPrefix +"fullday/" +videoIdParts[0] + ".mp4";
-		//if (videoId != prevID) {
 		if (checkId(videoId, prevID)) {
-				//imgGridResults += '<div id="video_' + videoId + '">';
 			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + getLSCFolderName(videoId)[0] + '&id=' + imgId + '" target="_blank">' + getLSCFolderName(videoId)[1] + '<a>';
-			//imgGridResults += '<div id="video_' + videoId + '">';
 			imgGridResults += '<p align="center"><a href="#" title="Play Video"><i title="Play Video" class="fa fa-solid fa-video fa-lg" style="color:navy;" onclick="playFullDayVideoWindow(\'' + fullDayVideoUrl + '\', \'' + videoIdParts[0] + '\'); return false;"></i></a></p></div>';
-			/*document.querySelector('.fa-video').addEventListener('click', function() {
-				playVideoWindow(videoUrl, videoId, imgId);
-				return false;
-			});*/
-			var preloadedImage = new Image();
-			preloadedImage.src = keyframePath;
-		  	framesCache[resrowIdx] = preloadedImage
-
 		}
 		let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
 		prevID = videoId;
-		let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-		videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
-		let thumbnailPath = thumbnailUrl + path + ".jpg";
-		keyframePath = keyFramesUrl + path + ".png";
-		//avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
-		resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, resrowIdx, resColIdx - 1)
+		let resultData = getResultData(res[i])
 
 		if (resColIdx > 0 && (resColIdx+newLine) % 11 == 0) {
 			imgGridResults += '<div class="item column-span-1"></div>';
@@ -1236,7 +1214,6 @@ function loadImages(startIndex, endIndex) {
 		}
 
 		imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-		//imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
 		imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], img_loading)
 		imgGridResults += '</div>'
 		resMatrix[resrowIdx][resColIdx - 1] = res[i];
@@ -1250,7 +1227,6 @@ function loadImages(startIndex, endIndex) {
 
 	for (var i = startIndex; i < visibleImages; i++) {
 		let imgId = res[i].imgId;
-		let score = res[i].score;
 
 		let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
 
@@ -1312,20 +1288,31 @@ function loadImages(startIndex, endIndex) {
 }
 
 
-function getResultData(videoId, imgId, thumb, frameName, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, rowIdx, colIdx) {
+function getResultData(res) {
+	let videoId = res.videoId;
+	let imgId = res.imgId;
+	let score = res.score;
+	let path = videoId + "/" + imgId;
+
+	let thumbnailPath = thumbnailUrl + path + ".jpg";
+	let keyframePath = keyFramesUrl + path + ".png";
+	let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
+	let videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
+	let result = imgId.match(regex_to_match_keyframe_number);
+	let frameNumber = result ? result[1] || result[2] || result[3] : null;
+
+
 	let resultData = new Object();
 	resultData.videoId = videoId;
 	resultData.imgId = imgId;
-	resultData.thumb = thumb;
-	resultData.frameName = frameName;
+	resultData.thumb = thumbnailPath;
+	resultData.frameName = imgId;
 	resultData.frameNumber = frameNumber;
 	resultData.keyframe = keyframePath;
 
 	resultData.score = score;
 	resultData.videoUrl = videoUrl;
 	resultData.videoUrlPreview = videoUrlPreview;
-	resultData.rowIdx = rowIdx;
-	resultData.colIdx = colIdx;
 	return resultData
 }
 
@@ -2428,7 +2415,7 @@ async function init() {
 	//localStorage.setItem('isQA', false);
 	collectionName = config?.main?.collection_name;
 	//$("#visionelogo").append("<div align='right'><h2>" + collectionName + " - " + localStorage.getItem('taskType').toUpperCase() + "<h2></div>");
-	$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
+	$("#collectionTaskLabel").append("<span id='collectionLabel'>" + collectionName + "<span> - <span id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</span>");
 
 	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	setNumResultsPerVideo();
@@ -2648,8 +2635,9 @@ async function init() {
 			});
 
 	$('#evaluationIds').on('change', function() {
+		var selectedName = $(this).find('option:selected').text();
 		var selectedValue = $(this).val();
-		setDresEvaluationId(selectedValue);
+		setDresEvaluationId(selectedName, selectedValue);
 	});
 	/*
 								$("#stopButton0")
@@ -2895,7 +2883,7 @@ function getLSCId(originalString) {
 }
 
 function refreshDresEvaluationList() {
-	res = getDresEvaluationIdList();
+	res = getDresEvaluationList();
 	var evaluationIds = JSON.parse(res);
 
 	// Reference to the select element
@@ -2906,11 +2894,28 @@ function refreshDresEvaluationList() {
 
 	// Populate the select element with options
 	$.each(evaluationIds, function(index, value) {
-		var option = $('<option></option>').attr('value', value).text(value);
+		var option = $('<option title=' + value.id + '></option>').attr('value', value.id).text(value.name);
 		$select.append(option);
 	});
 
+	selectedEvaluationId = localStorage.getItem('selectedEvaluationId');
+
+	let containsSelected = false;
+	let selectedIdx = 0;
+	if (selectedEvaluationId) {
+		$('#evaluationIds option').each(function(idx) {
+			if ($(this).val() === selectedEvaluationId) {
+				containsSelected = true;
+				selectedIdx = idx;
+				$(this).prop('selected', true);
+				return false; // break the loop
+			}
+			idx++;
+		});
+	}
+
+
 	if (evaluationIds && evaluationIds.length > 0) {
-		setDresEvaluationId(evaluationIds[0]);
+		setDresEvaluationId(evaluationIds[selectedIdx].name, evaluationIds[selectedIdx].id);
 	}
 }

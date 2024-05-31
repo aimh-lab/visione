@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 import org.openapitools.client.model.*;
 
 import com.google.gson.Gson;
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
 
 import dev.dres.ApiClient;
 import dev.dres.ApiException;
@@ -107,9 +109,11 @@ public class DRESClient {
 		this.evaluationId = evaluationId;
 	}
 
-	public List <String> getOngoingEvaluation() {
+	public List <DresEvaluationInfo> getOngoingEvaluations() {
 		List<ApiClientEvaluationInfo> currentRuns;
-		List <String> ongoingEvaluationIds=new java.util.ArrayList<String>();
+		List<DresEvaluationInfo> ongoingEvaluations=new java.util.ArrayList<DresEvaluationInfo>();
+		// List <String> ongoingEvaluationIds=new java.util.ArrayList<String>();
+		// List <String> ongoingEvaluationName=new java.util.ArrayList<String>();
 		try {
 		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		} catch (Exception e) {
@@ -126,12 +130,14 @@ public class DRESClient {
 				if (run.getTemplateDescription() != null) {
 					System.out.println(run.getTemplateDescription());
 				}
-				ongoingEvaluationIds.add(run.getId());
+				ongoingEvaluations.add(new DresEvaluationInfo(run.getId(),run.getName()));
+				// ongoingEvaluationIds.add(run.getId());
+				// ongoingEvaluationName.add(run.getName());
 				System.out.println();
 			}
 		}
 
-		return ongoingEvaluationIds;
+		return ongoingEvaluations;
 		}
 
 	// public String getEvaluationId() {
@@ -329,6 +335,41 @@ public class DRESClient {
 	// 		}
 	//     }
 	// }
+	public class DresEvaluationInfo {
+
+    @SerializedName("id")
+    @Expose
+    private String id;
+
+    @SerializedName("name")
+    @Expose
+    private String name;
+
+   
+    public void setId(String id) {
+		this.id = id;
+	}
+	  
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getId() {	
+		return id;
+	}
+	
+	public String getName() {
+		return name;
+	}
+
+    public DresEvaluationInfo(String id, String name) {
+		this.id = id;
+		this.name = name;
+	}
+
+    
+
+}
 
 
 	private class DresResultsLogging implements Runnable { //FIX THIS

@@ -53,6 +53,7 @@ import com.google.gson.JsonSerializer;
 
 import dev.dres.ApiException;
 import it.cnr.isti.visione.logging.DRESClient;
+import it.cnr.isti.visione.logging.DRESClient.DresEvaluationInfo;
 //import it.cnr.isti.visione.logging.fake.DRESClient;
 import it.cnr.isti.visione.logging.LogParserDRES;
 import it.cnr.isti.visione.logging.Logging;
@@ -587,12 +588,12 @@ public class VBSService {
 	}
 
 	@GET
-	@Path("/getDresEvaluationIdList")
+	@Path("/getDresEvaluationList")
 	@Consumes({ MediaType.TEXT_PLAIN })
 	@Produces(MediaType.APPLICATION_JSON)
-	public String getDresEvaluationIdList() {
+	public String getDresEvaluationList() {
 		String response = "";
-		List <String> ongoingEvaluationIds= client.getOngoingEvaluation();
+		List <DresEvaluationInfo> ongoingEvaluationIds= client.getOngoingEvaluations();
 		response = gson.toJson(ongoingEvaluationIds);
 		return response;
 	}
