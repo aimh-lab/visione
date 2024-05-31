@@ -117,7 +117,7 @@
 
 
 				<div id="visionelogo" class="headerItem">
-					<a href= ""><img id="visionelogoImg" src="img/logoVISIONE.png" alt="" title="Restart" onclick="startNewKISSession()"></a>
+					<a href= ""><img id="visionelogoImg" src="img/logoVISIONE.png" alt="" title="Restart" onclick="startNewSession()"></a>
 					<div align='right' id="infoLabel">
 						<span id="collectionTaskLabel" class="font-huge"></span><br>
 						<span align='right' id="evaluationLabel" class="font-small"></span>
@@ -178,7 +178,7 @@
 			init();
 
 
-			const channel = new BroadcastChannel('app-data');
+			/*const channel = new BroadcastChannel('app-data');
 			channel.addEventListener ('message', (event) => {
 				window.focus();
 
@@ -195,7 +195,19 @@
 				//avsObj = JSON.parse(avsObj);
 
 				unifiedSubmit(avsObj, null);
-			});
+			});*/
+
+			const channel = new BroadcastChannel('submit_channel');
+
+			channel.onmessage = (event) => {
+				if (event.data.type === 'greet') {
+					selectedFrameJson = event.data.message;
+					selectedFrame = JSON.parse(selectedFrameJson);
+					// Call a function here if needed
+					updateTab(selectedFrame);
+				}
+};
+			
 		</script>
 
 		<!-- inserting these scripts at the end to be able to use all the elements in the DOM

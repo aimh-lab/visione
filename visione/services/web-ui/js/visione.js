@@ -364,47 +364,16 @@ function submitWithAlert2(selectedItem, isConfirm) {
 
 //to remove
 function startNewSession() {
-	if (confirm('Are you sure you want to start a new session?')) {
+	//if (confirm('Are you sure you want to start a new session?')) {
 		location.reload();
-		$.ajax({
+		/*$.ajax({
 			type: "GET",
 			async: false,
 			url: urlVBSService + "/init"
-		}).responseText
-	}
+		}).responseText*/
+//	}
 }
 
-function startNewKISSession() {
-	//if (confirm('Starting a new KIS session?')) {
-	location.href = "index_V3C.html";
-	$.ajax({
-		type: "GET",
-		async: false,
-		url: urlVBSService + "/init"
-	}).responseText
-	//}
-}
-
-function startNewAVSSession() {
-	//if (confirm('Starting a new AVS session?')) {
-	location.href = "index_V3C_AVS.html";
-	$.ajax({
-		type: "GET",
-		async: false,
-		url: urlVBSService + "/init"
-	}).responseText
-	loadConfig();
-	//}
-}
-
-
-/*function log(query) {
-	return $.ajax({
-		type: "GET",
-		async: false,
-		url: urlVBSService + "/log?query=" + query,
-	}).responseText;
-}*/
 
 function log(query) {
 	$.ajax({
@@ -1387,8 +1356,8 @@ function submitAtTime(videoId, time) {
 	}).responseText;
 }
 
-function submitVersion2(selectedItem) {
-	$('#submitted_bar').css("display", "block");
+function submitVersion2(selectedItem, isUpdateTab=true) {
+	
 	let res = null;
 	if (localStorage.getItem('taskType') === 'qa') {
 		submitQA();
@@ -1400,36 +1369,44 @@ function submitVersion2(selectedItem) {
 				res = submitResult(selectedItem.imgId, selectedItem.videoId);
 				alert('Server response: ' + res);
 			}
-
-
-			//remove selected image preview
-			unselectImg(selectedItem);
-			//avsRemoveSelected(selectedItem)
-
-			//updateAVSTab(selectedItem)
-
-			//avsSubmitted.set(selectedItem.videoId, selectedItem);
-			//LSC patch for single image highlight
-			avsSubmitted.set(selectedItem.imgId, selectedItem);
-
-
-			//add submitted image to the sidebar on the right
-			avsSubmittedTab(selectedItem);
-			$( "#submitted_num" ).text(avsSubmitted.size)
-
-			//che fa? boh!
-			updateAVSInfo();
-			if (localStorage.getItem('taskType') === 'avs') {
-				//avsHideSubmittedVideos();
-				hilightlighSubmittedImg();
-			}
-			else {
-				//avsHilightlighSubmittedVideos();
-				hilightlighSubmittedImg();
-			}
+			if (isUpdateTab)
+				updateTab(selectedItem);
 		}
 	}
 	return res;
+}
+
+function updateTab(selectedItem) {
+	$('#submitted_bar').css("display", "block");
+	try {
+        selectedItem = JSON.parse(selectedItem);
+    } catch (e) {
+    }
+	//remove selected image preview
+	unselectImg(selectedItem);
+	//avsRemoveSelected(selectedItem)
+
+	//updateAVSTab(selectedItem)
+
+	//avsSubmitted.set(selectedItem.videoId, selectedItem);
+	//LSC patch for single image highlight
+	avsSubmitted.set(selectedItem.imgId, selectedItem);
+
+
+	//add submitted image to the sidebar on the right
+	avsSubmittedTab(selectedItem);
+	$( "#submitted_num" ).text(avsSubmitted.size)
+
+	//che fa? boh!
+	updateAVSInfo();
+	if (localStorage.getItem('taskType') === 'avs') {
+		//avsHideSubmittedVideos();
+		hilightlighSubmittedImg();
+	}
+	else {
+		//avsHilightlighSubmittedVideos();
+		hilightlighSubmittedImg();
+	}
 }
 /*
 function unifiedSubmit(avsObj, ev) {

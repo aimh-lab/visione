@@ -40,7 +40,7 @@
 			return isQA;
 		}
 
-		function submit(imgId, videoId) {
+		/*function submit(imgId, videoId) {
 			if (!checkQA())
 				if (submitAlert()) {
 					if (localStorage.getItem('taskType') === 'avs')
@@ -53,6 +53,16 @@
 				
 				hilightlighSubmittedImg(imgId);
 
+		}*/
+
+		function submit(imgId, videoId) {
+			let data = {imgId: imgId, videoId: videoId, score: -1}
+			const selectedFrame = getResultData(data)
+			submitVersion2(selectedFrame, isUpdateTab=false);
+			const selectedFrameJSON = JSON.stringify(selectedFrame);
+			const channel = new BroadcastChannel('submit_channel');
+			channel.postMessage({ type: 'greet', message: selectedFrameJSON });
+			hilightlighSubmittedImg(imgId);
 		}
 
 		function hilightlighSubmittedImg(imgId) {
