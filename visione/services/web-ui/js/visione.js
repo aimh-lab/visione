@@ -1175,7 +1175,7 @@ function loadImages(startIndex, endIndex) {
 		}
 		let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
 		prevID = videoId;
-		let resultData = getResultData(res[i])
+		let resultData = getResultData(res[i], resrowIdx, resColIdx - 1)
 
 		if (resColIdx > 0 && (resColIdx+newLine) % 11 == 0) {
 			imgGridResults += '<div class="item column-span-1"></div>';
@@ -1257,7 +1257,7 @@ function loadImages(startIndex, endIndex) {
 }
 
 
-function getResultData(res) {
+function getResultData(res, rowIdx, colIdx) {
 	let videoId = res.videoId;
 	let imgId = res.imgId;
 	let score = res.score;
@@ -1282,6 +1282,8 @@ function getResultData(res) {
 	resultData.score = score;
 	resultData.videoUrl = videoUrl;
 	resultData.videoUrlPreview = videoUrlPreview;
+	resultData.rowIdx = rowIdx;
+	resultData.colIdx = colIdx;
 	return resultData
 }
 
