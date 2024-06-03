@@ -2052,12 +2052,12 @@ function setSupportedLanguages(id) {
 		}));
 	  });
 
-	  $('#supportedLang0, #supportedLang1').on('change', function() {
-		var selectedValue = $(this).val();
-		localStorage.setItem("selectedLang", selectedValue);
-		var otherSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
-		otherSelect.val(selectedValue);
-	  });
+	$('#supportedLang0, #supportedLang1').on('change', function() {
+	var selectedValue = $(this).val();
+	localStorage.setItem("selectedLang", selectedValue);
+	var pairSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
+	pairSelect.val(selectedValue);
+	});
 
 }
 
