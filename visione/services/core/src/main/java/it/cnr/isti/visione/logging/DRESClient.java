@@ -83,7 +83,7 @@ public class DRESClient {
             System.out.println("-->DRES:login successful");
             System.out.println("user: " + login.getUsername());
             System.out.println("role: " + login.getRole().getValue());
-            System.out.println("session: " + login.getSessionId());
+            System.out.println("session: " + login.getSessionId()); //FIXME
 
             //store session token for future requests
             sessionId = login.getSessionId();
@@ -109,17 +109,12 @@ public class DRESClient {
 		this.evaluationId = evaluationId;
 	}
 
-	public List <DresEvaluationInfo> getOngoingEvaluations() {
+	public List <DresEvaluationInfo> getOngoingEvaluations() throws ApiException{
+		System.out.println("Requesting ongoing evaluations from DRES (SessionId: " + sessionId + ")");
 		List<ApiClientEvaluationInfo> currentRuns;
 		List<DresEvaluationInfo> ongoingEvaluations=new java.util.ArrayList<DresEvaluationInfo>();
-		// List <String> ongoingEvaluationIds=new java.util.ArrayList<String>();
-		// List <String> ongoingEvaluationName=new java.util.ArrayList<String>();
-		try {
 		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
-		} catch (Exception e) {
-			System.out.println("-->DRES: Error during request: '" + e.getMessage() + "', exiting");
-			return null;
-		}
+		
 
 		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
 		
@@ -131,8 +126,6 @@ public class DRESClient {
 					System.out.println(run.getTemplateDescription());
 				}
 				ongoingEvaluations.add(new DresEvaluationInfo(run.getId(),run.getName()));
-				// ongoingEvaluationIds.add(run.getId());
-				// ongoingEvaluationName.add(run.getName());
 				System.out.println();
 			}
 		}

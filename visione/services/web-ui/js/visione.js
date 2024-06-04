@@ -79,7 +79,6 @@ var prevCanvasObjects = [];
 var isCanvasClean = [];
 var isReset = false;
 
-
 var canvases;
 var prevIs43 = false;
 var prevIs169 = false;
@@ -121,8 +120,6 @@ var resCursor = 0;
 var resMatrix = [];
 var colIdx = 1;
 var rowIdx = 0;
-//var isAVS = false;
-//var isQA = false;
 
 var config = null;
 var loadingSpinner = null;
@@ -130,7 +127,6 @@ var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
 var defaultTaskType = "kis";
 var defaultSortByType = "hour";
-//var framesCache = [];
 var collectionName;
 var selectedEvaluationId;
 
@@ -144,28 +140,7 @@ function handler(myObj) {
 	keyFramesUrl = myObj.keyFramesUrl;
 	videoUrlPrefix = myObj.videoUrl;
 	videoshrinkUrl = myObj.videoshrinkUrl;
-
-	//document.cookie = 'isQA=' + isQA + '; path=/';
-
-	//localStorage.setItem('isQA', isQA);
 }
-
-/*
-function setAVS(isAvsSel) {
-	isAVS = isAvsSel;
-	isQA = false;
-	localStorage.setItem('isQA', isQA);
-	//document.cookie = 'isQA=' + isQA + '; path=/';
-
-}
-
-function setQA(isQASel) {
-	isQA = isQASel;
-	isAVS = false;
-	localStorage.setItem('isQA', isQA);
-	//document.cookie = 'isQA=' + isQA + '; path=/';
-
-}*/
 
 function loadConfig() {
 	promise1 = fetch("config.yaml").then(response => response.text()).then(data => { config = jsyaml.load(data); });
@@ -288,6 +263,15 @@ function getDresEvaluationList() {
 function setDresEvaluationId(evaluationName, evaluationId) {
 	localStorage.setItem('selectedEvaluationId', evaluationId);
 	$("#evaluationLabel").text(evaluationName);
+	if (evaluationId === "ERROR") {
+		$("#evaluationLabel").text(evaluationName +"!!!").css({
+			"color": "red",
+			"font-size": "20px"
+		}).animate({ opacity: 0 }, 500).animate({ opacity: 1 }, 500, function() {
+			$(this).animate({ opacity: 0 }, 500).animate({ opacity: 1 }, 500, arguments.callee);
+		});
+
+	}
 
 	return $
 		.ajax({
@@ -332,35 +316,6 @@ function getMiddleTimestamp(id) {
 			async: false
 		}).responseText
 }
-
-/*
-function submitWithAlert(id, videoId) {
-	if (!isAVS) {
-		if (confirm('Are you sure you want to submit?')) {
-			res = submitResult(id, videoId);
-			console.log(res);
-			alert('Server response: ' + res);
-		}
-	} else {
-		res = submitResult(id, videoId);
-	}
-}
-
-function submitWithAlert2(selectedItem, isConfirm) {
-	if (isConfirm) {
-		if (confirm('Are you sure you want to submit?')) {
-			res = submitResult(selectedItem.imageId, selectedItem.videoId);
-			console.log(res);
-			alert('Server response: ' + res);
-		}
-	} else {
-		res = submitResult(selectedItem.imageId, selectedItem.videoId);
-		console.log(res);
-	}
-	avsSubmitted.set(selectedItem.videoId, selectedItem);
-	avsSubmittedTab(selectedItem);
-}
-*/
 
 //to remove
 function startNewSession() {
@@ -667,63 +622,46 @@ function parseDateInput(input) {
 
 
 function filterResultsByYear(results, year) {
-    // Parse the JSON string into an array of objects
     const data = JSON.parse(results);
-
-    // Filter the objects based on the year in the 'imgId' field
     const filteredData = data.filter(item => {
         const match = item.imgId.match(/^(\d{4})/);
         return match && match[1] === year;
     });
 
-    // Convert the filtered array back to a JSON string (if needed)
     return JSON.stringify(filteredData, null, 2);
 }
 
 function filterResultsByMonth(results, month) {
-    // Parse the JSON string into an array of objects
     const data = JSON.parse(results);
-
-    // Filter the objects based on the month in the 'imgId' field
     const filteredData = data.filter(item => {
         const match = item.imgId.match(/^\d{4}(\d{2})/);
         return match && match[1] === month;
     });
 
-    // Convert the filtered array back to a JSON string (if needed)
     return JSON.stringify(filteredData, null, 2);
 }
 
 function filterResultsByDay(results, day) {
-    // Parse the JSON string into an array of objects
     const data = JSON.parse(results);
-
-    // Filter the objects based on the day in the 'imgId' field
     const filteredData = data.filter(item => {
         const match = item.imgId.match(/^\d{6}(\d{2})/);
         return match && match[1] === day;
     });
 
-    // Convert the filtered array back to a JSON string (if needed)
     return JSON.stringify(filteredData, null, 2);
 }
 
 function filterResultsByHour(results, hour) {
-    // Parse the JSON string into an array of objects
     const data = JSON.parse(results);
-
-    // Filter the objects based on the hour in the 'imgId' field
     const filteredData = data.filter(item => {
         const match = item.imgId.match(/^\d{8}_(\d{2})/);
         return match && match[1] === hour;
     });
 
-    // Convert the filtered array back to a JSON string (if needed)
     return JSON.stringify(filteredData, null, 2);
 }
 
 function setResults(data) {
-	//data ='[{"score":13.926777,"videoId":"05188","imgId":"05188_12","middleFrame":919,"collection":"v3c"},{"score":13.917663,"videoId":"17058","imgId":"17058_85","middleFrame":5345,"collection":"v3c"}]'
 	results = data
 	//results = sortByVideo(data);
 	try {
@@ -733,7 +671,6 @@ function setResults(data) {
 		resultsSortedByVideo = null;
 	}
 	groupResults(document.getElementById("group"));
-	// history.pushState(JSON.stringify($(this)),'List',window.location.href);
 }
 
 function search2(query) {
@@ -872,14 +809,6 @@ function setOccur(radioButton, canvasId) {
 
 	searchByForm();
 }
-/*
-function setTextualMode(checkboxId, mode) {
-	if (textualMode[checkboxId].includes(mode))
-		textualMode[checkboxId] = textualMode[checkboxId].replace(mode, "")
-	else
-		textualMode[checkboxId] += mode;
-	searchByForm();
-}*/
 
 function setTextualMode(checkboxId, mode) {
 	textualMode[checkboxId] = mode;
@@ -891,16 +820,7 @@ function setTextualMode(checkboxId, mode) {
 		searchByForm();
 	}
 }
-/*
-function setTextualMode(checkboxId) {
-	if(checkBox = document.getElementById("textualMode" + checkboxId).checked) {
-		textualMode[checkboxId] = "aladin";
-	}
-	else
-		textualMode[checkboxId] = "clip";
-	searchByForm();
-}
-*/
+
 function enableCanvas(canvasId, storePrev) {
 	document.getElementById("overlay" + canvasId).style.display = "none";
 	$('input:radio[name=canvas' + canvasId + ']')[0].checked = true;
@@ -928,8 +848,6 @@ function resetCanvas() {
 }
 
 function undoCanvas() {
-	//canvas0State = $('input[name="canvas0"]:checked').val();
-	//canvas1State = $('input[name="canvas1"]:checked').val();
 	if (prevIsCanvasEnabled[0]) {
 		enableCanvas(0, true);
 	} else {
@@ -1070,7 +988,6 @@ function showResults(data) {
 		colIdx = 1;
 		rowIdx = -1;
 		visibleImages = 0
-		//framesCache = []
 
 		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
@@ -1410,31 +1327,6 @@ function updateTab(selectedItem) {
 		hilightlighSubmittedImg();
 	}
 }
-/*
-function unifiedSubmit(avsObj, ev) {
-	if (isQA) {
-		submitQA();
-		return;
-	}
-	if (!submitAlert())
-		return false;
-
-	currentSelected = null;
-
-	//if (avsManuallyByVideoID.size > 0 && !avsManuallyByVideoID.has(avsObj.videoId)) {
-		//currentSelected = avsManuallyByVideoID.entries().next().value[1];
-		//let manuallySelectedToRemove = avsManuallyByVideoID.get(selectedItem.videoId);
-//	}
-
-	avsCleanManuallySelected();
-	//avsToggle(avsObj, ev);
-	submitAVS(avsObj);
-
-	//if (currentSelected != null) {
-	//	//avsToggle(currentSelected, ev);
-	//}
-
-}*/
 
 function showOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 1;
@@ -1466,7 +1358,6 @@ const imgResult = (res, borderColor, img_loading="eager") => {
 			<div>
 		</div>
 		`
-
 }
 
 function openChildWindow(videoId, imgId, frameName) {
@@ -1628,35 +1519,6 @@ function indexedCells(txt) {
 	$('#txt').append(imgtable);
 }
 
-/*
-function changeQueryBySampleMod(mode) {
-	if (mode == "url") {
-		document.getElementById("uploadText").style.display = 'none';
-		document.getElementById("uploadLink").style.display = '';
-		document.getElementById("urlText").style.display = '';
-		document.getElementById("urlLink").style.display = 'none';
-		document.getElementById("imageToUpload").style.display = 'none';
-		document.getElementById("urlToUpload").style.display = '';
-		document.getElementById("imageToUpload").value = '';
-
-		document.getElementById("searchbar").enctype = "";
-		document.getElementById("searchbar").method = "GET";
-	} else {
-		document.getElementById("uploadText").style.display = '';
-		document.getElementById("uploadLink").style.display = 'none';
-		document.getElementById("urlText").style.display = 'none';
-		document.getElementById("urlLink").style.display = '';
-
-		document.getElementById("urlToUpload").style.display = 'none';
-		document.getElementById("imageToUpload").style.display = '';
-		document.getElementById("urlToUpload").value = '';
-
-		document.getElementById("searchbar").enctype = "multipart/form-data";
-		document.getElementById("searchbar").method = "POST";
-	}
-}
-*/
-
 function includeHTML() {
 	let z, i, elmnt, file, xhttp;
 	/* Loop through a collection of all HTML elements: */
@@ -1791,10 +1653,6 @@ function resultsVisualization() {
 }
 
 function initLayout() {
-	//document.getElementById('simplified0').appendChild(document.getElementById('div_textual0'));
-	//document.getElementById('simplified1').appendChild(document.getElementById('div_textual1'));
-	//document.getElementById('simplified0').appendChild(document.getElementById('textualOptions0'));
-	//document.getElementById('simplified1').appendChild(document.getElementById('textualOptions1'));
 	$('#simplified0').append($('#div_textual0'));
 	$('#simplified1').append($('#div_textual1'));
 	$('#simplified0').append($('#textualOptions0'));
@@ -1809,8 +1667,6 @@ function initLayout() {
 	$('#visionelogo').addClass('visioneLogo_bigger');
 
 	$('#textual0').addClass('simplifiedTextual0');
-	//$('#textualOptions0').css('display', 'none');
-	//$('#textualOptions1').css('display', 'none');
 	//-----
 }
 
@@ -1843,52 +1699,18 @@ function displayAdvanced() {
 
 	$('.advanced').css('display', setDisplayTo);
 
-
-	//if (latestQuery != "" || isAdvanced) {
-	//$('#sceneDes1').css('display', 'block');
-	//if ($("#sceneDes1").length > 0)
 	$('#simplified1').css('display', 'block');
 
-	//document.getElementById("sceneDes0").className = 'fa fa-hourglass-start fa-2x'
-	//document.getElementById("simplified0").className = 'simplified0'
-	//document.getElementById("textual0").className = 'textualquery0'
-	//document.getElementById("visionelogo").className = 'visioneLogo'
 
 	$('#simplified0').removeClass('simplifiedSearchBar');
 	$('#textual0').removeClass('simplifiedTextual0');
 	$('#visionelogo').removeClass('visioneLogo_bigger');
 
-	//$('#sceneDes0').addClass('fa-hourglass-start');
-	//$('#simplified0').addClass('simplified0');
 	$('#textual0').addClass('textualquery0');
 	$('#visionelogo').addClass('visioneLogo');
 	$('#hourglass-start').css('display', 'block');
 	$('#hourglass-end').css('display', 'block');
 
-	//$('#newsession').css('display', 'block');
-
-	//}
-	/*else {
-		//$('#sceneDes1').css('display', 'none');
-		$('#simplified1').css('display', 'none');
-		//document.getElementById("simplified0").className = 'simplifiedSearchBar'
-		//$('#sceneDes0').removeClass('fa-hourglass-start');
-		//$('#simplified0').removeClass('simplified0');
-		$('#textual0').removeClass('textualquery0');
-		$('#visionelogo').removeClass('visioneLogo');
-
-		$('#simplified0').addClass('simplifiedSearchBar');
-		$('#visionelogo').addClass('visioneLogo_bigger');
-
-		//document.getElementById("textual0").className = 'textualquery0'
-		//document.getElementById("textual0").className = 'simplifiedTextual0'
-		//document.getElementById("visionelogo").className = 'visioneLogo_bigger'
-		$('#textual0').addClass('simplifiedTextual0');
-
-		//$('#newsession').css('display', 'none');
-
-		//document.getElementById("sceneDes0").className = 'fa fa-2x'
-	}*/
 	var elements = document.getElementsByClassName("advanced");
 	for (var i = 0; i < elements.length; i++) {
 		elements[i].style.display = setDisplayTo;
@@ -1929,25 +1751,6 @@ function scrollToRow(rowNumber) {
 	var rowHeight = row.offsetHeight;
 
 	container.scrollTop = rowTop - containerTop - rowHeight / 2;
-
-
-	/*
-		if (rowTop - t < containerTop) {
-			// La riga è sopra la parte correntemente visibile
-			container.scrollTop = rowTop;
-		} else if (rowTop -t > containerHeight) {
-			// La riga è sotto la parte correntemente visibile
-			container.scrollTop = rowTop - rowHeight - containerHeight;
-		}*/
-
-	/*
-		if (rowTop < containerTop) {
-			// La riga è sopra la parte correntemente visibile
-			container.scrollTop = rowTop;
-		} else if (rowTop + rowHeight > containerTop + containerHeight) {
-			// La riga è sotto la parte correntemente visibile
-			container.scrollTop = rowTop - rowHeight - containerHeight;
-		}*/
 }
 
 function unscrollToRow(rowNumber) {
@@ -2032,17 +1835,6 @@ function setSupportedLanguages(id) {
 
 	var selectElement = document.getElementById('supportedLang' + id);
 
-	// Popola l'elemento select con le opzioni del dizionario
-	/*for (var key in supportedLanguages) {
-	  if (supportedLanguages.hasOwnProperty(key)) {
-		var option = document.createElement('option');
-		option.value = supportedLanguages[key];
-		option.text = key;
-		selectElement.add(option);
-	  }
-	}*/
-
-
 	$.each(supportedLanguages, function(key, value) {
 		var isSelected = (value === localStorage.getItem("selectedLang"));
 		$('#supportedLang' + id).append($('<option>', {
@@ -2069,48 +1861,12 @@ function checkKey(e) {
 	//console.log(e.keyCode)
 	var goToNextResult = false;
 
-	/*var activeElement = document.activeElement;
-	if (activeElement.id === "textual0" || activeElement.id === "textual1") {
-		var idx = activeElement.id == "textual0" ? 0 : 1;
-
-		console.log(activeElement.id);
-		if (e.key === 'Enter') {
-			var textQuery =  activeElement.value;
-			if (textQuery.length > 0) {
-				if (document.getElementById("isTranslate" + idx).checked)
-					translateText(textQuery, idx);
-			console.log(activeElement.value);
-			}
-		  }
-		return;
-	}
-	else if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0) {
-		return;
-	}*/
 	var activeElement = document.activeElement;
 	//if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA" || avsManually.size === 0)
 	if (activeElement.tagName == "INPUT" || activeElement.getAttribute("type") == "text" || activeElement.tagName === "TEXTAREA")
 		return;
 
 	if (e.keyCode == '65') {
-
-		//var mouseOverEvent = new Event('mouseenter');
-
-		//let imgId4Regex = lastSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-		/*if (prevSelected != null) {
-			let prevImgId4Regex = prevSelected.id.replaceAll("/", "\\/").replaceAll(".", "\\.")
-			$('#' + prevImgId4Regex).off("contextmenu");
-		}*/
-
-		//$('#' + imgId4Regex).off("contextmenu")
-		//$('#' + imgId4Regex).trigger( "contextmenu" );
-		/*var testElement = $('#' + imgId4Regex);
-
-		console.log(testElement);
-		var rightClickEvent = $.Event("contextmenu");
-
-		testElement.trigger(rightClickEvent);*/
-
 		if (prevSelected != null) {
 			var prevSel = document.getElementById(prevSelected.id);
 			var mouseOutEvent = new MouseEvent("mouseout", {
@@ -2138,16 +1894,6 @@ function checkKey(e) {
 		});
 
 		testDiv.dispatchEvent(rightClickEvent);
-
-		/*
-
-				testDiv.addEventListener("contextmenu", function(event) {
-					event.preventDefault(); // Opzionale: previene il menu contestuale predefinito
-					// Inserisci qui il tuo codice per l'evento click del tasto destro del mouse
-				  });
-		*/
-
-		//testDiv.dispatchEvent(mouseOverEvent);
 	}
 	else if (e.keyCode == '83') {
 		//replace img to submitBTN_
@@ -2162,117 +1908,11 @@ function checkKey(e) {
 
 	else if (e.keyCode == '38') {
 		selectPrevResult();
-		/*
-		colIdx = 0;
-		rowIdx = Math.max(0, rowIdx - 1);
-		//console.log(resCursor)
-		//$("#" + res[resCursor--].imgId).click();
-		var element = document.getElementById("img" + resMatrix[rowIdx][colIdx].imgId);
-		if (lastSelected != null) {
-			lastSelected.click();
-		}
-		prevSelected = lastSelected;
-		lastSelected = element;
-
-		// Chiamare l'evento onclick
-		element.click();*/
-
-		//scrollToRow(rowIdx);
-
-
-		/*
-				var container = document.querySelector('.resGrid2');
-
-				var containerTop = container.getBoundingClientRect().top;
-				var containerBottom = containerTop + container.offsetHeight;
-
-				var percentVisible = 0;
-				numCycle = 0;
-				while (percentVisible < 100 && numCycle++ < 10) {
-					var elementTop = element.getBoundingClientRect().top;
-					var elementBottom = elementTop + element.offsetHeight;
-
-					if (elementTop >= containerTop && elementTop <= containerBottom) {
-						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-						var elementHeight = element.offsetHeight;
-						var percentVisible = (visibleHeight / elementHeight) * 100;
-					}
-					if (percentVisible < 100) {
-						var gridContent = $("#content").find(".resGrid2");
-						scrollingOffset = Math.max(0, scrollingOffset - 250)
-						gridContent.animate({ scrollTop: scrollingOffset }, 0);
-					}
-					console.log("percentVisible: " + percentVisible);
-				}
-		*/
-
-
-		/*gridOffsetY = Math.max(0, gridOffsetY - rowHeight);
-		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollTop: gridOffsetY }, 0);
-		rowHeight = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId).offsetHeight + scrollOffset;*/
-
-
-		//console.log("up arrow")
 	}
 	if (e.keyCode == '40' || goToNextResult) {
 		loadingNextResults();
 
 		selectNextResult();
-
-
-		//scrollToRow(rowIdx);
-
-		/*
-
-				var container = document.querySelector('.resGrid2');
-
-				var containerTop = container.getBoundingClientRect().top;
-				var containerBottom = containerTop + container.offsetHeight;
-
-				var percentVisible = 0;
-				numCycle = 0;
-				while (percentVisible < 100 && numCycle++ < 10) {
-
-					var elementTop = element.getBoundingClientRect().top;
-					var elementBottom = elementTop + element.offsetHeight;
-
-					if (elementTop >= containerTop && elementTop <= containerBottom) {
-						var visibleHeight = Math.min(elementBottom, containerBottom) - elementTop;
-						var elementHeight = element.offsetHeight;
-						percentVisible = (visibleHeight / elementHeight) * 100;
-					}
-					if (percentVisible < 100) {
-						var gridContent = $("#content").find(".resGrid2");
-						scrollingOffset += 250
-						gridContent.animate({ scrollTop: scrollingOffset }, 0);
-					}
-					console.log("percentVisible: " + percentVisible);
-				}
-				/*
-
-						var gridItems = container.querySelectorAll('.item');
-						var selectedRow = gridItems[resCursor]; // Riga 25 (indice 24 considerando 0-based index)
-
-						var containerTop = container.getBoundingClientRect().top;
-						var containerHeight = container.offsetHeight;
-						var selectedRowTop = selectedRow.getBoundingClientRect().top;
-
-						if (selectedRowTop >= containerTop && selectedRowTop <= containerTop + containerHeight) {
-						console.log("La riga 25 è visibile");
-						} else {
-							console.log("La riga 25 è al di sotto dello scroll");
-							gridOffsetY = gridOffsetY + rowHeight ;
-							var gridContent = $("#content").find(".contentGrid");
-							//gridContent.animate({ scrollTop: gridOffsetY }, 0);
-							gridContent.animate({ scrollTop: 200 }, 0);
-
-							resRow = document.getElementById("res_" + resMatrix[resCursor][colIdx].imgId)
-							rowHeight = resRow.offsetHeight - scrollOffset
-						}*/
-
-
-		//console.log("down arrow")
 	}
 	else if (e.keyCode == '37') {
 		colIdx = Math.max(0, colIdx - 1);
@@ -2286,13 +1926,6 @@ function checkKey(e) {
 		prevSelected = lastSelected;
 		lastSelected = element;
 		element.click();
-		/*gridOffsetX = Math.max(0, gridOffsetX - selectContentOffsetX);
-		var gridContent = $("#content").find(".contentGrid");*/
-		//var gridContent = $("#content").find(".contentGrid");
-		//gridContent.animate({ scrollLeft: 0 }, 0);
-
-
-		//console.log("left arrow")
 	}
 	else if (e.keyCode == '39') {
 		++colIdx
@@ -2310,14 +1943,6 @@ function checkKey(e) {
 		prevSelected = lastSelected;
 		lastSelected = element;
 		element.click();
-		/*$("#content.gridItem:nth-child(" + colIdx + ")").addClass("hideColumn");
-		gridOffsetX = gridOffsetX + selectContentOffsetX;
-		var gridContent = $("#content").find(".contentGrid");
-		gridContent.animate({ scrollLeft: gridOffsetX }, 100);*/
-		//var gridContent = $("#content").find(".contentGrid");
-		//gridContent.animate({ scrollLeft: 0 }, 0);
-		//console.log("right arrow")
-
 	}
 
 }
@@ -2618,29 +2243,6 @@ async function init() {
 		var selectedValue = $(this).val();
 		setDresEvaluationId(selectedName, selectedValue);
 	});
-	/*
-								$("#stopButton0")
-										.on(
-												'click',
-												function(e) {
-													document
-															.getElementById("recordButton0").style.display = 'block';
-													document
-															.getElementById("stopButton0").style.display = 'none';
-													stopRecording(0);
-												});
-
-								$("#stopButton1")
-										.on(
-												'click',
-												function(e) {
-													document
-															.getElementById("recordButton1").style.display = 'block';
-													document
-															.getElementById("stopButton1").style.display = 'none';
-													stopRecording(1);
-												});
-	*/
 	
 	$(document).ready(function() {
 		$('#date-input').on('keydown', function(event) {
@@ -2668,35 +2270,7 @@ async function init() {
 	script.src = "js/WebAudioRecorder/audioRecorder.js";
 	document.head.appendChild(script);
 
-
-	/*var script = document.createElement('script');
-	script.src = "js/WebAudioRecorder/WebAudioRecorder.min.js";
-	document.head.appendChild(script)
-	script = document.createElement('script');
-	script.src = "js/WebAudioRecorder/audioRecorder.js";
-	document.head.appendChild(script)
-
-	const microphoneIcon = document.querySelector('.microphone-icon');
-	const inputText = document.querySelector('input[type="text"]');
-
-	microphoneIcon.addEventListener('click', () => {
-	  // Avvia la registrazione audio
-	  console.log('Registrazione audio avviata');
-	});*/
-
-
 	var imgGridResultsElement = document.getElementById('imgGridResults');
-
-/*
-	imgGridResultsElement.addEventListener('scroll', function() {
-		// Verifica se l'utente ha raggiunto la fine della pagina
-		console.log('Scrolled!');
-		if (visibleImages < res.length && window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-			// Carica il prossimo batch di immagini (ad esempio, altre 100 immagini)
-			var nextBatchEndIndex = Math.min(visibleImages + batchSize, res.length);
-			loadImages(visibleImages, nextBatchEndIndex);
-		}
-	});*/
 
 	var resultsElement = $("#results");
 
@@ -2719,7 +2293,6 @@ function loadingNextResults() {
 				loadImages(visibleImages, nextBatchEndIndex);
 			}
 		}
-
 }
 
 
