@@ -1302,7 +1302,9 @@ function updateTab(selectedItem) {
     } catch (e) {
     }
 	//remove selected image preview
-	unselectImg(selectedItem);
+
+	//disabled just for LSC
+	//unselectImg(selectedItem);
 	//avsRemoveSelected(selectedItem)
 
 	//updateAVSTab(selectedItem)
@@ -1903,7 +1905,9 @@ function checkKey(e) {
 
 
 		//submitVersion2()
-		goToNextResult = true;
+		
+		//set to false just for LSC
+		goToNextResult = false;
 	}
 
 	else if (e.keyCode == '38') {

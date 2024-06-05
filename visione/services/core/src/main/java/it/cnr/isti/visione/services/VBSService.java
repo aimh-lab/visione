@@ -598,22 +598,21 @@ public class VBSService {
 		try {
 			ongoingEvaluationIds= client.getOngoingEvaluations();
 		} catch (Exception e) {
-			System.out.println("-->DRES: in getting evaluation list: '" + e.getMessage() + "', exiting");
+			System.out.println("\t -->DRES: in getting evaluation list: '" + e.getMessage() + "', exiting");
 			System.out.println("Doing a new login to DRES");
 			client = new DRESClient();
 			try {
 				ongoingEvaluationIds= client.getOngoingEvaluations();
 			} catch (Exception e1) {
 				response = "[{\"id\":\"ERROR\",\"name\":\"ERROR\"}]";
-				System.out.println("-->DRES: error in getting evaluation list: '" + e1.getMessage() + "', exiting");
+				System.out.println("\t -->DRES: error in getting evaluation list: '" + e1.getMessage() + "', exiting");
 				return response;
 			}
 			
 		}
 		
-		System.out.println("Ongoing evaluations: "+ongoingEvaluationIds);
 		response = gson.toJson(ongoingEvaluationIds);
-		System.out.println("Response: "+response);
+		//System.out.println("Response: "+response);
 		return response;
 	}
 
@@ -623,6 +622,7 @@ public class VBSService {
 	@Produces(MediaType.TEXT_PLAIN)
 	public String setDresEvaluationId(@QueryParam("evaluationId") String evaluationId) {
 		client.setEvaluationId(evaluationId);
+		System.out.println("\t -> Set evaluationId: "+evaluationId);
 		return "Set "+evaluationId;
 	}
 

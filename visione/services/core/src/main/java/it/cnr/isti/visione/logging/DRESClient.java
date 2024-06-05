@@ -105,6 +105,11 @@ public class DRESClient {
 		return sessionId;
 	}
 
+	public String getEvaluationId() {
+		return evaluationId;
+	}
+
+
 	public void setEvaluationId (String evaluationId) {
 		this.evaluationId = evaluationId;
 	}
@@ -116,17 +121,16 @@ public class DRESClient {
 		currentRuns = runInfoApi.getApiV2ClientEvaluationList(sessionId);
 		
 
-		System.out.println("Found " + currentRuns.size() + " ongoing evaluation runs");
+		System.out.println("\t Found " + currentRuns.size() + " ongoing evaluation runs");
 		
 	    List<ApiClientEvaluationInfo> activeRuns=currentRuns.stream().filter(evaluation -> evaluation.getStatus() == ApiEvaluationStatus.ACTIVE).collect(Collectors.toList());
 		for (ApiClientEvaluationInfo run : activeRuns) {
 			if (run!=null){
-				System.out.println(run.getName() + " (" + run.getId() + "): " + run.getStatus());
-				if (run.getTemplateDescription() != null) {
-					System.out.println(run.getTemplateDescription());
-				}
+				System.out.println(" \t  -"+run.getName() + " (" + run.getId() + "): " + run.getStatus());
+				// if (run.getTemplateDescription() != null) {
+				// 	System.out.println(run.getTemplateDescription());
+				// }
 				ongoingEvaluations.add(new DresEvaluationInfo(run.getId(),run.getName()));
-				System.out.println();
 			}
 		}
 
@@ -264,7 +268,7 @@ public class DRESClient {
 	// }
 
 	public void dresSubmitLog(QueryResultLog resultLog) throws KeyManagementException, NoSuchAlgorithmException, NumberFormatException {
-		DresResultsLogging resultLogging = new DresResultsLogging(resultLog, getSessionId(), evaluationId);
+		DresResultsLogging resultLogging = new DresResultsLogging(resultLog, sessionId, evaluationId);
         new Thread(resultLogging).start();
 	}
 
