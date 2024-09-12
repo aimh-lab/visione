@@ -43,15 +43,15 @@ const imgSelected = (selectedItem, videoUrl, videoUrlPreview, img_loading="eager
 		<span id="avsList_${selectedItem.imgId}">
 			<div style="float: left; padding: 2px;">
 				<img id="remove_${selectedItem.imgId}" style="padding-left: 5px;" title="remove ${selectedItem.imgId}" width="30" src="img/Actions-dialog-close-icon.png" onclick='avsToggle(${JSON.stringify(selectedItem)}, null, true)'>
-				<a style="font-size:12px; padding-left: 5px;" title="View annotations of ${selectedItem.imgId}" href="indexedData.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}" target="_blank">${selectedItem.imgId}</a>
-				<a title="Video summary" href="showVideoKeyframes.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}#${selectedItem.imgId}" target="_blank"><i class="fa fa-th" style="font-size:12px;  padding-left: 5px;"></i></a>
-				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${videoUrl}', '${selectedItem.videoId}', '${selectedItem.imgId}'); return false;"></i></a>
-				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="Visual similarity" alt="${selectedItem.imgId}" id="comboSim${selectedItem.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${selectedItem.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${selectedString});'> </i></span></a>
+				<a style="font-size:14px; padding-left: 5px;" title="View annotations of ${selectedItem.imgId}" href="indexedData.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}" target="_blank">${selectedItem.imgId}</a>
+				<a title="Video summary" href="showVideoKeyframes.html?videoId=${selectedItem.videoId}&id=${selectedItem.imgId}#${selectedItem.imgId}" target="_blank"><i class="fa fa-th font-huge" style="padding-left: 5px;"></i></a>
+				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-huge" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${videoUrl}', '${selectedItem.videoId}', '${selectedItem.imgId}'); return false;"></i></a>
+				<a href="#" title="Visual similarity"><img loading="${img_loading}" style="padding-left: 3px; padding-bottom: 5px;" src="img/comboSim.svg" width=24 title="Visual similarity" alt="${selectedItem.imgId}" id="comboSim${selectedItem.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${selectedItem.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" title="Submit result"><span class="pull-right"><i title="Submit result" class="fa fa-arrow-alt-circle-up fa-2x" style="color:#00AA00; padding-left: 4px;" onclick='submitVersion2(${selectedString});'> </i></span></a>
 
 				<br>
-				<div id="avsdiv_${selectedItem.imgId}" lang="${selectedItem.videoId}|${videoUrlPreview}" style="height: 25em;">
-					<img id="selected_avs_${selectedItem.imgId}" title="${selectedItem.imgId}" style="padding-bottom: 10px; height: 25em;" src="${selectedItem.keyframe}">
+				<div id="avsdiv_${selectedItem.imgId}" lang="${selectedItem.videoId}|${videoUrlPreview}" style="height: 35em;">
+					<img id="selected_avs_${selectedItem.imgId}" title="${selectedItem.imgId}" style="padding-bottom: 10px; height: 35em;" src="${selectedItem.keyframe}">
 				</div>
 			</div>
 		</span>
@@ -273,6 +273,14 @@ function avsHilightlighSubmittedVideos() {
 		tmp = $("[id^=video_" + videoId + "]");
 		tmp2 = document.getElementById("video_" + videoId);
 		$("[data-videoid^=" + videoId + "]").css("background-color", "#fce390");
+	}
+}
+
+function hilightlighSubmittedImg() {
+	for (let [videoId, selectedItem] of avsSubmitted) {
+		//tmp = $("[id^=video_" + videoId + "]");
+		//tmp2 = document.getElementById("video_" + videoId);
+		$("#box_" + selectedItem.imgId).css("background-color", "#fce390");
 	}
 }
 

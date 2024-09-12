@@ -12,6 +12,7 @@
 	<script src="js/jquery-ui.min.js"></script>
 	<script src="js/js-yaml.min.js"></script>
 	<script src="js/visione.js"></script>
+	<script src="js/visioneAVS.js"></script>
 </head>
 
 <body>
@@ -39,7 +40,7 @@
 			return isQA;
 		}
 
-		function submit(imgId, videoId) {
+		/*function submit(imgId, videoId) {
 			if (!checkQA())
 				if (submitAlert()) {
 					if (localStorage.getItem('taskType') === 'avs')
@@ -49,7 +50,26 @@
 						alert('Server response: ' + res);
 					}
 				}
+				
+				hilightlighSubmittedImg(imgId);
+
+		}*/
+
+		function submit(imgId, videoId) {
+			let data = {imgId: imgId, videoId: videoId, score: -1}
+			const selectedFrame = getResultData(data, -1, -1)
+			submitVersion2(selectedFrame, isUpdateTab=false);
+			const selectedFrameJSON = JSON.stringify(selectedFrame);
+			const channel = new BroadcastChannel('submit_channel');
+			channel.postMessage({ type: 'greet', message: selectedFrameJSON });
+			hilightlighSubmittedImg(imgId);
 		}
+
+		function hilightlighSubmittedImg(imgId) {
+			//tmp = $("[id^=video_" + videoId + "]");
+			//tmp2 = document.getElementById("video_" + videoId);
+			$("#box_" + imgId).css("background-color", "#fce390");
+	}
 
 
 		/*function submitFromChild(imgId, videoId) {
@@ -71,12 +91,14 @@
 
 		var imgId = $.urlParam('id');
 
+		// const regex = /_(\d+)-/;
 
 		function loadPage() {
 
 			id4Regex = this.imgId.replaceAll("/", "\\/").replaceAll(".", "\\.")
 
 			videoId = $.urlParam('videoId');
+
 
 			console.log('====ID' + imgId);
 			toLog = '{"query":[{"videosummary":"' + videoId + '"}], "parameters":[{}]}'
@@ -106,10 +128,10 @@
 				// hack to replace .jpg with .png if the image is not found
 				// FIXME: remove it when all VISIONE instances will use pngs
 				let hack = `onerror="this.src = this.src.replace('.jpg', '.png')"`;
-
+				//TODO: chcek it  added id="box_${keyframes[i]} from LSC
 				table += `
 				<!--<div class='col-2 with-margin'>-->
-				<div class="result-border" style="border-color: red; padding: 1px; margin: 2px;">
+				<div id="box_${keyframes[i]}"class="result-border" style="border-color: red; padding: 1px; margin: 2px;">
 
 					<img loading="lazy" id="${keyframes[i]}" height="120" src="${keyFramesUrl}${path}.jpg" ${hack} title="${keyframes[i]}" ${imgAttrs} />
 					<div class='myalign'>
