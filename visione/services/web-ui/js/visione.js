@@ -79,7 +79,6 @@ var prevCanvasObjects = [];
 var isCanvasClean = [];
 var isReset = false;
 
-
 var canvases;
 var prevIs43 = false;
 var prevIs169 = false;
@@ -93,7 +92,7 @@ var isGray = [];
 var isColor = [];
 var occur = ['and', 'and'];
 var textualMode = ["all", "all"];
-var simreorder = false;
+var simreorder = true; //false;
 
 //var qbeUrl = ''
 var is43 = false;
@@ -129,8 +128,9 @@ var loadingSpinner = null;
 var numResultsPerVideo = 10;
 var defaultLanguage = "ita";
 var defaultTaskType = "kis";
-var framesCache = [];
+// var framesCache = []; 
 var collectionName;
+var selectedEvaluationId;
 
 
 function handler(myObj) {
@@ -274,6 +274,36 @@ function getAllVideoKeyframes(videoId) {
 		}).responseText
 }
 
+function getDresEvaluationList() {
+	return $
+		.ajax({
+			type: "GET",
+			url: urlVBSService + "/getDresEvaluationList",
+			async: false
+		}).responseText
+}
+
+function setDresEvaluationId(evaluationName, evaluationId) {
+	localStorage.setItem('selectedEvaluationId', evaluationId);
+	$("#evaluationLabel").text(evaluationName);
+	if (evaluationId === "ERROR") {
+		$("#evaluationLabel").text(evaluationName +"!!!").css({
+			"color": "red",
+			"font-size": "20px"
+		}).animate({ opacity: 0 }, 500).animate({ opacity: 1 }, 500, function() {
+			$(this).animate({ opacity: 0 }, 500).animate({ opacity: 1 }, 500, arguments.callee);
+		});
+
+	}
+
+	return $
+		.ajax({
+			type: "GET",
+			url: urlVBSService + "/setDresEvaluationId?evaluationId=" + evaluationId,
+			async: true
+		}).responseText
+}
+
 function getField(id, field) {
 	return $
 		.ajax({
@@ -339,7 +369,18 @@ function submitWithAlert2(selectedItem, isConfirm) {
 }
 */
 
-//to remove
+
+function startNewSession() {
+	//if (confirm('Are you sure you want to start a new session?')) {
+		location.reload();
+		/*$.ajax({
+			type: "GET",
+			async: false,
+			url: urlVBSService + "/init"
+		}).responseText*/
+//	}
+}
+/*
 function startNewSession() {
 	if (confirm('Are you sure you want to start a new session?')) {
 		location.reload();
@@ -373,7 +414,7 @@ function startNewAVSSession() {
 	loadConfig();
 	//}
 }
-
+*/
 
 /*function log(query) {
 	return $.ajax({
@@ -925,6 +966,10 @@ String.prototype.hashCode = function () {// FRANCA
 }
 
 function displaySimplifiedUI() {
+	/*$('#sceneDes1, #simplified1').css('display', 'block');
+	$('#simplified0').addClass('simplified0');
+	$('#visionelogo, #visionelogoImg').addClass('visioneLogo visionelogoImg');
+	*/
 	document.getElementById('sceneDes1').style.display = 'block';
 	document.getElementById('simplified1').style.display = 'block';
 	document.getElementById("simplified0").className = 'simplified0'
@@ -956,7 +1001,6 @@ function showResults(data) {
 		colIdx = 1;
 		rowIdx = -1;
 		visibleImages = 0
-		framesCache = []
 
 		if ((data == null || data == "") && latestQuery != "") {
 			noResultsOutput();
@@ -983,10 +1027,14 @@ function showResults(data) {
 
 		}
 		//if ($('meta[name=task]').attr('content') == "AVS") {
-		if (localStorage.getItem('taskType') === 'avs')
-			avsHideSubmittedVideos();
-		else
-			avsHilightlighSubmittedVideos();
+		if (localStorage.getItem('taskType') === 'avs') {
+			//avsHideSubmittedVideos();
+			hilightlighSubmittedImg();
+		}
+		else {
+			//avsHilightlighSubmittedVideos();
+			hilightlighSubmittedImg();
+		}
 		//avsReloadManuallySelected();
 		//avsAddAutoselected();
 		//}
@@ -1019,12 +1067,6 @@ function loadImages(startIndex, endIndex) {
 		let imgId = res[i].imgId;
 		let videoId = res[i].videoId;
 
-		let score = res[i].score;
-
-		let path = videoId + "/" + imgId;
-
-		let result = imgId.match(regex_to_match_keyframe_number);
-		let frameNumber = result ? result[1] || result[2] || result[3] : null;
 
 
 		if (i > 0 && videoId != prevID) {
@@ -1040,24 +1082,15 @@ function loadImages(startIndex, endIndex) {
 			imgGridResults += '<div data-videoid="' + prevID + '" class="hline column-span-11"></div>';
 		}
 
-		let keyframePath = keyFramesUrl + path + ".png";
 
 		if (videoId != prevID) {
 			//imgGridResults += '<div id="video_' + videoId + '">';
 			imgGridResults += '<div data-videoid="' + videoId + '" class="item column-span-1"><a href="showVideoKeyframes.html?videoId=' + videoId + '&id=' + imgId + '" target="_blank">' + videoId + '<a></div>';
-			var preloadedImage = new Image();
-			preloadedImage.src = keyframePath;
-		  	framesCache[resrowIdx] = preloadedImage
 
 		}
 		let borderColorsIdx = fromIDtoColor(videoId, borderColors.length);
 		prevID = videoId;
-		let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
-		videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
-		let thumbnailPath = thumbnailUrl + path + ".jpg";
-		keyframePath = keyFramesUrl + path + ".png";
-		//avsObj = getAvsObj(videoId, imgId, 'avs_' + imgId, thumbnailPath, keyframePath, resrowIdx, resColIdx - 1)
-		resultData = getResultData(videoId, imgId, thumbnailPath, imgId, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, resrowIdx, resColIdx - 1)
+		let resultData = getResultData(res[i], resrowIdx, resColIdx - 1)
 
 		if (resColIdx > 0 && (resColIdx+newLine) % 11 == 0) {
 			imgGridResults += '<div class="item column-span-1"></div>';
@@ -1065,7 +1098,6 @@ function loadImages(startIndex, endIndex) {
 		}
 
 		imgGridResults += '<div data-videoid="' + videoId + '" id="res_' + imgId + '" data-row="' + resrowIdx + '" data-col="' + (resColIdx - 1) + '" class="item column-span-1">'
-		//imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], JSON.stringify(avsObj), isAdvanced, img_loading)
 		imgGridResults += imgResult(resultData, borderColors[borderColorsIdx], img_loading)
 		imgGridResults += '</div>'
 		resMatrix[resrowIdx][resColIdx - 1] = res[i];
@@ -1079,7 +1111,6 @@ function loadImages(startIndex, endIndex) {
 
 	for (var i = startIndex; i < visibleImages; i++) {
 		let imgId = res[i].imgId;
-		let score = res[i].score;
 
 		let cip = $('#' + imgId).hover(hoverVideo, hideVideo);
 
@@ -1141,12 +1172,25 @@ function loadImages(startIndex, endIndex) {
 }
 
 
-function getResultData(videoId, imgId, thumb, frameName, frameNumber, keyframePath, score, videoUrl, videoUrlPreview, rowIdx, colIdx) {
+function getResultData(res, rowIdx, colIdx) {
+	let videoId = res.videoId;
+	let imgId = res.imgId;
+	let score = res.score;
+	let path = videoId + "/" + imgId;
+
+	let thumbnailPath = thumbnailUrl + path + ".jpg";
+	let keyframePath = keyFramesUrl + path + ".png";
+	let videoUrl = videoUrlPrefix + videoId + "-medium.mp4";
+	let videoUrlPreview = videoshrinkUrl + videoId + "-tiny.mp4";
+	let result = imgId.match(regex_to_match_keyframe_number);
+	let frameNumber = result ? result[1] || result[2] || result[3] : null;
+
+
 	let resultData = new Object();
 	resultData.videoId = videoId;
 	resultData.imgId = imgId;
-	resultData.thumb = thumb;
-	resultData.frameName = frameName;
+	resultData.thumb = thumbnailPath;
+	resultData.frameName = imgId;
 	resultData.frameNumber = frameNumber;
 	resultData.keyframe = keyframePath;
 
@@ -1161,7 +1205,8 @@ function getResultData(videoId, imgId, thumb, frameName, frameNumber, keyframePa
 function submitQA() {
 	let answ = prompt("Please enter your answering", "");
   	if (answ != null) {
-		submitResult(id=null, videoId=null, textAnswer=answ, isAsync=true)
+		res=submitResult(id=null, videoId=null, textAnswer=answ, isAsync=false) //it was true
+		alert('Server response: ' + res);
 		try {
 			qaSubmittedTab(answ);
 		} catch (e) {
@@ -1211,8 +1256,8 @@ function submitAtTime(videoId, time) {
 	}).responseText;
 }
 
-function submitVersion2(selectedItem) {
-	$('#submitted_bar').css("display", "block");
+function submitVersion2(selectedItem, isUpdateTab=true) {
+	
 	let res = null;
 	if (localStorage.getItem('taskType') === 'qa') {
 		submitQA();
@@ -1224,26 +1269,30 @@ function submitVersion2(selectedItem) {
 				res = submitResult(selectedItem.imgId, selectedItem.videoId);
 				alert('Server response: ' + res);
 			}
-
-
 			//remove selected image preview
-			unselectImg(selectedItem);
-			//avsRemoveSelected(selectedItem)
+// 			unselectImg(selectedItem);
+// 			//avsRemoveSelected(selectedItem)
 
-			//updateAVSTab(selectedItem)
+// 			//updateAVSTab(selectedItem)
 
-			avsSubmitted.set(selectedItem.videoId, selectedItem);
+// 			avsSubmitted.set(selectedItem.videoId, selectedItem); //in LCS è avsSubmitted.set(selectedItem.imgId, selectedItem); //TODO: check it
 
-			//add submitted image to the sidebar on the right
-			avsSubmittedTab(selectedItem);
-			$( "#submitted_num" ).text(avsSubmitted.size)
+// 			//add submitted image to the sidebar on the right
+// 			avsSubmittedTab(selectedItem);
+// 			$( "#submitted_num" ).text(avsSubmitted.size)
 
-			//che fa? boh!
-			updateAVSInfo();
-			if (localStorage.getItem('taskType') === 'avs')
-				avsHideSubmittedVideos();
-			else
-				avsHilightlighSubmittedVideos();
+// 			//che fa? boh!
+// 			updateAVSInfo();
+// 			if (localStorage.getItem('taskType') === 'avs')
+// 				avsHideSubmittedVideos(); //in LSC hilightlighSubmittedImg(); //TODO: check it
+// 			else
+// 				avsHilightlighSubmittedVideos(); //in LSC hilightlighSubmittedImg(); //TODO: check it
+// 		}
+// 	}
+// 	return res;
+// }
+			if (isUpdateTab)
+				updateTab(selectedItem);
 		}
 	}
 	return res;
@@ -1273,6 +1322,40 @@ function unifiedSubmit(avsObj, ev) {
 	//}
 
 }*/
+function updateTab(selectedItem) {
+	$('#submitted_bar').css("display", "block");
+	try {
+        selectedItem = JSON.parse(selectedItem);
+    } catch (e) {
+    }
+	//remove selected image preview
+
+	//disabled just for LSC
+	//unselectImg(selectedItem);
+	//avsRemoveSelected(selectedItem)
+
+	//updateAVSTab(selectedItem)
+
+	//avsSubmitted.set(selectedItem.videoId, selectedItem);
+	//LSC patch for single image highlight
+	avsSubmitted.set(selectedItem.imgId, selectedItem);
+
+
+	//add submitted image to the sidebar on the right
+	avsSubmittedTab(selectedItem);
+	$( "#submitted_num" ).text(avsSubmitted.size)
+
+	//che fa? boh!
+	updateAVSInfo();
+	if (localStorage.getItem('taskType') === 'avs') {
+		//avsHideSubmittedVideos();
+		hilightlighSubmittedImg();
+	}
+	else {
+		//avsHilightlighSubmittedVideos();
+		hilightlighSubmittedImg();
+	}
+}
 
 function showOverlay(img_overlay) {
 	document.getElementById(img_overlay).style.opacity = 1;
@@ -1285,24 +1368,25 @@ function hideOverlay(img_overlay) {
 const imgResult = (res, borderColor, img_loading="eager") => {
 		jsonString = JSON.stringify(res);
 		return `
-		<div class="result-border" style="border-color: ${borderColor};">
+		<!-- <div class="result-border" style="border-color: ${borderColor};"> -->
+		<div id="box_${res.imgId}" class="result-border" style="border-color: ${borderColor};">
 			<div class="myimg-thumbnail"  id="${res.imgId}" lang="${res.videoId}|${res.videoUrlPreview}" >
 				<img loading="${img_loading}" id="img${res.imgId}" class="myimg"  src="${res.thumb}" onclick='avsCleanManuallySelected(); avsToggle(${jsonString}, event)' />
 			</div>
 			<div  id="toolbar_icons_${res.imgId}">
-				<a class="font-tiny" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
-				<a title="Video summary" href="javascript:void(0);" onclick="openChildWindow('${res.videoId}', '${res.imgId}', '${res.frameName}')"><i class="fa fa-th font-normal" style="padding-left: 3px;"></i></a>
-				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-normal" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
-				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/comboSim.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
-				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a class="font-normal" title="View annotations of ${res.frameName},  Score: ${res.score}" href="indexedData.html?videoId=${res.videoId}&id=${res.imgId}" target="_blank"> ${res.frameNumber}</a>
+				<a title="Video summary" href="javascript:void(0);" onclick="openChildWindow('${res.videoId}', '${res.imgId}', '${res.frameName}')"><i class="fa fa-th font-large" style="padding-left: 2px;"></i></a>
+				<a href="#" title="Play Video"><i title="Play Video" class="fa fa-play font-large" style="color:#007bff;padding-left: 3px;" onclick="playVideoWindow('${res.videoUrl}', '${res.videoId}', '${res.imgId}'); return false;"></i></a>
+				
+				<a href="#" class="isSimplified" title="image similarity"><img loading="${img_loading}" style="padding: 2px; vertical-align: bottom;" src="img/comboSim.svg" width=20 title="image similarity" alt="${res.imgId}" id="comboSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.comboVisualSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="Visual similarity"><img loading="${img_loading}" style="padding: 2px; vertical-align: bottom;" src="img/imgSim.png" width=20 title="Visual similarity (dinov2)" alt="${res.imgId}" id="gemSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.vf='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic similarity""><img loading="${img_loading}" style="padding: 2px; vertical-align: bottom;" src="img/aladinSim.svg" width=20 title="semantic similarity" alt="${res.imgId}" id="aladinSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.aladinSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
+				<a href="#" class="isAdvanced" title="semantic video  similarity"><img loading="${img_loading}" style="padding: 2px;  vertical-align: bottom;" src="img/clipSim.svg" width=20 title="semantic video  similarity" alt="${res.imgId}" id="clipSim${res.imgId}" onclick="var queryObj=new Object(); queryObj.clipSim='${res.imgId}'; searchByLink(queryObj); return false;"></a>
 
-				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 0px;" onclick='submitVersion2(${jsonString});'> </i></span></a>
+				<a href="#" title="Submit result"><span class="pull-right"><i id="submitBTN_${res.imgId}" title="Submit result" class="fa fa-arrow-alt-circle-up font-huge" style="color:#00AA00; padding-left: 4px;" onclick='submitVersion2(${jsonString});'> </i></span></a>
 			<div>
 		</div>
 		`
-
 }
 
 function openChildWindow(videoId, imgId, frameName) {
@@ -1353,7 +1437,7 @@ dropImage = function (e) {
 
 	activeCanvas = canvas0;
 	activeCanvasIdx = 0;
-	var pointer = canvas1.getPointer(event.e);
+	var pointer = canvas1.getPointer(e);
 	let posX = pointer.x;
 	let posY = pointer.y;
 	if ((posX >= 0 && posX <= canvasWidth) && (posY >= 0 && posY <= canvasHeight)) {
@@ -1883,12 +1967,18 @@ function setSupportedLanguages(id) {
 		}));
 	  });
 
-	  $('#supportedLang0, #supportedLang1').on('change', function() {
+	//   $('#supportedLang0, #supportedLang1').on('change', function() {
+	// 	var selectedValue = $(this).val();
+	// 	localStorage.setItem("selectedLang", selectedValue);
+	// 	var otherSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
+	// 	otherSelect.val(selectedValue);
+	//   });
+	$('#supportedLang0, #supportedLang1').on('change', function() {
 		var selectedValue = $(this).val();
 		localStorage.setItem("selectedLang", selectedValue);
-		var otherSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
-		otherSelect.val(selectedValue);
-	  });
+		var pairSelect = $(this).is('#supportedLang0') ? $('#supportedLang1') : $('#supportedLang0');
+		pairSelect.val(selectedValue);
+	});
 
 }
 
@@ -1988,7 +2078,7 @@ function checkKey(e) {
 
 
 		//submitVersion2()
-		goToNextResult = true;
+		goToNextResult = false; //true //TODO: set true in VBS???
 	}
 
 	else if (e.keyCode == '38') {
@@ -2224,9 +2314,8 @@ async function init() {
 	//localStorage.setItem('isQA', false);
 	collectionName = config?.main?.collection_name;
 	//$("#visionelogo").append("<div align='right'><h2>" + collectionName + " - " + localStorage.getItem('taskType').toUpperCase() + "<h2></div>");
-	$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
-
-
+	//$("#visionelogo").append("<div align='right'><h2><label id='collectionLabel'>" + collectionName + "</label> - <label id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</label></h2></div>");
+	$("#collectionTaskLabel").append("<span id='collectionLabel'>" + collectionName + "<span> - <span id='taskTypeLabel'>" + localStorage.getItem('taskType').toUpperCase() + "</span>");
 
 	if (config?.main?.collection_name) document.title = config.main.collection_name + " - " + document.title;
 	setNumResultsPerVideo();
@@ -2444,6 +2533,11 @@ async function init() {
 				searchByForm();
 
 			});
+	$('#evaluationIds').on('change', function() {
+		var selectedName = $(this).find('option:selected').text();
+		var selectedValue = $(this).val();
+		setDresEvaluationId(selectedName, selectedValue);
+	});
 	/*
 								$("#stopButton0")
 										.on(
@@ -2474,7 +2568,7 @@ async function init() {
 	//displayAdvanced(false);
 
 	initSupportedLanguages();
-
+	refreshDresEvaluationList();
 
 
 	var script = document.createElement('script');
@@ -2520,6 +2614,19 @@ async function init() {
 		loadingNextResults();
 	});
 
+	$.urlParam = function(name) {
+		var results = new RegExp('[\?&]' + name + '=([^&#]*)')
+		.exec(window.location.href);
+		return results[1] || 0;
+	}
+
+var query = $.urlParam('query');
+if (query != null && query != "") {
+	var decodedJson = decodeURIComponent(query);
+
+	search2(decodedJson, false);
+}
+
 }
 
 function loadingNextResults() {
@@ -2535,7 +2642,6 @@ function loadingNextResults() {
 				loadImages(visibleImages, nextBatchEndIndex);
 			}
 		}
-
 }
 
 
@@ -2646,3 +2752,41 @@ function noResultsOutput(isNoResult = true) {
 
 }
 
+function refreshDresEvaluationList() {
+	res = getDresEvaluationList();
+	var evaluationIds = JSON.parse(res);
+
+	// Reference to the select element
+	var $select = $('#evaluationIds');
+
+	// Clear existing options if any
+	$select.empty();
+
+	// Populate the select element with options
+	$.each(evaluationIds, function(index, value) {
+		// var option = $('<option></option>').attr('value', value).text(value);
+		var option = $('<option title=' + value.id + '></option>').attr('value', value.id).text(value.name);
+		$select.append(option);
+	});
+
+	selectedEvaluationId = localStorage.getItem('selectedEvaluationId');
+
+	let containsSelected = false;
+	let selectedIdx = 0;
+	if (selectedEvaluationId) {
+		$('#evaluationIds option').each(function(idx) {
+			if ($(this).val() === selectedEvaluationId) {
+				containsSelected = true;
+				selectedIdx = idx;
+				$(this).prop('selected', true);
+				return false; // break the loop
+			}
+			idx++;
+		});
+	}
+
+
+	if (evaluationIds && evaluationIds.length > 0) {
+		setDresEvaluationId(evaluationIds[selectedIdx].name, evaluationIds[selectedIdx].id);
+	}
+}
