@@ -57,11 +57,11 @@ public class Settings {
 		SUBMIT_USER = (String) dresConfig.getOrDefault("username", "visione");
 		SUBMIT_PWD = (String) dresConfig.getOrDefault("password", "visione");
 		SEND_LOG_TO_DRES = (Boolean) dresConfig.getOrDefault("send_logs", false);
+		SAVE_LOGS = (Boolean) dresConfig.getOrDefault("save_logs", false);
 		MEMBER_ID = (String) dresConfig.getOrDefault("member_id", "visione");
 
 		// Paths
 		LUCENE = (String) coreConfig.getOrDefault("index_path", "/data/lucene-index");
-		SAVE_LOGS = (Boolean) coreConfig.getOrDefault("save_logs", false);
 		LOG_FOLDER = (String) coreConfig.getOrDefault("log_path", "/data/logs");
 		LOG_FOLDER_DRES = (String) coreConfig.getOrDefault("log_dres_path", "/data/logs_dres");
 

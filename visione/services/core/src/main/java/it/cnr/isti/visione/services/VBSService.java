@@ -1,17 +1,22 @@
 package it.cnr.isti.visione.services;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -49,12 +54,17 @@ import com.google.gson.JsonSerializer;
 
 import dev.dres.ApiException;
 import it.cnr.isti.visione.logging.DRESClient;
+import it.cnr.isti.visione.logging.DRESClient.DresEvaluationInfo;
 //import it.cnr.isti.visione.logging.fake.DRESClient;
 import it.cnr.isti.visione.logging.LogParserDRES;
 import it.cnr.isti.visione.logging.Logging;
 import it.cnr.isti.visione.logging.Tools;
 import it.cnr.isti.visione.lucene.Fields;
 import it.cnr.isti.visione.lucene.LucTextSearch;
+
+import java.net.URLDecoder;
+
+
 
 /**
  * @author lucia
@@ -397,7 +407,10 @@ public class VBSService {
 	 * @param queries
 	 */
 	public void log(SearchResults[] searchResults, String query, List<VisioneQuery> queries) {
-		if (!Settings.SAVE_LOGS) return;
+		if (!Settings.SAVE_LOGS) {
+			System.out.print("*** log NOT saved and sent...");
+			return;
+		}
 		// SearchResults[] sr = Arrays.copyOf(searchResults); // FIXME
 		new Thread(
 				new Runnable() {
@@ -407,8 +420,10 @@ public class VBSService {
 							long elapsed = -System.currentTimeMillis();
 							Long clientTimestamp = dresLog.query2Log(queries, searchResults);
 							if (SEND_LOG_TO_DRES){
-								System.out.print("Sending log to DRES...");
+								System.out.print("*** Sending log to DRES...");
 								client.dresSubmitLog(dresLog.getResultLog());
+							}else{
+								System.out.print("*** log NOT sent to DRES...");
 							}
 							dresLog.save(clientTimestamp, client.getSessionId(), MEMBER_ID);
 							elapsed += System.currentTimeMillis();
@@ -527,6 +542,47 @@ public class VBSService {
 		}
 		return response;
 	}
+
+	@GET
+	@Path("/getDresEvaluationList")
+	@Consumes({ MediaType.TEXT_PLAIN })
+	@Produces(MediaType.APPLICATION_JSON)
+	public String getDresEvaluationList() {
+		String response = "";
+		System.out.println("Getting evaluation list");
+		List <DresEvaluationInfo> ongoingEvaluationIds=null;
+		try {
+			ongoingEvaluationIds= client.getOngoingEvaluations();
+		} catch (Exception e) {
+			System.out.println("\t -->DRES: in getting evaluation list: '" + e.getMessage() + "', exiting");
+			System.out.println("Doing a new login to DRES");
+			client = new DRESClient();
+			try {
+				ongoingEvaluationIds= client.getOngoingEvaluations();
+			} catch (Exception e1) {
+				response = "[{\"id\":\"ERROR\",\"name\":\"ERROR\"}]";
+				System.out.println("\t -->DRES: error in getting evaluation list: '" + e1.getMessage() + "', exiting");
+				return response;
+			}
+			
+		}
+		
+		//System.out.println("Ongoing evaluations: "+ongoingEvaluationIds);
+		response = gson.toJson(ongoingEvaluationIds);
+		System.out.println("Response: "+response);
+		return response;
+	}
+
+	@GET
+	@Path("/setDresEvaluationId")
+	@Consumes({ MediaType.TEXT_PLAIN })
+	@Produces(MediaType.TEXT_PLAIN)
+	public String setDresEvaluationId(@QueryParam("evaluationId") String evaluationId) {
+		client.setEvaluationId(evaluationId);
+		System.out.println("\t -> Set evaluationId: "+evaluationId);
+		return "Set "+evaluationId;
+	}
+
 
 	@GET
 	@Path("/submitResult")
