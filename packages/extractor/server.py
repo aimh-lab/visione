@@ -13,15 +13,176 @@ from PIL import Image
 import torch
 from transformers import CLIPProcessor, CLIPModel, CLIPTokenizer
 import requests
+from qwen import Qwen3VLEmbedder
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ray.serve")
 
+
+def decode_image_data(image_data: str) -> Image.Image:
+        """
+        Decodifica immagine da base64 o URL
+        
+        Args:
+            image_data: Stringa contenente URL o dati base64
+            
+        Returns:
+            PIL Image object
+            
+        Raises:
+            Exception: Se l'immagine non può essere caricata
+        """
+        try:
+            # Controlla se è base64
+            if image_data.startswith('data:image') or not urlparse(image_data).scheme:
+                # Rimuovi prefisso data URL se presente
+                if image_data.startswith('data:image'):
+                    image_data = image_data.split(',')[1]
+                
+                # Decodifica base64
+                image_bytes = base64.b64decode(image_data)
+                return Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            
+            else:
+                # È un URL - scarica l'immagine
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'}
+                response = requests.get(image_data, timeout=10, headers=headers)
+                response.raise_for_status()
+                return Image.open(io.BytesIO(response.content)).convert('RGB')
+                
+        except Exception as e:
+            raise Exception(f"Errore nel caricamento immagine: {str(e)}")
+
+@serve.deployment(
+    autoscaling_config={
+        "min_replicas": 0,
+        "initial_replicas": 0,
+        "max_replicas": 1,
+        "metrics_interval_s": 10,
+        "look_back_period_s": 30,
+        "smoothing_factor": 1.0,
+        "downscale_delay_s": 3600,
+        "upscale_delay_s": 0,
+    },
+    ray_actor_options={"num_cpus": 4, "num_gpus": 1.0},
+    max_concurrent_queries=50,
+)
+class QwenFeatureExtractor:
+    def __init__(self, model_name: str = "Qwen/Qwen3-VL-Embedding-8B"):
+        self.model_name = model_name
+        self.startup_time = time.time()
+        
+        logger.info(f"Inizializzazione wrapper per {model_name}...")
+        
+        # Inizializziamo la classe "black box" fornita
+        # Nota: Qwen3VLEmbedder gestisce internamente il caricamento su GPU
+        self.embedder = Qwen3VLEmbedder(model_name_or_path=model_name)
+        
+        load_time = time.time() - self.startup_time
+        logger.info(f"✅ READY: Servizio Qwen3-VL attivo ({load_time:.2f}s)")
+
+    @serve.batch(max_batch_size=32, batch_wait_timeout_s=0.1)
+    async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Endpoint per immagini.
+        Args: requests = [{"image": "url_or_base64"}, ...]
+        """
+        batch_size = len(requests)
+        logger.info(f"📸 Processing image batch: {batch_size}")
+        
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            if "image" not in req:
+                results[i] = {"success": False, "error": "Missing 'image' field"}
+                continue
+            
+            try:
+                # Prepara l'input nel formato atteso da Qwen3VLEmbedder: [{"image": ...}]
+                source = decode_image_data(req["image"])
+                inputs.append({"image": source})
+                indices_map.append(i)
+            except Exception as e:
+                results[i] = {"success": False, "error": f"Preprocessing error: {str(e)}"}
+
+        if inputs:
+            try:
+                # Chiamata diretta alla classe fornita
+                embeddings = self.embedder.process(inputs)
+                
+                # Mappatura output
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name
+                    }
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
+
+        # Fill errori residui
+        for i in range(batch_size):
+            if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
+            
+        return results
+
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Endpoint per testo.
+        Args: requests = [{"text": "query string"}, ...]
+        """
+        batch_size = len(requests)
+        logger.info(f"📝 Processing text batch: {batch_size}")
+        
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            if "text" not in req:
+                results[i] = {"success": False, "error": "Missing 'text' field"}
+                continue
+            
+            # Prepara l'input nel formato atteso da Qwen3VLEmbedder: [{"text": ...}]
+            inputs.append({"text": req["text"]})
+            indices_map.append(i)
+
+        if inputs:
+            try:
+                # Chiamata diretta alla classe fornita
+                embeddings = self.embedder.process(inputs)
+                
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name
+                    }
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
+
+        # Fill errori residui
+        for i in range(batch_size):
+            if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
+            
+        return results
+
 @serve.deployment(
     autoscaling_config={
         "min_replicas": 0,           # Può scendere a 0 repliche
-        "initial_replicas": 1,       # Inizia con 1 replica
+        "initial_replicas": 0,       # Inizia con 0 repliche
         "max_replicas": 1,
         "metrics_interval_s": 10,    # Frequenza metriche per decisioni autoscaling
         "look_back_period_s": 30,    # Periodo per analizzare trend
@@ -63,40 +224,6 @@ class CLIPFeatureExtractor:
             uptime = time.time() - self.startup_time
             logger.info(f"🗑️  SHUTDOWN: Deallocazione modello {self.model_name} dopo {uptime:.1f}s di uptime")
 
-    def _decode_image_data(self, image_data: str) -> Image.Image:
-        """
-        Decodifica immagine da base64 o URL
-        
-        Args:
-            image_data: Stringa contenente URL o dati base64
-            
-        Returns:
-            PIL Image object
-            
-        Raises:
-            Exception: Se l'immagine non può essere caricata
-        """
-        try:
-            # Controlla se è base64
-            if image_data.startswith('data:image') or not urlparse(image_data).scheme:
-                # Rimuovi prefisso data URL se presente
-                if image_data.startswith('data:image'):
-                    image_data = image_data.split(',')[1]
-                
-                # Decodifica base64
-                image_bytes = base64.b64decode(image_data)
-                return Image.open(io.BytesIO(image_bytes)).convert('RGB')
-            
-            else:
-                # È un URL - scarica l'immagine
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'}
-                response = requests.get(image_data, timeout=10, headers=headers)
-                response.raise_for_status()
-                return Image.open(io.BytesIO(response.content)).convert('RGB')
-                
-        except Exception as e:
-            raise Exception(f"Errore nel caricamento immagine: {str(e)}")
-
     def _extract_images_batch(self, images: List[Image.Image]) -> torch.Tensor:
         """
         Estrae features da un batch di immagini
@@ -113,7 +240,7 @@ class CLIPFeatureExtractor:
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
             # Estrai features
-            image_features = self.model.get_image_features(**inputs)
+            image_features = self.model.get_image_features(**inputs).pooler_output
             
             # Normalizza features
             # image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
@@ -136,7 +263,7 @@ class CLIPFeatureExtractor:
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
             # Estrai features
-            text_features = self.model.get_text_features(**inputs)
+            text_features = self.model.get_text_features(**inputs).pooler_output
             
             # Normalizza features
             # text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
@@ -185,7 +312,7 @@ class CLIPFeatureExtractor:
                     continue
                 
                 image_data = request["image"]
-                image = self._decode_image_data(image_data)
+                image = decode_image_data(image_data)
                 successful_images.append(image)
                 successful_indices.append(idx)
                 
@@ -408,8 +535,10 @@ class CLIPModelRouter:
 
 # Configurazione dei modelli disponibili
 MODELS_CONFIG = {
-    "base": "openai/clip-vit-base-patch32",
-    "large": "openai/clip-vit-large-patch14", 
+    "clip_base": "openai/clip-vit-base-patch32",
+    "clip_large": "openai/clip-vit-large-patch14", 
+    "qwen_embedding_8B": "Qwen/Qwen3-VL-Embedding-8B",
+    "qwen_embedding_2B": "Qwen/Qwen3-VL-Embedding-2B"
     # "base16": "openai/clip-vit-base-patch16",
     # "large14": "openai/clip-vit-large-patch14-336"
 }
@@ -439,7 +568,10 @@ if __name__ == "__main__":
         
     # Crea handle per ogni modello
     for endpoint_name, model_name in selected_models.items():
-        model_handles[endpoint_name] = CLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
+        if "clip" in model_name.lower():
+            model_handles[endpoint_name] = CLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
+        elif "qwen" in model_name.lower():
+            model_handles[endpoint_name] = QwenFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         print(f"Registrato modello {model_name} su endpoint /{endpoint_name}")
 
     router_app = CLIPModelRouter.bind(model_handles=model_handles, models_config=selected_models)

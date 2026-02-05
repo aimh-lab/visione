@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 class CLIPMultiModelClient:
     def __init__(self, server_url: str = "http://localhost:8000"):
         self.server_url = server_url.rstrip('/')
-        self.available_models = ["base", "large", "base16", "large14"]
+        self.available_models = ["qwen_embedding_2B", "qwen_embedding_8B", "clip_base", "clip_large", "qwen_embedding_8B"]
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Converte un'immagine locale in base64"""
@@ -110,8 +110,9 @@ def test_single_image():
     """Test con una singola immagine su diversi modelli"""
     client = CLIPMultiModelClient()
     
-    test_image = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/512px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-    
+    # test_image = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/512px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+    test_image = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"
+
     print("🔧 Test singola immagine su modelli diversi")
     print(f"🖼️  Immagine: {test_image[:60]}...")
     
@@ -122,7 +123,7 @@ def test_single_image():
         print(f"\n🤖 Testing modello: {model}")
         
         start_time = time.time()
-        result = client.extract_features(test_image, model)
+        result = client.extract_features(test_image, 'image', model)
         end_time = time.time()
         
         print(f"⏱️  Tempo: {end_time - start_time:.2f}s")
@@ -164,17 +165,18 @@ def test_batch_processing():
     """Test del batching automatico di Ray Serve"""
     client = CLIPMultiModelClient()
     
-    external_image = client.encode_image_to_base64('pisa-modena.png')
+    external_image = client.encode_image_to_base64('src/extractor/demo.jpeg')
     # corrupt the base64 of the image
     # external_image = external_image[:47] + external_image[49:]
 
     # Immagini di test diverse
     test_images = [
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/256px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Vd-Orig.png/256px-Vd-Orig.png",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/256px-React-icon.svg.png",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/256px-Python-logo-notext.svg.png",
-        "https://invalid-url-test.com/should-fail.jpg",  # Questo fallirà
+        "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
+        # "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/256px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
+        # "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Vd-Orig.png/256px-Vd-Orig.png",
+        # "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/256px-React-icon.svg.png",
+        # "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/256px-Python-logo-notext.svg.png",
+        # "https://invalid-url-test.com/should-fail.jpg",  # Questo fallirà
         external_image
     ]
     test_images = test_images * 3
@@ -191,8 +193,8 @@ def test_batch_processing():
     print(f"📦 Invio {len(test_images) + len(test_texts)} richieste in parallelo")
     
     start_time = time.time()
-    results_images = client.extract_image_features_parallel(test_images, model="base", max_workers=16)
-    results_texts = client.extract_text_features_parallel(test_texts, model="base", max_workers=16)
+    results_images = client.extract_image_features_parallel(test_images, model="qwen_embedding_2B", max_workers=16)
+    results_texts = client.extract_text_features_parallel(test_texts, model="qwen_embedding_2B", max_workers=16)
     end_time = time.time()
     
     print(f"⏱️  Tempo totale: {end_time - start_time:.2f}s")
