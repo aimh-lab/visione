@@ -1,0 +1,265 @@
+<script>
+  import { createEventDispatcher } from "svelte";
+  import SubmitBadge from "./SubmitBadge.svelte";
+  
+  export let isOpen = false;
+  export let image = null;
+  export let total = 0;
+
+  const dispatch = createEventDispatcher();
+  const close = () => dispatch("close");
+  const prev = () => dispatch("prev");
+  const next = () => dispatch("next");
+
+  // Handler per le azioni
+  const handleSubmit = (e) => { e?.stopPropagation(); dispatch("submit", { img: image }); };
+  const handleVideoSummary = (e) => { e?.stopPropagation(); dispatch("videoSummary", { img: image }); };
+  const handleSimilarity = (e) => { e?.stopPropagation(); dispatch("similarity", { imgId: image?.imgId }); };
+  const handleRFPositive = (e) => { e?.stopPropagation(); dispatch("rfPositive", { img: image }); };
+  const handleRFNegative = (e) => { e?.stopPropagation(); dispatch("rfNegative", { img: image }); };
+  const handleOpenVideoPlayer = (e) => {
+    e?.stopPropagation();
+    const videoId = image?.videoId ?? String(image?.imgId).split("-")[0];
+    dispatch("openVideoPlayer", { imgId: image?.imgId, videoId });
+  };
+
+  $: currentIndex = image?.index ?? image?.idx ?? 0;
+  
+  let imageContainer;
+  let showOverlay = false;
+</script>
+
+{#if isOpen}
+  <div class="fixed inset-0 z-[1000] flex items-start justify-center pt-10">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/30" on:click={close}></div>
+
+    <!-- Modal -->
+    <div 
+      class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+      on:click|stopPropagation
+    >
+      <!-- Header -->
+      <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
+        <div class="flex items-center space-x-4">
+          <button 
+            on:click={prev} 
+            disabled={currentIndex === 0}
+            class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            title="Previous (←)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          
+          <h3 class="text-xl font-bold text-gray-800">{image?.title ?? "Frame Details"}</h3>
+          
+          <button 
+            on:click={next} 
+            disabled={currentIndex === total - 1}
+            class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            title="Next (→)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+        
+        <button 
+          on:click={close} 
+          class="p-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 shadow-md transition-all hover:scale-105 active:scale-95"
+          aria-label="Close (ESC)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Content: grid 2 colonne -->
+      <div class="flex-grow overflow-auto grid md:grid-cols-2 gap-6 p-6">
+        <!-- ✅ Box immagine con overlay buttons (stile ResultsGrid) -->
+        <div 
+          bind:this={imageContainer}
+          class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden min-h-[400px]"
+          on:mouseenter={() => showOverlay = true}
+          on:mouseleave={() => showOverlay = false}
+        >
+          {#if image?.url}
+            <img 
+              src={image.url} 
+              alt={image?.title} 
+              class="w-full h-full object-contain"
+            />
+
+            <!-- ✅ OVERLAY LAYER con trasparenza -->
+            <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
+
+            <!-- ✅ OVERLAY BUTTONS (identici a ResultsGrid) -->
+            <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <!-- Barra bottom stile YouTube -->
+              <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-lg px-3 py-2 shadow-xl">
+                <!-- Left group: video actions -->
+                <div class="flex items-center space-x-1.5">
+                  <button
+                    class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                    title="Video summary"
+                    on:click={handleVideoSummary}
+                  >
+                    <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                    </svg>
+                  </button>
+
+                  <button
+                    class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                    title="Play video"
+                    on:click={handleOpenVideoPlayer}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+
+                  <button
+                    class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                    title="Image similarity"
+                    on:click={handleSimilarity}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Right group: feedback actions -->
+                <div class="flex items-center space-x-1.5">
+                  <button
+                    class="p-1.5 hover:bg-green-500/30 rounded-md transition-colors"
+                    title="Positive feedback"
+                    on:click={handleRFPositive}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-green-400" fill="currentColor">
+                      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                    </svg>
+                  </button>
+
+                  <button
+                    class="p-1.5 hover:bg-red-500/30 rounded-md transition-colors"
+                    title="Negative feedback"
+                    on:click={handleRFNegative}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-red-400" fill="currentColor">
+                      <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Submit button: top-right, solo se NON submitted -->
+              {#if !image?.submitted}
+                <div
+                  role="button"
+                  tabindex="0"
+                  class="absolute top-3 right-3 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
+                  title="Submit"
+                  on:click={handleSubmit}
+                  on:keydown={(e) => e.key === 'Enter' && handleSubmit(e)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 19V7M5 12l7-7 7 7"/>
+                  </svg>
+                </div>
+              {/if}
+            </div>
+
+            <!-- ✅ Submit Badge (sempre visibile se submitted) -->
+            <SubmitBadge submitted={!!image?.submitted} />
+
+          {:else}
+            <div class="text-center text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <p class="text-lg font-semibold">Preview not available</p>
+              <p class="text-sm mt-1">Frame #{currentIndex + 1}</p>
+            </div>
+          {/if}
+        </div>
+        
+        <!-- Info column -->
+        <div class="space-y-4">
+          <!-- Details -->
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Details</h4>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center">
+                <span class="w-28 text-gray-500">Position:</span>
+                <span class="font-semibold text-gray-800">{currentIndex + 1} / {total}</span>
+              </div>
+              <div class="flex items-start">
+                <span class="w-28 text-gray-500 pt-1">Image ID:</span>
+                <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 break-all flex-1">
+                  {image?.imgId}
+                </span>
+              </div>
+              <div class="flex items-start">
+                <span class="w-28 text-gray-500 pt-1">Video ID:</span>
+                <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                  {image?.videoId}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Notes -->
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Notes</h4>
+            <textarea 
+              class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none" 
+              rows="8" 
+              placeholder="Add notes here..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="border-t border-gray-200 px-6 py-4 flex justify-between items-center bg-gray-50">
+        <div class="text-sm text-gray-500 flex items-center space-x-4">
+          <div class="flex items-center space-x-2">
+            <kbd class="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">←</kbd>
+            <kbd class="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">→</kbd>
+            <span>Navigate</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <kbd class="px-2 py-1 bg-white rounded border border-gray-300 text-xs font-mono">ESC</kbd>
+            <span>Close</span>
+          </div>
+        </div>
+        <button 
+          on:click={close} 
+          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+{/if} 
+
+<style>
+  .image-overlay {
+    background-color: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    transition: background-color 0.2s ease;
+  }
+  
+  .group:hover .image-overlay {
+    background-color: rgba(0, 0, 0, 0.15);
+  }
+</style>

@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+:root {
+  /*--sidebar-width: clamp(200px, 18vw, 360px);*/
+
+  /* Base font size responsive */
+  font-size: clamp(12px, 1.2vw, 16px);
+  
+  /* Oppure usa @media queries per breakpoints specifici */
+}
+
+/* Scaling per schermi piccoli */
+@media (max-width: 1440px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    font-size: 16px;
+  }
+}
+
+/* Scala UI components */
+.sidebar-left,
+.topbar,
+.search-results {
+  font-size: clamp(0.75rem, 1vw, 1rem);
+}
+
+/* Bottoni e inputs più compatti */
+button, input, textarea {
+  font-size: clamp(0.75rem, 0.9vw, 0.875rem);
+}
+
+
+
