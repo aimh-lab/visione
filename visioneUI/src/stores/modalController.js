@@ -22,10 +22,10 @@ export function createModalController(getId = (item) => item.imgId || item.id) {
     })),
     
     // Chiudi modale
-    close: () => update(state => ({ 
+    close: (options = {}) => update(state => ({ 
       ...state, 
       isOpen: false, 
-      selected: null 
+      selected: options.keepSelection ? state.selected : null 
     })),
     
     // Naviga di offset posizioni

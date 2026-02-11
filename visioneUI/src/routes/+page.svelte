@@ -475,7 +475,7 @@
     }
   }
 
-  const closeModal = () => searchModal.close();
+  const closeModal = () => searchModal.close({ keepSelection: true });
 
   function navigateImage(offset, toFirstOfRow = false) {
     if (toFirstOfRow) {
@@ -503,7 +503,7 @@
   }
 
   function closeSimilarityModal() {
-    similarityModal.close();
+    similarityModal.close({ keepSelection: true });
   }
 
   function moveSimilarityBy(offset, toFirstOfRow = false) {
@@ -538,7 +538,7 @@
   }
 
   function closeFrameModal() {
-    videoModal.close();
+    videoModal.close({ keepSelection: true });
   }
 
   function navigateFrame(offset, toFirstOfRow = false) {
@@ -684,12 +684,12 @@ function submitByImgId(imgId, fallback = null) {
   }
 
 
-function updateImagesFromResult(resultset) {
-  const submittedIds = getSubmittedIds();
-  const transformed = transformSearchResults(resultset, submittedIds);
-  images = appendSubmittedFrames(transformed);
-  selectedIndex = 0;
-}
+  function updateImagesFromResult(resultset) {
+    const submittedIds = getSubmittedIds();
+    const transformed = transformSearchResults(resultset, submittedIds);
+    images = appendSubmittedFrames(transformed);
+    selectedIndex = 0;
+  }
 
 
   // ---------------------------
@@ -711,6 +711,35 @@ function updateImagesFromResult(resultset) {
 
   function moveSelectionRows(deltaRows) {
     moveSelection(deltaRows * GRID_COLS);
+  }
+
+  function getSelectedItemForShortcuts() {
+    const { layoutTab } = get(uiStore);
+
+    if (layoutTab === "View1") {
+      return images[lastViewedSearchIndex] || images[selectedIndex] || null;
+    }
+
+    if (layoutTab === "View2") {
+      if (!Array.isArray(view2Frames) || view2Frames.length === 0) return null;
+      const byId = view2SelectedImgId
+        ? view2Frames.find((f) => f.imgId === view2SelectedImgId)
+        : null;
+      return byId || view2Frames[lastViewedVideoIndex] || view2Frames[0] || null;
+    }
+
+    if (layoutTab === "Similarity") {
+      if (!Array.isArray(similarityImages) || similarityImages.length === 0) return null;
+      return similarityImages[lastViewedSimilarityIndex] || similarityImages[0] || null;
+    }
+
+    return null;
+  }
+
+  async function focusSearchBox() {
+    if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
+    await tick();
+    document.querySelector(".sidebar-left textarea")?.focus();
   }
 
   // ---------------------------
@@ -949,6 +978,32 @@ function updateImagesFromResult(resultset) {
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen}
   onMoveSelection={moveSelection}
   onMoveSelectionRows={moveSelectionRows}
+  onFocusSearch={focusSearchBox}
+  onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
+  onSubmitSelected={() => {
+    const item = getSelectedItemForShortcuts();
+    if (item?.imgId) submitByImgId(item.imgId, item);
+  }}
+  onToggleSidebar={() => uiStore.actions.toggleSidebar()}
+  onOpenSettings={() => (isSettingsOpen = true)}
+  onRFPositiveSelected={() => {
+    const item = getSelectedItemForShortcuts();
+    if (item?.imgId) addRFPositiveByImg(item.imgId, item);
+  }}
+  onRFNegativeSelected={() => {
+    const item = getSelectedItemForShortcuts();
+    if (item?.imgId) addRFNegativeByImg(item.imgId, item);
+  }}
+  onSimilaritySelected={() => {
+    const item = getSelectedItemForShortcuts();
+    if (item?.imgId) openSimilarity(item.imgId);
+  }}
+  onVideoSummarySelected={() => {
+    const item = getSelectedItemForShortcuts();
+    if (!item?.imgId) return;
+    const videoId = item.videoId ?? String(item.imgId).split("-")[0];
+    openVideoSummary(videoId, item.imgId);
+  }}
   onOpenAtSelected={() => {
     if ($searchModal.isOpen || $videoModal.isOpen || $similarityModal.isOpen) return;
 

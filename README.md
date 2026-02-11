@@ -1,6 +1,6 @@
 # <img src="https://github.com/aimh-lab/visione/assets/7997320/3a205e82-3e8e-41e6-bcbd-6c552209c32f" alt="VISIONE" height="32" valign="-10%"> -  An Interactive Video Retrieval System
 
-> :sparkles: Check out our demo at [https://visione.isti.cnr.it](https://visione.isti.cnr.it)! :sparkles:
+> :sparkles: Check out our demo at [https://visione.isti.cnr.it:41000](https://visione.isti.cnr.it:41000)! :sparkles:
 
 > :movie_camera: Check out our [video teaser](https://www.youtube.com/watch?v=aXGfBaNTQVQ)! :movie_camera:
 
