@@ -44,7 +44,7 @@ export function extractImageInfo(item: any, i: number) {
 
   const imgId = rawImg ? String(rawImg) : null;
   const videoId = rawVid ? String(rawVid).padStart(5, "0") : (imgId ? imgId.split("-")[0] : null);
-  const url = videoId && imgId ? `http://visione-dev.isti.cnr.it:11000/frames/tiny/${videoId}/${imgId}.jpg` : null;
+  const url = videoId && imgId ? `https://visione.isti.cnr.it:41000/frames/tiny/${videoId}/${imgId}.jpg` : null;
 
   return {
     index: i,

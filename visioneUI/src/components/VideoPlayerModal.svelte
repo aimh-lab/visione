@@ -61,13 +61,13 @@
           return {
             imgId: imgId,
             timestamp: timestamp,
-            thumbnailUrl: `http://visione-dev.isti.cnr.it:11000/frames/tiny/${vid}/${imgId}.jpg`
+            thumbnailUrl: `https://visione.isti.cnr.it:41000/frames/tiny/${vid}/${imgId}.jpg`
           };
         } catch (err) {
           return {
             imgId: imgId,
             timestamp: (index / imgIds.length) * (videoDuration || 100),
-            thumbnailUrl: `http://visione-dev.isti.cnr.it:11000/frames/tiny/${vid}/${imgId}.jpg`
+            thumbnailUrl: `https://visione.isti.cnr.it:41000/frames/tiny/${vid}/${imgId}.jpg`
           };
         }
       });

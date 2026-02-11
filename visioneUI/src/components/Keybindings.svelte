@@ -82,6 +82,34 @@
         onCloseModal();
         showActionFeedback('Closed modal');
       }
+
+      // Allow key actions inside modal
+      if (e.key === 's') {
+        e.preventDefault();
+        onSubmitSelected();
+        showActionFeedback('Submitted frame');
+      }
+      else if (e.key === 'p') {
+        e.preventDefault();
+        onRFPositiveSelected();
+        showActionFeedback('Added to RF Positive');
+      }
+      else if (e.key === 'n') {
+        e.preventDefault();
+        onRFNegativeSelected();
+        showActionFeedback('Added to RF Negative');
+      }
+      else if (e.key === 'i') {
+        e.preventDefault();
+        onSimilaritySelected();
+        showActionFeedback('Similarity search started');
+      }
+      else if (e.key === 'v') {
+        e.preventDefault();
+        onVideoSummarySelected();
+        showActionFeedback('Video summary opened');
+      }
+
       return;
     }
 
