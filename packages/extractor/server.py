@@ -11,7 +11,7 @@ from ray import serve
 from ray.serve.handle import DeploymentHandle
 from PIL import Image
 import torch
-from transformers import CLIPProcessor, CLIPModel, CLIPTokenizer
+from transformers import AutoImageProcessor, AutoModel, CLIPProcessor, CLIPModel, CLIPTokenizer
 import requests
 from qwen import Qwen3VLEmbedder
 
@@ -21,38 +21,38 @@ logger = logging.getLogger("ray.serve")
 
 
 def decode_image_data(image_data: str) -> Image.Image:
-        """
-        Decodifica immagine da base64 o URL
+    """
+    Decodifica immagine da base64 o URL
+    
+    Args:
+        image_data: Stringa contenente URL o dati base64
         
-        Args:
-            image_data: Stringa contenente URL o dati base64
+    Returns:
+        PIL Image object
+        
+    Raises:
+        Exception: Se l'immagine non può essere caricata
+    """
+    try:
+        # Controlla se è base64
+        if image_data.startswith('data:image') or not urlparse(image_data).scheme:
+            # Rimuovi prefisso data URL se presente
+            if image_data.startswith('data:image'):
+                image_data = image_data.split(',')[1]
             
-        Returns:
-            PIL Image object
+            # Decodifica base64
+            image_bytes = base64.b64decode(image_data)
+            return Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        
+        else:
+            # È un URL - scarica l'immagine
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'}
+            response = requests.get(image_data, timeout=10, headers=headers)
+            response.raise_for_status()
+            return Image.open(io.BytesIO(response.content)).convert('RGB')
             
-        Raises:
-            Exception: Se l'immagine non può essere caricata
-        """
-        try:
-            # Controlla se è base64
-            if image_data.startswith('data:image') or not urlparse(image_data).scheme:
-                # Rimuovi prefisso data URL se presente
-                if image_data.startswith('data:image'):
-                    image_data = image_data.split(',')[1]
-                
-                # Decodifica base64
-                image_bytes = base64.b64decode(image_data)
-                return Image.open(io.BytesIO(image_bytes)).convert('RGB')
-            
-            else:
-                # È un URL - scarica l'immagine
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'}
-                response = requests.get(image_data, timeout=10, headers=headers)
-                response.raise_for_status()
-                return Image.open(io.BytesIO(response.content)).convert('RGB')
-                
-        except Exception as e:
-            raise Exception(f"Errore nel caricamento immagine: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Errore nel caricamento immagine: {str(e)}")
 
 @serve.deployment(
     autoscaling_config={
@@ -432,6 +432,402 @@ class CLIPFeatureExtractor:
         
         return results
 
+import open_clip
+@serve.deployment(
+    autoscaling_config={
+        "min_replicas": 0,           # Può scendere a 0 repliche
+        "initial_replicas": 0,       # Inizia con 0 repliche
+        "max_replicas": 1,
+        "metrics_interval_s": 10,    # Frequenza metriche per decisioni autoscaling
+        "look_back_period_s": 30,    # Periodo per analizzare trend
+        "smoothing_factor": 1.0,     # Reattività alle variazioni (1.0 = molto reattivo)
+        "downscale_delay_s": 3600,     # Attesa prima di deallocare (1 ora)
+        "upscale_delay_s": 0,        # Nessuna attesa per allocare nuove repliche
+    },
+    ray_actor_options={"num_cpus": 1, "num_gpus": 0.3},
+    max_concurrent_queries=100,
+)
+class OpenCLIPFeatureExtractor:
+    def __init__(self, model_name: str):
+        """
+        Inizializza l'estrattore di features CLIP per un singolo modello
+        
+        Args:
+            model_name: Nome del modello CLIP da Hugging Face
+        """
+        self.model_name = model_name
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.startup_time = time.time()
+        
+        # Carica modello e processor
+        logger.info(f"Caricamento modello {model_name} su {self.device}")
+        start_load = time.time()
+        
+        self.model, self.preprocess = open_clip.create_model_from_pretrained(model_name)
+        self.tokenizer = open_clip.get_tokenizer(model_name)
+        self.model.to(self.device)
+        self.model.eval()
+        
+        load_time = time.time() - start_load
+        logger.info(f"✅ READY: Estrattore CLIP {model_name} inizializzato in {load_time:.2f}s")
+
+    def __del__(self):
+        """Chiamato quando l'istanza viene deallocata"""
+        if hasattr(self, 'startup_time'):
+            uptime = time.time() - self.startup_time
+            logger.info(f"🗑️  SHUTDOWN: Deallocazione modello {self.model_name} dopo {uptime:.1f}s di uptime")
+
+    def _extract_images_batch(self, images: List[Image.Image]) -> torch.Tensor:
+        """
+        Estrae features da un batch di immagini
+        
+        Args:
+            images: Lista di immagini PIL
+            
+        Returns:
+            Tensor con features estratte
+        """
+        with torch.no_grad():
+            # Preprocessa le immagini
+            inputs = torch.stack([self.preprocess(img) for img in images])
+            inputs = inputs.to(self.device)
+            
+            # Estrai features
+            image_features = self.model.encode_image(inputs)
+            
+            return image_features.cpu()
+        
+    def _extract_texts_batch(self, texts: List[str]) -> torch.Tensor:
+        """
+        Estrae features da un batch di testi
+        
+        Args:
+            texts: Lista di stringhe di testo
+            
+        Returns:
+            Tensor con features estratte
+        """
+        with torch.no_grad():
+            # Preprocessa le immagini
+            inputs = self.tokenizer(texts)
+            inputs = inputs.to(self.device)
+            
+            # Estrai features
+            text_features = self.model.encode_text(inputs)
+            
+            return text_features.cpu()
+
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Processa un batch di richieste di estrazione features
+        Ray Serve raggruppa automaticamente le richieste singole in batch
+        
+        Args:
+            requests: Lista di richieste, ognuna per una singola immagine
+                     Formato: {"image": "url_or_base64_string"}
+        
+        Returns:
+            Lista di risposte per ogni richiesta
+        """
+        batch_size = len(requests)
+        logger.info(f"Processando batch di {batch_size} richieste con modello {self.model_name}")
+        
+        # Prepara containers per risultati
+        successful_images = []
+        successful_indices = []
+        results = []
+        
+        # Inizializza tutti i risultati come errori
+        for i in range(batch_size):
+            results.append({
+                "success": False,
+                "error": "Non processato",
+                "model": self.model_name
+            })
+        
+        # Carica e valida tutte le immagini
+        for idx, request in enumerate(requests):
+            try:
+                # Estrai dati immagine dalla richiesta
+                if "image" not in request:
+                    results[idx] = {
+                        "success": False,
+                        "error": "Campo 'image' mancante nella richiesta",
+                        "model": self.model_name
+                    }
+                    continue
+                
+                image_data = request["image"]
+                image = decode_image_data(image_data)
+                successful_images.append(image)
+                successful_indices.append(idx)
+                
+            except Exception as e:
+                results[idx] = {
+                    "success": False,
+                    "error": str(e),
+                    "model": self.model_name
+                }
+        
+        # Estrai features per le immagini valide (se ce ne sono)
+        if successful_images:
+            try:
+                features_tensor = self._extract_images_batch(successful_images)
+                
+                # Aggiorna risultati per immagini processate con successo
+                for i, features in enumerate(features_tensor):
+                    idx = successful_indices[i]
+                    results[idx] = {
+                        "success": True,
+                        "features": features.numpy().tolist(),
+                        "feature_dim": features.shape[0],
+                        "model": self.model_name
+                    }
+                    
+            except Exception as e:
+                # Se l'estrazione batch fallisce, aggiorna gli errori
+                for idx in successful_indices:
+                    results[idx] = {
+                        "success": False,
+                        "error": f"Errore nell'estrazione features: {str(e)}",
+                        "model": self.model_name
+                    }
+        
+        logger.info(f"Batch completato: {sum(1 for r in results if r['success'])} successi, "
+                   f"{sum(1 for r in results if not r['success'])} errori")
+        
+        return results
+
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Processa un batch di richieste di estrazione features da testo
+        
+        Args:
+            requests: Lista di richieste, ognuna per un singolo testo
+                     Formato: {"text": "stringa di testo"}
+        
+        Returns:
+            Lista di risposte per ogni richiesta
+        """
+        batch_size = len(requests)
+        logger.info(f"Processando batch di {batch_size} richieste con modello {self.model_name}")
+        
+        # Prepara containers per risultati
+        successful_texts = []
+        successful_indices = []
+        results = []
+        
+        # Inizializza tutti i risultati come errori
+        for i in range(batch_size):
+            results.append({
+                "success": False,
+                "error": "Non processato",
+                "model": self.model_name
+            })
+        
+        # Carica e valida tutti i testi
+        for idx, request in enumerate(requests):
+            try:
+                # Estrai dati testo dalla richiesta
+                if "text" not in request:
+                    results[idx] = {
+                        "success": False,
+                        "error": "Campo 'text' mancante nella richiesta",
+                        "model": self.model_name
+                    }
+                    continue
+                
+                text_data = request["text"]
+                successful_texts.append(text_data)
+                successful_indices.append(idx)
+                
+            except Exception as e:
+                results[idx] = {
+                    "success": False,
+                    "error": str(e),
+                    "model": self.model_name
+                }
+        
+        # Estrai features per i testi validi (se ce ne sono)
+        if successful_texts:
+            try:
+                text_features = self._extract_texts_batch(successful_texts)
+                    
+                # Aggiorna risultati per testi processati con successo
+                for i, features in enumerate(text_features):
+                    idx = successful_indices[i]
+                    results[idx] = {
+                        "success": True,
+                        "features": features.numpy().tolist(),
+                        "feature_dim": features.shape[0],
+                        "model": self.model_name
+                    }
+                    
+            except Exception as e:
+                # Se l'estrazione batch fallisce, aggiorna gli errori
+                for idx in successful_indices:
+                    results[idx] = {
+                        "success": False,
+                        "error": f"Errore nell'estrazione features: {str(e)}",
+                        "model": self.model_name
+                    }
+
+        logger.info(f"Batch completato: {sum(1 for r in results if r['success'])} successi, "
+                   f"{sum(1 for r in results if not r['success'])} errori")
+        
+        return results
+    
+
+@serve.deployment(
+    autoscaling_config={
+        "min_replicas": 0,           # Può scendere a 0 repliche
+        "initial_replicas": 0,       # Inizia con 0 repliche
+        "max_replicas": 1,
+        "metrics_interval_s": 10,    # Frequenza metriche per decisioni autoscaling
+        "look_back_period_s": 30,    # Periodo per analizzare trend
+        "smoothing_factor": 1.0,     # Reattività alle variazioni (1.0 = molto reattivo)
+        "downscale_delay_s": 3600,     # Attesa prima di deallocare (1 ora)
+        "upscale_delay_s": 0,        # Nessuna attesa per allocare nuove repliche
+    },
+    ray_actor_options={"num_cpus": 1, "num_gpus": 0.3},
+    max_concurrent_queries=100,
+)
+class VisualFeatureExtractor:
+    def __init__(self, model_name: str):
+        """
+        Inizializza l'estrattore di features visuali
+        
+        Args:
+            model_name: Nome del modello Hugging Face
+        """
+        self.model_name = model_name
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.startup_time = time.time()
+        
+        # Carica modello e processor
+        logger.info(f"Caricamento modello {model_name} su {self.device}")
+        start_load = time.time()
+        
+        self.processor = AutoImageProcessor.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
+        self.model.to(self.device)
+        self.model.eval()
+        
+        load_time = time.time() - start_load
+        logger.info(f"✅ READY: Estrattore visuale {model_name} inizializzato in {load_time:.2f}s")
+
+    def __del__(self):
+        """Chiamato quando l'istanza viene deallocata"""
+        if hasattr(self, 'startup_time'):
+            uptime = time.time() - self.startup_time
+            logger.info(f"🗑️  SHUTDOWN: Deallocazione modello {self.model_name} dopo {uptime:.1f}s di uptime")
+
+    def _extract_images_batch(self, images: List[Image.Image]) -> torch.Tensor:
+        """
+        Estrae features da un batch di immagini
+        
+        Args:
+            images: Lista di immagini PIL
+            
+        Returns:
+            Tensor con features estratte
+        """
+        with torch.no_grad():
+            # Preprocessa le immagini
+            inputs = self.processor(images=images, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            # Estrai features
+            outputs = self.model(**inputs)
+            last_hidden_states = outputs[0]
+            cls_tokens = last_hidden_states[:, 0, :]
+            
+            return cls_tokens.cpu()
+
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Processa un batch di richieste di estrazione features
+        Ray Serve raggruppa automaticamente le richieste singole in batch
+        
+        Args:
+            requests: Lista di richieste, ognuna per una singola immagine
+                     Formato: {"image": "url_or_base64_string"}
+        
+        Returns:
+            Lista di risposte per ogni richiesta
+        """
+        batch_size = len(requests)
+        logger.info(f"Processando batch di {batch_size} richieste con modello {self.model_name}")
+        
+        # Prepara containers per risultati
+        successful_images = []
+        successful_indices = []
+        results = []
+        
+        # Inizializza tutti i risultati come errori
+        for i in range(batch_size):
+            results.append({
+                "success": False,
+                "error": "Non processato",
+                "model": self.model_name
+            })
+        
+        # Carica e valida tutte le immagini
+        for idx, request in enumerate(requests):
+            try:
+                # Estrai dati immagine dalla richiesta
+                if "image" not in request:
+                    results[idx] = {
+                        "success": False,
+                        "error": "Campo 'image' mancante nella richiesta",
+                        "model": self.model_name
+                    }
+                    continue
+                
+                image_data = request["image"]
+                image = decode_image_data(image_data)
+                successful_images.append(image)
+                successful_indices.append(idx)
+                
+            except Exception as e:
+                results[idx] = {
+                    "success": False,
+                    "error": str(e),
+                    "model": self.model_name
+                }
+        
+        # Estrai features per le immagini valide (se ce ne sono)
+        if successful_images:
+            try:
+                features_tensor = self._extract_images_batch(successful_images)
+                
+                # Aggiorna risultati per immagini processate con successo
+                for i, features in enumerate(features_tensor):
+                    idx = successful_indices[i]
+                    results[idx] = {
+                        "success": True,
+                        "features": features.numpy().tolist(),
+                        "feature_dim": features.shape[0],
+                        "model": self.model_name
+                    }
+                    
+            except Exception as e:
+                # Se l'estrazione batch fallisce, aggiorna gli errori
+                for idx in successful_indices:
+                    results[idx] = {
+                        "success": False,
+                        "error": f"Errore nell'estrazione features: {str(e)}",
+                        "model": self.model_name
+                    }
+        
+        logger.info(f"Batch completato: {sum(1 for r in results if r['success'])} successi, "
+                   f"{sum(1 for r in results if not r['success'])} errori")
+        
+        return results
+
 
 # Router per gestire più modelli
 @serve.deployment(
@@ -536,9 +932,12 @@ class CLIPModelRouter:
 # Configurazione dei modelli disponibili
 MODELS_CONFIG = {
     "clip_base": "openai/clip-vit-base-patch32",
-    "clip_large": "openai/clip-vit-large-patch14", 
+    "clip_large": "openai/clip-vit-large-patch14",
+    "openclip_clip_vit_b_32": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
+    "openclip_clip_vit_l_14": "hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
     "qwen_embedding_8B": "Qwen/Qwen3-VL-Embedding-8B",
-    "qwen_embedding_2B": "Qwen/Qwen3-VL-Embedding-2B"
+    "qwen_embedding_2B": "Qwen/Qwen3-VL-Embedding-2B",
+    "dinov2_base": "facebook/dinov2-base"
     # "base16": "openai/clip-vit-base-patch16",
     # "large14": "openai/clip-vit-large-patch14-336"
 }
@@ -568,10 +967,14 @@ if __name__ == "__main__":
         
     # Crea handle per ogni modello
     for endpoint_name, model_name in selected_models.items():
-        if "clip" in model_name.lower():
+        if "openclip" in endpoint_name.lower():
+            model_handles[endpoint_name] = OpenCLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
+        elif "clip" in endpoint_name.lower():
             model_handles[endpoint_name] = CLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
-        elif "qwen" in model_name.lower():
+        elif "qwen" in endpoint_name.lower():
             model_handles[endpoint_name] = QwenFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
+        elif "dino" in endpoint_name.lower():
+            model_handles[endpoint_name] = VisualFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         print(f"Registrato modello {model_name} su endpoint /{endpoint_name}")
 
     router_app = CLIPModelRouter.bind(model_handles=model_handles, models_config=selected_models)
