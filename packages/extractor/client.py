@@ -306,7 +306,7 @@ if __name__ == "__main__":
         # print("\n" + "="*60 + "\n")
         
         # Test batching
-        test_batch_processing(model="openclip_clip_vit_l_14")
+        test_batch_processing(model="dinov2_base")
         print("\n" + "="*60 + "\n")
 
         # test_single_text()
