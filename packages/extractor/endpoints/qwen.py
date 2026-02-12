@@ -3,6 +3,11 @@ import torch.nn.functional as F
 import unicodedata
 import numpy as np
 import logging
+from typing import List, Dict, Any, Union
+from urllib.parse import urlparse
+import time
+from ray import serve
+from PIL import Image
 
 from PIL import Image
 from dataclasses import dataclass
@@ -16,6 +21,9 @@ from transformers.cache_utils import Cache
 from transformers.utils.generic import check_model_inputs
 from qwen_vl_utils.vision_process import process_vision_info
 
+from .common import decode_image_data
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants for configuration
@@ -335,3 +343,129 @@ class Qwen3VLEmbedder():
             embeddings = F.normalize(embeddings, p=2, dim=-1)
 
         return embeddings
+    
+
+@serve.deployment(
+    autoscaling_config={
+        "min_replicas": 0,
+        "initial_replicas": 0,
+        "max_replicas": 1,
+        "metrics_interval_s": 10,
+        "look_back_period_s": 30,
+        "smoothing_factor": 1.0,
+        "downscale_delay_s": 3600,
+        "upscale_delay_s": 0,
+    },
+    ray_actor_options={"num_cpus": 4, "num_gpus": 1.0},
+    max_concurrent_queries=50,
+)
+class QwenFeatureExtractor:
+    def __init__(self, model_name: str = "Qwen/Qwen3-VL-Embedding-8B"):
+        self.model_name = model_name
+        self.startup_time = time.time()
+        
+        logger.info(f"Inizializzazione wrapper per {model_name}...")
+        
+        # Inizializziamo la classe "black box" fornita
+        # Nota: Qwen3VLEmbedder gestisce internamente il caricamento su GPU
+        self.embedder = Qwen3VLEmbedder(model_name_or_path=model_name)
+        
+        load_time = time.time() - self.startup_time
+        logger.info(f"✅ READY: Servizio Qwen3-VL attivo ({load_time:.2f}s)")
+
+    @serve.batch(max_batch_size=32, batch_wait_timeout_s=0.1)
+    async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Endpoint per immagini.
+        Args: requests = [{"image": "url_or_base64"}, ...]
+        """
+        batch_size = len(requests)
+        logger.info(f"📸 Processing image batch: {batch_size}")
+        
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            if "image" not in req:
+                results[i] = {"success": False, "error": "Missing 'image' field"}
+                continue
+            
+            try:
+                # Prepara l'input nel formato atteso da Qwen3VLEmbedder: [{"image": ...}]
+                source = decode_image_data(req["image"])
+                inputs.append({"image": source})
+                indices_map.append(i)
+            except Exception as e:
+                results[i] = {"success": False, "error": f"Preprocessing error: {str(e)}"}
+
+        if inputs:
+            try:
+                # Chiamata diretta alla classe fornita
+                embeddings = self.embedder.process(inputs)
+                
+                # Mappatura output
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name
+                    }
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
+
+        # Fill errori residui
+        for i in range(batch_size):
+            if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
+            
+        return results
+
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Endpoint per testo.
+        Args: requests = [{"text": "query string"}, ...]
+        """
+        batch_size = len(requests)
+        logger.info(f"📝 Processing text batch: {batch_size}")
+        
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            if "text" not in req:
+                results[i] = {"success": False, "error": "Missing 'text' field"}
+                continue
+            
+            # Prepara l'input nel formato atteso da Qwen3VLEmbedder: [{"text": ...}]
+            inputs.append({"text": req["text"]})
+            indices_map.append(i)
+
+        if inputs:
+            try:
+                # Chiamata diretta alla classe fornita
+                embeddings = self.embedder.process(inputs)
+                
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name
+                    }
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
+
+        # Fill errori residui
+        for i in range(batch_size):
+            if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
+            
+        return results
