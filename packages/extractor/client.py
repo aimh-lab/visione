@@ -10,7 +10,9 @@ from concurrent.futures import ThreadPoolExecutor
 class CLIPMultiModelClient:
     def __init__(self, server_url: str = "http://localhost:8000"):
         self.server_url = server_url.rstrip('/')
-        self.available_models = ["qwen_embedding_2B", "qwen_embedding_8B", "clip_base", "clip_large", "qwen_embedding_8B"]
+
+        # asks the serve for available models using the get_status endpoint
+        self.available_models = self.get_available_models()
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Converte un'immagine locale in base64"""
@@ -89,24 +91,18 @@ class CLIPMultiModelClient:
         return results
     
     def get_available_models(self) -> List[str]:
-        """Ottiene la lista dei modelli disponibili"""
+        """Ottiene la lista dei modelli disponibili dal server"""
         try:
-            # Prova a fare una richiesta con un modello inesistente per ottenere la lista
-            response = requests.post(
-                f"{self.server_url}/invalid_model",
-                json={"image": "test"},
-                timeout=10
-            )
-            if response.status_code != 200:
-                data = response.json()
-                if "available_models" in data:
-                    return data["available_models"]
-        except:
-            pass
-        
-        return self.available_models
+            response = requests.get(f"{self.server_url}/status", timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            models = list(data['models'].keys())
+            return models
+        except requests.RequestException as e:
+            print(f"⚠️  Errore nel recupero dei modelli disponibili: {str(e)}")
+            return []
 
-def test_single_image():
+def test_single_image(models=["dinov2_base"]):
     """Test con una singola immagine su diversi modelli"""
     client = CLIPMultiModelClient()
     
@@ -118,8 +114,10 @@ def test_single_image():
     
     available_models = client.get_available_models()
     print(f"📱 Modelli disponibili: {available_models}")
+
+    assert set(models).issubset(set(available_models)), f"Modelli richiesti {models} non tutti disponibili {available_models}"
     
-    for model in available_models[:2]:  # Test primi 2 modelli
+    for model in models:  # Test primi 2 modelli
         print(f"\n🤖 Testing modello: {model}")
         
         start_time = time.time()
@@ -161,11 +159,16 @@ def test_single_text():
         else:
             print(f"❌ Errore: {result.get('error', 'Errore sconosciuto')}")
 
-def test_batch_processing():
+def test_batch_processing(model="openclip_clip_vit_l_14"):
     """Test del batching automatico di Ray Serve"""
     client = CLIPMultiModelClient()
+
+    available_models = client.get_available_models()
+    print(f"📱 Modelli disponibili: {available_models}")
+
+    assert model in available_models, f"Modello richiesto {model} non tutti disponibili {available_models}"
     
-    external_image = client.encode_image_to_base64('src/extractor/demo.jpeg')
+    # external_image = client.encode_image_to_base64('src/extractor/demo.jpeg')
     # corrupt the base64 of the image
     # external_image = external_image[:47] + external_image[49:]
 
@@ -177,7 +180,7 @@ def test_batch_processing():
         # "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/256px-React-icon.svg.png",
         # "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/256px-Python-logo-notext.svg.png",
         # "https://invalid-url-test.com/should-fail.jpg",  # Questo fallirà
-        external_image
+        # external_image
     ]
     test_images = test_images * 3
     
@@ -193,8 +196,8 @@ def test_batch_processing():
     print(f"📦 Invio {len(test_images) + len(test_texts)} richieste in parallelo")
     
     start_time = time.time()
-    results_images = client.extract_image_features_parallel(test_images, model="qwen_embedding_2B", max_workers=16)
-    results_texts = client.extract_text_features_parallel(test_texts, model="qwen_embedding_2B", max_workers=16)
+    results_images = client.extract_image_features_parallel(test_images, model=model, max_workers=16)
+    results_texts = client.extract_text_features_parallel(test_texts, model=model, max_workers=16)
     end_time = time.time()
     
     print(f"⏱️  Tempo totale: {end_time - start_time:.2f}s")
@@ -299,11 +302,11 @@ if __name__ == "__main__":
     
     try:
         # # Test singola immagine
-        # test_single_image()
+        # test_single_image(models=["openclip_clip_vit_l_14"])
         # print("\n" + "="*60 + "\n")
         
         # Test batching
-        test_batch_processing()
+        test_batch_processing(model="openclip_clip_vit_l_14")
         print("\n" + "="*60 + "\n")
 
         # test_single_text()
