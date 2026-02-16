@@ -9,7 +9,11 @@
   const click = (e) => { e.stopPropagation(); dispatch("click"); };
 </script>
 
-<div class={"absolute opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30 " + positionClass + " " + className}
-     title={title} role="button" aria-label={aria} on:click={click}>
+<button
+  type="button"
+  class={"absolute opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30 " + positionClass + " " + className}
+  title={title}
+  aria-label={aria}
+  on:click={click}>
   <slot />
-</div>
+</button>

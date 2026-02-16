@@ -1,28 +1,34 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { visioneAPI } from "../services/api.js";
+
+  type HighlightedInput = string | { imgId: string; rank?: number };
+  type Keyframe = {
+    imgId: string;
+    timestamp: number;
+    thumbnailUrl: string;
+  };
   
   export let isOpen = false;
   export let videoUrl = "";
   export let startTime = 0;
   export let title = "";
   export let videoId = "";
-  export let highlightedKeyframes = [];
+  export let highlightedKeyframes: HighlightedInput[] = [];
 
   const dispatch = createEventDispatcher();
-  let videoEl;
-  let progressBar;
-  let timelineContainer;
+  let videoEl: HTMLVideoElement | null = null;
+  let timelineContainer: HTMLDivElement | null = null;
   
-  let keyframes = [];
+  let keyframes: Keyframe[] = [];
   let loadingKeyframes = false;
-  let hoveredTime = null;
-  let hoveredKeyframe = null;
+  let hoveredTime: number | null = null;
+  let hoveredKeyframe: Keyframe | null = null;
   let videoDuration = 0;
   let isScrolling = false;
-  let scrollPreviewTimeout;
+  let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
 
-  function onKeyDown(e) { 
+  function onKeyDown(e: KeyboardEvent) { 
     if (e.key === "Escape") dispatch("close"); 
   }
 
@@ -34,11 +40,12 @@
   onDestroy(() => {
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", onKeyDown);
-      clearTimeout(scrollPreviewTimeout);
+      if (scrollPreviewTimeout) clearTimeout(scrollPreviewTimeout);
     }
   });
 
   function onLoaded() {
+    if (!videoEl) return;
     try { 
       videoEl.currentTime = startTime ?? 0;
       videoDuration = videoEl.duration;
@@ -55,7 +62,7 @@
     try {
       const imgIds = await visioneAPI.getVideoKeyframes(vid);
       
-      const keyframePromises = imgIds.map(async (imgId, index) => {
+      const keyframePromises = imgIds.map(async (imgId: string, index: number): Promise<Keyframe> => {
         try {
           const timestamp = await visioneAPI.getMiddleTimestamp(imgId);
           return {
@@ -90,7 +97,7 @@
     } catch { return ""; }
   }
 
-  function handleTimelineHover(e) {
+  function handleTimelineHover(e: MouseEvent | WheelEvent) {
     if (!timelineContainer || !videoDuration || keyframes.length === 0) return;
     if (isScrolling) return;
     
@@ -98,9 +105,11 @@
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     hoveredTime = percentage * videoDuration;
+    const targetTime = hoveredTime;
+    if (targetTime === null) return;
     
     hoveredKeyframe = keyframes.reduce((prev, curr) => 
-      Math.abs(curr.timestamp - hoveredTime) < Math.abs(prev.timestamp - hoveredTime) ? curr : prev
+      Math.abs(curr.timestamp - targetTime) < Math.abs(prev.timestamp - targetTime) ? curr : prev
     );
   }
 
@@ -111,7 +120,7 @@
     }
   }
 
-  function handleTimelineClick(e) {
+  function handleTimelineClick(e: MouseEvent) {
     if (!timelineContainer || !videoDuration || !videoEl) return;
     
     const rect = timelineContainer.getBoundingClientRect();
@@ -136,12 +145,12 @@
   }
 
   // ✅ NUOVO: Salta al keyframe cliccato
-  function jumpToKeyframe(timestamp) {
+  function jumpToKeyframe(timestamp: number) {
     if (!videoEl || !videoDuration) return;
     videoEl.currentTime = timestamp;
   }
 
-  function handleWheel(e) {
+  function handleWheel(e: WheelEvent) {
     if (!videoEl || !videoDuration || !timelineContainer) return;
     
     e.preventDefault();
@@ -166,8 +175,10 @@
       );
       
       clearTimeout(scrollPreviewTimeout);
+      const container = timelineContainer;
       scrollPreviewTimeout = setTimeout(() => {
-        const rect = timelineContainer.getBoundingClientRect();
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
         const isMouseOver = e.clientX >= rect.left && e.clientX <= rect.right && 
                            e.clientY >= rect.top && e.clientY <= rect.bottom;
         
@@ -192,6 +203,7 @@
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     try {
       ctx.drawImage(videoEl, 0, 0, w, h);
     } catch (err) {
@@ -213,7 +225,7 @@
     dispatch("submitFrame", { imgId, videoId: vid, dataUrl, currentTime: videoEl.currentTime || 0 });
   }
 
-  function formatTime(seconds) {
+  function formatTime(seconds: number) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -233,10 +245,10 @@
     })
   );
 
-  function getRankColor(imgId) {
+  function getRankColor(imgId: string) {
     if (!rankMap.has(imgId)) return 'rgb(107, 114, 128)';
     
-    const rank = rankMap.get(imgId);
+    const rank = rankMap.get(imgId) ?? 0;
     const maxRank = Math.max(...Array.from(rankMap.values()));
     const normalized = maxRank > 0 ? rank / maxRank : 0;
     
@@ -267,15 +279,15 @@
     return `rgb(${r}, ${g}, ${b})`;
   }
   
-  function getRankLabel(imgId) {
+  function getRankLabel(imgId: string) {
     if (!rankMap.has(imgId)) return '';
-    const rank = rankMap.get(imgId);
+    const rank = rankMap.get(imgId) ?? 0;
     return `#${rank + 1}`;
   }
   
-  function getRankCategory(imgId) {
+  function getRankCategory(imgId: string) {
     if (!rankMap.has(imgId)) return '';
-    const rank = rankMap.get(imgId);
+    const rank = rankMap.get(imgId) ?? 0;
     const maxRank = Math.max(...Array.from(rankMap.values()));
     const normalized = maxRank > 0 ? rank / maxRank : 0;
     
@@ -283,11 +295,35 @@
     if (normalized < 0.66) return 'MID';
     return 'LOW';
   }
+
+  function handleTimelineKeydown(e: KeyboardEvent) {
+    if (!videoEl) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      videoEl.currentTime = Math.max(0, videoEl.currentTime - 5);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      videoEl.currentTime = Math.min(videoDuration || videoEl.duration || videoEl.currentTime, videoEl.currentTime + 5);
+    }
+  }
+
+  function handlePreviewImageError(e: Event) {
+    const target = e.currentTarget as HTMLImageElement | null;
+    if (!target) return;
+    target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="96"%3E%3Crect fill="%23374151" width="160" height="96"/%3E%3Ctext x="80" y="48" text-anchor="middle" fill="white" font-size="12"%3ENo preview%3C/text%3E%3C/svg%3E';
+  }
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" on:click={() => dispatch("close")} aria-label="Video player modal">
-    <div class="relative bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" on:click|stopPropagation>
+  <div class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
+    <button
+      type="button"
+      class="absolute inset-0"
+      on:click={() => dispatch("close")}
+      aria-label="Close video player modal"
+    ></button>
+    <div class="relative bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]">
       
       <!-- Header -->
       <div class="px-4 py-3 bg-gray-800 rounded-t-xl border-b border-gray-700 flex items-center justify-between">
@@ -301,6 +337,7 @@
           class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700" 
           on:click={() => dispatch("close")}
           title="Close (Esc)"
+          aria-label="Close video player"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12"/>
@@ -310,6 +347,7 @@
 
       <!-- Video -->
       <div class="relative bg-black group">
+        <!-- svelte-ignore a11y_media_has_caption -->
         <video
           bind:this={videoEl}
           src={videoUrl}
@@ -320,7 +358,7 @@
           preload="metadata"
           crossOrigin="anonymous"
           on:loadedmetadata={onLoaded}
-        />
+        ></video>
         
         <!-- ✅ Overlay scuro (appare solo all'hover) -->
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-all duration-200 pointer-events-none z-10"></div>
@@ -331,6 +369,7 @@
             class="absolute top-3 right-3 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer pointer-events-auto"
             on:click={submitCurrentFrame}
             title="Submit current frame"
+            aria-label="Submit current frame"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M12 19V7M5 12l7-7 7 7"/>
@@ -350,9 +389,13 @@
             on:mouseleave={handleTimelineLeave}
             on:click={handleTimelineClick}
             on:wheel={handleWheel}
+            on:keydown={handleTimelineKeydown}
             role="slider"
             tabindex="0"
             aria-label="Video timeline"
+            aria-valuemin="0"
+            aria-valuemax={Math.max(0, Math.floor(videoDuration || 0))}
+            aria-valuenow={Math.max(0, Math.floor(videoEl?.currentTime || 0))}
           >
             <!-- Progress -->
             {#if videoEl && videoDuration > 0}
@@ -375,9 +418,7 @@
                       src={hoveredKeyframe.thumbnailUrl} 
                       alt="Preview"
                       class="w-40 h-24 object-cover"
-                      on:error={(e) => {
-                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="96"%3E%3Crect fill="%23374151" width="160" height="96"/%3E%3Ctext x="80" y="48" text-anchor="middle" fill="white" font-size="12"%3ENo preview%3C/text%3E%3C/svg%3E';
-                      }}
+                      on:error={handlePreviewImageError}
                     />
                     
                     {#if rankMap.has(hoveredKeyframe.imgId)}
@@ -435,6 +476,7 @@
                   class="absolute inset-y-0 w-1 rounded-full shadow-md transition-all hover:w-2 hover:scale-y-150 cursor-pointer z-10"
                   style="left: {(frame.timestamp / videoDuration * 100)}%; background-color: {getRankColor(frame.imgId)}"
                   title="Click to jump to {getRankLabel(frame.imgId)}: {frame.imgId} at {formatTime(frame.timestamp)}"
+                  aria-label="Jump to keyframe {getRankLabel(frame.imgId)} at {formatTime(frame.timestamp)}"
                   on:click|stopPropagation={() => jumpToKeyframe(frame.timestamp)}
                 ></button>
               {:else}

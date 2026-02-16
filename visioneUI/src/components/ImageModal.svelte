@@ -26,18 +26,21 @@
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   
   let imageContainer;
-  let showOverlay = false;
 </script>
 
 {#if isOpen}
   <div class="fixed inset-0 z-[1000] flex items-start justify-center pt-10">
     <!-- Backdrop -->
-    <div class="absolute inset-0 bg-black/30" on:click={close}></div>
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/30"
+      on:click={close}
+      aria-label="Close image modal"
+    ></button>
 
     <!-- Modal -->
     <div 
       class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
-      on:click|stopPropagation
     >
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
@@ -47,6 +50,7 @@
             disabled={currentIndex === 0}
             class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
             title="Previous (←)"
+            aria-label="Previous image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M15 18l-6-6 6-6"/>
@@ -60,6 +64,7 @@
             disabled={currentIndex === total - 1}
             class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
             title="Next (→)"
+            aria-label="Next image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 18l6-6-6-6"/>
@@ -84,8 +89,6 @@
         <div 
           bind:this={imageContainer}
           class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden min-h-[400px]"
-          on:mouseenter={() => showOverlay = true}
-          on:mouseleave={() => showOverlay = false}
         >
           {#if image?.url}
             <img 
@@ -106,6 +109,7 @@
                   <button
                     class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                     title="Video summary"
+                    aria-label="Open video summary"
                     on:click={handleVideoSummary}
                   >
                     <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -116,6 +120,7 @@
                   <button
                     class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                     title="Play video"
+                    aria-label="Play video"
                     on:click={handleOpenVideoPlayer}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
@@ -126,6 +131,7 @@
                   <button
                     class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                     title="Image similarity"
+                    aria-label="Run image similarity"
                     on:click={handleSimilarity}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2">
@@ -139,6 +145,7 @@
                   <button
                     class="p-1.5 hover:bg-green-500/30 rounded-md transition-colors"
                     title="Positive feedback"
+                    aria-label="Add positive feedback"
                     on:click={handleRFPositive}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-green-400" fill="currentColor">
@@ -149,6 +156,7 @@
                   <button
                     class="p-1.5 hover:bg-red-500/30 rounded-md transition-colors"
                     title="Negative feedback"
+                    aria-label="Add negative feedback"
                     on:click={handleRFNegative}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-red-400" fill="currentColor">

@@ -228,6 +228,7 @@
                       <button
                         class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                         title="Video summary"
+                        aria-label="Open video summary"
                         on:click={(e) => handleVideoSummary(item, e)}
                       >
                         <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -239,6 +240,7 @@
                     <button
                       class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                       title="Play video"
+                      aria-label="Play video"
                       on:click={(e) => handleOpenVideoPlayer(e, item)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
@@ -249,6 +251,7 @@
                     <button
                       class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
                       title="Image similarity"
+                      aria-label="Run image similarity"
                       on:click={(e) => handleSimilarity(item, e)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -262,6 +265,7 @@
                     <button
                       class="p-1.5 hover:bg-green-500/30 rounded-md transition-colors"
                       title="Positive feedback"
+                      aria-label="Add positive feedback"
                       on:click={(e) => handleRFPositive(item, e)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-green-400" fill="currentColor">
@@ -272,6 +276,7 @@
                     <button
                       class="p-1.5 hover:bg-red-500/30 rounded-md transition-colors"
                       title="Negative feedback"
+                      aria-label="Add negative feedback"
                       on:click={(e) => handleRFNegative(item, e)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-red-400" fill="currentColor">

@@ -57,12 +57,16 @@
 {#if isOpen}
   <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
     <!-- Backdrop -->
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={close}></div>
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      on:click={close}
+      aria-label="Close modal"
+    ></button>
     
     <!-- Modal -->
     <div 
       class="relative z-[1001] bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
-      on:click|stopPropagation
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900">
@@ -96,8 +100,9 @@
       <!-- Content -->
       <div class="px-6 py-5 space-y-4">
         {#each fields as field}
+          {@const fieldId = `input-modal-${field.name}`}
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">
+            <label for={fieldId} class="block text-sm font-medium text-gray-300 mb-2">
               {field.label}
               {#if field.required}
                 <span class="text-red-400">*</span>
@@ -106,6 +111,7 @@
             
             {#if field.type === 'textarea'}
               <textarea
+                id={fieldId}
                 bind:value={formValues[field.name]}
                 placeholder={field.placeholder || ''}
                 rows={field.rows || 3}
@@ -113,6 +119,7 @@
               ></textarea>
             {:else if field.type === 'select'}
               <select
+                id={fieldId}
                 bind:value={formValues[field.name]}
                 class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all"
               >
@@ -122,6 +129,7 @@
               </select>
             {:else}
               <input
+                id={fieldId}
                 type={field.type || 'text'}
                 bind:value={formValues[field.name]}
                 placeholder={field.placeholder || ''}

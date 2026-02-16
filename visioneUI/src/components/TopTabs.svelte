@@ -179,6 +179,7 @@
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}"
         title="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
+        aria-label="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
         on:click={toggleSidebar}
       >
         <svg 
@@ -201,6 +202,7 @@
                  ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}"
         title="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar (RF & Submitted)"
+        aria-label="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar"
         on:click={toggleRightSidebar}
       >
         <svg 

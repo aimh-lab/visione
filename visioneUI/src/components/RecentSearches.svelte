@@ -113,6 +113,7 @@
     on:click={(e) => removeSearch(e, search.query)}
     class="flex-shrink-0 ml-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-900/30 transition-all"
     title="Remove"
+    aria-label="Remove recent search"
   >
     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 hover:text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M18 6L6 18M6 6l12 12"/>

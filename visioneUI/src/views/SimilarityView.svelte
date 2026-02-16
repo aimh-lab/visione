@@ -1,59 +1,58 @@
-<script>
+<script lang="ts">
   import SidebarSimilarity from "../components/SidebarSimilarity.svelte";
   import Topbar from "../components/Topbar.svelte";
   import SearchResults from "../components/SearchResults.svelte";
   import ImageModal from "../components/ImageModal.svelte";
-  import ContentControls from "../components/ContentControls.svelte";
+
+  const TopbarAny = Topbar as any;
+
+  type QueryTextarea = { value: string; enabled: boolean };
+  type Img = { imgId?: string; videoId?: string; [key: string]: unknown };
 
   // Stato/props dal genitore (invariati)
   export let isSidebarOpen = true;
-  export let contentWidth = "100vw";
   export let contentScale = 1;
   export let viewMode = "byrank";
 
-  export let similarityBaseImgId = null;
-  export let similarityLoading = false;
-  export let similarityError = null;
-  export let rows = [];              // similarityDisplayRows
-  export let simSelected = null;
+  export let rows: Img[][] = [];              // similarityDisplayRows
+  export let simSelected: Img | null = null;
   export let simIsModalOpen = false;
 
-  export let textareas = [];         // per SidebarSimilarity (identico a SidebarSearch)
-  export let searchLoading = false;  // se vuoi riusare controlli; altrimenti lascia false
-  export let searchError = null;
-  export let searchResultSet = null;
-  export let rfPositive = [];
-  export let rfNegative = [];
-  export let submittedImages = [];
+  export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
+  export let searchError: string | null = null;
+  export let searchResultSet: unknown = null;
+  export let rfPositive: Img[] = [];
+  export let rfNegative: Img[] = [];
+  export let submittedImages: Img[] = [];
 
-  export let registerContainer = (el) => {};
+  export let registerContainer = (_el: Element | null) => {};
 
   // Toolbar/controls
   export let onToggleSidebar = () => {};
   export let onZoomIn = () => {};
   export let onZoomOut = () => {};
-  export let onChangeViewMode = (mode) => {};
+  export let onChangeViewMode = (_mode: string) => {};
 
   // Sidebar azioni (riuso identico a SidebarSearch)
-  export let onSelectTab = (tab) => {};
-  export let onAddTextarea = (index) => {};
-  export let onRemoveTextarea = (index) => {};
-  export let onToggleTextarea = (index) => {};
-  export let onUpdateTextarea = (index, value) => {};
+  export let onSelectTab = (_tab: string) => {};
+  export let onAddTextarea = (_index: number) => {};
+  export let onRemoveTextarea = (_index: number) => {};
+  export let onToggleTextarea = (_index: number) => {};
+  export let onUpdateTextarea = (_index: number, _value: string) => {};
   export let onRunSearch = () => {};
   export let onClearResults = () => {};
-  export let onOpenFromRF = (index) => {};
-  export let onOpenFromSubmitted = (index) => {};
+  export let onOpenFromRF = (_index: number) => {};
+  export let onOpenFromSubmitted = (_index: number) => {};
 
   // Griglia azioni
-  export let onVideoSummary = (videoId, imgId) => {};
-  export let onSimilarity = (imgId) => {};
+  export let onVideoSummary = (_videoId: string, _imgId: string) => {};
+  export let onSimilarity = (_imgId: string) => {};
 
-  export let addRFPositiveByImg = (index) => {};
-  export let addRFNegativeByImg = (index) => {};
-  export let submitByImgId = (index) => {};
-  export let openByImgId = (imgId) => {};
-  export let openVideoPlayerBy = (imgId, videoId) => {}; // NUOVO
+  export let addRFPositiveByImg = (_imgId: string) => {};
+  export let addRFNegativeByImg = (_imgId: string) => {};
+  export let submitByImgId = (_imgId: string) => {};
+  export let openByImgId = (_imgId: string) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string) => {}; // NUOVO
 
 
   // Modale azioni
@@ -68,9 +67,8 @@
     isSidebarOpen={isSidebarOpen}
     activeTab={"Search"}                
     {textareas}
-    {searchLoading}
-    {searchError}
-    {searchResultSet}
+    searchError={searchError as any}
+    searchResultSet={searchResultSet as any}
     {rfPositive}
     {rfNegative}
     {submittedImages}
@@ -87,14 +85,14 @@
 
   <!-- Colonna principale (identica a SearchView) -->
  <div class="flex flex-col flex-1 min-w-0">
-    <Topbar
-      {contentWidth}
+    <svelte:component
+      this={TopbarAny}
       {viewMode}
       {isSidebarOpen}
       on:toggleSidebar={onToggleSidebar}
       on:zoomIn={onZoomIn}
       on:zoomOut={onZoomOut}
-      on:changeViewMode={(e) => onChangeViewMode(e.detail.mode)}
+      on:changeViewMode={(e: any) => onChangeViewMode(e.detail.mode)}
     />
 
     <div class="content bg-gray-100 flex-1"
@@ -103,7 +101,7 @@
     <div class="h-full flex flex-col">
           <SearchResults
             rows={rows}
-            selectedImage={simSelected}
+            selectedImage={simSelected as any}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.img.videoId)}
@@ -119,7 +117,7 @@
 </div>
 <ImageModal
   isOpen={simIsModalOpen}
-  image={simSelected}
+  image={simSelected as any}
   total={(rows?.flat?.().length ?? 0)}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
