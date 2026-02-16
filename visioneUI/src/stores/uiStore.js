@@ -23,7 +23,9 @@ const DEFAULT = {
 
   keyframeSize: 160,
   resultsPerRow: 5,
-  resultsAutoFit: false
+  resultsAutoFit: false,
+  virtualizationEnabled: true,
+  virtualizationThreshold: 40
 };
 
 function createUIStore() {
@@ -50,7 +52,9 @@ function createUIStore() {
 
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
         resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
-        resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit
+        resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
+        virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
+        virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold
       }));
     },
 
@@ -67,7 +71,9 @@ function createUIStore() {
         sidebarRightTab: DEFAULT.sidebarRightTab,
         keyframeSize: DEFAULT.keyframeSize,
         resultsPerRow: DEFAULT.resultsPerRow,
-        resultsAutoFit: DEFAULT.resultsAutoFit
+        resultsAutoFit: DEFAULT.resultsAutoFit,
+        virtualizationEnabled: DEFAULT.virtualizationEnabled,
+        virtualizationThreshold: DEFAULT.virtualizationThreshold
       });
     },
 
@@ -140,9 +146,16 @@ function createUIStore() {
     },
 
 
-    applySettings({ keyframeSize, resultsPerRow, resultsAutoFit }) {
-      update(u => ({ ...u, keyframeSize, resultsPerRow, resultsAutoFit }));
-      persist({ keyframeSize, resultsPerRow, resultsAutoFit });
+    applySettings({ keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold }) {
+      update(u => ({
+        ...u,
+        keyframeSize,
+        resultsPerRow,
+        resultsAutoFit,
+        virtualizationEnabled,
+        virtualizationThreshold
+      }));
+      persist({ keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold });
     }
   };
 

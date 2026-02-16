@@ -40,6 +40,10 @@
     textareasManagerRef?.cancelSelection();
   }
 
+  export function focusSearchInput() {
+    textareasManagerRef?.focusPrimaryTextarea();
+  }
+
   function handleSelectRecentSearch(e) {
     const { cachedResults, textareas: savedTextareas } = e.detail;
 

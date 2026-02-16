@@ -17,6 +17,8 @@
   export let rows: Img[][] = [];              // similarityDisplayRows
   export let simSelected: Img | null = null;
   export let simIsModalOpen = false;
+  export let virtualizationEnabled = true;
+  export let virtualizationThreshold = 40;
 
   export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
   export let searchError: string | null = null;
@@ -59,6 +61,8 @@
   export let onCloseSimModal = () => {};
   export let onPrevSim = () => {};
   export let onNextSim = () => {};
+
+  $: similarityTotal = rows.reduce((acc, row) => acc + (row?.length || 0), 0);
 </script>
 
 <div class="flex h-full w-full" style="--sidebar-width: clamp(200px, 18vw, 360px);"  aria-label="Similarity View">
@@ -102,6 +106,9 @@
           <SearchResults
             rows={rows}
             selectedImage={simSelected as any}
+            {viewMode}
+            {virtualizationEnabled}
+            {virtualizationThreshold}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.img.videoId)}
@@ -118,7 +125,7 @@
 <ImageModal
   isOpen={simIsModalOpen}
   image={simSelected as any}
-  total={(rows?.flat?.().length ?? 0)}
+  total={similarityTotal}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}

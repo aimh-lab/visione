@@ -6,7 +6,6 @@
   import SearchResults from "../components/SearchResults.svelte";
   import ImageModal from "../components/ImageModal.svelte";
   import EmptyState from '../components/EmptyState.svelte';
-  import { toasts } from '../stores/toastStore.js';
   import WelcomeHero from '../components/WelcomeHero.svelte';
 
   const TopbarAny = Topbar as any;
@@ -43,6 +42,8 @@
   export let viewMode = "byrank";
   export let contentScale = 1;
   export let images: Img[] = [];
+  export let virtualizationEnabled = true;
+  export let virtualizationThreshold = 40;
 
   // Modale immagini
   export let selectedImage: Img | null = null;
@@ -66,6 +67,7 @@
 
   export let onRunSearch = () => {};
   export let onClearResults = () => {};
+  export let registerFocusSearchHandler = (_fn: () => void) => {};
 
   export let onOpenFromRF = (_index: number) => {};
   export let onOpenFromSubmitted = (_index: number) => {};
@@ -93,11 +95,24 @@
   type SidebarSearchRef = {
     handleImageSelected: (image: Img) => void;
     cancelImageSelection: () => void;
+    focusSearchInput: () => void;
   };
 
   let container: Element | null = null;
   let sidebarSearchRef: SidebarSearchRef | null = null;
+  let lastRegisteredFocusHandler: (() => void) | null = null;
   let isSelectingImage = false;
+
+  function focusLeftTextarea() {
+    sidebarSearchRef?.focusSearchInput?.();
+  }
+
+  $: {
+    if (sidebarSearchRef && lastRegisteredFocusHandler !== focusLeftTextarea) {
+      registerFocusSearchHandler(focusLeftTextarea);
+      lastRegisteredFocusHandler = focusLeftTextarea;
+    }
+  }
 
   $: hasActiveQueries = textareas.some(t => t.enabled && t.value?.trim());
   $: isFirstVisit = !searchResultSet && !searchLoading && !hasActiveQueries;
@@ -125,11 +140,6 @@
     } else {
       openByImgId(String(e.detail.img.imgId ?? ""));
     }
-  }
-
-  function focusLeftTextarea() {
-    const input = document.querySelector('.sidebar-left textarea') as HTMLTextAreaElement | null;
-    input?.focus();
   }
 
   function enabledTextareasCount() {
@@ -277,6 +287,8 @@
             {rows}
             selectedImage={selectedImage as any}
             {viewMode}
+            {virtualizationEnabled}
+            {virtualizationThreshold}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}

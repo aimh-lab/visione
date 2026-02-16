@@ -27,6 +27,8 @@
   let videoDuration = 0;
   let isScrolling = false;
   let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
+  let keyframesLoadToken = 0;
+  const KEYFRAME_TIMESTAMP_CONCURRENCY = 8;
 
   function onKeyDown(e: KeyboardEvent) { 
     if (e.key === "Escape") dispatch("close"); 
@@ -54,15 +56,44 @@
     loadKeyframes();
   }
 
+  async function mapWithConcurrency<T, R>(
+    list: T[],
+    limit: number,
+    worker: (item: T, index: number) => Promise<R>
+  ): Promise<R[]> {
+    if (!Array.isArray(list) || list.length === 0) return [];
+    const safeLimit = Math.max(1, Math.min(limit, list.length));
+    const results = new Array<R>(list.length);
+    let cursor = 0;
+
+    async function runWorker() {
+      while (cursor < list.length) {
+        const index = cursor;
+        cursor += 1;
+        results[index] = await worker(list[index], index);
+      }
+    }
+
+    const workers = Array.from({ length: safeLimit }, () => runWorker());
+    await Promise.all(workers);
+    return results;
+  }
+
   async function loadKeyframes() {
     const vid = deriveVideoId();
     if (!vid) return;
+
+    const currentToken = ++keyframesLoadToken;
     
     loadingKeyframes = true;
     try {
       const imgIds = await visioneAPI.getVideoKeyframes(vid);
+      if (currentToken !== keyframesLoadToken) return;
       
-      const keyframePromises = imgIds.map(async (imgId: string, index: number): Promise<Keyframe> => {
+      keyframes = await mapWithConcurrency(
+        imgIds,
+        KEYFRAME_TIMESTAMP_CONCURRENCY,
+        async (imgId: string, index: number): Promise<Keyframe> => {
         try {
           const timestamp = await visioneAPI.getMiddleTimestamp(imgId);
           return {
@@ -78,13 +109,13 @@
           };
         }
       });
-      
-      keyframes = await Promise.all(keyframePromises);
+
+      if (currentToken !== keyframesLoadToken) return;
       keyframes.sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
       console.error("Failed to load keyframes:", err);
     } finally {
-      loadingKeyframes = false;
+      if (currentToken === keyframesLoadToken) loadingKeyframes = false;
     }
   }
 

@@ -81,6 +81,12 @@
   const dispatch = createEventDispatcher<DispatchEvents>();
 
   let isSelectingImageFor: number | null = null;
+  let textareaRefs: Array<HTMLTextAreaElement | null> = [];
+
+  export function focusPrimaryTextarea() {
+    const first = textareaRefs[0];
+    first?.focus({ preventScroll: true });
+  }
   
   const add = (i: number) => dispatch("add", { index: i });
   const remove = (i: number) => dispatch("remove", { index: i });
@@ -531,6 +537,7 @@
 
               <!-- Textarea -->
               <textarea
+                bind:this={textareaRefs[i]}
                 class="w-full p-2.5 pb-8 border-2 resize-none transition-all duration-200 font-mono text-xs
                        {textareaImages[i]?.length > 0 ? 'rounded-b-2xl rounded-t-none' : 'rounded-2xl'}
                        {textarea.enabled 

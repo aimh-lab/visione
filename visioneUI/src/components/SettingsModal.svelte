@@ -6,16 +6,36 @@
   export let resultsAutoFit = false;
   export let keyframeSize = 160;
   export let resultsPerRow = 5;
+  export let virtualizationEnabled = true;
+  export let virtualizationThreshold = 40;
   export let futureOptionA = "";
   export let futureOptionB = false;
 
   const dispatch = createEventDispatcher();
   
   // ✅ Copia locale dei valori
-  let local = { keyframeSize, resultsPerRow, resultsAutoFit, futureOptionA, futureOptionB };
+  let local = {
+    keyframeSize,
+    resultsPerRow,
+    resultsAutoFit,
+    virtualizationEnabled,
+    virtualizationThreshold,
+    futureOptionA,
+    futureOptionB
+  };
   
   // ✅ Aggiorna local quando modal si apre
-  $: if (isOpen) local = { keyframeSize, resultsPerRow, resultsAutoFit, futureOptionA, futureOptionB };
+  $: if (isOpen) {
+    local = {
+      keyframeSize,
+      resultsPerRow,
+      resultsAutoFit,
+      virtualizationEnabled,
+      virtualizationThreshold,
+      futureOptionA,
+      futureOptionB
+    };
+  }
 
   function close() { 
     dispatch('close'); 
@@ -25,11 +45,14 @@
   function save() {
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 160));
     const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 5));
+    const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     
     const newSettings = {
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
+      virtualizationEnabled: !!local.virtualizationEnabled,
+      virtualizationThreshold: virtThreshold,
       futureOptionA: local.futureOptionA,
       futureOptionB: !!local.futureOptionB
     };
@@ -136,6 +159,36 @@
                 <label for="autofit" class="text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
               </div>
             </div>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="virtualization-enabled" class="text-sm font-medium text-gray-700">Virtualize results</label>
+            <input
+              id="virtualization-enabled"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              bind:checked={local.virtualizationEnabled}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="virtualization-threshold" class="text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
+            <input
+              id="virtualization-threshold"
+              type="number"
+              min="10"
+              max="300"
+              step="5"
+              class="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+              bind:value={local.virtualizationThreshold}
+              disabled={!local.virtualizationEnabled}
+              on:input={(e) => {
+                const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
+                local.virtualizationThreshold = n;
+                save();
+              }}
+            />
           </div>
         </div>
       </div>
