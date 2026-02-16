@@ -13,7 +13,6 @@
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
   import { deserializeFromURL, updateURL } from '../utils/urlState.js';
-  import SidebarToggle from "../components/SidebarToggle.svelte";
   import { tabsPosition } from '../stores/tabsPosition.js';
   import { toasts } from '../stores/toastStore.js';
   import ToastContainer from '../components/ToastContainer.svelte';
@@ -33,8 +32,6 @@
   // ---------------------------
   // Stato non-UI (locale)
   // ---------------------------
-  let activeTab = "Search";
-
   // Container separati per ogni view
   let imagesContainer;
   let similarityContainer;
@@ -169,6 +166,7 @@
 
   // Similarity UI
   let similarityDisplayRows = [];
+  let focusSearchInputHandler = () => {};
 
   // Variabili separate per ogni view
   let lastViewedSearchIndex = 0;
@@ -176,6 +174,23 @@
   let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
+  const URL_SYNC_DEBOUNCE_MS = 180;
+  let urlSyncTimer = null;
+  let lastSearchResultSet = null;
+
+  function scheduleURLSync() {
+    if (isRestoringFromHistory || !browser) return;
+
+    if (urlSyncTimer) {
+      clearTimeout(urlSyncTimer);
+      urlSyncTimer = null;
+    }
+
+    urlSyncTimer = setTimeout(() => {
+      urlSyncTimer = null;
+      updateURL({ textareas, activeTab: get(uiStore).layoutTab }, false);
+    }, URL_SYNC_DEBOUNCE_MS);
+  }
 
   function appendSubmittedFrames(transformed) {
     const submitted = $sessionStore.submittedImages;
@@ -238,8 +253,7 @@
   const getSubmittedIds = () => new Set($sessionStore.submittedImages.map(s => s.imgId));
 
   const syncURL = () => {
-    if (isRestoringFromHistory) return;
-    updateURL({ textareas, activeTab: get(uiStore).layoutTab }, false);
+    scheduleURLSync();
   };
 
   const searchController = createSearchController({
@@ -257,7 +271,16 @@
     setSearchState: ({ loading, error, resultSet, searchTime: st }) => {
       if (loading !== undefined) searchLoading = loading;
       if (error !== undefined) searchError = error;
-      if (resultSet !== undefined) searchResultSet = resultSet;
+      if (resultSet !== undefined) {
+        searchResultSet = resultSet;
+        if (resultSet && resultSet !== lastSearchResultSet) {
+          lastSearchResultSet = resultSet;
+          resetSearchScroll();
+        }
+        if (!resultSet) {
+          lastSearchResultSet = null;
+        }
+      }
       if (st !== undefined) searchTime = st;
     },
 
@@ -369,6 +392,10 @@
   });
 
   onDestroy(() => {
+    if (urlSyncTimer) {
+      clearTimeout(urlSyncTimer);
+      urlSyncTimer = null;
+    }
     if (imagesContainer) imagesContainer.removeEventListener("scroll", handleSearchScroll);
     if (similarityContainer) similarityContainer.removeEventListener("scroll", handleSimilarityScroll);
     if (view2Container) view2Container.removeEventListener("scroll", handleView2Scroll);
@@ -403,7 +430,7 @@
   }
 
   function handleUpdateURLRequest() {
-    updateURL({ textareas, activeTab: get(uiStore).layoutTab }, false);
+    scheduleURLSync();
   }
 
   function handleZoomIn() {
@@ -579,15 +606,13 @@
 
   // Quick actions dalla status bar
   function handleViewSubmitted() {
-    activeTab = "Submitted";
-    if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
+    if (!get(uiStore).isSidebarRightOpen) uiStore.actions.toggleRightSidebar();
     uiStore.actions.focusRightTab("Submitted");
     toasts.info("Viewing submitted frames");
   }
 
   function handleViewRF() {
-    activeTab = "RF";
-    if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
+    if (!get(uiStore).isSidebarRightOpen) uiStore.actions.toggleRightSidebar();
     uiStore.actions.focusRightTab("RF");
     toasts.info("Viewing relevance feedback");
   }
@@ -746,9 +771,10 @@ function submitByImgId(imgId, fallback = null) {
   }
 
   async function focusSearchBox() {
+    uiStore.actions.setLayoutTab("View1");
     if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
     await tick();
-    document.querySelector(".sidebar-left textarea")?.focus();
+    focusSearchInputHandler?.();
   }
 
   // ---------------------------
@@ -895,7 +921,6 @@ function submitByImgId(imgId, fallback = null) {
     if (!ok) return;
 
     uiStore.actions.resetUI();
-    activeTab = "Search";
 
     textareas = [{ value: "", enabled: true }];
     textareaImages = {};
@@ -967,19 +992,6 @@ function submitByImgId(imgId, fallback = null) {
     setTimeout(() => runSearch(), 300);
   }
 
-  // opzionale: mantenere images derivati da searchResultSet
-  let lastSearchResultSet = null;
-  $: if (searchResultSet) {
-    try { updateImagesFromResult(searchResultSet); }
-    catch (e) { /* ignore */ }
-
-    if (searchResultSet !== lastSearchResultSet) {
-      lastSearchResultSet = searchResultSet;
-      resetSearchScroll();
-    }
-  } else {
-    lastSearchResultSet = null;
-  }
 </script>
 
 <!-- Template invariato -->
@@ -1047,16 +1059,13 @@ function submitByImgId(imgId, fallback = null) {
   on:close={() => { isVideoPlayerOpen = false; }}
 />
 
-<SidebarToggle
-  isOpen={$uiStore.isSidebarOpen}
-  on:toggle={() => uiStore.actions.toggleSidebar()}
-/>
-
 <SettingsModal
   isOpen={isSettingsOpen}
   keyframeSize={$uiStore.keyframeSize}
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}
+  virtualizationEnabled={$uiStore.virtualizationEnabled}
+  virtualizationThreshold={$uiStore.virtualizationThreshold}
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}
 />
@@ -1100,6 +1109,8 @@ function submitByImgId(imgId, fallback = null) {
         totalImages={totalImages}
         rows={displayRows}
         images={images}
+        virtualizationEnabled={$uiStore.virtualizationEnabled}
+        virtualizationThreshold={$uiStore.virtualizationThreshold}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
 
@@ -1114,6 +1125,9 @@ function submitByImgId(imgId, fallback = null) {
         on:updateURL={handleUpdateURLRequest}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
+        registerFocusSearchHandler={(fn) => {
+          focusSearchInputHandler = typeof fn === "function" ? fn : () => {};
+        }}
         sidebarLeftWidth={$uiStore.sidebarLeftWidth}
         sidebarRightWidth={$uiStore.sidebarRightWidth}
         onResizeLeftSidebar={(width) => uiStore.actions.setSidebarLeftWidth(width)}
@@ -1180,6 +1194,8 @@ function submitByImgId(imgId, fallback = null) {
         contentScale={$uiStore.contentScale}
         frames={view2Frames}
         selectedFrameId={view2SelectedImgId}
+        virtualizationEnabled={$uiStore.virtualizationEnabled}
+        virtualizationThreshold={$uiStore.virtualizationThreshold}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1209,6 +1225,8 @@ function submitByImgId(imgId, fallback = null) {
         rows={similarityDisplayRows}
         simSelected={$similarityModal.selected}
         simIsModalOpen={$similarityModal.isOpen}
+        virtualizationEnabled={$uiStore.virtualizationEnabled}
+        virtualizationThreshold={$uiStore.virtualizationThreshold}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 

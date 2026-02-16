@@ -15,18 +15,54 @@ export class VisioneAPI {
   constructor(baseUrl = 'https://visione.isti.cnr.it:41000/services', videosBase = 'https://visione.isti.cnr.it:41000/videos') {
     this.baseUrl = baseUrl;
     this.videosBase = videosBase;
+    this.middleTimestampCache = new Map();
+    this.middleTimestampInFlight = new Map();
+    this.middleTimestampCacheMax = 500;
+    this.middleTimestampTtlMs = 5 * 60 * 1000;
   }
 
   // ... #makeRequest e metodi esistenti ...
 
   async getMiddleTimestamp(imgId) {
     if (!imgId) throw new APIError('imgId richiesto', 400);
+
+    const key = String(imgId);
+    const now = Date.now();
+    const cached = this.middleTimestampCache.get(key);
+
+    if (cached && now - cached.ts < this.middleTimestampTtlMs) {
+      this.middleTimestampCache.delete(key);
+      this.middleTimestampCache.set(key, cached);
+      return cached.value;
+    }
+
+    if (this.middleTimestampInFlight.has(key)) {
+      return this.middleTimestampInFlight.get(key);
+    }
+
+    const run = (async () => {
     const url = `${this.baseUrl}/core/getMiddleTimestamp?id=${encodeURIComponent(imgId)}`;
     const res = await this.#makeRequest(url, { retries: 1, timeout: 15000 });
     const text = await res.text();
     const num = Number(text);
     if (!Number.isFinite(num)) throw new APIError(`Risposta non numerica: ${text}`, 500);
+
+      this.middleTimestampCache.set(key, { value: num, ts: Date.now() });
+      while (this.middleTimestampCache.size > this.middleTimestampCacheMax) {
+        const oldestKey = this.middleTimestampCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        this.middleTimestampCache.delete(oldestKey);
+      }
+
     return num;
+    })();
+
+    this.middleTimestampInFlight.set(key, run);
+    try {
+      return await run;
+    } finally {
+      this.middleTimestampInFlight.delete(key);
+    }
   }
 
   getVideoUrl(videoId, quality = 'medium') {

@@ -105,6 +105,8 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   keyframeSize: 160,        // ✅ AGGIUNGI
   resultsPerRow: 5,          // ✅ AGGIUNGI
   resultsAutoFit: false,     // ✅ AGGIUNGI
+  virtualizationEnabled: true,
+  virtualizationThreshold: 40,
   futureOptionA: '',         // ✅ AGGIUNGI (opzionale)
   futureOptionB: false       // ✅ AGGIUNGI (opzionale)
 });

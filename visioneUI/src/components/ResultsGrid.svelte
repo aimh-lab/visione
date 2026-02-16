@@ -1,7 +1,6 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import SubmitBadge from "./SubmitBadge.svelte";
-  import OverlayButton from "./OverlayButton.svelte";
   import { visioneAPI } from "../services/api.js";
   import VideoOverlay from "./VideoOverlay.svelte";
 
@@ -11,6 +10,8 @@
   export let registerContainer = (el) => {};
   export let viewMode = "byrank"; // ✅ NUOVA PROP
   export let isSelectionMode = false;
+  export let virtualizeRows = true;
+  export let virtualizeThreshold = 40;
 
   let preview = { imgId: null, videoUrl: null, start: 0, end: 0 };
 
@@ -51,7 +52,70 @@
   const handleSubmit = (item, e) => { e.stopPropagation(); dispatch("submit", { index: getIndex(item), img: item }); };
 
   let containerEl;
-  $: if (containerEl) registerContainer(containerEl);
+  let lastRegisteredContainer = null;
+  let observedContainer = null;
+  let containerResizeObserver = null;
+  let imagePreloadObserver = null;
+  let scrollRaf = 0;
+
+  const OVERSCAN_ROWS = 6;
+  const FALLBACK_ROW_HEIGHT = 240;
+
+  let scrollTop = 0;
+  let viewportHeight = 0;
+  let virtualizationEnabled = false;
+  let visibleStart = 0;
+  let visibleEnd = 0;
+  let topSpacer = 0;
+  let bottomSpacer = 0;
+  let visibleRows = [];
+  const measuredRowHeights = new Map();
+  const eagerImageIds = new Set();
+  let eagerVersion = 0;
+  let lastItemsLength = 0;
+
+  $: if (containerEl && containerEl !== lastRegisteredContainer) {
+    registerContainer(containerEl);
+    lastRegisteredContainer = containerEl;
+  }
+
+  $: if (containerEl && containerEl !== observedContainer) {
+    if (containerResizeObserver && observedContainer) {
+      containerResizeObserver.disconnect();
+    }
+
+    observedContainer = containerEl;
+    viewportHeight = containerEl.clientHeight || 0;
+    scrollTop = containerEl.scrollTop || 0;
+
+    if (typeof ResizeObserver !== "undefined") {
+      containerResizeObserver = new ResizeObserver(() => {
+        viewportHeight = containerEl?.clientHeight || 0;
+        recomputeVirtualWindow();
+      });
+      containerResizeObserver.observe(containerEl);
+    }
+
+    if (typeof IntersectionObserver !== "undefined") {
+      if (imagePreloadObserver) imagePreloadObserver.disconnect();
+      imagePreloadObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const node = entry.target;
+            const imgId = node?.dataset?.imgId;
+            if (!imgId || eagerImageIds.has(imgId)) continue;
+            eagerImageIds.add(imgId);
+            eagerVersion += 1;
+            imagePreloadObserver?.unobserve(node);
+          }
+        },
+        { root: containerEl, rootMargin: '600px 0px', threshold: 0.01 }
+      );
+    }
+
+    recomputeVirtualWindow();
+  }
 
   async function handleContextPreview(e, item) {
     e.preventDefault();
@@ -68,28 +132,35 @@
     }
   }
 
+  const rowInfoCache = new Map();
+
   // ✅ Helper per generare header info
   function getRowInfo(row) {
     if (!row || row.length === 0) return null;
-    
     const firstItem = row[0];
+    const cacheKey = `${viewMode}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
+    if (rowInfoCache.has(cacheKey)) return rowInfoCache.get(cacheKey);
+    
+    let info = null;
     
     if (viewMode === "byvideo") {
       const videoId = getVideoId(firstItem);
       const frameCount = row.length;
-      return {
+      info = {
         type: 'video',
         label: `Video ${videoId}`,
         subtitle: `${frameCount} keyframe${frameCount !== 1 ? 's' : ''}`,
         item: firstItem
       };
+      rowInfoCache.set(cacheKey, info);
+      return info;
     }
     
     if (viewMode === "bydate") {
       const timestamp = firstItem.timestamp || firstItem.raw?.timestamp || 0;
       const date = timestamp ? new Date(timestamp * 1000) : new Date();
       
-      return {
+      info = {
         type: 'date',
         label: date.toLocaleDateString('en-US', { 
           weekday: 'long', 
@@ -103,17 +174,176 @@
         }),
         item: firstItem
       };
+      rowInfoCache.set(cacheKey, info);
+      return info;
     }
     
+    rowInfoCache.set(cacheKey, null);
     return null; // No header for byrank
   }
+
+  $: {
+    if (rowInfoCache.size > 1000) rowInfoCache.clear();
+  }
+
+  $: if (items.length !== lastItemsLength) {
+    if (items.length < lastItemsLength) {
+      measuredRowHeights.clear();
+      eagerImageIds.clear();
+      eagerVersion += 1;
+    }
+    lastItemsLength = items.length;
+    recomputeVirtualWindow();
+  }
+
+  $: {
+    const threshold = Math.max(10, Number(virtualizeThreshold) || 40);
+    virtualizationEnabled = !!virtualizeRows && items.length > threshold;
+    recomputeVirtualWindow();
+  }
+
+  function sumHeights(start, end) {
+    let total = 0;
+    for (let i = start; i < end; i += 1) {
+      total += measuredRowHeights.get(i) ?? FALLBACK_ROW_HEIGHT;
+    }
+    return total;
+  }
+
+  function findRowIndexAtOffset(offset) {
+    const target = Math.max(0, offset);
+    let acc = 0;
+    for (let i = 0; i < items.length; i += 1) {
+      const h = measuredRowHeights.get(i) ?? FALLBACK_ROW_HEIGHT;
+      if (acc + h > target) return i;
+      acc += h;
+    }
+    return Math.max(0, items.length - 1);
+  }
+
+  function recomputeVirtualWindow() {
+    if (!Array.isArray(items) || items.length === 0) {
+      visibleStart = 0;
+      visibleEnd = 0;
+      topSpacer = 0;
+      bottomSpacer = 0;
+      visibleRows = [];
+      return;
+    }
+
+    if (!virtualizationEnabled) {
+      visibleStart = 0;
+      visibleEnd = items.length;
+      topSpacer = 0;
+      bottomSpacer = 0;
+      visibleRows = items.map((row, rowIndex) => ({ row, rowIndex }));
+      return;
+    }
+
+    const viewportBottom = scrollTop + Math.max(viewportHeight, FALLBACK_ROW_HEIGHT);
+    const firstVisible = findRowIndexAtOffset(scrollTop);
+    const lastVisible = findRowIndexAtOffset(viewportBottom);
+
+    visibleStart = Math.max(0, firstVisible - OVERSCAN_ROWS);
+    visibleEnd = Math.min(items.length, lastVisible + OVERSCAN_ROWS + 1);
+
+    topSpacer = sumHeights(0, visibleStart);
+    const visibleHeight = sumHeights(visibleStart, visibleEnd);
+    const totalHeight = sumHeights(0, items.length);
+    bottomSpacer = Math.max(0, totalHeight - topSpacer - visibleHeight);
+
+    visibleRows = items
+      .slice(visibleStart, visibleEnd)
+      .map((row, offset) => ({ row, rowIndex: visibleStart + offset }));
+  }
+
+  function handleScroll() {
+    if (!containerEl) return;
+    if (scrollRaf) return;
+
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      scrollTop = containerEl.scrollTop || 0;
+      recomputeVirtualWindow();
+    });
+  }
+
+  function observeCardForPreload(node, item) {
+    const imgId = getId(item);
+    if (!imgId) return;
+    if (!imagePreloadObserver) return;
+    node.dataset.imgId = String(imgId);
+    imagePreloadObserver.observe(node);
+
+    return {
+      update(nextItem) {
+        const nextId = getId(nextItem);
+        if (!nextId) return;
+        node.dataset.imgId = String(nextId);
+        imagePreloadObserver?.observe(node);
+      },
+      destroy() {
+        imagePreloadObserver?.unobserve(node);
+      }
+    };
+  }
+
+  function isEager(item) {
+    const id = getId(item);
+    return !!id && eagerImageIds.has(id);
+  }
+
+  function measureRow(node, rowIndex) {
+    let currentRowIndex = rowIndex;
+    let observer;
+
+    const updateHeight = () => {
+      const next = Math.max(80, Math.round(node.getBoundingClientRect().height));
+      const prev = measuredRowHeights.get(currentRowIndex);
+      if (prev !== next) {
+        measuredRowHeights.set(currentRowIndex, next);
+        recomputeVirtualWindow();
+      }
+    };
+
+    if (virtualizationEnabled) {
+      if (typeof ResizeObserver !== "undefined") {
+        observer = new ResizeObserver(updateHeight);
+        observer.observe(node);
+      }
+      updateHeight();
+    }
+
+    return {
+      update(nextRowIndex) {
+        currentRowIndex = nextRowIndex;
+        if (virtualizationEnabled) updateHeight();
+      },
+      destroy() {
+        if (observer) observer.disconnect();
+      }
+    };
+  }
+
+  onDestroy(() => {
+    if (containerResizeObserver) containerResizeObserver.disconnect();
+    if (imagePreloadObserver) imagePreloadObserver.disconnect();
+    if (scrollRaf) cancelAnimationFrame(scrollRaf);
+  });
 </script>
 
-<div bind:this={containerEl} class="h-full overflow-y-auto custom-scrollbar">
-  {#each items as row, rowIndex}
+<div bind:this={containerEl} class="h-full overflow-y-auto custom-scrollbar" on:scroll={handleScroll}>
+  {#if topSpacer > 0}
+    <div style={`height: ${topSpacer}px;`} aria-hidden="true"></div>
+  {/if}
+
+  {#each visibleRows as { row, rowIndex } (row[0]?.imgId ?? row[0]?.index ?? rowIndex)}
     {@const rowInfo = getRowInfo(row)}
     
-    <div class="w-full {rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}">
+    <div
+      use:measureRow={rowIndex}
+      class="w-full {rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
+    >
       
         <!-- ✅ ROW HEADER (solo per byvideo e bydate) -->
         {#if rowInfo}
@@ -168,9 +398,10 @@
       
       <!-- Frames grid -->
       <div class="flex flex-wrap w-full p-3" style="gap: var(--grid-gap, 16px);">
-        {#each row.flat() as item}
+        {#each row as item (getId(item) ?? getIndex(item))}
           <div>
             <div
+              use:observeCardForPreload={item}
               data-index={getIndex(item)}
               data-img-id={getId(item)}
               data-frame-id={getId(item)}
@@ -209,13 +440,6 @@
                 />
               {/if}
 
-
-              <!-- ✅ Nascondi overlay pulsanti in modalità selezione -->
-              {#if !isSelectionMode}
-                <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <!-- ... tutti i pulsanti esistenti ... -->
-                </div>
-              {/if}
 
               <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
@@ -309,7 +533,9 @@
                 <img
                   src={getUrl(item)}
                   alt={getTitle(item)}
-                  loading="lazy"
+                  loading={eagerVersion >= 0 && isEager(item) ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchpriority={eagerVersion >= 0 && isEager(item) ? "high" : "auto"}
                   class="block"
                   style="height: 100%; width: auto; object-fit: contain;"
                 />
@@ -331,6 +557,10 @@
       </div>
     </div>
   {/each}
+
+  {#if bottomSpacer > 0}
+    <div style={`height: ${bottomSpacer}px;`} aria-hidden="true"></div>
+  {/if}
 </div>
 
 <style>

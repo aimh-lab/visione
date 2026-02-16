@@ -6,6 +6,8 @@
   export let registerContainer = (el) => {};
   export let viewMode = "byrank"; // ✅ AGGIUNGI
   export let isSelectionMode = false; 
+  export let virtualizationEnabled = true;
+  export let virtualizationThreshold = 40;
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -17,6 +19,8 @@
   layout="rows"
   showVideoSummary={true}
   {viewMode}
+  virtualizeRows={virtualizationEnabled}
+  virtualizeThreshold={virtualizationThreshold}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

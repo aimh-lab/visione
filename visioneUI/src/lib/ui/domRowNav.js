@@ -15,45 +15,57 @@ export function getFirstOfNextRowDOM({ currentIndex, direction, container, items
   const allElements = Array.from(container.querySelectorAll("[data-index], [data-frame-id]"));
   if (allElements.length === 0) return currentIndex;
 
+  const frameIdToIndex = new Map();
+  for (let i = 0; i < items.length; i += 1) {
+    const frameId = items[i]?.imgId;
+    if (frameId != null) frameIdToIndex.set(String(frameId), i);
+  }
+
+  const resolveElementIndex = (entry) => {
+    if (entry.idx !== null && Number.isFinite(entry.idx)) return entry.idx;
+    if (entry.frameId) {
+      const found = frameIdToIndex.get(entry.frameId);
+      if (found !== undefined) return found;
+    }
+    return currentIndex;
+  };
+
+  const entries = allElements.map((el) => {
+    const rawIdx = el.getAttribute("data-index");
+    const parsedIdx = rawIdx !== null ? Number.parseInt(rawIdx, 10) : null;
+    return {
+      top: el.getBoundingClientRect().top,
+      idx: Number.isFinite(parsedIdx) ? parsedIdx : null,
+      frameId: el.getAttribute("data-frame-id")
+    };
+  });
+
   if (direction === 1) {
-    for (let i = 0; i < allElements.length; i++) {
-      const rect = allElements[i].getBoundingClientRect();
-      if (rect.top > currentTop + 10) {
-        const idx = allElements[i].getAttribute("data-index");
-        const frameId = allElements[i].getAttribute("data-frame-id");
-
-        if (idx !== null) return parseInt(idx, 10);
-
-        if (frameId) {
-          const t = items.findIndex(item => item.imgId === frameId);
-          return t >= 0 ? t : currentIndex;
-        }
+    for (let i = 0; i < entries.length; i += 1) {
+      if (entries[i].top > currentTop + 10) {
+        return resolveElementIndex(entries[i]);
       }
     }
     return items.length - 1;
   }
 
   // direction === -1
-  for (let i = allElements.length - 1; i >= 0; i--) {
-    const rect = allElements[i].getBoundingClientRect();
-    if (rect.top < currentTop - 10) {
-      const prevRowTop = rect.top;
+  let prevRowTop = null;
+  let prevRowLastIndex = -1;
 
-      for (let j = 0; j <= i; j++) {
-        const checkRect = allElements[j].getBoundingClientRect();
-        if (Math.abs(checkRect.top - prevRowTop) < 10) {
-          const firstIdx = allElements[j].getAttribute("data-index");
-          const firstFrameId = allElements[j].getAttribute("data-frame-id");
-
-          if (firstIdx !== null) return parseInt(firstIdx, 10);
-
-          if (firstFrameId) {
-            const t = items.findIndex(item => item.imgId === firstFrameId);
-            return t >= 0 ? t : currentIndex;
-          }
-        }
-      }
+  for (let i = entries.length - 1; i >= 0; i -= 1) {
+    if (entries[i].top < currentTop - 10) {
+      prevRowTop = entries[i].top;
+      prevRowLastIndex = i;
       break;
+    }
+  }
+
+  if (prevRowTop !== null && prevRowLastIndex >= 0) {
+    for (let j = 0; j <= prevRowLastIndex; j += 1) {
+      if (Math.abs(entries[j].top - prevRowTop) < 10) {
+        return resolveElementIndex(entries[j]);
+      }
     }
   }
 
