@@ -29,7 +29,15 @@
   });
 </script>
 
-<div class="absolute inset-0 z-40" on:mouseleave={() => dispatch("close")} on:click={() => dispatch("close")}>
+<div
+  class="absolute inset-0 z-40"
+  on:mouseleave={() => dispatch("close")}
+  on:click={() => dispatch("close")}
+  on:keydown={(e) => (e.key === 'Escape' || e.key === 'Enter') && dispatch("close")}
+  role="button"
+  tabindex="0"
+  aria-label="Close video preview"
+>
   <video
     bind:this={videoEl}
     src={videoUrl}
@@ -37,7 +45,7 @@
     autoplay
     muted
     playsinline
-  />
+  ></video>
 </div>
 
 <style>

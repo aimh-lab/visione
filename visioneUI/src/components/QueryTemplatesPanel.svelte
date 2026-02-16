@@ -102,7 +102,6 @@
               bind:value={saveName}
               on:keydown={(e) => e.key === 'Enter' && handleSaveTemplate()}
               class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-              autofocus
             />
             <div class="flex space-x-2">
               <button
@@ -147,7 +146,6 @@
                     on:keydown={(e) => e.key === 'Enter' && handleConfirmRename()}
                     on:blur={handleConfirmRename}
                     class="w-full px-2 py-1 bg-gray-900 border border-blue-500 rounded text-xs text-white focus:outline-none"
-                    autofocus
                   />
                 {:else}
                   <div>
@@ -165,6 +163,7 @@
                   on:click={() => handleLoadTemplate(template)}
                   class="p-1 hover:bg-blue-600/30 text-blue-400 rounded transition-colors"
                   title="Load template"
+                  aria-label="Load template"
                 >
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 19V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -176,6 +175,7 @@
                   on:click={() => handleStartRename(template)}
                   class="p-1 hover:bg-yellow-600/30 text-yellow-400 rounded transition-colors"
                   title="Rename"
+                  aria-label="Rename template"
                 >
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -187,6 +187,7 @@
                   on:click={() => handleDeleteTemplate(template.id, template.name)}
                   class="p-1 hover:bg-red-600/30 text-red-400 rounded transition-colors"
                   title="Delete template"
+                  aria-label="Delete template"
                 >
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"/>

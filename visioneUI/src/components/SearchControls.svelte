@@ -1,7 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
 
-  export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
 

@@ -9,7 +9,6 @@
   export let isSidebarOpen = true;           // 20vw o collapsed
   export let activeTab = "Search";           // "Search" | "RF" | "Submitted"
   export let textareas = [];                 // [{ value, enabled }]
-  export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
 
@@ -62,7 +61,6 @@
         />
 
         <SearchControls
-          {searchLoading}
           {searchError}
           {searchResultSet}
           on:run={doSearch}

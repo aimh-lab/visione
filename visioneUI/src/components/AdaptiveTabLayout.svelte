@@ -98,6 +98,7 @@
         class="absolute top-2 left-2 p-1.5 hover:bg-white/80 rounded-md transition-all z-10 position-menu-container"
         on:click|stopPropagation={() => showPositionMenu = !showPositionMenu}
         title="Change tabs position"
+        aria-label="Change tabs position"
       >
         <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="5" r="1"/>
@@ -165,6 +166,7 @@
         class="p-1.5 hover:bg-white/80 rounded-md transition-all position-menu-container"
         on:click|stopPropagation={() => showPositionMenu = !showPositionMenu}
         title="Change tabs position"
+        aria-label="Change tabs position"
       >
         <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="5" r="1"/>
@@ -264,6 +266,7 @@
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}"
         title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
         on:click={() => dispatch('toggleSidebar')}
       >
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -277,6 +280,7 @@
         class="p-1.5 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
         on:click={() => dispatch('openSettings')}
         title="Settings"
+        aria-label="Open settings"
       >
         <svg class="w-4 h-4 text-gray-600 hover:text-blue-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
@@ -301,6 +305,7 @@
       <button 
         class="p-1.5 hover:bg-white/80 rounded-md transition-all position-menu-container"
         on:click|stopPropagation={() => showPositionMenu = !showPositionMenu}
+        aria-label="Change tabs position"
       >
         <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="5" r="1"/>
@@ -390,14 +395,14 @@
         </div>
       {/if}
       
-      <button class="p-1.5 rounded-lg transition-all border shadow-sm {isSidebarOpen ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-600'}" on:click={() => dispatch('toggleSidebar')}>
+      <button class="p-1.5 rounded-lg transition-all border shadow-sm {isSidebarOpen ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-600'}" on:click={() => dispatch('toggleSidebar')} aria-label={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <line x1="9" y1="3" x2="9" y2="21"/>
         </svg>
       </button>
       
-      <button class="p-1.5 rounded-lg bg-white border transition-all" on:click={() => dispatch('openSettings')}>
+      <button class="p-1.5 rounded-lg bg-white border transition-all" on:click={() => dispatch('openSettings')} aria-label="Open settings">
         <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
         </svg>

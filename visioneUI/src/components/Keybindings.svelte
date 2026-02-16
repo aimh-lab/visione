@@ -1,42 +1,59 @@
 <script>
   import { onMount, onDestroy } from "svelte";
 
+  /** @typedef {'View1' | 'View2' | 'Similarity'} LayoutTab */
+
   // Existing props
   export let isModalOpen = false;
-  export let onMoveSelection = (delta) => {};
-  export let onMoveSelectionRows = (deltaRows) => {};
+  /** @type {() => void} */
   export let onOpenAtSelected = () => {};
-  export let onNavigateImage = (offset) => {};
+  /** @type {(offset: number, toFirstOfRow?: boolean) => void} */
+  export let onNavigateImage = (_offset, _toFirstOfRow = false) => {};
+  /** @type {() => void} */
   export let onCloseModal = () => {};
 
   // New callbacks for shortcuts
+  /** @type {() => void} */
   export let onFocusSearch = () => {};
-  export let onSwitchTab = (tab) => {};
+  /** @type {(tab: LayoutTab) => void} */
+  export let onSwitchTab = (_tab) => {};
+  /** @type {() => void} */
   export let onSubmitSelected = () => {};
+  /** @type {() => void} */
   export let onToggleSidebar = () => {};
+  /** @type {() => void} */
   export let onOpenSettings = () => {};
+  /** @type {() => void} */
   export let onRFPositiveSelected = () => {};
+  /** @type {() => void} */
   export let onRFNegativeSelected = () => {};
+  /** @type {() => void} */
   export let onSimilaritySelected = () => {};
+  /** @type {() => void} */
   export let onVideoSummarySelected = () => {};
 
   let showHelp = false;
   let lastAction = '';
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
   let actionTimeout;
 
+  /** @param {EventTarget | null} el */
   const isTypingTarget = (el) => {
+    if (!(el instanceof HTMLElement)) return false;
     const t = el?.tagName;
     return t === "INPUT" || t === "TEXTAREA" || t === "SELECT" || el?.isContentEditable;
   };
 
+  /** @param {string} action */
   function showActionFeedback(action) {
     lastAction = action;
-    clearTimeout(actionTimeout);
+    if (actionTimeout) clearTimeout(actionTimeout);
     actionTimeout = setTimeout(() => {
       lastAction = '';
     }, 1500);
   }
 
+  /** @param {KeyboardEvent} e */
   function handleKeyDown(e) {
     // Help overlay toggle
     if (e.key === '?' && !isTypingTarget(e.target)) {
@@ -134,8 +151,9 @@
     // 1/2/3: Switch tabs
     if (['1', '2', '3'].includes(e.key) && !isTypingTarget(e.target)) {
       e.preventDefault();
+      /** @type {Record<'1' | '2' | '3', LayoutTab>} */
       const tabs = { '1': 'View1', '2': 'View2', '3': 'Similarity' };
-      onSwitchTab(tabs[e.key]);
+      onSwitchTab(tabs[/** @type {'1' | '2' | '3'} */ (e.key)]);
       showActionFeedback(`Switched to tab ${e.key}`);
       return;
     }
@@ -205,6 +223,11 @@
 
   }
 
+  /** @param {KeyboardEvent} e */
+  function handleHelpOverlayKeydown(e) {
+    if (e.key === 'Escape' || e.key === 'Enter') showHelp = false;
+  }
+
   onMount(() => {
     if (typeof window !== "undefined") {
       window.addEventListener("keydown", handleKeyDown);
@@ -215,7 +238,7 @@
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", handleKeyDown);
     }
-    clearTimeout(actionTimeout);
+    if (actionTimeout) clearTimeout(actionTimeout);
   });
 </script>
 
@@ -230,8 +253,15 @@
 
 <!-- Help overlay -->
 {#if showHelp}
-  <div class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm" on:click={() => (showHelp = false)}>
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto" on:click|stopPropagation>
+  <div
+    class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    on:click|self={() => (showHelp = false)}
+    on:keydown={handleHelpOverlayKeydown}
+    role="button"
+    tabindex="0"
+    aria-label="Close keyboard shortcuts"
+  >
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto">
       <!-- Header -->
       <div class="sticky top-0 bg-gradient-to-b from-gray-50 to-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div class="flex items-center space-x-3">
@@ -241,7 +271,7 @@
           </svg>
           <h2 class="text-2xl font-bold text-gray-800">Keyboard Shortcuts</h2>
         </div>
-        <button on:click={() => (showHelp = false)} class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <button on:click={() => (showHelp = false)} class="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Close keyboard shortcuts">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>

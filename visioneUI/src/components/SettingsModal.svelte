@@ -53,7 +53,12 @@
 <!-- Template invariato, cambiano solo i binding on:input e on:change -->
 {#if isOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" on:click={close}></div>
+    <button
+      type="button"
+      class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      on:click={close}
+      aria-label="Close settings"
+    ></button>
     
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg">
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -76,9 +81,10 @@
           <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Display</h4>
           
           <div class="flex items-center justify-between py-2">
-            <label class="text-sm font-medium text-gray-700">Keyframe size</label>
+            <label for="settings-keyframe-size" class="text-sm font-medium text-gray-700">Keyframe size</label>
             <div class="flex items-center space-x-2">
               <input
+                id="settings-keyframe-size"
                 type="number"
                 min="80"
                 max="400"
@@ -102,9 +108,10 @@
           <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Layout</h4>
           
           <div class="flex items-center justify-between py-2">
-            <label class="text-sm font-medium text-gray-700">Results per row</label>
+            <label for="settings-results-per-row" class="text-sm font-medium text-gray-700">Results per row</label>
             <div class="flex items-center space-x-3">
               <input
+                id="settings-results-per-row"
                 type="number"
                 min="1"
                 max="10"

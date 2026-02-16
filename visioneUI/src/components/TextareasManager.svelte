@@ -1,12 +1,73 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher } from "svelte";
   import InputModal from "./InputModal.svelte";
 
-  export let textareas = [];
-  export let availableImages = []; // ✅ NUOVO: immagini disponibili dal resultset
-  export let textareaImages = {};
+  type QueryTextarea = {
+    value: string;
+    enabled: boolean;
+  };
 
-  let modalConfig = {
+  type AvailableImage = {
+    url: string;
+    imgId?: string;
+    title?: string;
+  };
+
+  type AttachedImage = {
+    url: string;
+    name: string;
+    type: "result" | "file" | "url";
+    imgId?: string | null;
+  };
+
+  type ModalOption = { value: string; label: string };
+  type ModalField = {
+    name: string;
+    label: string;
+    type: string;
+    placeholder?: string;
+    value?: string;
+    hint?: string;
+    required?: boolean;
+    rows?: number;
+    options?: ModalOption[];
+  };
+
+  type ModalConfig = {
+    isOpen: boolean;
+    title: string;
+    icon: string;
+    fields: ModalField[];
+    description: string;
+    targetIndex: number | null;
+    filterType: "date" | "imageUrl" | "type" | "";
+  };
+
+  type ModalSubmitData = {
+    from?: string;
+    to?: string;
+    url?: string;
+    name?: string;
+    type?: string;
+  };
+
+  type DispatchEvents = {
+    add: { index: number };
+    remove: { index: number };
+    toggle: { index: number };
+    update: { index: number; value: string };
+    search: void;
+    swap: { indexA: number; indexB: number };
+    startImageSelection: { textareaIndex: number };
+    imageSelected: void;
+    updateImages: { index: number; images: AttachedImage[] };
+  };
+
+  export let textareas: QueryTextarea[] = [];
+  export let availableImages: AvailableImage[] = [];
+  export let textareaImages: Record<number, AttachedImage[]> = {};
+
+  let modalConfig: ModalConfig = {
     isOpen: false,
     title: '',
     icon: '',
@@ -17,44 +78,48 @@
   };
 
 
-  const dispatch = createEventDispatcher();
+  const dispatch = createEventDispatcher<DispatchEvents>();
 
-  let isSelectingImageFor = null; // index della textarea che sta selezionando
+  let isSelectingImageFor: number | null = null;
   
-  const add = (i) => dispatch("add", { index: i });
-  const remove = (i) => dispatch("remove", { index: i });
-  const toggle = (index) => {
+  const add = (i: number) => dispatch("add", { index: i });
+  const remove = (i: number) => dispatch("remove", { index: i });
+  const toggle = (index: number) => {
     dispatch("toggle", { index }); 
     setTimeout(() => dispatch("search"), 0);
   };
-  const update = (i, value) => dispatch("update", { index: i, value });
+  const update = (i: number, value: string) => dispatch("update", { index: i, value });
   
-function swapQueries(indexA, indexB) {
-  if (indexB < 0 || indexB >= textareas.length) return;
-  
-  // ✅ Scambia le immagini associate
-  const tempImages = textareaImages[indexA];
-  textareaImages[indexA] = textareaImages[indexB];
-  textareaImages[indexB] = tempImages;
-  textareaImages = {...textareaImages}; // Trigger reactivity
-  
-  dispatch("swap", { indexA, indexB });
-  setTimeout(() => dispatch("search"), 100);
-}
+  function swapQueries(indexA: number, indexB: number) {
+    if (indexB < 0 || indexB >= textareas.length) return;
+    
+    const tempImages = textareaImages[indexA] ?? [];
+    textareaImages[indexA] = textareaImages[indexB] ?? [];
+    textareaImages[indexB] = tempImages;
+    textareaImages = { ...textareaImages };
+    
+    dispatch("swap", { indexA, indexB });
+    setTimeout(() => dispatch("search"), 100);
+  }
 
 
-  const handleKeyDown = (e, textareaIndex) => {
+  const handleKeyDown = (e: KeyboardEvent, textareaIndex: number) => {
     if (e.key === "Enter" && !e.shiftKey && textareas[textareaIndex]?.enabled) {
       e.preventDefault();
       dispatch("search");
     }
   };
 
-  // ✅ Gestione menu dropdown
-  let openMenuIndex = null;
-  let fileInput;
+  const handleTextareaInput = (index: number, e: Event) => {
+    const value = (e.currentTarget as HTMLTextAreaElement | null)?.value ?? "";
+    update(index, value);
+  };
 
-  function toggleMenu(index) {
+  // ✅ Gestione menu dropdown
+  let openMenuIndex: number | null = null;
+  let fileInput: HTMLInputElement | null = null;
+
+  function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
   }
 
@@ -64,23 +129,26 @@ function swapQueries(indexA, indexB) {
 
   // ✅ NUOVO: Gestione immagini
 
-  function insertShortcut(index, shortcut) {
+  function insertShortcut(index: number, shortcut: string) {
     const currentValue = textareas[index].value || '';
     update(index, currentValue + shortcut);
     closeMenu();
   }
 
-  function handleImageFromFile(index) {
+  function handleImageFromFile(index: number) {
     fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
+    fileInput.onchange = (e: Event) => {
+      const target = e.currentTarget as HTMLInputElement | null;
+      const file = target?.files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          const dataUrl = event.target.result;
-          addImageToTextarea(index, dataUrl, file.name, 'file');
+        reader.onload = (event: ProgressEvent<FileReader>) => {
+          const dataUrl = event.target?.result;
+          if (typeof dataUrl === "string") {
+            addImageToTextarea(index, dataUrl, file.name, 'file');
+          }
         };
         reader.readAsDataURL(file);
       }
@@ -89,7 +157,7 @@ function swapQueries(indexA, indexB) {
     closeMenu();
   }
 
-  function handleImageFromURL(index) {
+  function handleImageFromURL(index: number) {
     const url = prompt('Enter image URL:');
     if (url) {
       addImageToTextarea(index, url, 'Image from URL', 'url');
@@ -97,14 +165,14 @@ function swapQueries(indexA, indexB) {
     closeMenu();
   }
 
-  function openImagePicker(index) {
+  function openImagePicker(index: number) {
     isSelectingImageFor = index;
     closeMenu();
     // ✅ Dispatch evento per attivare modalità selezione
     dispatch('startImageSelection', { textareaIndex: index });
   }
 
-  export function handleImageSelected(image) {
+  export function handleImageSelected(image: AvailableImage) {
     if (isSelectingImageFor === null) return;
     
     addImageToTextarea(
@@ -125,7 +193,7 @@ function swapQueries(indexA, indexB) {
 
 
   // ✅ MODIFICATO: addImageToTextarea ora accetta imgId opzionale
-  function addImageToTextarea(index, url, name, type, imgId = null) {
+  function addImageToTextarea(index: number, url: string, name: string, type: AttachedImage["type"], imgId: string | null = null) {
     if (!textareaImages[index]) {
       textareaImages[index] = [];
     }
@@ -135,7 +203,7 @@ function swapQueries(indexA, indexB) {
     dispatch('updateImages', { index, images: textareaImages[index] });
   }
 
-  function removeImageFromTextarea(textareaIndex, imageIndex) {
+  function removeImageFromTextarea(textareaIndex: number, imageIndex: number) {
     textareaImages[textareaIndex] = textareaImages[textareaIndex].filter((_, i) => i !== imageIndex);
 
     
@@ -144,13 +212,15 @@ function swapQueries(indexA, indexB) {
   }
 
   // Click outside per chiudere menu
-  function handleClickOutside(event) {
-    if (openMenuIndex !== null && !event.target.closest('.menu-container')) {
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (openMenuIndex !== null && !target.closest('.menu-container')) {
       closeMenu();
     }
   }
 
-  function openDateFilterModal(index) {
+  function openDateFilterModal(index: number) {
 
     modalConfig = {
       isOpen: true,
@@ -182,7 +252,7 @@ function swapQueries(indexA, indexB) {
     closeMenu();
   }
   
-  function openUrlModal(index) {
+  function openUrlModal(index: number) {
 
     modalConfig = {
       isOpen: true,
@@ -214,7 +284,7 @@ function swapQueries(indexA, indexB) {
     closeMenu();
   }
   
-  function openTypeFilterModal(index) {
+  function openTypeFilterModal(index: number) {
     modalConfig = {
       isOpen: true,
       title: 'Add Type Filter',
@@ -240,10 +310,14 @@ function swapQueries(indexA, indexB) {
     closeMenu();
   }
   
-  function handleModalSubmit(event) {
+  function handleModalSubmit(event: CustomEvent<ModalSubmitData>) {
 
     const data = event.detail;
     const { targetIndex, filterType } = modalConfig;
+    if (targetIndex === null) {
+      modalConfig.isOpen = false;
+      return;
+    }
     
     if (filterType === 'date') {
       let dateFilter = 'date:';
@@ -272,7 +346,7 @@ function swapQueries(indexA, indexB) {
       }
     } else if (filterType === 'type') {
       const currentValue = textareas[targetIndex].value || '';
-      update(targetIndex, currentValue + ' type:' + data.type);
+      update(targetIndex, currentValue + ' type:' + (data.type ?? ''));
     }
     
     modalConfig.isOpen = false;
@@ -347,6 +421,7 @@ function swapQueries(indexA, indexB) {
                   type="button"
                   on:click|stopPropagation={() => swapQueries(i, i - 1)}
                   title="Move up"
+                  aria-label="Move step up"
                   class="p-1 rounded hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition-all"
                 >
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -360,6 +435,7 @@ function swapQueries(indexA, indexB) {
                   type="button"
                   on:click|stopPropagation={() => swapQueries(i, i + 1)}
                   title="Move down"
+                  aria-label="Move step down"
                   class="p-1 rounded hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition-all"
                 >
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -377,6 +453,7 @@ function swapQueries(indexA, indexB) {
                 type="button"
                 on:click={() => toggle(i)}
                 title={textarea.enabled ? 'Skip this step' : 'Enable this step'}
+                aria-label={textarea.enabled ? 'Skip this step' : 'Enable this step'}
                 class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors
                        {textarea.enabled ? 'bg-green-600' : 'bg-gray-600'}"
               >
@@ -396,6 +473,7 @@ function swapQueries(indexA, indexB) {
                 type="button"
                 on:click={() => remove(i)}
                 title="Remove step"
+                aria-label="Remove step"
                 class="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center
                        rounded-md bg-red-600/90 hover:bg-red-600 text-white 
                        shadow-lg transition-all opacity-0 group-hover:opacity-100
@@ -431,6 +509,7 @@ function swapQueries(indexA, indexB) {
                       <button
                         type="button"
                         on:click={() => removeImageFromTextarea(i, imgIdx)}
+                        aria-label="Remove image"
                         class="absolute -top-1 -right-1 w-5 h-5 bg-red-600 hover:bg-red-700 
                                rounded-full flex items-center justify-center shadow-lg
                                opacity-0 group-hover/img:opacity-100 transition-opacity"
@@ -463,7 +542,7 @@ function swapQueries(indexA, indexB) {
                   ? `What happens ${i === 0 ? 'first' : 'at this point'}?` 
                   : "This step is skipped"}
                 disabled={!textarea.enabled}
-                on:input={(e) => update(i, e.target.value)}
+                on:input={(e) => handleTextareaInput(i, e)}
                 on:keydown={(e) => handleKeyDown(e, i)}
               ></textarea>
             </div>
@@ -475,6 +554,7 @@ function swapQueries(indexA, indexB) {
                   type="button"
                   on:click|stopPropagation={() => toggleMenu(i)}
                   title="Add attachment or filter"
+                  aria-label="Add attachment or filter"
                   class="p-1 rounded text-blue-400 hover:bg-blue-600/20 shadow transition-all hover:scale-110
                          {openMenuIndex === i ? 'bg-blue-600/30' : ''}"
                 >

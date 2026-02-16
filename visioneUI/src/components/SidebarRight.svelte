@@ -152,18 +152,19 @@
   {/if}
 
   <!-- ✅ RESIZE HANDLE - sempre visibile, FUORI dall'if -->
-  <div
+  <button
+    type="button"
     class="resize-handle-right"
     class:collapsed={!isOpen}
     on:mousedown={startResize}
     on:dblclick={toggleSidebar}
-    role="separator"
     aria-label="Resize sidebar"
+    tabindex="0"
   >
     {#if isOpen}
       <div class="hover-indicator-right"></div>
     {/if}
-  </div>
+  </button>
 </div>
 
 <style>

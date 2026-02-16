@@ -6,8 +6,8 @@
 
   const dispatch = createEventDispatcher();
   const openFromRF = (index) => dispatch("openFromRF", { index });
-  const removePositive = (index) => dispatch("removePositive", { index });
-  const removeNegative = (index) => dispatch("removeNegative", { index });
+  const removePositive = (imgId, index) => dispatch("removePositive", { imgId, index });
+  const removeNegative = (imgId, index) => dispatch("removeNegative", { imgId, index });
 </script>
 
 <div class="grid grid-cols-2 gap-4">
@@ -84,8 +84,8 @@
               tabindex="0"
               class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer shadow-lg z-10"
               title="Remove from positive feedback"
-              on:click={(e) => { e.stopPropagation(); removePositive(r.index); }}
-              on:keydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removePositive(r.index); }}}
+              on:click={(e) => { e.stopPropagation(); removePositive(r.imgId, r.index); }}
+              on:keydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removePositive(r.imgId, r.index); }}}
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M18 6L6 18M6 6l12 12"/>
@@ -177,8 +177,8 @@
               tabindex="0"
               class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer shadow-lg z-10"
               title="Remove from negative feedback"
-              on:click={(e) => { e.stopPropagation(); removeNegative(r.index); }}
-              on:keydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removeNegative(r.index); }}}
+              on:click={(e) => { e.stopPropagation(); removeNegative(r.imgId, r.index); }}
+              on:keydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removeNegative(r.imgId, r.index); }}}
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M18 6L6 18M6 6l12 12"/>

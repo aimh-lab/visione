@@ -1,15 +1,27 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import SidebarSearch from "../components/SidebarSearch.svelte";
   import SidebarRight from "../components/SidebarRight.svelte";
   import Topbar from "../components/Topbar.svelte";
   import SearchResults from "../components/SearchResults.svelte";
   import ImageModal from "../components/ImageModal.svelte";
-  import ContentControls from "../components/ContentControls.svelte";
   import EmptyState from '../components/EmptyState.svelte';
   import { toasts } from '../stores/toastStore.js';
   import WelcomeHero from '../components/WelcomeHero.svelte';
-  import SearchResultsSkeleton from '../components/SearchResultsSkeleton.svelte';
+
+  const TopbarAny = Topbar as any;
+  const EmptyStateAny = EmptyState as any;
+
+  type QueryTextarea = { value: string; enabled: boolean };
+  type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
+
+  type DispatchEvents = {
+    loadCachedResults: { cachedResults: unknown };
+    restoreFromURL: void;
+    updateURL: void;
+    updateImages: { index: number; images: unknown[] };
+    selectRightTab: unknown;
+  };
 
   // Stato/props dal genitore
   export let isSidebarOpen = true;
@@ -17,71 +29,74 @@
   export let sidebarRightTab = "RF";
   export let sidebarLeftWidth = 18;
   export let sidebarRightWidth = 18;
-  export let onResizeLeftSidebar = (width) => {};
-  export let onResizeRightSidebar = (width) => {};
-  export let activeTab = "Search";
-  export let textareas = [];
-  export let textareaImages = {}; // ✅ AGGIUNTO: ricevuto dal padre
+  export let onResizeLeftSidebar = (_width: number) => {};
+  export let onResizeRightSidebar = (_width: number) => {};
+  export let textareas: QueryTextarea[] = [];
+  export let textareaImages: Record<number, unknown[]> = {};
 
   export let searchLoading = false;
-  export let searchError = null;
-  export let searchResultSet = null;
-  export let rfPositive = [];
-  export let rfNegative = [];
-  export let submittedImages = [];
+  export let searchError: string | null = null;
+  export let searchResultSet: unknown = null;
+  export let rfPositive: Img[] = [];
+  export let rfNegative: Img[] = [];
+  export let submittedImages: Img[] = [];
   export let viewMode = "byrank";
   export let contentScale = 1;
-  export let images = [];
+  export let images: Img[] = [];
 
   // Modale immagini
-  export let selectedImage = null;
+  export let selectedImage: Img | null = null;
   export let isModalOpen = false;
   export let totalImages = 0;
 
   // Callback dal genitore
-  export let registerContainer = (el) => {};
+  export let registerContainer = (_el: Element | null) => {};
   export let onToggleSidebar = () => {};
   export let onToggleRightSidebar = () => {};
   export let onZoomIn = () => {};
   export let onZoomOut = () => {};
-  export let onChangeViewMode = (mode) => {};
+  export let onChangeViewMode = (_mode: string) => {};
 
-  export let onSelectTab = (tab) => {};
-  export let onAddTextarea = (index) => {};
-  export let onRemoveTextarea = (index) => {};
-  export let onToggleTextarea = (index) => {};
-  export let onUpdateTextarea = (index, value) => {};
+  export let onAddTextarea = (_index: number) => {};
+  export let onRemoveTextarea = (_index: number) => {};
+  export let onToggleTextarea = (_index: number) => {};
+  export let onUpdateTextarea = (_index: number, _value: string) => {};
 
-  export let rows = [];
+  export let rows: Img[][] = [];
 
   export let onRunSearch = () => {};
   export let onClearResults = () => {};
 
-  export let onOpenFromRF = (index) => {};
-  export let onOpenFromSubmitted = (index) => {};
-  export let onRemovePositive = (e) => {};
-  export let onRemoveNegative = (e) => {};
+  export let onOpenFromRF = (_index: number) => {};
+  export let onOpenFromSubmitted = (_index: number) => {};
+  export let onRemovePositive = (_e: CustomEvent) => {};
+  export let onRemoveNegative = (_e: CustomEvent) => {};
 
   // Azioni griglia
-  export let onVideoSummary = (videoId, imgId) => {};
-  export let onSimilarity = (imgId) => {};
-  export let openByImgId = (imgId) => {};  
-  export let openVideoPlayerBy = (imgId, videoId) => {};
+  export let onVideoSummary = (_videoId: string, _imgId: string) => {};
+  export let onSimilarity = (_imgId: string) => {};
+  export let openByImgId = (_imgId: string) => {};  
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string) => {};
 
   // Azioni modale
   export let onCloseModal = () => {};
   export let onPrev = () => {};
   export let onNext = () => {};
 
-  export let addRFPositiveByImg = (index) => {};
-  export let addRFNegativeByImg = (index) => {};
-  export let submitByImgId = (index) => {};
-  export let onLoadExample = (queries) => {};
+  export let addRFPositiveByImg = (_imgId: string) => {};
+  export let addRFNegativeByImg = (_imgId: string) => {};
+  export let submitByImgId = (_imgId: string) => {};
+  export let onLoadExample = (_queries: string[]) => {};
 
-  const dispatch = createEventDispatcher();
+  const dispatch = createEventDispatcher<DispatchEvents>();
   
-  let container;
-  let sidebarSearchRef;
+  type SidebarSearchRef = {
+    handleImageSelected: (image: Img) => void;
+    cancelImageSelection: () => void;
+  };
+
+  let container: Element | null = null;
+  let sidebarSearchRef: SidebarSearchRef | null = null;
   let isSelectingImage = false;
 
   $: hasActiveQueries = textareas.some(t => t.enabled && t.value?.trim());
@@ -89,30 +104,11 @@
   $: hasSearched = searchResultSet !== null;
   $: noResults = hasSearched && rows.length === 0;
   
-  function loadExampleQuery(...queries) {
-    onUpdateTextarea(0, queries[0]);
-    
-    for (let i = 1; i < queries.length; i++) {
-      setTimeout(() => {
-        onAddTextarea(i - 1);
-        setTimeout(() => {
-          onUpdateTextarea(i, queries[i]);
-        }, 50);
-      }, i * 100);
-    }
-    
-    setTimeout(() => {
-      onRunSearch();
-    }, queries.length * 150);
-    
-    toasts.info('Example query loaded!');
-  }
-
-  function handleStartImageSelection(e) {
+  function handleStartImageSelection(_e: CustomEvent<{ textareaIndex: number }>) {
     isSelectingImage = true;
   }
 
-  function handleImageSelectedFromGrid(e) {
+  function handleImageSelectedFromGrid(e: CustomEvent<Img>) {
     const image = e.detail;
     sidebarSearchRef?.handleImageSelected(image);
     isSelectingImage = false;
@@ -123,12 +119,21 @@
     isSelectingImage = false;
   }
 
-  function handleImageClick(e) {
+  function handleImageClick(e: CustomEvent<{ img: Img }>) {
     if (isSelectingImage) {
       handleImageSelectedFromGrid(e);
     } else {
-      openByImgId(e.detail.img.imgId);
+      openByImgId(String(e.detail.img.imgId ?? ""));
     }
+  }
+
+  function focusLeftTextarea() {
+    const input = document.querySelector('.sidebar-left textarea') as HTMLTextAreaElement | null;
+    input?.focus();
+  }
+
+  function enabledTextareasCount() {
+    return textareas.filter(t => t.enabled).length;
   }
 </script>
 
@@ -141,8 +146,8 @@
   {textareas}
   {textareaImages}
   {searchLoading}
-  {searchError}
-  {searchResultSet}
+  searchError={searchError as any}
+  searchResultSet={searchResultSet as any}
   {images}
   on:addTextarea={(e) => onAddTextarea(e.detail.index)}
   on:removeTextarea={(e) => onRemoveTextarea(e.detail.index)}
@@ -195,7 +200,8 @@
       </div>
     {/if}
 
-    <Topbar
+    <svelte:component
+      this={TopbarAny}
       {viewMode}
       {isSidebarOpen}
       {isSidebarRightOpen}
@@ -203,7 +209,7 @@
       on:toggleRightSidebar={onToggleRightSidebar}
       on:zoomIn={onZoomIn}
       on:zoomOut={onZoomOut}
-      on:changeViewMode={(e) => onChangeViewMode(e.detail.mode)}
+      on:changeViewMode={(e: any) => onChangeViewMode(e.detail.mode)}
     />
 
     <div class="content bg-gray-100 flex-1"
@@ -212,7 +218,7 @@
       <div class="flex-1 overflow-y-auto h-full" bind:this={container}>
         {#if isFirstVisit}
           <WelcomeHero
-            on:getStarted={() => document.querySelector('.sidebar-left textarea')?.focus()}
+            on:getStarted={focusLeftTextarea}
             on:loadExample={(e) => onLoadExample(e.detail)}
           />
           
@@ -229,7 +235,7 @@
               </h3>
               
               <p class="text-sm text-gray-400 mb-4">
-                Analyzing {textareas.filter(t => t.enabled).length} steps...
+                Analyzing {enabledTextareasCount()} steps...
               </p>
               
               <div class="flex items-center justify-center space-x-2">
@@ -241,7 +247,8 @@
           </div>
           
         {:else if searchError}
-          <EmptyState 
+          <svelte:component
+            this={EmptyStateAny}
             type="no-results"
             title="Search error"
             description={searchError}
@@ -250,9 +257,10 @@
           />
           
         {:else if noResults}
-          <EmptyState 
+          <svelte:component
+            this={EmptyStateAny}
             type="no-results"
-            onAction={() => document.querySelector('.sidebar-left textarea')?.focus()}
+            onAction={focusLeftTextarea}
           >
             <div class="text-xs text-gray-500 space-y-1">
               <p>💡 <strong>Suggestions:</strong></p>
@@ -262,12 +270,12 @@
                 <li>Try different phrasing</li>
               </ul>
             </div>
-          </EmptyState>
+          </svelte:component>
           
         {:else}
           <SearchResults
             {rows}
-            {selectedImage}
+            selectedImage={selectedImage as any}
             {viewMode}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
@@ -306,8 +314,8 @@
 <!-- Modal FUORI dal contenitore principale -->
 <ImageModal
   isOpen={isModalOpen}
-  image={selectedImage}
-  {totalImages}
+  image={selectedImage as any}
+  total={totalImages}
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}

@@ -342,17 +342,19 @@
     }
   }
 
-  onMount(async () => {
-    uiStore.actions.hydrateFromSettings();
-    uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
-    await tick();
+  onMount(() => {
+    const init = async () => {
+      uiStore.actions.hydrateFromSettings();
+      uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
+      await tick();
 
-    const urlState = deserializeFromURL();
-    if (Object.keys(urlState).length > 0) {
-      isRestoringFromHistory = true;
-      await restoreFromURLState(urlState);
-      isRestoringFromHistory = false;
-    }
+      const urlState = deserializeFromURL();
+      if (Object.keys(urlState).length > 0) {
+        isRestoringFromHistory = true;
+        await restoreFromURLState(urlState);
+        isRestoringFromHistory = false;
+      }
+    };
 
     const handlePopState = async () => {
       isRestoringFromHistory = true;
@@ -361,6 +363,7 @@
       isRestoringFromHistory = false;
     };
 
+    init();
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   });
@@ -375,13 +378,23 @@
   // Handler UI minimi
   // ---------------------------
   function handleRemovePositive(e) {
-    const { index } = e.detail;
-    rfPositive = rfPositive.filter(r => r.index !== index);
+    const { imgId, index } = e.detail || {};
+    const item = imgId
+      ? $sessionStore.rfPositive.find(r => r.imgId === imgId)
+      : $sessionStore.rfPositive.find(r => r.index === index);
+
+    if (!item?.imgId) return;
+    sessionStore.actions.toggleRFPositive({ imgId: item.imgId, imgObj: item });
   }
 
   function handleRemoveNegative(e) {
-    const { index } = e.detail;
-    rfNegative = rfNegative.filter(r => r.index !== index);
+    const { imgId, index } = e.detail || {};
+    const item = imgId
+      ? $sessionStore.rfNegative.find(r => r.imgId === imgId)
+      : $sessionStore.rfNegative.find(r => r.index === index);
+
+    if (!item?.imgId) return;
+    sessionStore.actions.toggleRFNegative({ imgId: item.imgId, imgObj: item });
   }
 
   function handleUpdateImages(e) {
@@ -602,10 +615,6 @@
       view2SelectedImgId = String(imgId).replace(/\.jpg$/i, "");
       tick().then(() => ui.scrollToImage(view2Container, view2SelectedImgId));
     }
-  }
-
-  function focusRightTab(tab) {
-    uiStore.actions.focusRightTab(tab);
   }
 
   // ---------------------------
@@ -976,8 +985,6 @@ function submitByImgId(imgId, fallback = null) {
 <!-- Template invariato -->
 <Keybindings
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen}
-  onMoveSelection={moveSelection}
-  onMoveSelectionRows={moveSelectionRows}
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
   onSubmitSelected={() => {
@@ -1078,7 +1085,6 @@ function submitByImgId(imgId, fallback = null) {
         isSidebarOpen={$uiStore.isSidebarOpen}
         isSidebarRightOpen={$uiStore.isSidebarRightOpen}
         sidebarRightTab={$uiStore.sidebarRightTab}
-        activeTab={activeTab}
         {textareas}
         {textareaImages}
         {searchLoading}
@@ -1118,7 +1124,6 @@ function submitByImgId(imgId, fallback = null) {
         onZoomOut={handleZoomOut}
 
         onChangeViewMode={(mode) => uiStore.actions.setViewMode(mode)}
-        onSelectTab={(tab) => (activeTab = tab)}
 
         openVideoPlayerBy={openVideoPlayerBy}
         onAddTextarea={addTextarea}
@@ -1173,9 +1178,6 @@ function submitByImgId(imgId, fallback = null) {
         registerContainer={registerView2Container}
         isSidebarOpen={$uiStore.isSidebarOpen}
         contentScale={$uiStore.contentScale}
-        view2Loading={view2Loading}
-        view2Error={view2Error}
-        view2VideoId={view2VideoId}
         frames={view2Frames}
         selectedFrameId={view2SelectedImgId}
 
@@ -1185,7 +1187,6 @@ function submitByImgId(imgId, fallback = null) {
         onZoomOut={handleZoomOut}
 
         onOpenFrame={(frame) => openFrameModal(frame)}
-        openByImgId={openByImgId}
         onSimilarity={(imgId) => openSimilarity(imgId)}
         addRFPositiveByImg={addRFPositiveByImg}
         addRFNegativeByImg={addRFNegativeByImg}
@@ -1205,9 +1206,6 @@ function submitByImgId(imgId, fallback = null) {
         isSidebarOpen={$uiStore.isSidebarOpen}
         contentScale={$uiStore.contentScale}
         viewMode={$uiStore.viewMode}
-        similarityBaseImgId={similarityBaseImgId}
-        similarityLoading={similarityLoading}
-        similarityError={similarityError}
         rows={similarityDisplayRows}
         simSelected={$similarityModal.selected}
         simIsModalOpen={$similarityModal.isOpen}
