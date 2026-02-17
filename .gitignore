@@ -6,6 +6,14 @@ visioneUI/node_modules/
 visioneUI/.svelte-kit/
 visioneUI/.vite/
 visioneUI/dist/
+
+# virtual envs
+.venv*/
+venv*/
+
+# outputs
+output*
+
 visioneUI/.svelte-kit/ambient.d.ts
 visioneUI/.svelte-kit/non-ambient.d.ts
 visioneUI/.svelte-kit/tsconfig.json

@@ -1,0 +1,8 @@
+# conf/config.yaml
+
+defaults:
+  - loader: ???
+  - common
+  - _self_
+
+batch_size: 128
