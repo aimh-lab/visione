@@ -1,0 +1,20 @@
+database:
+  host: localhost
+  port: 6024
+  user: langchain
+  password: langchain
+  dbname: langchain
+  table_name: lsc
+
+embedding:
+  server_url: localhost:8000
+  timeout: 120
+  # Map model names to their vector dimensions
+  models:
+    qwen_embedding_8B: 4096
+    openclip_clip_vit_b_32: 512
+    openclip_clip_vit_l_14: 768
+    dinov2_base: 768
+
+data:
+  server_url: localhost:3333

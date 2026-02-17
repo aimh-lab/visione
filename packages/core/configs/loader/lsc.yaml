@@ -1,0 +1,2 @@
+_target_: loaders.LSCLoader
+metadata_file: "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
