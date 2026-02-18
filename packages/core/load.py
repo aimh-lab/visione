@@ -27,8 +27,8 @@ async def run_pipeline(cfg: DictConfig):
 
     # --- 2. Setup Embeddings ---
     # Convert OmegaConf Dict to standard Python Dict for iteration
-    model_config = dict(cfg.embedding.models)
-    model_names = list(model_config.keys())
+    models_config = list(cfg.embedding.models)
+    model_names = [m['name'] for m in cfg.embedding.models]
     
     embedders = {
         name: RemoteEmbeddings(
@@ -43,17 +43,19 @@ async def run_pipeline(cfg: DictConfig):
     # --- 3. Database Connection ---
     connection_string = (
         f"postgresql+asyncpg://{cfg.database.user}:{cfg.database.password}"
-        f"@{cfg.database.host}:{cfg.database.port}/{cfg.database.dbname}"
+        f"@{cfg.database.host}/{cfg.database.dbname}"
     )
 
     # --- 5. Initialize Engine & Table ---
     metadata_columns = loader.get_column_schema()
     pg_engine = PGEngineWithMultiVector.from_connection_string(url=connection_string)
 
+    model_size_dict = {m['name']: m['dim'] for m in models_config}
+
     try:
         await pg_engine.ainit_vectorstore_table(
             table_name=cfg.database.table_name,
-            vector_size=model_config, # Pass the dictionary {model_name: size}
+            vector_size=model_size_dict, # Pass the dictionary {model_name: size}
             metadata_columns=metadata_columns,
             overwrite_existing=False
         )
@@ -63,7 +65,7 @@ async def run_pipeline(cfg: DictConfig):
             print(f"Table '{cfg.database.table_name}' already exists. Attempting update...")
             await pg_engine.aupdate_vectorstore_table(
                 table_name=cfg.database.table_name,
-                vector_size=model_config,
+                vector_size=model_size_dict,
             )
         else:
             raise e
@@ -80,7 +82,7 @@ async def run_pipeline(cfg: DictConfig):
     existing_ids_set = set()
     raw_conn_string = (
         f"postgresql://{cfg.database.user}:{cfg.database.password}"
-        f"@{cfg.database.host}:{cfg.database.port}/{cfg.database.dbname}"
+        f"@{cfg.database.host}/{cfg.database.dbname}"
     )
     
     try:
@@ -101,7 +103,7 @@ async def run_pipeline(cfg: DictConfig):
            query += f' AND "{model}" IS NOT NULL'
            
         results = await conn.fetch(query, all_hashed_ids)
-        existing_ids_set = {str(row[pk_column]) for row in results}
+        existing_ids_set = {str(row[pk_column]).replace('-', '') for row in results}
         print(f"Found {len(existing_ids_set)} existing documents in DB.")
     except Exception as e:
         print(f"Warning during ID check: {e}")

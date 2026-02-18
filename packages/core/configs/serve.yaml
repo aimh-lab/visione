@@ -1,0 +1,8 @@
+defaults:
+  - loader: ???
+  - common
+  - _self_
+
+host: localhost
+port: 8000
+default_k: 100

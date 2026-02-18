@@ -5,6 +5,9 @@ tqdm
 langchain-postgres==0.0.16
 pandas
 hydra-core==1.3.2
+fastapi
+uvicorn
+
 
 # langchain-ollama
 # langchain-community
