@@ -1,20 +1,27 @@
 database:
-  host: localhost
-  port: 6024
+  host: localhost:6024
   user: langchain
   password: langchain
   dbname: langchain
   table_name: lsc
 
 embedding:
-  server_url: localhost:8000
+  server_url: "http://trinity.isti.cnr.it:8000"
   timeout: 120
-  # Map model names to their vector dimensions
+  # Define available models here
   models:
-    qwen_embedding_8B: 4096
-    openclip_clip_vit_b_32: 512
-    openclip_clip_vit_l_14: 768
-    dinov2_base: 768
+    - name: "qwen_embedding_8B"
+      dim: 4096
+      mrl_dim_serve: 1024
+    - name: "openclip_clip_vit_b_32"
+      dim: 512
+      mrl_dim_serve: null 
+    - name: "openclip_clip_vit_l_14"
+      dim: 768
+      mrl_dim_serve: null
+    - name: "dinov2_base"
+      dim: 768
+      mrl_dim_serve: null
 
 data:
-  server_url: localhost:3333
+  server_url: "http://visione-dev.isti.cnr.it:3333"

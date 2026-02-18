@@ -126,6 +126,12 @@ class LSCLoader:
         path = os.path.join(f"{year}{month}", day, id_str)
 
         return path
+    
+    def retrieved_metadata_columns(self):
+        # Return the list of metadata keys that will be returned from a query
+        return [
+            "minute_id", "hour_id", "epoch"
+        ]
 
     def get_column_schema(self):
         # --- Define Metadata Schema ---
