@@ -20,6 +20,7 @@
     updateURL: void;
     updateImages: { index: number; images: unknown[] };
     selectRightTab: unknown;
+    clearQueryInputs: void;
   };
 
   // Stato/props dal genitore
@@ -78,7 +79,7 @@
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string) => {};
   export let openByImgId = (_imgId: string) => {};  
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
   // Azioni modale
   export let onCloseModal = () => {};
@@ -118,6 +119,7 @@
   $: isFirstVisit = !searchResultSet && !searchLoading && !hasActiveQueries;
   $: hasSearched = searchResultSet !== null;
   $: noResults = hasSearched && rows.length === 0;
+  $: enabledSteps = enabledTextareasCount();
   
   function handleStartImageSelection(_e: CustomEvent<{ textareaIndex: number }>) {
     isSelectingImage = true;
@@ -165,6 +167,7 @@
   on:updateTextarea={(e) => onUpdateTextarea(e.detail.index, e.detail.value)}
   on:runSearch={onRunSearch}
   on:clearResults={onClearResults}
+  on:clearQueryInputs={() => dispatch('clearQueryInputs')}
   on:swapTextarea
   on:resize={(e) => onResizeLeftSidebar(e.detail.width)}
   on:toggleSidebar={onToggleSidebar}
@@ -183,23 +186,23 @@
   <div class="flex flex-col flex-1 min-w-0">
     <!-- ✅ NUOVO: Banner modalità selezione -->
     {#if isSelectingImage}
-      <div class="sticky top-0 z-50 bg-gradient-to-r from-green-600 to-green-500 text-white px-6 py-4 shadow-xl border-b-2 border-green-700">
+      <div class="sticky top-0 z-40 border-b border-green-200 bg-green-50/95 backdrop-blur px-4 py-3">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
-          <div class="flex items-center space-x-4">
-            <div class="bg-white/20 p-2 rounded-lg">
-              <svg class="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <div class="flex items-center space-x-3">
+            <div class="bg-green-100 p-2 rounded-lg">
+              <svg class="w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 <path d="M9 12l2 2 4-4"/>
               </svg>
             </div>
             <div>
-              <p class="text-base font-bold">🎯 Image Selection Mode Active</p>
-              <p class="text-sm opacity-90">Click any result below to add it to your query</p>
+              <p class="text-sm font-semibold text-green-800">Image selection mode active</p>
+              <p class="text-xs text-green-700">Click any result below to attach it to the current query step</p>
             </div>
           </div>
           <button
             on:click={handleCancelImageSelection}
-            class="px-5 py-2.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-all hover:scale-105 flex items-center space-x-2 shadow-lg"
+            class="px-3.5 py-2 bg-white text-green-800 border border-green-300 hover:bg-green-100 rounded-lg text-xs font-semibold transition-colors flex items-center space-x-2"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M18 6L6 18M6 6l12 12"/>
@@ -233,19 +236,19 @@
           />
           
         {:else if searchLoading}
-          <div class="flex items-center justify-center h-full">
-            <div class="text-center">
-              <div class="relative inline-block mb-6">
-                <div class="w-20 h-20 border-4 border-blue-500/30 rounded-full animate-ping absolute"></div>
-                <div class="w-20 h-20 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+          <div class="flex items-center justify-center h-full px-6">
+            <div class="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-sm p-8 text-center">
+              <div class="relative inline-block mb-5">
+                <div class="w-16 h-16 border-4 border-blue-200 rounded-full animate-ping absolute"></div>
+                <div class="w-16 h-16 border-4 border-t-blue-600 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
               </div>
               
-              <h3 class="text-lg font-semibold text-gray-200 mb-2">
+              <h3 class="text-lg font-semibold text-gray-800 mb-2">
                 Searching temporal sequences
               </h3>
               
-              <p class="text-sm text-gray-400 mb-4">
-                Analyzing {enabledTextareasCount()} steps...
+              <p class="text-sm text-gray-500 leading-relaxed mb-4">
+                Analyzing {enabledSteps} active steps...
               </p>
               
               <div class="flex items-center justify-center space-x-2">
@@ -257,30 +260,56 @@
           </div>
           
         {:else if searchError}
-          <svelte:component
-            this={EmptyStateAny}
-            type="no-results"
-            title="Search error"
-            description={searchError}
-            actionLabel="Try Again"
-            onAction={onRunSearch}
-          />
+          <div class="flex items-center justify-center h-full px-6">
+            <div class="w-full max-w-2xl rounded-2xl border border-red-200 bg-white shadow-sm p-8 text-center">
+              <div class="mx-auto mb-4 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg class="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-2">Search error</h3>
+              <p class="text-sm text-gray-500 leading-relaxed mb-5">{searchError}</p>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+                on:click={onRunSearch}
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
           
         {:else if noResults}
-          <svelte:component
-            this={EmptyStateAny}
-            type="no-results"
-            onAction={focusLeftTextarea}
-          >
-            <div class="text-xs text-gray-500 space-y-1">
-              <p>💡 <strong>Suggestions:</strong></p>
-              <ul class="list-disc list-inside text-left inline-block">
-                <li>Use broader keywords</li>
-                <li>Remove some temporal steps</li>
-                <li>Try different phrasing</li>
-              </ul>
+          <div class="flex items-center justify-center h-full px-6">
+            <div class="w-full max-w-2xl rounded-2xl border border-blue-200 bg-white shadow-sm p-8 text-center">
+              <div class="mx-auto mb-4 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-800 mb-2">No results found</h3>
+              <p class="text-sm text-gray-500 leading-relaxed mb-5">Try adjusting your query steps or using broader keywords.</p>
+
+              <div class="text-xs text-gray-600 space-y-1 mb-5">
+                <p><strong>Suggestions</strong></p>
+                <ul class="list-disc list-inside text-left inline-block">
+                  <li>Use broader keywords</li>
+                  <li>Remove some temporal steps</li>
+                  <li>Try different phrasing</li>
+                </ul>
+              </div>
+
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                on:click={focusLeftTextarea}
+              >
+                Refine Query
+              </button>
             </div>
-          </svelte:component>
+          </div>
           
         {:else}
           <SearchResults
@@ -292,7 +321,7 @@
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}
-            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId)}
+            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}
             on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
             on:similarity={(e) => onSimilarity(e.detail.imgId)}
             on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
@@ -336,5 +365,5 @@
   on:similarity={(e) => onSimilarity(e.detail.imgId)}
   on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
-  on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId)}
+  on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}
 />

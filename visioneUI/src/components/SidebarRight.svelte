@@ -94,7 +94,7 @@
         <button
           class="flex-1 flex flex-col items-center justify-center px-2 py-2 rounded-lg font-medium text-xs transition-all duration-200
                  {activeTab === tab.id 
-                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                   ? 'bg-slate-600 text-white shadow-lg shadow-slate-700/30' 
                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'}"
           on:click={() => selectTab(tab.id)}
         >
@@ -112,14 +112,14 @@
         <div>
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
               </svg>
               <h3 class="text-sm font-semibold text-gray-200">Relevance Feedback</h3>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="px-2 py-0.5 bg-green-600/20 text-green-400 text-xs font-medium rounded-full">{rfPositive.length}</span>
-              <span class="px-2 py-0.5 bg-red-600/20 text-red-400 text-xs font-medium rounded-full">{rfNegative.length}</span>
+              <span class="px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-green-300 text-xs font-medium rounded-full">{rfPositive.length}</span>
+              <span class="px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-red-300 text-xs font-medium rounded-full">{rfNegative.length}</span>
             </div>
           </div>
           <RFLists
@@ -135,12 +135,12 @@
         <div>
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <h3 class="text-sm font-semibold text-gray-200">Submitted Frames</h3>
             </div>
-            <span class="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs font-medium rounded-full">{submittedImages.length}</span>
+            <span class="px-2 py-0.5 bg-slate-800/40 border border-slate-600/40 text-slate-200 text-xs font-medium rounded-full">{submittedImages.length}</span>
           </div>
           <SubmittedList
             {submittedImages}
@@ -157,7 +157,6 @@
     class="resize-handle-right"
     class:collapsed={!isOpen}
     on:mousedown={startResize}
-    on:dblclick={toggleSidebar}
     aria-label="Resize sidebar"
     tabindex="0"
   >
@@ -165,6 +164,24 @@
       <div class="hover-indicator-right"></div>
     {/if}
   </button>
+    <button
+      type="button"
+      class="sidebar-toggle-tab sidebar-toggle-tab-right"
+      on:click={toggleSidebar}
+      aria-label={isOpen ? "Hide right sidebar" : "Show right sidebar"}
+      title={isOpen ? "Hide sidebar" : "Show sidebar"}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="w-4 h-4 transition-transform duration-200 {isOpen ? '' : 'rotate-180'}"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </button>
 </div>
 
 <style>
@@ -196,17 +213,17 @@
 
 .resize-handle-right:not(.collapsed):hover {
   width: 12px;
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.45);
 }
 
 .resize-handle-right.collapsed {
   width: 12px;
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(100, 116, 139, 0.28);
   cursor: pointer;
 }
 
 .resize-handle-right.collapsed:hover {
-  background: rgba(59, 130, 246, 0.6);
+  background: rgba(100, 116, 139, 0.5);
 }
 
 .hover-indicator-right {
@@ -216,7 +233,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 48px;
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.45);
   border-radius: 0 4px 4px 0;
   opacity: 0;
   transition: opacity 0.2s;
@@ -226,21 +243,56 @@
   opacity: 1;
 }
 
+.sidebar-toggle-tab {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 72px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: linear-gradient(180deg, rgba(243, 244, 246, 0.98) 0%, rgba(209, 213, 219, 0.98) 100%);
+  color: rgba(31, 41, 55, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-toggle-tab:hover {
+  background: linear-gradient(180deg, rgba(229, 231, 235, 0.98) 0%, rgba(156, 163, 175, 0.98) 100%);
+  color: #111827;
+  border-color: rgba(55, 65, 81, 0.95);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-toggle-tab:focus-visible {
+  outline: 2px solid rgba(148, 163, 184, 0.95);
+  outline-offset: 2px;
+}
+
+.sidebar-toggle-tab-right {
+  left: -13px;
+  border-radius: 10px 0 0 10px;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.16);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.42);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.7);
+  background: rgba(100, 116, 139, 0.58);
 }
 </style>

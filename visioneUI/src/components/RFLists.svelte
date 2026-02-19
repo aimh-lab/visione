@@ -21,7 +21,7 @@
         </svg>
         <h4 class="text-sm font-semibold text-green-400">Positive</h4>
       </div>
-      <span class="px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full">
+      <span class="px-2 py-0.5 text-xs font-medium bg-green-900/25 border border-green-700/40 text-green-300 rounded-full">
         {rfPositive.length}
       </span>
     </div>
@@ -114,7 +114,7 @@
         </svg>
         <h4 class="text-sm font-semibold text-red-400">Negative</h4>
       </div>
-      <span class="px-2 py-0.5 text-xs font-medium bg-red-600 text-white rounded-full">
+      <span class="px-2 py-0.5 text-xs font-medium bg-red-900/25 border border-red-700/40 text-red-300 rounded-full">
         {rfNegative.length}
       </span>
     </div>

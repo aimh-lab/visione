@@ -7,14 +7,6 @@
 </script>
 
 <div class="space-y-3">
-  <!-- Header with count badge -->
-  <div class="flex items-center justify-between">
-    <h3 class="text-sm font-semibold text-gray-200">Submitted Images</h3>
-    <span class="px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded-full">
-      {submittedImages.length}
-    </span>
-  </div>
-
   {#if submittedImages.length === 0}
     <!-- Empty state -->
     <div class="flex flex-col items-center justify-center py-8 px-4 bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-700">
@@ -23,7 +15,7 @@
         <circle cx="8.5" cy="8.5" r="1.5"/>
         <path d="M21 15l-5-5L5 21"/>
       </svg>
-      <p class="text-xs text-gray-400 text-center">No images submitted yet</p>
+      <p class="text-xs text-gray-400 text-center">No frames submitted yet</p>
     </div>
   {:else}
     <!-- Grid of submitted images -->
@@ -66,7 +58,7 @@
           </div>
 
           <!-- Submitted badge -->
-          <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-green-600 text-white text-[10px] font-bold rounded-full shadow-lg">
+          <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-green-900/40 border border-green-700/40 text-green-200 text-[10px] font-bold rounded-full shadow-lg">
             ✓
           </div>
 

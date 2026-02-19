@@ -5,6 +5,7 @@
 
   // Existing props
   export let isModalOpen = false;
+  export let isVideoPlayerOpen = false;
   /** @type {() => void} */
   export let onOpenAtSelected = () => {};
   /** @type {(offset: number, toFirstOfRow?: boolean) => void} */
@@ -70,6 +71,11 @@
     }
 
     if (isTypingTarget(e.target) && !showHelp) return;
+
+    // When video player is open, let it own keyboard interactions (Esc, S, arrows, etc.)
+    if (isVideoPlayerOpen) {
+      return;
+    }
 
     // Modal shortcuts
     if (isModalOpen) {

@@ -3,6 +3,30 @@
 :root {
   /*--sidebar-width: clamp(200px, 18vw, 360px);*/
 
+  --ui-bg: #f3f4f6;
+  --ui-surface: #ffffff;
+  --ui-surface-muted: #f8fafc;
+  --ui-border: #d1d5db;
+  --ui-text: #111827;
+  --ui-text-muted: #6b7280;
+
+  --ui-sidebar-bg-top: #111827;
+  --ui-sidebar-bg-bottom: #1f2937;
+  --ui-sidebar-surface: rgba(31, 41, 55, 0.55);
+  --ui-sidebar-border: #374151;
+  --ui-sidebar-text: #e5e7eb;
+  --ui-sidebar-muted: #9ca3af;
+
+  --ui-primary-50: #eff6ff;
+  --ui-primary-100: #dbeafe;
+  --ui-primary-600: #2563eb;
+  --ui-primary-700: #1d4ed8;
+  --ui-primary-800: #1e40af;
+
+  --ui-success-600: #16a34a;
+  --ui-danger-600: #dc2626;
+  --ui-warning-500: #f59e0b;
+
   /* Base font size responsive */
   font-size: clamp(12px, 1.2vw, 16px);
   

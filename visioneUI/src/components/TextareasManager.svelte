@@ -91,8 +91,16 @@
   const add = (i: number) => dispatch("add", { index: i });
   const remove = (i: number) => dispatch("remove", { index: i });
   const toggle = (index: number) => {
-    dispatch("toggle", { index }); 
-    setTimeout(() => dispatch("search"), 0);
+    const nextTextareas = textareas.map((t, i) =>
+      i === index ? { ...t, enabled: !t.enabled } : t
+    );
+    const hasActiveQuery = nextTextareas.some(t => t.enabled && t.value?.trim());
+
+    dispatch("toggle", { index });
+
+    if (hasActiveQuery) {
+      setTimeout(() => dispatch("search"), 0);
+    }
   };
   const update = (i: number, value: string) => dispatch("update", { index: i, value });
   
@@ -121,16 +129,36 @@
     update(index, value);
   };
 
+  function clearTextareaValue(index: number) {
+    update(index, "");
+  }
+
   // ✅ Gestione menu dropdown
   let openMenuIndex: number | null = null;
+  let openStepActionsIndex: number | null = null;
   let fileInput: HTMLInputElement | null = null;
 
   function toggleMenu(index: number) {
+    openStepActionsIndex = null;
     openMenuIndex = openMenuIndex === index ? null : index;
   }
 
   function closeMenu() {
     openMenuIndex = null;
+  }
+
+  function toggleStepActions(index: number) {
+    closeMenu();
+    openStepActionsIndex = openStepActionsIndex === index ? null : index;
+  }
+
+  function closeStepActions() {
+    openStepActionsIndex = null;
+  }
+
+  function removeStepFromMenu(index: number) {
+    remove(index);
+    closeStepActions();
   }
 
   // ✅ NUOVO: Gestione immagini
@@ -223,6 +251,9 @@
     if (!(target instanceof Element)) return;
     if (openMenuIndex !== null && !target.closest('.menu-container')) {
       closeMenu();
+    }
+    if (openStepActionsIndex !== null && !target.closest('.step-actions-menu')) {
+      closeStepActions();
     }
   }
 
@@ -367,24 +398,6 @@
 <svelte:window on:click={handleClickOutside} />
 
 <div class="space-y-4">
-  <!-- Info box -->
-  <div class="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-700/50 rounded-lg p-3">
-    <div class="flex items-start space-x-2">
-      <div class="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-xs font-bold text-blue-300 mb-0.5">Temporal Sequence Search</h4>
-        <p class="text-[10px] text-blue-200/80 leading-relaxed">
-          Find videos where scenes appear <strong>in order</strong> over time.
-        </p>
-      </div>
-    </div>
-  </div>
-
   <!-- Query cards -->
   <div class="space-y-3">
     {#each textareas as textarea, i}
@@ -396,8 +409,39 @@
             <!-- Badge temporale CON numero -->
             <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full
                         {textarea.enabled 
-                          ? 'bg-blue-900/40 border border-blue-700/60' 
+                          ? 'bg-slate-800/65 border border-slate-600/60' 
                           : 'bg-gray-800/40 border border-gray-700/60'}">
+              <!-- Frecce riordino (spostate vicino al numero step) -->
+              <div class="flex items-center space-x-0.5">
+                {#if i > 0}
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => swapQueries(i, i - 1)}
+                    title="Move up"
+                    aria-label="Move step up"
+                    class="p-0.5 rounded hover:bg-slate-600/30 text-slate-300 hover:text-slate-200 transition-all"
+                  >
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M5 15l7-7 7 7"/>
+                    </svg>
+                  </button>
+                {/if}
+
+                {#if i < textareas.length - 1}
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => swapQueries(i, i + 1)}
+                    title="Move down"
+                    aria-label="Move step down"
+                    class="p-0.5 rounded hover:bg-slate-600/30 text-slate-300 hover:text-slate-200 transition-all"
+                  >
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                {/if}
+              </div>
+
               <!-- Numero -->
               <div class="flex items-center justify-center w-4 h-4 rounded-full
                           {textarea.enabled ? 'bg-blue-600' : 'bg-gray-600'}">
@@ -407,7 +451,7 @@
               </div>
               
               <!-- Icona clock -->
-              <svg class="w-2.5 h-2.5 {textarea.enabled ? 'text-blue-400' : 'text-gray-500'}" 
+              <svg class="w-2.5 h-2.5 {textarea.enabled ? 'text-slate-300' : 'text-gray-500'}" 
                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 6v6l4 2"/>
@@ -415,45 +459,13 @@
               
               <!-- Label temporale -->
               <span class="text-[10px] font-bold uppercase tracking-wide
-                           {textarea.enabled ? 'text-blue-300' : 'text-gray-500'}">
+                           {textarea.enabled ? 'text-slate-300' : 'text-gray-500'}">
                 {i === 0 ? 'First' : i === textareas.length - 1 ? 'Finally' : 'Then'}
               </span>
             </div>
             
             <!-- Controlli compatti -->
             <div class="flex items-center space-x-0.5">
-              {#if i > 0}
-                <button
-                  type="button"
-                  on:click|stopPropagation={() => swapQueries(i, i - 1)}
-                  title="Move up"
-                  aria-label="Move step up"
-                  class="p-1 rounded hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition-all"
-                >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M5 15l7-7 7 7"/>
-                  </svg>
-                </button>
-              {/if}
-
-              {#if i < textareas.length - 1}
-                <button
-                  type="button"
-                  on:click|stopPropagation={() => swapQueries(i, i + 1)}
-                  title="Move down"
-                  aria-label="Move step down"
-                  class="p-1 rounded hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition-all"
-                >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M19 9l-7 7-7-7"/>
-                  </svg>
-                </button>
-              {/if}
-
-              {#if (i > 0 || i < textareas.length - 1)}
-                <div class="w-px h-3 bg-gray-700 mx-0.5"></div>
-              {/if}
-
               <!-- Toggle compatto -->
               <button
                 type="button"
@@ -468,29 +480,46 @@
                          {textarea.enabled ? 'translate-x-3' : 'translate-x-0.5'}"
                 ></span>
               </button>
+
+              {#if textareas.length > 1}
+                <div class="relative step-actions-menu ml-1">
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => toggleStepActions(i)}
+                    title="More step actions"
+                    aria-label="More step actions"
+                    aria-haspopup="menu"
+                    aria-expanded={openStepActionsIndex === i}
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full
+                           bg-gray-700/85 hover:bg-gray-600 text-gray-200
+                           shadow transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="6" cy="12" r="1.5"/>
+                      <circle cx="12" cy="12" r="1.5"/>
+                      <circle cx="18" cy="12" r="1.5"/>
+                    </svg>
+                  </button>
+
+                  {#if openStepActionsIndex === i}
+                    <div class="absolute right-0 mt-1 w-36 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-50 p-1" role="menu">
+                      <button
+                        type="button"
+                        on:click|stopPropagation={() => removeStepFromMenu(i)}
+                        class="w-full text-left px-2.5 py-2 rounded-md text-xs text-red-200 hover:text-red-100 hover:bg-red-900/35 transition-colors"
+                        role="menuitem"
+                      >
+                        Remove step
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
           </div>
           
           <!-- Textarea container con remove button sovrapposto -->
           <div class="relative textarea-container">
-            <!-- ✅ Remove button nell'angolo in alto a destra -->
-            {#if textareas.length > 1}
-              <button
-                type="button"
-                on:click={() => remove(i)}
-                title="Remove step"
-                aria-label="Remove step"
-                class="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center
-                       rounded-md bg-red-600/90 hover:bg-red-600 text-white 
-                       shadow-lg transition-all opacity-0 group-hover:opacity-100
-                       hover:scale-110"
-              >
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            {/if}
-
             <!-- Container ibrido con immagini -->
             <div class="relative">
               <!-- Immagini sopra la textarea -->
@@ -538,7 +567,7 @@
               <!-- Textarea -->
               <textarea
                 bind:this={textareaRefs[i]}
-                class="w-full p-2.5 pb-8 border-2 resize-none transition-all duration-200 font-mono text-xs
+                class="w-full p-2.5 pr-9 pb-8 border-2 resize-none transition-all duration-200 font-mono text-xs
                        {textareaImages[i]?.length > 0 ? 'rounded-b-2xl rounded-t-none' : 'rounded-2xl'}
                        {textarea.enabled 
                          ? 'bg-gray-900 text-white border-blue-500/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 shadow-lg' 
@@ -546,12 +575,26 @@
                 rows="4"
                 bind:value={textarea.value}
                 placeholder={textarea.enabled 
-                  ? `What happens ${i === 0 ? 'first' : 'at this point'}?` 
+                  ? `Define what should appear ${i === 0 ? 'first in the video' : 'at this stage of the video'}` 
                   : "This step is skipped"}
                 disabled={!textarea.enabled}
                 on:input={(e) => handleTextareaInput(i, e)}
                 on:keydown={(e) => handleKeyDown(e, i)}
               ></textarea>
+
+              {#if textarea.enabled && textarea.value?.trim()}
+                <button
+                  type="button"
+                  on:click={() => clearTextareaValue(i)}
+                  class="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-gray-700/85 hover:bg-gray-600 text-gray-200 hover:text-white flex items-center justify-center transition-colors"
+                  title="Clear text"
+                  aria-label="Clear textarea text"
+                >
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              {/if}
             </div>
 
             <!-- Menu dropdown button -->
@@ -562,8 +605,8 @@
                   on:click|stopPropagation={() => toggleMenu(i)}
                   title="Add attachment or filter"
                   aria-label="Add attachment or filter"
-                  class="p-1 rounded text-blue-400 hover:bg-blue-600/20 shadow transition-all hover:scale-110
-                         {openMenuIndex === i ? 'bg-blue-600/30' : ''}"
+                    class="p-1 rounded text-slate-300 hover:bg-slate-600/20 shadow transition-all hover:scale-110
+                      {openMenuIndex === i ? 'bg-slate-600/30' : ''}"
                 >
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M12 5v14M5 12h14"/>
@@ -582,11 +625,11 @@
                       <button
                         type="button"
                         on:click|stopPropagation={() => openImagePicker(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-blue-600/20 text-left transition-colors group"
+                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                         disabled={availableImages.length === 0}
                       >
-                        <div class="w-8 h-8 rounded-lg bg-green-600/20 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
-                          <svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                             <path d="M9 12l2 2 4-4"/>
                           </svg>
@@ -607,10 +650,10 @@
                       <button
                         type="button"
                         on:click|stopPropagation={() => handleImageFromFile(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-blue-600/20 text-left transition-colors group"
+                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                       >
-                        <div class="w-8 h-8 rounded-lg bg-purple-600/20 flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
-                          <svg class="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                          <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2"/>
                             <circle cx="8.5" cy="8.5" r="1.5"/>
                             <path d="M21 15l-5-5L5 21"/>
@@ -626,10 +669,10 @@
                       <button
                         type="button"
                         on:click|stopPropagation={() => openUrlModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-blue-600/20 text-left transition-colors group"
+                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                       >
-                        <div class="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                          <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                           </svg>
@@ -647,10 +690,10 @@
                       <button
                         type="button"
                         on:click|stopPropagation={() => openDateFilterModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-blue-600/20 text-left transition-colors group"
+                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                       >
-                        <div class="w-8 h-8 rounded-lg bg-green-600/20 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
-                          <svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="4" width="18" height="18" rx="2"/>
                             <path d="M16 2v4M8 2v4M3 10h18"/>
                           </svg>
@@ -665,10 +708,10 @@
                       <button
                         type="button"
                         on:click|stopPropagation={() => openTypeFilterModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-blue-600/20 text-left transition-colors group"
+                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                       >
-                        <div class="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center group-hover:bg-orange-600/30 transition-colors">
-                          <svg class="w-4 h-4 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                          <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                             <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
                           </svg>
@@ -732,10 +775,6 @@
 </div>
 
 <style>
-  .textarea-container:hover button[title="Remove step"] {
-    opacity: 1;
-  }
-
   @keyframes slide-up {
     from {
       opacity: 0;

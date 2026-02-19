@@ -328,17 +328,6 @@
     }
   });
 
-
-
-  // Clear results se tutte le textarea sono vuote
-  $: {
-    const hasActiveQuery = textareas.some(t => t.enabled && t.value?.trim());
-    if (!hasActiveQuery && searchResultSet !== null) {
-      searchResultSet = null;
-      images = [];
-    }
-  }
-
   // Aggiorna i dataset nei controller quando cambiano
   $: searchModal.setItems(images);
   $: if (!$similarityModal.isOpen) similarityModal.setItems(flatSimilarity());
@@ -465,9 +454,22 @@
     return [...new Set([...searchKeyframes, ...simKeyframes])];
   }
 
-  async function openVideoPlayerBy(imgId, videoId) {
+  async function openVideoPlayerBy(imgId, videoId, startAt) {
     try {
       const vid = String(videoId ?? String(imgId).split("-")[0]).padStart(5, "0");
+
+      if (typeof startAt === "number") {
+        videoPlayer = {
+          url: visioneAPI.getVideoUrl(vid, "medium"),
+          startTime: Math.max(0, startAt),
+          title: `${vid}`,
+          videoId: vid,
+          highlightedKeyframes: getHighlightedKeyframesForVideo(vid)
+        };
+        isVideoPlayerOpen = true;
+        return;
+      }
+
       const middle = await visioneAPI.getMiddleTimestamp(imgId);
       const url = visioneAPI.getVideoUrl(vid, "medium");
 
@@ -855,7 +857,13 @@ function submitByImgId(imgId, fallback = null) {
   function removeTextarea(index) {
     if (textareas.length > 1) {
       textareas = textareas.filter((_, i) => i !== index);
-      toasts.info("Query step removed");
+      const hasActiveQuery = textareas.some(t => t.enabled && t.value?.trim());
+      if (hasActiveQuery) {
+        toasts.info("Query step removed, updating results...");
+        setTimeout(() => runSearch(), 0);
+      } else {
+        toasts.info("Query step removed");
+      }
     }
   }
 
@@ -912,15 +920,15 @@ function submitByImgId(imgId, fallback = null) {
   }
 
   // ---------------------------
-  // Reset completo
+  // Reset search session (preserva settings utente)
   // ---------------------------
   function resetApp() {
     const ok = window.confirm(
-      "Reset app to initial state? This will clear all results and queries."
+      "Reset current search session? This will clear queries, results, RF and submitted items, but keep your app settings."
     );
     if (!ok) return;
 
-    uiStore.actions.resetUI();
+    uiStore.actions.setLayoutTab('View1');
 
     textareas = [{ value: "", enabled: true }];
     textareaImages = {};
@@ -965,7 +973,7 @@ function submitByImgId(imgId, fallback = null) {
       if (similarityContainer) similarityContainer.scrollTop = 0;
     });
     sessionStore.actions.clearAll();
-    toasts.success("🔄 App reset to initial state");
+    toasts.success("🔄 Search session cleared (settings preserved)");
   }
 
   // ---------------------------
@@ -997,6 +1005,7 @@ function submitByImgId(imgId, fallback = null) {
 <!-- Template invariato -->
 <Keybindings
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen}
+  isVideoPlayerOpen={isVideoPlayerOpen}
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
   onSubmitSelected={() => {
@@ -1185,6 +1194,11 @@ function submitByImgId(imgId, fallback = null) {
         on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB)}
         onLoadExample={(queries) => loadExampleQuery(queries)}
         on:updateImages={handleUpdateImages}
+        on:clearQueryInputs={() => {
+          textareas = [{ value: "", enabled: true }];
+          textareaImages = {};
+          toasts.info("Query inputs cleared");
+        }}
       />
 
     {:else if $uiStore.layoutTab === "View2"}
@@ -1193,6 +1207,8 @@ function submitByImgId(imgId, fallback = null) {
         isSidebarOpen={$uiStore.isSidebarOpen}
         contentScale={$uiStore.contentScale}
         frames={view2Frames}
+        loading={view2Loading}
+        error={view2Error}
         selectedFrameId={view2SelectedImgId}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -1223,6 +1239,8 @@ function submitByImgId(imgId, fallback = null) {
         contentScale={$uiStore.contentScale}
         viewMode={$uiStore.viewMode}
         rows={similarityDisplayRows}
+        loading={similarityLoading}
+        error={similarityError}
         simSelected={$similarityModal.selected}
         simIsModalOpen={$similarityModal.isOpen}
         virtualizationEnabled={$uiStore.virtualizationEnabled}

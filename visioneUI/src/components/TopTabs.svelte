@@ -106,7 +106,7 @@
       <button 
         on:click={() => dispatch('reset')}
         class="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
-        title="Click to reset app"
+        title="Clear current search session"
       >
         <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
       </button>
@@ -177,7 +177,7 @@
         class="p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarOpen 
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
-                 : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}"
+                 : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
         title="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
         aria-label="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
         on:click={toggleSidebar}
@@ -199,8 +199,8 @@
       <button
         class="p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarRightOpen 
-                 ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' 
-                 : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}"
+                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                 : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
         title="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar (RF & Submitted)"
         aria-label="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar"
         on:click={toggleRightSidebar}

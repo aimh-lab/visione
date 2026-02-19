@@ -26,8 +26,28 @@
   const toggleTA = (i) => dispatch("toggleTextarea", { index: i });
   const updateTA = (i, value) => dispatch("updateTextarea", { index: i, value });
   const doSearch = () => dispatch("runSearch");
-  const clearResults = () => dispatch("clearResults");
+  const clearQueryInputs = () => dispatch("clearQueryInputs");
   const handleSearchFromTextarea = () => dispatch("runSearch");
+  let isQueryMenuOpen = false;
+
+  function toggleQueryMenu(e) {
+    e.stopPropagation();
+    isQueryMenuOpen = !isQueryMenuOpen;
+  }
+
+  function handleResetQuery(e) {
+    e.stopPropagation();
+    clearQueryInputs();
+    isQueryMenuOpen = false;
+  }
+
+  function handleWindowClick(e) {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (!target.closest('.query-more-menu')) {
+      isQueryMenuOpen = false;
+    }
+  }
   const swapTA = (idxA, idxB) => {
     dispatch("swapTextarea", { indexA: idxA, indexB: idxB });
   };
@@ -110,6 +130,7 @@
 <svelte:window 
   on:mousemove={handleMouseMove} 
   on:mouseup={stopResize}
+  on:click={handleWindowClick}
 />
 
 <div 
@@ -119,25 +140,38 @@
   
   {#if isSidebarOpen}
     <!-- Header -->
-    <div class="px-4 py-3 bg-gray-900/30 border-b border-gray-700 flex-shrink-0">
+    <div class="px-3 py-2 bg-gray-900/30 border-b border-gray-700 flex-shrink-0">
       <div class="flex items-center space-x-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
         </svg>
-        <h2 class="text-lg font-bold text-white">Search</h2>
+        <h2 class="text-base font-bold text-white">Search</h2>
       </div>
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-      <div class="space-y-6">
+    <div class="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
         <!-- Query Builder -->
-        <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700 shadow-lg">
-          <div class="flex items-center space-x-2 mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700 shadow-lg">
+          <div class="flex items-center space-x-2 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
-            <h3 class="text-sm font-bold text-white">Build Your Query</h3>
+            <h3 class="text-xs font-bold text-white uppercase tracking-wide">Build Temporal Query</h3>
+            <div class="relative group/info ml-0.5">
+              <button
+                type="button"
+                class="w-4 h-4 rounded-full border border-slate-500/70 text-slate-300 text-[10px] font-bold inline-flex items-center justify-center hover:bg-slate-600/20 transition-colors"
+                aria-label="Temporal sequence search info"
+                title="Temporal Sequence Search"
+              >
+                i
+              </button>
+              <div class="absolute right-0 top-full mt-1 hidden group-hover/info:block z-40 w-36 max-w-[calc(100vw-3rem)] rounded-md border border-gray-700 bg-gray-900 px-2.5 py-2 text-[10px] leading-snug text-gray-200 shadow-xl">
+                <p class="font-semibold text-slate-200 mb-0.5">Temporal Sequence Search</p>
+                <p>Find videos where scenes appear in order over time.</p>
+              </div>
+            </div>
           </div>
           
           <TextareasManager
@@ -182,50 +216,68 @@
             </div>
           {/if}
           
-          <!-- Search button -->
-          <button
-            on:click={doSearch}
-            disabled={searchLoading}
-            class="w-full mt-4 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 
-                   text-white font-bold rounded-lg shadow-xl hover:shadow-2xl 
-                   transform hover:scale-[1.02] active:scale-[0.98] 
-                   transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-                   flex items-center justify-center space-x-2"
-          >
-            {#if searchLoading}
-              <svg class="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32" opacity="0.3"/>
-                <path d="M12 2a10 10 0 0110 10" stroke-linecap="round"/>
-              </svg>
-              <span>Searching...</span>
-            {:else}
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-              <span>Search Videos</span>
-            {/if}
-          </button>
-          
-          <!-- Clear button -->
-          {#if searchResultSet}
+          <div class="mt-3 flex items-center gap-2">
             <button
-              on:click={clearResults}
-              class="w-full mt-2 py-2 bg-gray-700/50 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-all"
+              on:click={doSearch}
+              disabled={searchLoading}
+              class="{searchResultSet ? 'flex-1' : 'w-full'} py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                     text-white font-bold rounded-lg shadow-xl hover:shadow-2xl 
+                     transform hover:scale-[1.02] active:scale-[0.98] 
+                     transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm
+                     flex items-center justify-center space-x-2"
             >
-              Clear Results
+              {#if searchLoading}
+                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32" opacity="0.3"/>
+                  <path d="M12 2a10 10 0 0110 10" stroke-linecap="round"/>
+                </svg>
+                <span>Searching...</span>
+              {:else}
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <span>Search</span>
+              {/if}
             </button>
-          {/if}
+
+            {#if searchResultSet}
+              <div class="relative query-more-menu">
+                <button
+                  type="button"
+                  on:click={toggleQueryMenu}
+                  class="inline-flex items-center justify-center px-2.5 py-2.5 bg-gray-700/50 hover:bg-gray-600/70 text-gray-200 text-sm rounded-lg border border-gray-600/60 transition-all"
+                  title="More actions"
+                  aria-label="Open query actions"
+                  aria-haspopup="menu"
+                  aria-expanded={isQueryMenuOpen}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="6" cy="12" r="1.7"/>
+                    <circle cx="12" cy="12" r="1.7"/>
+                    <circle cx="18" cy="12" r="1.7"/>
+                  </svg>
+                </button>
+
+                {#if isQueryMenuOpen}
+                  <div class="absolute right-0 mt-1 w-40 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-40 p-1" role="menu">
+                    <button
+                      type="button"
+                      on:click={handleResetQuery}
+                      class="w-full text-left px-2.5 py-2 rounded-md text-sm text-red-200 hover:text-red-100 hover:bg-red-900/30 transition-colors"
+                      role="menuitem"
+                    >
+                      Reset query
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
         </div>
 
         <!-- Recent Searches -->
         {#if !searchLoading}
-          <div class="pt-4 border-t border-gray-700/50">
-            <div class="flex items-center space-x-2 mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent</h4>
-            </div>
+          <div class="pt-3 border-t border-gray-700/50">
             <RecentSearches 
               show={true}
               on:select={(e) => {
@@ -245,21 +297,20 @@
 
         <!-- Error state -->
         {#if searchError}
-          <div class="bg-red-900/20 border border-red-700 rounded-lg p-3">
+          <div class="bg-red-900/20 border border-red-700 rounded-lg p-2.5">
             <div class="flex items-start space-x-2">
-              <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               <div>
-                <h5 class="text-sm font-semibold text-red-300 mb-1">Search Error</h5>
+                <h5 class="text-xs font-semibold text-red-300 mb-0.5">Search Error</h5>
                 <p class="text-xs text-red-400">{searchError}</p>
               </div>
             </div>
           </div>
         {/if}
-      </div>
     </div>
   {/if}
 
@@ -269,13 +320,31 @@
     class="resize-handle"
     class:collapsed={!isSidebarOpen}
     on:mousedown={startResize}
-    on:dblclick={toggleSidebar}
     aria-label="Resize sidebar"
     tabindex="0"
   >
     {#if isSidebarOpen}
       <div class="hover-indicator"></div>
     {/if}
+  </button>
+
+  <button
+    type="button"
+    class="sidebar-toggle-tab sidebar-toggle-tab-left"
+    on:click={toggleSidebar}
+    aria-label={isSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
+    title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="w-4 h-4 transition-transform duration-200 {isSidebarOpen ? '' : 'rotate-180'}"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+    >
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
   </button>
 </div>
 
@@ -308,17 +377,17 @@
 
 .resize-handle:not(.collapsed):hover {
   width: 10px;
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.45);
 }
 
 .resize-handle.collapsed {
   width: 10px;
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(100, 116, 139, 0.28);
   cursor: pointer;
 }
 
 .resize-handle.collapsed:hover {
-  background: rgba(59, 130, 246, 0.6);
+  background: rgba(100, 116, 139, 0.5);
 }
 
 .hover-indicator {
@@ -328,7 +397,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 48px;
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.45);
   border-radius: 4px 0 0 4px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -338,8 +407,43 @@
   opacity: 1;
 }
 
+.sidebar-toggle-tab {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 72px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: linear-gradient(180deg, rgba(243, 244, 246, 0.98) 0%, rgba(209, 213, 219, 0.98) 100%);
+  color: rgba(31, 41, 55, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-toggle-tab:hover {
+  background: linear-gradient(180deg, rgba(229, 231, 235, 0.98) 0%, rgba(156, 163, 175, 0.98) 100%);
+  color: #111827;
+  border-color: rgba(55, 65, 81, 0.95);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-toggle-tab:focus-visible {
+  outline: 2px solid rgba(148, 163, 184, 0.95);
+  outline-offset: 2px;
+}
+
+.sidebar-toggle-tab-left {
+  right: -13px;
+  border-radius: 0 10px 10px 0;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -348,11 +452,11 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(100, 116, 139, 0.45);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.7);
+  background: rgba(100, 116, 139, 0.6);
 }
 </style>

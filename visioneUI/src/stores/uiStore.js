@@ -12,21 +12,42 @@ const DEFAULT = {
   },
 
   // Persistente
-  viewMode: 'byrank',
+  viewMode: 'byvideo',
   contentScale: 1,
 
   isSidebarOpen: true,
-  isSidebarRightOpen: true,
+  isSidebarRightOpen: false,
   sidebarLeftWidth: 18,
   sidebarRightWidth: 18,
   sidebarRightTab: 'RF',       // 'RF' | 'Submitted'
 
-  keyframeSize: 160,
-  resultsPerRow: 5,
-  resultsAutoFit: false,
+  keyframeSize: 130,
+  resultsPerRow: 8,
+  resultsAutoFit: true,
   virtualizationEnabled: true,
   virtualizationThreshold: 40
 };
+
+function clampSidebarWidthVw(value, fallback = 18) {
+  const numeric = Number.parseFloat(String(value));
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(12, Math.min(40, numeric));
+}
+
+function normalizeSidebarWidth(value, fallback = 18) {
+  const numeric = Number.parseFloat(String(value));
+  if (!Number.isFinite(numeric)) return fallback;
+
+  if (numeric > 100) {
+    if (typeof window !== 'undefined' && window.innerWidth > 0) {
+      const vw = (numeric / window.innerWidth) * 100;
+      return clampSidebarWidthVw(vw, fallback);
+    }
+    return fallback;
+  }
+
+  return clampSidebarWidthVw(numeric, fallback);
+}
 
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
@@ -46,8 +67,8 @@ function createUIStore() {
 
         isSidebarOpen: s.isSidebarOpen ?? u.isSidebarOpen,
         isSidebarRightOpen: s.isSidebarRightOpen ?? u.isSidebarRightOpen,
-        sidebarLeftWidth: s.sidebarLeftWidth ?? u.sidebarLeftWidth,
-        sidebarRightWidth: s.sidebarRightWidth ?? u.sidebarRightWidth,
+        sidebarLeftWidth: normalizeSidebarWidth(s.sidebarLeftWidth, u.sidebarLeftWidth),
+        sidebarRightWidth: normalizeSidebarWidth(s.sidebarRightWidth, u.sidebarRightWidth),
         sidebarRightTab: s.sidebarRightTab ?? u.sidebarRightTab,
 
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
@@ -110,13 +131,15 @@ function createUIStore() {
     },
 
     setSidebarLeftWidth(sidebarLeftWidth) {
-      update(u => ({ ...u, sidebarLeftWidth }));
-      persist({ sidebarLeftWidth });
+      const normalized = normalizeSidebarWidth(sidebarLeftWidth, DEFAULT.sidebarLeftWidth);
+      update(u => ({ ...u, sidebarLeftWidth: normalized }));
+      persist({ sidebarLeftWidth: normalized });
     },
 
     setSidebarRightWidth(sidebarRightWidth) {
-      update(u => ({ ...u, sidebarRightWidth }));
-      persist({ sidebarRightWidth });
+      const normalized = normalizeSidebarWidth(sidebarRightWidth, DEFAULT.sidebarRightWidth);
+      update(u => ({ ...u, sidebarRightWidth: normalized }));
+      persist({ sidebarRightWidth: normalized });
     },
 
     focusRightTab(tab) {
