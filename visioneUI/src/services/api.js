@@ -12,7 +12,7 @@ class APIError extends Error {
 
 // src/services/api.js
 export class VisioneAPI {
-  constructor(baseUrl = 'https://visione.isti.cnr.it:41000/services', videosBase = 'https://visione.isti.cnr.it:41000/videos') {
+  constructor(baseUrl = 'https://visione.isti.cnr.it/services', videosBase = 'https://visione.isti.cnr.it/videos') {
     this.baseUrl = baseUrl;
     this.videosBase = videosBase;
     this.middleTimestampCache = new Map();

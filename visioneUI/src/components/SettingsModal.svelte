@@ -3,9 +3,9 @@
   import { appSettingsStore } from "../stores/persistentState.js"; // ✅ Importa store
   
   export let isOpen = false;
-  export let resultsAutoFit = false;
-  export let keyframeSize = 160;
-  export let resultsPerRow = 5;
+  export let resultsAutoFit = true;
+  export let keyframeSize = 130;
+  export let resultsPerRow = 8;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let futureOptionA = "";
@@ -43,8 +43,8 @@
 
   // ✅ Salva in localStorage ogni volta che cambia qualcosa
   function save() {
-    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 160));
-    const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 5));
+    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
+    const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     
     const newSettings = {
@@ -115,7 +115,7 @@
                 class="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 bind:value={local.keyframeSize}
                 on:input={(e) => {
-                  const val = Math.min(400, Math.max(80, Number(e.currentTarget.value)||160));
+                  const val = Math.min(400, Math.max(80, Number(e.currentTarget.value)||130));
                   local.keyframeSize = val;
                   document.documentElement.style.setProperty('--kf-size', `${val}px`);
                   document.documentElement.style.setProperty('--min-card-w', `${Math.round(val * 1.1)}px`);
@@ -143,7 +143,7 @@
                 bind:value={local.resultsPerRow}
                 disabled={local.resultsAutoFit}
                 on:input={(e) => {
-                  const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||5));
+                  const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
                   local.resultsPerRow = n;
                   save(); // ✅ Salva automaticamente
                 }}

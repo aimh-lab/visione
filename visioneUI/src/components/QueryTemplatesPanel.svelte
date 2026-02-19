@@ -68,6 +68,9 @@
     class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800 transition-colors"
   >
     <div class="flex items-center space-x-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
       <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
         <polyline points="17 21 17 13 7 13 7 21"/>
@@ -78,15 +81,6 @@
         {$queryTemplates.length}
       </span>
     </div>
-    <svg 
-      class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-180' : ''}"
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      stroke-width="2"
-    >
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
   </button>
   
   <!-- Content -->

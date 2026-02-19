@@ -12,6 +12,7 @@ export function transformSearchResults(resultSet, submittedIds = new Set()) {
       ...info,
       index,
       submitted: submittedIds.has(info.imgId),
+      matchScore: item.score || item.similarity || item.distance || item.confidence || 0,
       
       // ✅ DATI TEMPORALI
       // L'API VISIONE potrebbe fornire questi campi:
@@ -79,7 +80,7 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
     const imgId = typeof item === 'string' ? item : (item.imgId || item.id || item);
     const vid = String(imgId).split("-")[0].padStart(5, "0");
     const normalizedImgId = String(imgId).replace(/\.jpg$/i, "");
-    const url = `https://visione.isti.cnr.it:41000/frames/tiny/${vid}/${normalizedImgId}.jpg`;
+    const url = `https://visione.isti.cnr.it/frames/tiny/${vid}/${normalizedImgId}.jpg`;
     
     // ✅ Timestamp dal frame o stima progressiva
     let timestamp = 0;

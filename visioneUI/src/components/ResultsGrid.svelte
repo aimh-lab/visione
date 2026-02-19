@@ -45,6 +45,14 @@
     dispatch("openVideoPlayer", { img: item, imgId, videoId });
   }
 
+  function handleOpenVideoPlayerFromStart(e, item) {
+    e.preventDefault();
+    e.stopPropagation();
+    const imgId = getId(item);
+    const videoId = getVideoId(item);
+    dispatch("openVideoPlayer", { img: item, imgId, videoId, startAt: 0 });
+  }
+
   const handleVideoSummary = (item, e) => { e.stopPropagation(); dispatch("videoSummary", { img: item }); };
   const handleSimilarity = (item, e) => { e.stopPropagation(); dispatch("similarity", { imgId: getId(item), frame: item }); };
   const handleRFPositive = (item, e) => { e.stopPropagation(); dispatch("rfPositive", { index: getIndex(item), img: item }); };
@@ -145,11 +153,9 @@
     
     if (viewMode === "byvideo") {
       const videoId = getVideoId(firstItem);
-      const frameCount = row.length;
       info = {
         type: 'video',
-        label: `Video ${videoId}`,
-        subtitle: `${frameCount} keyframe${frameCount !== 1 ? 's' : ''}`,
+        label: `${videoId}`,
         item: firstItem
       };
       rowInfoCache.set(cacheKey, info);
@@ -342,62 +348,50 @@
     
     <div
       use:measureRow={rowIndex}
-      class="w-full {rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
+      class="w-full {viewMode === 'byvideo' ? (rowIndex % 2 === 0 ? 'bg-gray-100/35' : 'bg-gray-200/20') : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
     >
       
         <!-- ✅ ROW HEADER (solo per byvideo e bydate) -->
         {#if rowInfo}
-          <div class="sticky top-0 z-30 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-gray-300 flex items-center justify-between shadow-sm">
-            <div class="flex items-center space-x-3">
-              <!-- Icon based on type -->
-              {#if rowInfo.type === 'video'}
-                <div class="p-1.5 bg-blue-100 rounded-lg">
-                  <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                  <!-- Stile flat/moderno -->
+          {#if rowInfo.type === 'video'}
+            <div class="px-3 pt-1">
+              <button
+                on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
+                class="group/video inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-b from-gray-200 to-gray-300 border border-gray-400 border-b-0 rounded-t-lg text-gray-800 hover:from-gray-100 hover:to-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.18)] transition-colors"
+              >
+                <svg class="w-3.5 h-3.5 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
                 </svg>
-
-                </div>
-                
-                <!-- ✅ Video name CLICCABILE -->
-                <button
-                  on:click={(e) => handleVideoSummary(rowInfo.item, e)}
-                  class="group/video flex items-center space-x-2 hover:bg-blue-50 px-2 py-1 -ml-2 rounded transition-colors"
-                >
-                  <h3 class="text-sm font-bold text-gray-800 group-hover/video:text-blue-600 transition-colors">
-                    {rowInfo.label}
-                  </h3>
-                  <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                    {rowInfo.subtitle}
-                  </span>
-                  <!-- Freccia indica cliccabile -->
-                  <svg class="w-4 h-4 text-gray-400 group-hover/video:text-blue-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 5l7 7-7 7"/>
-                  </svg>
-                </button>
-                
-              {:else if rowInfo.type === 'date'}
-                <div class="p-1.5 bg-purple-100 rounded-lg">
-                  <svg class="w-4 h-4 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <span class="text-xs font-semibold tracking-wider">{rowInfo.label}</span>
+              </button>
+            </div>
+          {:else if rowInfo.type === 'date'}
+            <div class="sticky top-0 z-30 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-gray-300 flex items-center justify-between shadow-sm">
+              <div class="flex items-center space-x-3">
+                <div class="p-1.5 bg-blue-100 rounded-lg">
+                  <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                     <line x1="16" y1="2" x2="16" y2="6"/>
                     <line x1="8" y1="2" x2="8" y2="6"/>
                     <line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
                 </div>
-                
+
                 <div>
                   <h3 class="text-sm font-bold text-gray-800">{rowInfo.label}</h3>
                   <p class="text-xs text-gray-500">{rowInfo.subtitle}</p>
                 </div>
-              {/if}
+              </div>
             </div>
-          </div>
+          {/if}
         {/if}
 
       
       <!-- Frames grid -->
-      <div class="flex flex-wrap w-full p-3" style="gap: var(--grid-gap, 16px);">
+      <div
+        class="flex flex-wrap w-full p-3 {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'mx-3 mb-1.5 border border-gray-300 border-l-4 border-l-gray-500 rounded-b-xl rounded-tr-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_rgba(15,23,42,0.16)]' : 'mx-3 mb-1.5 border border-gray-400/70 border-l-4 border-l-gray-600 rounded-b-xl rounded-tr-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_20px_rgba(15,23,42,0.20)]') : ''} {rowInfo?.type === 'video' ? 'pt-1.5 pb-1.5 px-2.5' : ''}"
+        style="gap: var(--grid-gap, 16px);"
+      >
         {#each row as item (getId(item) ?? getIndex(item))}
           <div>
             <div

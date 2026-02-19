@@ -97,14 +97,14 @@ class PersistentSet extends PersistentStore {
 // Stores specifici per l'app
 export const appSettingsStore = new PersistentStore('visione-app-settings', {
   contentScale: 1,
-  viewMode: 'byrank',
+  viewMode: 'byvideo',
   isSidebarOpen: true,
-  isSidebarRightOpen: true, // ✅ AGGIUNGI
+  isSidebarRightOpen: false, // ✅ AGGIUNGI
   sidebarLeftWidth: 18,
   sidebarRightWidth: 18, // ✅ AGGIUNGI (in vw)
-  keyframeSize: 160,        // ✅ AGGIUNGI
-  resultsPerRow: 5,          // ✅ AGGIUNGI
-  resultsAutoFit: false,     // ✅ AGGIUNGI
+  keyframeSize: 130,        // ✅ AGGIUNGI
+  resultsPerRow: 8,          // ✅ AGGIUNGI
+  resultsAutoFit: true,     // ✅ AGGIUNGI
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
   futureOptionA: '',         // ✅ AGGIUNGI (opzionale)

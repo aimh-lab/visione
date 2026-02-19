@@ -30,8 +30,27 @@
   let keyframesLoadToken = 0;
   const KEYFRAME_TIMESTAMP_CONCURRENCY = 8;
 
-  function onKeyDown(e: KeyboardEvent) { 
-    if (e.key === "Escape") dispatch("close"); 
+  function onKeyDown(e: KeyboardEvent) {
+    if (!isOpen) return;
+
+    if (e.key === "Escape") {
+      dispatch("close");
+      return;
+    }
+
+    const target = e.target as HTMLElement | null;
+    const tagName = target?.tagName?.toLowerCase();
+    const isTypingContext =
+      tagName === "input" ||
+      tagName === "textarea" ||
+      target?.isContentEditable;
+
+    if (isTypingContext) return;
+
+    if (e.key?.toLowerCase() === "s") {
+      e.preventDefault();
+      submitCurrentFrame();
+    }
   }
 
   onMount(() => {
@@ -99,13 +118,13 @@
           return {
             imgId: imgId,
             timestamp: timestamp,
-            thumbnailUrl: `https://visione.isti.cnr.it:41000/frames/tiny/${vid}/${imgId}.jpg`
+            thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
           };
         } catch (err) {
           return {
             imgId: imgId,
             timestamp: (index / imgIds.length) * (videoDuration || 100),
-            thumbnailUrl: `https://visione.isti.cnr.it:41000/frames/tiny/${vid}/${imgId}.jpg`
+            thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
           };
         }
       });
@@ -347,7 +366,7 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
+  <div class="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center">
     <button
       type="button"
       class="absolute inset-0"
@@ -393,20 +412,6 @@
         
         <!-- ✅ Overlay scuro (appare solo all'hover) -->
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-all duration-200 pointer-events-none z-10"></div>
-        
-        <!-- ✅ Submit button in alto a destra (stile ResultsGrid) -->
-        <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          <button
-            class="absolute top-3 right-3 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer pointer-events-auto"
-            on:click={submitCurrentFrame}
-            title="Submit current frame"
-            aria-label="Submit current frame"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 19V7M5 12l7-7 7 7"/>
-            </svg>
-          </button>
-        </div>
       </div>
 
 
@@ -434,6 +439,7 @@
                 class="absolute inset-y-0 left-0 bg-blue-600 rounded-full pointer-events-none transition-all duration-200"
                 style="width: {(videoEl.currentTime / videoDuration * 100)}%"
               ></div>
+
             {/if}
 
             <!-- Hover preview -->
@@ -520,29 +526,40 @@
             {/each}
           </div>
 
-          <!-- ✅ Time info + legenda AGGIORNATA -->
-          <div class="flex items-center justify-between text-xs text-gray-400">
+          <!-- ✅ Time info + submit -->
+          <div class="flex items-center justify-between gap-3 text-xs text-gray-400">
             <span class="font-mono">
               {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
             </span>
-            <div class="flex items-center space-x-3">
-              <span class="text-[10px]">
-                {loadingKeyframes ? 'Loading...' : `${keyframes.length} keyframes`}
-              </span>
-              {#if highlightedKeyframes.length > 0}
-                <div class="flex items-center space-x-1.5 text-[10px]">
-                  <span class="text-gray-500">•</span>
-                  <span class="font-semibold">{highlightedKeyframes.length} in results:</span>
-                  
-                  <!-- ✅ Gradiente rosso → giallo -->
-                  <div class="w-2 h-2 rounded-full" style="background-color: rgb(233, 62, 58)" title="Best (Top ranked)"></div>
-                  <span style="color: rgb(237, 104, 60)">→</span>
-                  <div class="w-2 h-2 rounded-full" style="background-color: rgb(243, 144, 63)" title="Good (Mid ranked)"></div>
-                  <span style="color: rgb(253, 199, 12)">→</span>
-                  <div class="w-2 h-2 rounded-full" style="background-color: rgb(255, 243, 59)" title="Lower (Low ranked)"></div>
-                </div>
-              {/if}
-            </div>
+            <button
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold"
+              on:click={submitCurrentFrame}
+              title="Submit current frame (S)"
+              aria-label="Submit current frame (S)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 19V7M5 12l7-7 7 7"/>
+              </svg>
+              <span class="text-xs">Submit frame</span>
+            </button>
+          </div>
+
+          <!-- ✅ Keyframes info + legenda -->
+          <div class="flex items-center justify-end gap-3 text-xs text-gray-400">
+            <span class="text-[10px]">
+              {loadingKeyframes ? 'Loading...' : `${keyframes.length} keyframes`}
+            </span>
+            {#if highlightedKeyframes.length > 0}
+              <div class="flex items-center space-x-1.5 text-[10px]">
+                <span class="text-gray-500">•</span>
+                <span class="font-semibold">{highlightedKeyframes.length} in results:</span>
+                <div class="w-2 h-2 rounded-full" style="background-color: rgb(233, 62, 58)" title="Best (Top ranked)"></div>
+                <span style="color: rgb(237, 104, 60)">→</span>
+                <div class="w-2 h-2 rounded-full" style="background-color: rgb(243, 144, 63)" title="Good (Mid ranked)"></div>
+                <span style="color: rgb(253, 199, 12)">→</span>
+                <div class="w-2 h-2 rounded-full" style="background-color: rgb(255, 243, 59)" title="Lower (Low ranked)"></div>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
