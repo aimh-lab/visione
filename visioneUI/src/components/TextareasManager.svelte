@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { afterUpdate, createEventDispatcher } from "svelte";
   import InputModal from "./InputModal.svelte";
+  import { toasts } from "../stores/toastStore.js";
 
   type QueryTextarea = {
     value: string;
@@ -57,7 +58,7 @@
     toggle: { index: number };
     update: { index: number; value: string };
     search: void;
-    swap: { indexA: number; indexB: number };
+    swap: { indexA: number; indexB: number; mode?: "swap" | "move" };
     startImageSelection: { textareaIndex: number };
     imageSelected: void;
     updateImages: { index: number; images: AttachedImage[] };
@@ -83,6 +84,87 @@
   let isSelectingImageFor: number | null = null;
   let textareaRefs: Array<HTMLTextAreaElement | null> = [];
 
+  const MIN_TEXTAREA_ROWS = 1;
+  const MAX_TEXTAREA_ROWS = 5;
+  const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
+
+  function hexToRgb(hex: string) {
+    const clean = hex.replace("#", "");
+    const full = clean.length === 3
+      ? clean.split("").map((c) => c + c).join("")
+      : clean;
+
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16)
+    };
+  }
+
+  function mixHex(colorA: string, colorB: string, t: number) {
+    const a = hexToRgb(colorA);
+    const b = hexToRgb(colorB);
+    const clampT = Math.max(0, Math.min(1, t));
+
+    const r = Math.round(a.r + (b.r - a.r) * clampT);
+    const g = Math.round(a.g + (b.g - a.g) * clampT);
+    const bVal = Math.round(a.b + (b.b - a.b) * clampT);
+
+    return `rgb(${r}, ${g}, ${bVal})`;
+  }
+
+  function getStepColor(index: number) {
+    if (textareas.length <= 1) return "rgb(59, 130, 246)";
+
+    const maxPos = TIMELINE_STOPS.length - 1;
+    const progress = (index / (textareas.length - 1)) * maxPos;
+    const left = Math.floor(progress);
+    const right = Math.min(maxPos, left + 1);
+    const localT = progress - left;
+
+    return mixHex(TIMELINE_STOPS[left], TIMELINE_STOPS[right], localT);
+  }
+
+  function withAlpha(color: string, alpha: number) {
+    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/i);
+    if (!match) return color;
+    const [, r, g, b] = match;
+    const clamped = Math.max(0, Math.min(1, alpha));
+    return `rgba(${r}, ${g}, ${b}, ${clamped})`;
+  }
+
+  function autoResizeTextarea(index: number) {
+    const textarea = textareaRefs[index];
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+
+    const computed = window.getComputedStyle(textarea);
+    const lineHeight = parseFloat(computed.lineHeight) || 16;
+    const paddingTop = parseFloat(computed.paddingTop) || 0;
+    const paddingBottom = parseFloat(computed.paddingBottom) || 0;
+    const borderTop = parseFloat(computed.borderTopWidth) || 0;
+    const borderBottom = parseFloat(computed.borderBottomWidth) || 0;
+
+    const verticalChrome = paddingTop + paddingBottom + borderTop + borderBottom;
+    const minHeight = lineHeight * MIN_TEXTAREA_ROWS + verticalChrome;
+    const maxHeight = lineHeight * MAX_TEXTAREA_ROWS + verticalChrome;
+    const nextHeight = Math.min(maxHeight, Math.max(minHeight, textarea.scrollHeight));
+
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }
+
+  function autoResizeAllTextareas() {
+    for (let i = 0; i < textareas.length; i += 1) {
+      autoResizeTextarea(i);
+    }
+  }
+
+  afterUpdate(() => {
+    autoResizeAllTextareas();
+  });
+
   export function focusPrimaryTextarea() {
     const first = textareaRefs[0];
     first?.focus({ preventScroll: true });
@@ -90,6 +172,173 @@
   
   const add = (i: number) => dispatch("add", { index: i });
   const remove = (i: number) => dispatch("remove", { index: i });
+  let openStepActionsIndex: number | null = null;
+
+  function toggleStepActions(index: number) {
+    closeMenu();
+    openStepActionsIndex = openStepActionsIndex === index ? null : index;
+  }
+
+  function closeStepActions() {
+    openStepActionsIndex = null;
+  }
+
+  function removeStepFromMenu(index: number) {
+    remove(index);
+    closeStepActions();
+  }
+
+  let draggedStepIndex: number | null = null;
+  let dropStepIndex: number | null = null;
+  let imageDropIndex: number | null = null;
+  let stepRefs: Array<HTMLElement | null> = [];
+  const FRAME_DRAG_MIME = "application/x-visione-frame";
+
+  function isFrameDragEvent(event: DragEvent) {
+    const types = event.dataTransfer?.types;
+    if (!types) return false;
+    return Array.from(types).includes(FRAME_DRAG_MIME);
+  }
+
+  function startStepDrag(index: number, event: DragEvent) {
+    if (textareas.length <= 1) return;
+    draggedStepIndex = index;
+    dropStepIndex = index;
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(index));
+    }
+  }
+
+  function handleStepDragOver(index: number, event: DragEvent) {
+    if (draggedStepIndex === null) return;
+    event.preventDefault();
+
+    dropStepIndex = index;
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  function getNearestStepIndex(clientY: number) {
+    let nearestIndex = -1;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < stepRefs.length; i += 1) {
+      const el = stepRefs[i];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.abs(clientY - centerY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+
+    return nearestIndex;
+  }
+
+  function handleStepsListDragOver(event: DragEvent) {
+    if (draggedStepIndex === null) return;
+    event.preventDefault();
+
+    const nearestIndex = getNearestStepIndex(event.clientY);
+    if (nearestIndex < 0) return;
+
+    dropStepIndex = nearestIndex;
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  function handleStepsListDrop(event: DragEvent) {
+    if (draggedStepIndex === null) return;
+    event.preventDefault();
+
+    const fallbackIndex = getNearestStepIndex(event.clientY);
+    const index = dropStepIndex ?? fallbackIndex;
+    if (index < 0) {
+      handleStepDragEnd();
+      return;
+    }
+
+    handleStepDrop(index, event);
+  }
+
+  function handleStepDrop(index: number, event: DragEvent) {
+    if (draggedStepIndex === null) return;
+    event.preventDefault();
+
+    const sourceIndex = draggedStepIndex;
+    const targetIndex = index;
+
+    draggedStepIndex = null;
+    dropStepIndex = null;
+
+    if (sourceIndex !== targetIndex) {
+      dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
+      setTimeout(() => dispatch("search"), 100);
+    }
+  }
+
+  function handleStepDragEnd() {
+    draggedStepIndex = null;
+    dropStepIndex = null;
+  }
+
+  function handleTextareaDragOver(index: number, event: DragEvent) {
+    if (draggedStepIndex !== null) return;
+    if (!isFrameDragEvent(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    imageDropIndex = index;
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  function handleTextareaDrop(index: number, event: DragEvent) {
+    if (draggedStepIndex !== null) return;
+    if (!isFrameDragEvent(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const raw = event.dataTransfer?.getData(FRAME_DRAG_MIME);
+    imageDropIndex = null;
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed?.url) return;
+
+      addImageToTextarea(
+        index,
+        parsed.url,
+        parsed.title || parsed.imgId || `Result ${index + 1}`,
+        "result",
+        parsed.imgId || null
+      );
+
+      toasts.success(`Frame added to step ${index + 1}`);
+    } catch {
+      // Ignore malformed drag payloads
+    }
+  }
+
+  function handleTextareaDragLeave(index: number, event: DragEvent) {
+    if (imageDropIndex !== index) return;
+    const currentTarget = event.currentTarget as HTMLElement | null;
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) return;
+    imageDropIndex = null;
+  }
+
   const toggle = (index: number) => {
     const nextTextareas = textareas.map((t, i) =>
       i === index ? { ...t, enabled: !t.enabled } : t
@@ -106,13 +355,8 @@
   
   function swapQueries(indexA: number, indexB: number) {
     if (indexB < 0 || indexB >= textareas.length) return;
-    
-    const tempImages = textareaImages[indexA] ?? [];
-    textareaImages[indexA] = textareaImages[indexB] ?? [];
-    textareaImages[indexB] = tempImages;
-    textareaImages = { ...textareaImages };
-    
-    dispatch("swap", { indexA, indexB });
+
+    dispatch("swap", { indexA, indexB, mode: "swap" });
     setTimeout(() => dispatch("search"), 100);
   }
 
@@ -127,6 +371,7 @@
   const handleTextareaInput = (index: number, e: Event) => {
     const value = (e.currentTarget as HTMLTextAreaElement | null)?.value ?? "";
     update(index, value);
+    autoResizeTextarea(index);
   };
 
   function clearTextareaValue(index: number) {
@@ -135,30 +380,14 @@
 
   // ✅ Gestione menu dropdown
   let openMenuIndex: number | null = null;
-  let openStepActionsIndex: number | null = null;
   let fileInput: HTMLInputElement | null = null;
 
   function toggleMenu(index: number) {
-    openStepActionsIndex = null;
     openMenuIndex = openMenuIndex === index ? null : index;
   }
 
   function closeMenu() {
     openMenuIndex = null;
-  }
-
-  function toggleStepActions(index: number) {
-    closeMenu();
-    openStepActionsIndex = openStepActionsIndex === index ? null : index;
-  }
-
-  function closeStepActions() {
-    openStepActionsIndex = null;
-  }
-
-  function removeStepFromMenu(index: number) {
-    remove(index);
-    closeStepActions();
   }
 
   // ✅ NUOVO: Gestione immagini
@@ -399,9 +628,42 @@
 
 <div class="space-y-4">
   <!-- Query cards -->
-  <div class="space-y-3">
+  <div
+    class="space-y-3"
+    role="list"
+    aria-label="Query steps"
+    on:dragover={handleStepsListDragOver}
+    on:drop={handleStepsListDrop}
+  >
     {#each textareas as textarea, i}
-      <div class="group relative">
+      {@const stepColor = getStepColor(i)}
+      <div
+        bind:this={stepRefs[i]}
+        class="group relative pl-4 rounded-lg transition-all {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-blue-400/40 bg-slate-900/20' : ''}"
+        role="group"
+        aria-label={`Query step ${i + 1}`}
+      >
+        {#if textareas.length > 1}
+          <button
+            type="button"
+            draggable="true"
+            on:dragstart={(e) => startStepDrag(i, e)}
+            on:dragend={handleStepDragEnd}
+            title="Drag from left border to reorder"
+            aria-label="Drag step from left border to reorder"
+            class="absolute left-0 top-0 bottom-0 w-6 rounded-l-lg z-10 cursor-grab active:cursor-grabbing hover:bg-slate-700/10"
+            style={`background-image: linear-gradient(to bottom, ${withAlpha(stepColor, 0.65)} 0%, ${withAlpha(stepColor, 0.35)} 62%, ${withAlpha(stepColor, 0)} 100%); background-repeat: no-repeat; background-size: 2px calc(100% - 28px); background-position: 2.75px 28px;`}
+          >
+            <span class="sr-only">Drag step</span>
+          </button>
+        {/if}
+
+        <div
+          class="absolute left-[-5px] top-[18px] w-4.5 h-4.5 rounded-full border-2 shadow-[0_0_0_2px_rgba(15,23,42,0.55)] z-20 flex items-center justify-center"
+          style={`background: rgba(17, 24, 39, 1); border-color: ${stepColor}; color: ${stepColor};`}
+        >
+          <span class="text-[9px] font-bold leading-none">{i + 1}</span>
+        </div>
         <!-- Card principale -->
         <div>
           <!-- Header con numero integrato -->
@@ -419,7 +681,8 @@
                     on:click|stopPropagation={() => swapQueries(i, i - 1)}
                     title="Move up"
                     aria-label="Move step up"
-                    class="p-0.5 rounded hover:bg-slate-600/30 text-slate-300 hover:text-slate-200 transition-all"
+                    class="p-0.5 rounded hover:bg-slate-600/30 transition-all"
+                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.88) : 'rgb(148, 163, 184)'};`}
                   >
                     <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M5 15l7-7 7 7"/>
@@ -433,7 +696,8 @@
                     on:click|stopPropagation={() => swapQueries(i, i + 1)}
                     title="Move down"
                     aria-label="Move step down"
-                    class="p-0.5 rounded hover:bg-slate-600/30 text-slate-300 hover:text-slate-200 transition-all"
+                    class="p-0.5 rounded hover:bg-slate-600/30 transition-all"
+                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.88) : 'rgb(148, 163, 184)'};`}
                   >
                     <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M19 9l-7 7-7-7"/>
@@ -442,24 +706,17 @@
                 {/if}
               </div>
 
-              <!-- Numero -->
-              <div class="flex items-center justify-center w-4 h-4 rounded-full
-                          {textarea.enabled ? 'bg-blue-600' : 'bg-gray-600'}">
-                <span class="text-[10px] font-bold text-white">
-                  {i + 1}
-                </span>
-              </div>
-              
               <!-- Icona clock -->
-              <svg class="w-2.5 h-2.5 {textarea.enabled ? 'text-slate-300' : 'text-gray-500'}" 
+                  <svg class="w-2.5 h-2.5"
+                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.85) : 'rgb(107, 114, 128)'};`}
                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 6v6l4 2"/>
               </svg>
               
               <!-- Label temporale -->
-              <span class="text-[10px] font-bold uppercase tracking-wide
-                           {textarea.enabled ? 'text-slate-300' : 'text-gray-500'}">
+                  <span class="text-[10px] font-bold uppercase tracking-wide"
+                  style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.82) : 'rgb(107, 114, 128)'};`}>
                 {i === 0 ? 'First' : i === textareas.length - 1 ? 'Finally' : 'Then'}
               </span>
             </div>
@@ -472,8 +729,8 @@
                 on:click={() => toggle(i)}
                 title={textarea.enabled ? 'Skip this step' : 'Enable this step'}
                 aria-label={textarea.enabled ? 'Skip this step' : 'Enable this step'}
-                class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors
-                       {textarea.enabled ? 'bg-green-600' : 'bg-gray-600'}"
+                class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
+                style={`background-color: ${textarea.enabled ? withAlpha(stepColor, 0.9) : 'rgb(75, 85, 99)'};`}
               >
                 <span
                   class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform
@@ -486,18 +743,18 @@
                   <button
                     type="button"
                     on:click|stopPropagation={() => toggleStepActions(i)}
-                    title="More step actions"
-                    aria-label="More step actions"
+                    title="Remove step"
+                    aria-label="Remove step"
                     aria-haspopup="menu"
                     aria-expanded={openStepActionsIndex === i}
                     class="inline-flex items-center justify-center w-5 h-5 rounded-full
-                           bg-gray-700/85 hover:bg-gray-600 text-gray-200
-                           shadow transition-all"
+                           bg-gray-700/85 hover:bg-red-900/40 text-gray-200 hover:text-red-100
+                           border border-gray-600/60 hover:border-red-700/50 shadow transition-all"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="6" cy="12" r="1.5"/>
-                      <circle cx="12" cy="12" r="1.5"/>
-                      <circle cx="18" cy="12" r="1.5"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18"/>
+                      <path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/>
+                      <path d="M19 6l-1 13a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                     </svg>
                   </button>
 
@@ -519,13 +776,21 @@
           </div>
           
           <!-- Textarea container con remove button sovrapposto -->
-          <div class="relative textarea-container">
+          <div
+            class="relative textarea-container rounded-lg transition-all {imageDropIndex === i ? 'ring-2 ring-blue-400/45 bg-slate-900/20' : ''}"
+            role="group"
+            aria-label={`Drop frame on step ${i + 1}`}
+            on:dragover={(e) => handleTextareaDragOver(i, e)}
+            on:drop={(e) => handleTextareaDrop(i, e)}
+            on:dragleave={(e) => handleTextareaDragLeave(i, e)}
+          >
             <!-- Container ibrido con immagini -->
             <div class="relative">
               <!-- Immagini sopra la textarea -->
               {#if textareaImages[i]?.length > 0}
                 <div class="flex flex-wrap gap-2 p-2 bg-gray-900/80 rounded-t-2xl border-2 border-b-0
-                           {textarea.enabled ? 'border-blue-500/50' : 'border-gray-700/50'}">
+                           {textarea.enabled ? 'border-blue-500/50' : 'border-gray-700/50'}"
+                     style={`border-left-color: ${withAlpha(stepColor, 0.7)}; border-left-width: 2px;`}>
                   {#each textareaImages[i] as image, imgIdx}
                     <div class="relative group/img">
                       <img 
@@ -567,17 +832,18 @@
               <!-- Textarea -->
               <textarea
                 bind:this={textareaRefs[i]}
-                class="w-full p-2.5 pr-9 pb-8 border-2 resize-none transition-all duration-200 font-mono text-xs
-                       {textareaImages[i]?.length > 0 ? 'rounded-b-2xl rounded-t-none' : 'rounded-2xl'}
+                class="w-full p-2.5 pr-9 pb-6 border resize-none transition-all duration-200 font-mono text-xs
+                       {textareaImages[i]?.length > 0 ? 'rounded-b-lg rounded-t-none' : 'rounded-lg'}
                        {textarea.enabled 
-                         ? 'bg-gray-900 text-white border-blue-500/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 shadow-lg' 
-                         : 'bg-gray-800/30 text-gray-500 border-gray-700/50 cursor-not-allowed opacity-60 line-through'}"
-                rows="4"
+                         ? 'bg-gray-900 text-white border-blue-500/40 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_6px_14px_rgba(2,6,23,0.35)]' 
+                         : 'bg-gray-800/30 text-gray-500 border-gray-700/50 cursor-not-allowed opacity-60 line-through shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_4px_10px_rgba(2,6,23,0.2)]'}"
+                rows="1"
                 bind:value={textarea.value}
                 placeholder={textarea.enabled 
                   ? `Define what should appear ${i === 0 ? 'first in the video' : 'at this stage of the video'}` 
                   : "This step is skipped"}
                 disabled={!textarea.enabled}
+                style={`overflow-y: hidden; border-left-color: ${withAlpha(stepColor, 0.7)}; border-left-width: 2px;`}
                 on:input={(e) => handleTextareaInput(i, e)}
                 on:keydown={(e) => handleKeyDown(e, i)}
               ></textarea>
@@ -738,16 +1004,6 @@
           </div>
         </div>
 
-        <!-- Separatore -->
-        {#if i < textareas.length - 1}
-          <div class="mt-2 flex items-center space-x-2 text-gray-500 pl-2">
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14"/>
-            </svg>
-            <span class="text-[9px] font-medium uppercase tracking-wide">Then later</span>
-            <div class="flex-1 h-px bg-gradient-to-r from-gray-700 to-transparent"></div>
-          </div>
-        {/if}
       </div>
     {/each}
   </div>

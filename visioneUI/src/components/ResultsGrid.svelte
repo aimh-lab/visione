@@ -59,6 +59,20 @@
   const handleRFNegative = (item, e) => { e.stopPropagation(); dispatch("rfNegative", { index: getIndex(item), img: item }); };
   const handleSubmit = (item, e) => { e.stopPropagation(); dispatch("submit", { index: getIndex(item), img: item }); };
 
+  function handleFrameDragStart(event, item) {
+    if (!event.dataTransfer) return;
+
+    const payload = {
+      imgId: getId(item),
+      url: getUrl(item),
+      title: getTitle(item)
+    };
+
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("application/x-visione-frame", JSON.stringify(payload));
+    event.dataTransfer.setData("text/plain", payload.imgId || payload.title || "frame");
+  }
+
   let containerEl;
   let lastRegisteredContainer = null;
   let observedContainer = null;
@@ -399,6 +413,7 @@
               data-index={getIndex(item)}
               data-img-id={getId(item)}
               data-frame-id={getId(item)}
+              draggable="true"
               class="group relative rounded-xl overflow-hidden flex items-center justify-center
                     cursor-pointer transition-all duration-200 focus:outline-none
                     {isSelectionMode 
@@ -413,6 +428,7 @@
               on:click={() => handleOpen(item)}
               on:keydown={(e) => e.key === 'Enter' && handleOpen(item)}
               on:contextmenu={(e) => !isSelectionMode && handleContextPreview(e, item)}
+              on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
 
               <!-- ✅ Badge in modalità selezione -->

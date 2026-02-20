@@ -4,8 +4,11 @@
   
 
   export let show = true;
+    export let headerless = false;
+    export let expanded = false;
   
   let isExpanded = false;
+    $: effectiveExpanded = headerless ? expanded : isExpanded;
   
   const dispatch = createEventDispatcher();
 
@@ -26,7 +29,7 @@
     });
     
     
-    isExpanded = false;
+    if (!headerless) isExpanded = false;
   }
 
   
@@ -52,30 +55,32 @@
 
 {#if show && $recentSearches.length > 0}
   <div class="space-y-2">
-    <!-- Compact header button -->
-    <button
-      on:click={() => {
-        isExpanded = !isExpanded;
-      }}
-      class="w-full flex items-center justify-between p-2.5 bg-gray-800 hover:bg-gray-750 rounded-lg transition-all group"
-    >
-      <div class="flex items-center space-x-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12 6 12 12 16 14"/>
-        </svg>
-        <h4 class="text-sm font-semibold text-gray-300">Recent Searches</h4>
-      </div>
-      <span class="text-sm text-gray-500 bg-gray-900 px-2 py-0.5 rounded-full">
-        {$recentSearches.length}
-      </span>
-    </button>
+    {#if !headerless}
+      <!-- Compact header button -->
+      <button
+        on:click={() => {
+          isExpanded = !isExpanded;
+        }}
+        class="w-full flex items-center justify-between p-2.5 bg-gray-800 hover:bg-gray-750 rounded-lg transition-all group"
+      >
+        <div class="flex items-center space-x-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <h4 class="text-sm font-semibold text-gray-300">Recent Searches</h4>
+        </div>
+        <span class="text-sm text-gray-500 bg-gray-900 px-2 py-0.5 rounded-full">
+          {$recentSearches.length}
+        </span>
+      </button>
+    {/if}
     
     <!-- Expandable list -->
-{#if isExpanded}
+{#if effectiveExpanded}
   <div class="space-y-1 animate-slide-down max-h-80 overflow-y-auto custom-scrollbar">
     {#each $recentSearches as search} <!-- ✅ Rimuovi .slice(0, 5) -->
      <div

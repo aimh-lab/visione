@@ -874,12 +874,35 @@ function submitByImgId(imgId, fallback = null) {
     toasts.info(`Query step ${index + 1} ${status}`);
   }
 
-  function swapTextareas(indexA, indexB) {
+  function swapTextareas(indexA, indexB, mode = "swap") {
+    if (indexA < 0 || indexA >= textareas.length) return;
     if (indexB < 0 || indexB >= textareas.length) return;
-    const temp = textareas[indexA];
-    textareas[indexA] = textareas[indexB];
-    textareas[indexB] = temp;
-    textareas = [...textareas];
+    if (indexA === indexB) return;
+
+    const nextTextareas = [...textareas];
+    const nextTextareaImages = { ...textareaImages };
+
+    if (mode === "move") {
+      const [moved] = nextTextareas.splice(indexA, 1);
+      nextTextareas.splice(indexB, 0, moved);
+
+      const imageEntries = Array.from({ length: textareas.length }, (_, i) => nextTextareaImages[i] ?? []);
+      const [movedImages] = imageEntries.splice(indexA, 1);
+      imageEntries.splice(indexB, 0, movedImages);
+      textareaImages = Object.fromEntries(imageEntries.map((images, i) => [i, images]));
+    } else {
+      const temp = nextTextareas[indexA];
+      nextTextareas[indexA] = nextTextareas[indexB];
+      nextTextareas[indexB] = temp;
+
+      const imagesA = nextTextareaImages[indexA] ?? [];
+      const imagesB = nextTextareaImages[indexB] ?? [];
+      nextTextareaImages[indexA] = imagesB;
+      nextTextareaImages[indexB] = imagesA;
+      textareaImages = nextTextareaImages;
+    }
+
+    textareas = nextTextareas;
     toasts.info("Queries reordered, updating results...");
   }
 
@@ -1191,7 +1214,7 @@ function submitByImgId(imgId, fallback = null) {
         onPrev={() => navigateImage(-1)}
         onNext={() => navigateImage(1)}
 
-        on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB)}
+        on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap')}
         onLoadExample={(queries) => loadExampleQuery(queries)}
         on:updateImages={handleUpdateImages}
         on:clearQueryInputs={() => {
