@@ -4,6 +4,8 @@
   import TextareasManager from "./TextareasManager.svelte";
   import RecentSearches from "../components/RecentSearches.svelte";
   import QueryTemplatesPanel from './QueryTemplatesPanel.svelte';
+  import { recentSearches } from "../stores/recentSearches.js";
+  import { queryTemplates } from "../stores/queryTemplates.js";
 
   export let isSidebarOpen = true;
   export let textareas = [];
@@ -28,28 +30,33 @@
   const doSearch = () => dispatch("runSearch");
   const clearQueryInputs = () => dispatch("clearQueryInputs");
   const handleSearchFromTextarea = () => dispatch("runSearch");
-  let isQueryMenuOpen = false;
+  let isResetMenuOpen = false;
+  let activeUtilityPanel = null;
 
-  function toggleQueryMenu(e) {
+  function toggleUtilityPanel(panel) {
+    activeUtilityPanel = activeUtilityPanel === panel ? null : panel;
+  }
+
+  function toggleResetMenu(e) {
     e.stopPropagation();
-    isQueryMenuOpen = !isQueryMenuOpen;
+    isResetMenuOpen = !isResetMenuOpen;
   }
 
   function handleResetQuery(e) {
-    e.stopPropagation();
+    e?.stopPropagation?.();
     clearQueryInputs();
-    isQueryMenuOpen = false;
+    isResetMenuOpen = false;
   }
 
   function handleWindowClick(e) {
     const target = e.target;
     if (!(target instanceof Element)) return;
-    if (!target.closest('.query-more-menu')) {
-      isQueryMenuOpen = false;
+    if (!target.closest('.query-reset-menu')) {
+      isResetMenuOpen = false;
     }
   }
-  const swapTA = (idxA, idxB) => {
-    dispatch("swapTextarea", { indexA: idxA, indexB: idxB });
+  const swapTA = (idxA, idxB, mode = "swap") => {
+    dispatch("swapTextarea", { indexA: idxA, indexB: idxB, mode });
   };
 
   export function handleImageSelected(image) {
@@ -186,7 +193,7 @@
             on:update={(e) => updateTA(e.detail.index, e.detail.value)}
             on:search={handleSearchFromTextarea}
             on:swap={(e) => {
-              swapTA(e.detail.indexA, e.detail.indexB);
+              swapTA(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap');
             }}
               on:startImageSelection
               on:imageSelected
@@ -241,31 +248,38 @@
             </button>
 
             {#if searchResultSet}
-              <div class="relative query-more-menu">
+              <div class="relative query-reset-menu">
                 <button
                   type="button"
-                  on:click={toggleQueryMenu}
-                  class="inline-flex items-center justify-center px-2.5 py-2.5 bg-gray-700/50 hover:bg-gray-600/70 text-gray-200 text-sm rounded-lg border border-gray-600/60 transition-all"
-                  title="More actions"
-                  aria-label="Open query actions"
+                  on:click={toggleResetMenu}
+                  class="inline-flex items-center justify-center px-2.5 py-2.5 bg-gray-700/50 hover:bg-red-900/35 text-gray-200 hover:text-red-100 text-sm rounded-lg border border-gray-600/60 hover:border-red-700/50 transition-all"
+                  title="Reset query"
+                  aria-label="Reset query"
                   aria-haspopup="menu"
-                  aria-expanded={isQueryMenuOpen}
+                  aria-expanded={isResetMenuOpen}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="6" cy="12" r="1.7"/>
-                    <circle cx="12" cy="12" r="1.7"/>
-                    <circle cx="18" cy="12" r="1.7"/>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 0115.55-6.36"/>
+                    <path d="M21 3v6h-6"/>
+                    <path d="M21 12a9 9 0 01-15.55 6.36"/>
+                    <path d="M3 21v-6h6"/>
                   </svg>
                 </button>
 
-                {#if isQueryMenuOpen}
+                {#if isResetMenuOpen}
                   <div class="absolute right-0 mt-1 w-40 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-40 p-1" role="menu">
                     <button
                       type="button"
                       on:click={handleResetQuery}
-                      class="w-full text-left px-2.5 py-2 rounded-md text-sm text-red-200 hover:text-red-100 hover:bg-red-900/30 transition-colors"
+                      class="w-full text-left px-2.5 py-2 rounded-md text-sm text-red-200 hover:text-red-100 hover:bg-red-900/30 transition-colors inline-flex items-center gap-2"
                       role="menuitem"
                     >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 0115.55-6.36"/>
+                        <path d="M21 3v6h-6"/>
+                        <path d="M21 12a9 9 0 01-15.55 6.36"/>
+                        <path d="M3 21v-6h6"/>
+                      </svg>
                       Reset query
                     </button>
                   </div>
@@ -275,22 +289,74 @@
           </div>
         </div>
 
-        <!-- Recent Searches -->
+        <!-- Recent + Templates compact row -->
         {#if !searchLoading}
-          <div class="pt-3 border-t border-gray-700/50">
-            <RecentSearches 
-              show={true}
-              on:select={(e) => {
+          <div class="pt-3 border-t border-gray-700/50 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                on:click={() => toggleUtilityPanel('recent')}
+                disabled={$recentSearches.length === 0}
+                class="inline-flex items-center justify-start gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all
+                       {activeUtilityPanel === 'recent'
+                         ? 'bg-blue-900/25 text-blue-200'
+                         : 'bg-gray-800/60 text-gray-300 hover:bg-gray-800'}
+                       {$recentSearches.length === 0 ? 'opacity-55 cursor-not-allowed' : ''}"
+                aria-pressed={activeUtilityPanel === 'recent'}
+              >
+                <span class="truncate inline-flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                  </svg>
+                  Recent
+                </span>
+                <span class="px-1.5 py-0.5 rounded-full bg-blue-950/40 text-[10px] text-blue-200 leading-none">{$recentSearches.length}</span>
+              </button>
+
+              <button
+                type="button"
+                on:click={() => toggleUtilityPanel('templates')}
+                class="inline-flex items-center justify-start gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all
+                       {activeUtilityPanel === 'templates'
+                         ? 'bg-blue-900/25 text-blue-200'
+                         : 'bg-gray-800/60 text-gray-300 hover:bg-gray-800'}"
+                aria-pressed={activeUtilityPanel === 'templates'}
+              >
+                <span class="truncate inline-flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h7v7H4z"/>
+                    <path d="M13 4h7v7h-7z"/>
+                    <path d="M4 13h7v7H4z"/>
+                    <path d="M13 13h7v7h-7z"/>
+                  </svg>
+                  Templates
+                </span>
+                <span class="px-1.5 py-0.5 rounded-full bg-blue-950/40 text-[10px] text-blue-200 leading-none">{$queryTemplates.length}</span>
+              </button>
+            </div>
+
+            {#if activeUtilityPanel === 'recent'}
+              <RecentSearches
+                show={true}
+                headerless={true}
+                expanded={true}
+                on:select={(e) => {
                   handleSelectRecentSearch(e);
-                }}            />
+                }}
+              />
+            {/if}
+
+            {#if activeUtilityPanel === 'templates'}
+              <QueryTemplatesPanel
+                {textareas}
+                headerless={true}
+                expanded={true}
+                onLoad={(queries) => applyQueriesToURLAndRestore(queries, 'View1')}
+              />
+            {/if}
           </div>
         {/if}
-
-        <QueryTemplatesPanel
-          {textareas}
-          onLoad={(queries) => applyQueriesToURLAndRestore(queries, 'View1')}
-          onRunSearch={() => {}}
-        />
 
 
 

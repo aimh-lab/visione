@@ -5,6 +5,8 @@
   
   export let textareas = [];
   export let onLoad = (queries) => {};
+  export let headerless = false;
+  export let expanded = false;
   //export let onRunSearch = () => {};
   
   let isExpanded = false;
@@ -12,6 +14,7 @@
   let saveName = '';
   let editingId = null;
   let editingName = '';
+  $: effectiveExpanded = headerless ? expanded : isExpanded;
   
   $: activeQueries = textareas
     .filter(t => t.enabled && t.value?.trim())
@@ -62,29 +65,31 @@
 </script>
 
 <div class="query-templates-panel bg-gray-900 border border-gray-700 rounded-lg">
-  <!-- Header -->
-  <button
-    on:click={() => isExpanded = !isExpanded}
-    class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800 transition-colors"
-  >
-    <div class="flex items-center space-x-2">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-      <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-        <polyline points="17 21 17 13 7 13 7 21"/>
-        <polyline points="7 3 7 8 15 8"/>
-      </svg>
-      <span class="font-semibold text-gray-200">Query Templates</span>
-      <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-        {$queryTemplates.length}
-      </span>
-    </div>
-  </button>
+  {#if !headerless}
+    <!-- Header -->
+    <button
+      on:click={() => isExpanded = !isExpanded}
+      class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800 transition-colors"
+    >
+      <div class="flex items-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 transition-transform {isExpanded ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+        <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        <span class="font-semibold text-gray-200">Query Templates</span>
+        <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+          {$queryTemplates.length}
+        </span>
+      </div>
+    </button>
+  {/if}
   
   <!-- Content -->
-  {#if isExpanded}
+  {#if effectiveExpanded}
     <div class="px-4 py-3 border-t border-gray-700 space-y-2">
       <!-- Save current query -->
       {#if canSave}
