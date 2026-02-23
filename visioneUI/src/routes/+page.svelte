@@ -123,9 +123,10 @@
   // CSS vars (solo da uiStore)
   // ---------------------------
   $: if (browser) {
-    const { keyframeSize } = $uiStore;
+    const { keyframeSize, theme } = $uiStore;
     document.documentElement.style.setProperty('--kf-size', `${keyframeSize}px`);
     document.documentElement.style.setProperty('--min-card-w', `${Math.round(keyframeSize * 1.1)}px`);
+    document.documentElement.setAttribute('data-theme', theme || 'default');
   }
 
 
@@ -1093,6 +1094,7 @@ function submitByImgId(imgId, fallback = null) {
 
 <SettingsModal
   isOpen={isSettingsOpen}
+  theme={$uiStore.theme}
   keyframeSize={$uiStore.keyframeSize}
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}

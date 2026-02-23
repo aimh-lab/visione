@@ -25,6 +25,11 @@
     }
   ];
 
+  function getTabCount(tabId) {
+    if (tabId === "Submitted") return submittedImages.length;
+    return 0;
+  }
+
   function selectTab(tab) {
     activeTab = tab;
     dispatch('selectTab', { tab }); 
@@ -92,16 +97,30 @@
     <div class="flex px-2 py-2 space-x-1 bg-gray-900/30 border-b border-gray-700 flex-shrink-0">
       {#each tabs as tab}
         <button
-          class="flex-1 flex flex-col items-center justify-center px-2 py-2 rounded-lg font-medium text-xs transition-all duration-200
+          class="ui-sidebar-tab-btn flex-1 flex flex-col items-center justify-center px-2 py-2 rounded-lg font-medium text-xs transition-all duration-200
                  {activeTab === tab.id 
-                   ? 'bg-slate-600 text-white shadow-lg shadow-slate-700/30' 
-                   : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'}"
+                   ? 'ui-sidebar-tab-btn-active bg-slate-600 text-white shadow-lg shadow-slate-700/30' 
+                   : 'ui-sidebar-tab-btn-inactive bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'}"
           on:click={() => selectTab(tab.id)}
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             {@html tab.icon}
           </svg>
-          <span class="text-[10px]">{tab.label}</span>
+          <div class="flex items-center gap-1">
+            <span class="text-[10px]">{tab.label}</span>
+            {#if tab.id === "RF"}
+              <span class="ui-feedback-count-badge ui-feedback-count-positive px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-green-900/25 border border-green-700/40 text-green-300">
+                {rfPositive.length}
+              </span>
+              <span class="ui-feedback-count-badge ui-feedback-count-negative px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-red-900/25 border border-red-700/40 text-red-300">
+                {rfNegative.length}
+              </span>
+            {:else}
+              <span class="ui-tab-count-badge px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-black/25 border border-white/15 text-gray-200">
+                {getTabCount(tab.id)}
+              </span>
+            {/if}
+          </div>
         </button>
       {/each}
     </div>
@@ -118,8 +137,8 @@
               <h3 class="text-sm font-semibold text-gray-200">Relevance Feedback</h3>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-green-300 text-xs font-medium rounded-full">{rfPositive.length}</span>
-              <span class="px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-red-300 text-xs font-medium rounded-full">{rfNegative.length}</span>
+              <span class="ui-feedback-count-badge ui-feedback-count-positive px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-green-300 text-xs font-medium rounded-full">{rfPositive.length}</span>
+              <span class="ui-feedback-count-badge ui-feedback-count-negative px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-red-300 text-xs font-medium rounded-full">{rfNegative.length}</span>
             </div>
           </div>
           <RFLists
@@ -140,7 +159,7 @@
               </svg>
               <h3 class="text-sm font-semibold text-gray-200">Submitted Frames</h3>
             </div>
-            <span class="px-2 py-0.5 bg-slate-800/40 border border-slate-600/40 text-slate-200 text-xs font-medium rounded-full">{submittedImages.length}</span>
+            <span class="ui-tab-count-badge px-2 py-0.5 bg-slate-800/40 border border-slate-600/40 text-slate-200 text-xs font-medium rounded-full">{submittedImages.length}</span>
           </div>
           <SubmittedList
             {submittedImages}

@@ -26,6 +26,137 @@
   const getTitle = (item) => item.title ?? item.imgId ?? `Item ${getIndex(item) + 1}`;
   const isSelected = (item) => selectedId === getId(item);
 
+  let fetchedTimecodes = new Map();
+  let requestedTimecodeIds = new Set();
+
+  function toFiniteNumber(value) {
+    if (value == null) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function parseClockString(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed.includes(':')) return null;
+
+    const parts = trimmed.split(':').map((p) => Number(p));
+    if (parts.some((p) => !Number.isFinite(p) || p < 0)) return null;
+
+    if (parts.length === 2) {
+      return parts[0] * 60 + parts[1];
+    }
+    if (parts.length === 3) {
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return null;
+  }
+
+  function toSecondsValue(value) {
+    const clock = parseClockString(value);
+    if (clock != null) return clock;
+    return toFiniteNumber(value);
+  }
+
+  function pickBestTimeValue(candidates) {
+    const numeric = candidates
+      .map(toSecondsValue)
+      .filter((v) => v != null);
+
+    const positive = numeric.find((v) => v > 0);
+    if (positive != null) return positive;
+
+    return numeric.find((v) => v === 0) ?? null;
+  }
+
+  function getFrameSeconds(item) {
+    if (!item) return null;
+
+    const duration = pickBestTimeValue([
+      item.videoDuration,
+      item.video_duration,
+      item.duration,
+      item.raw?.videoDuration,
+      item.raw?.video_duration,
+      item.raw?.duration
+    ]);
+
+    let seconds = pickBestTimeValue([
+      item.middle_timestamp,
+      item.middleTimestamp,
+      item.middle_time,
+      item.frame_time,
+      item.frameTime,
+      item.time,
+      item.timestamp,
+      item.raw?.middle_timestamp,
+      item.raw?.middleTimestamp,
+      item.raw?.middle_time,
+      item.raw?.frame_time,
+      item.raw?.frameTime,
+      item.raw?.time,
+      item.raw?.timestamp
+    ]);
+
+    if (seconds == null || seconds < 0) return null;
+
+    if (duration && duration > 0) {
+      if (seconds > duration * 5 && seconds / 1000 <= duration * 5) {
+        seconds = seconds / 1000;
+      }
+      if (seconds > duration * 5) return null;
+    } else {
+      if (seconds > 12 * 3600 && seconds / 1000 <= 12 * 3600) {
+        seconds = seconds / 1000;
+      }
+      if (seconds > 12 * 3600) return null;
+    }
+
+    return Math.floor(seconds);
+  }
+
+  async function resolveTimecodeForItem(item) {
+    const imgId = getId(item);
+    if (!imgId) return;
+    if (requestedTimecodeIds.has(imgId)) return;
+
+    requestedTimecodeIds = new Set(requestedTimecodeIds).add(imgId);
+
+    try {
+      const middle = await visioneAPI.getMiddleTimestamp(imgId);
+      const parsed = toFiniteNumber(middle);
+      if (parsed == null || parsed < 0) return;
+
+      const normalized = Math.floor(parsed > 12 * 3600 && parsed / 1000 <= 12 * 3600 ? parsed / 1000 : parsed);
+      fetchedTimecodes = new Map(fetchedTimecodes).set(imgId, normalized);
+    } catch {
+      // Ignore single-item failures; UI stays responsive
+    }
+  }
+
+  function formatTimecode(totalSeconds) {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function getTimecodeLabel(item) {
+    const imgId = getId(item);
+    if (imgId && fetchedTimecodes.has(imgId)) {
+      const fetched = fetchedTimecodes.get(imgId);
+      return fetched == null ? null : formatTimecode(fetched);
+    }
+
+    const totalSeconds = getFrameSeconds(item);
+    if (totalSeconds != null && totalSeconds > 0) {
+      return formatTimecode(totalSeconds);
+    }
+
+    resolveTimecodeForItem(item);
+    return null;
+  }
+
   const dispatch = createEventDispatcher();
 
   const handleOpen = (item) => {
@@ -371,12 +502,13 @@
             <div class="px-3 pt-1">
               <button
                 on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-                class="group/video inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-b from-gray-200 to-gray-300 border border-gray-400 border-b-0 rounded-t-lg text-gray-800 hover:from-gray-100 hover:to-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.18)] transition-colors"
+                class="group/video inline-flex max-w-full items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-500/80 border-b-0 rounded-t-lg text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_6px_14px_rgba(2,6,23,0.35)] transition-colors"
+                title={`Open video ${rowInfo.label}`}
               >
-                <svg class="w-3.5 h-3.5 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
+                <svg class="w-3.5 h-3.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
                 </svg>
-                <span class="text-xs font-semibold tracking-wider">{rowInfo.label}</span>
+                <span class="text-[11px] font-semibold tracking-normal leading-none truncate">{rowInfo.label}</span>
               </button>
             </div>
           {:else if rowInfo.type === 'date'}
@@ -455,12 +587,12 @@
 
               <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <!-- Barra bottom stile YouTube -->
-                <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-lg px-2 py-1.5 shadow-xl">
+                <div class="absolute bottom-3.5 left-2 right-2 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-md px-1.5 py-0 shadow-xl">
                   <!-- Left group: video actions -->
                   <div class="flex items-center space-x-1">
                     {#if showVideoSummary}
                       <button
-                        class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                        class="p-1 hover:bg-white/20 rounded transition-colors"
                         title="Video summary"
                         aria-label="Open video summary"
                         on:click={(e) => handleVideoSummary(item, e)}
@@ -472,18 +604,18 @@
                     {/if}
 
                     <button
-                      class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                      class="p-1 hover:bg-white/20 rounded transition-colors"
                       title="Play video"
                       aria-label="Play video"
                       on:click={(e) => handleOpenVideoPlayer(e, item)}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="currentColor">
                         <path d="M8 5v14l11-7z"/>
                       </svg>
                     </button>
 
                     <button
-                      class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                      class="p-1 hover:bg-white/20 rounded transition-colors"
                       title="Image similarity"
                       aria-label="Run image similarity"
                       on:click={(e) => handleSimilarity(item, e)}
@@ -497,7 +629,7 @@
                   <!-- Right group: feedback actions -->
                   <div class="flex items-center space-x-1">
                     <button
-                      class="p-1.5 hover:bg-green-500/30 rounded-md transition-colors"
+                      class="p-1 hover:bg-green-500/30 rounded transition-colors"
                       title="Positive feedback"
                       aria-label="Add positive feedback"
                       on:click={(e) => handleRFPositive(item, e)}
@@ -508,7 +640,7 @@
                     </button>
 
                     <button
-                      class="p-1.5 hover:bg-red-500/30 rounded-md transition-colors"
+                      class="p-1 hover:bg-red-500/30 rounded transition-colors"
                       title="Negative feedback"
                       aria-label="Add negative feedback"
                       on:click={(e) => handleRFNegative(item, e)}
@@ -538,6 +670,12 @@
               </div>
 
               <SubmitBadge submitted={!!item.submitted} />
+
+              {#if getTimecodeLabel(item)}
+                <div class="absolute top-0.5 left-0.5 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md border border-slate-300/35 bg-slate-700/95 text-slate-100 text-[10px] font-semibold tracking-wide shadow-md pointer-events-none">
+                  {getTimecodeLabel(item)}
+                </div>
+              {/if}
 
               {#if getUrl(item)}
                 <img

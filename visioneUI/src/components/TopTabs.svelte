@@ -3,7 +3,6 @@
 
   export let active = "View1";
   export let tabs = ["View1", "View2", "Similarity"];
-  export let showSelectionLabel = true;
   
   export let isSidebarOpen = true;
   export let isSidebarRightOpen = true; // ✅ NUOVO
@@ -72,18 +71,19 @@
 <div class="w-full bg-gradient-to-b from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
   <div class="w-full px-4 flex items-end justify-between relative">
     <!-- Tab buttons (left) -->
-    <div class="flex items-end space-x-2">
-      {#each tabs as view}
+    <div class="ui-main-tab-strip ml-8 flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+      {#each tabs as view, idx}
         {@const config = getConfig(view)}
         <button
           on:click={() => dispatch('change', { tab: view })}
-          class="group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2
+          class="ui-main-tab group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2 border
                  {active === view 
-                   ? 'bg-white text-blue-600 shadow-lg border-t-2 border-x-2 border-blue-600 -mb-px' 
-                   : 'bg-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-800'}"
+                   ? 'ui-main-tab-active bg-white text-blue-700 border-blue-500 shadow-[0_-1px_0_rgba(255,255,255,0.8),0_6px_14px_rgba(37,99,235,0.18)] -mb-px' 
+                   : 'ui-main-tab-inactive bg-transparent text-gray-700 border-transparent hover:bg-white/70 hover:text-gray-900 hover:border-gray-300'}"
+          aria-current={active === view ? 'page' : undefined}
         >
           <svg xmlns="http://www.w3.org/2000/svg" 
-               class="w-4 h-4 transition-colors {active === view ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}" 
+               class="w-4 h-4 transition-colors {active === view ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}" 
                viewBox="0 0 24 24" 
                fill="none" 
                stroke="currentColor" 
@@ -92,17 +92,21 @@
                stroke-linejoin="round">
             {@html config.icon}
           </svg>
-          <span class="text-sm">{config.label}</span>
+          <span class="text-sm whitespace-nowrap">{config.label}</span>
           
           {#if active === view}
             <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
           {/if}
         </button>
+
+        {#if idx < tabs.length - 1 && active !== tabs[idx] && active !== tabs[idx + 1]}
+          <div class="ui-main-tab-divider self-center h-4 w-px bg-gray-400/70 mb-0.5"></div>
+        {/if}
       {/each}
     </div>
 
     <!-- Logo + Label al centro -->
-    <div class="absolute left-1/2 -translate-x-1/2 pb-1 flex items-center space-x-3">
+    <div class="absolute left-1/2 -translate-x-1/2 pb-1 flex items-center">
       <button 
         on:click={() => dispatch('reset')}
         class="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
@@ -110,17 +114,6 @@
       >
         <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
       </button>
-      
-      {#if showSelectionLabel}
-        <div class="flex items-center space-x-2 px-3 py-1.5 bg-white/80 rounded-lg border border-gray-300 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          <span class="text-xs font-semibold text-gray-700">
-            {getConfig(active).label}
-          </span>
-        </div>
-      {/if}
     </div>
 
     <!-- Right side: controls -->
@@ -130,7 +123,7 @@
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
-            class="flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
+            class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               {@html currentSort.icon}
@@ -174,12 +167,12 @@
 
       <!-- ✅ Sidebar LEFT toggle -->
       <button
-        class="p-2 rounded-lg transition-all duration-200 border shadow-sm
+        class="ui-toolbar-btn ui-toolbar-sidebar p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarOpen 
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
-        title="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
-        aria-label="{isSidebarOpen ? 'Hide' : 'Show'} left sidebar"
+        title="{isSidebarOpen ? 'Hide left sidebar' : 'Show left sidebar'}"
+        aria-label="{isSidebarOpen ? 'Hide left sidebar' : 'Show left sidebar'}"
         on:click={toggleSidebar}
       >
         <svg 
@@ -197,12 +190,12 @@
 
       <!-- ✅ Sidebar RIGHT toggle (NUOVO) -->
       <button
-        class="p-2 rounded-lg transition-all duration-200 border shadow-sm
+        class="ui-toolbar-btn ui-toolbar-sidebar p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarRightOpen 
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
-        title="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar (RF & Submitted)"
-        aria-label="{isSidebarRightOpen ? 'Hide' : 'Show'} right sidebar"
+        title="{isSidebarRightOpen ? 'Hide right sidebar' : 'Show right sidebar'}"
+        aria-label="{isSidebarRightOpen ? 'Hide right sidebar' : 'Show right sidebar'}"
         on:click={toggleRightSidebar}
       >
         <svg 
@@ -223,7 +216,7 @@
         type="button"
         aria-label="Settings"
         title="Settings"
-        class="p-2 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm hover:shadow-md"
+        class="ui-toolbar-btn ui-toolbar-settings p-2 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm hover:shadow-md"
         on:click={() => dispatch('openSettings')}
       >
         <svg xmlns="http://www.w3.org/2000/svg" 

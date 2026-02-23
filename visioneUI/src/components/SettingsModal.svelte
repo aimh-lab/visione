@@ -3,6 +3,7 @@
   import { appSettingsStore } from "../stores/persistentState.js"; // ✅ Importa store
   
   export let isOpen = false;
+  export let theme = 'default';
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
   export let resultsPerRow = 8;
@@ -15,6 +16,7 @@
   
   // ✅ Copia locale dei valori
   let local = {
+    theme,
     keyframeSize,
     resultsPerRow,
     resultsAutoFit,
@@ -27,6 +29,7 @@
   // ✅ Aggiorna local quando modal si apre
   $: if (isOpen) {
     local = {
+      theme,
       keyframeSize,
       resultsPerRow,
       resultsAutoFit,
@@ -48,6 +51,7 @@
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     
     const newSettings = {
+      theme: ['default', 'dark', 'light'].includes(local.theme) ? local.theme : 'default',
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
@@ -70,6 +74,20 @@
     
     // ✅ Dispatch evento per aggiornare UI (opzionale, se vuoi mantenerlo)
     dispatch('save', newSettings);
+  }
+
+  function adjustNumber(field, delta, min, max) {
+    const current = Number(local[field]);
+    const base = Number.isFinite(current) ? current : min;
+    const next = Math.min(max, Math.max(min, base + delta));
+    local[field] = next;
+
+    if (field === 'keyframeSize') {
+      document.documentElement.style.setProperty('--kf-size', `${next}px`);
+      document.documentElement.style.setProperty('--min-card-w', `${Math.round(next * 1.1)}px`);
+    }
+
+    save();
   }
 </script>
 
@@ -101,28 +119,56 @@
 
       <div class="px-6 py-5 space-y-6">
         <div>
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Display</h4>
+          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Appearance</h4>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-theme" class="ui-settings-label text-sm font-medium text-gray-700">Theme</label>
+            <select
+              id="settings-theme"
+              class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+              bind:value={local.theme}
+              on:change={() => save()}
+            >
+              <option value="default">Default</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Display</h4>
           
           <div class="flex items-center justify-between py-2">
-            <label for="settings-keyframe-size" class="text-sm font-medium text-gray-700">Keyframe size</label>
+            <label for="settings-keyframe-size" class="ui-settings-label text-sm font-medium text-gray-700">Keyframe size</label>
             <div class="flex items-center space-x-2">
-              <input
-                id="settings-keyframe-size"
-                type="number"
-                min="80"
-                max="400"
-                step="10"
-                class="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                bind:value={local.keyframeSize}
-                on:input={(e) => {
-                  const val = Math.min(400, Math.max(80, Number(e.currentTarget.value)||130));
-                  local.keyframeSize = val;
-                  document.documentElement.style.setProperty('--kf-size', `${val}px`);
-                  document.documentElement.style.setProperty('--min-card-w', `${Math.round(val * 1.1)}px`);
-                  save(); // ✅ Salva automaticamente
-                }}
-              />
-              <span class="text-xs text-gray-500">px</span>
+              <div class="relative">
+                <input
+                  id="settings-keyframe-size"
+                  type="number"
+                  min="80"
+                  max="400"
+                  step="10"
+                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.keyframeSize}
+                  on:input={(e) => {
+                    const val = Math.min(400, Math.max(80, Number(e.currentTarget.value)||130));
+                    local.keyframeSize = val;
+                    document.documentElement.style.setProperty('--kf-size', `${val}px`);
+                    document.documentElement.style.setProperty('--min-card-w', `${Math.round(val * 1.1)}px`);
+                    save();
+                  }}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase keyframe size" on:click={() => adjustNumber('keyframeSize', 10, 80, 400)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease keyframe size" on:click={() => adjustNumber('keyframeSize', -10, 80, 400)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <span class="ui-settings-unit text-xs text-gray-500">px</span>
             </div>
           </div>
         </div>
@@ -131,23 +177,33 @@
           <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Layout</h4>
           
           <div class="flex items-center justify-between py-2">
-            <label for="settings-results-per-row" class="text-sm font-medium text-gray-700">Results per row</label>
+            <label for="settings-results-per-row" class="ui-settings-label text-sm font-medium text-gray-700">Results per row</label>
             <div class="flex items-center space-x-3">
-              <input
-                id="settings-results-per-row"
-                type="number"
-                min="1"
-                max="10"
-                step="1"
-                class="w-16 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                bind:value={local.resultsPerRow}
-                disabled={local.resultsAutoFit}
-                on:input={(e) => {
-                  const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
-                  local.resultsPerRow = n;
-                  save(); // ✅ Salva automaticamente
-                }}
-              />
+              <div class="relative">
+                <input
+                  id="settings-results-per-row"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="1"
+                  class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                  bind:value={local.resultsPerRow}
+                  disabled={local.resultsAutoFit}
+                  on:input={(e) => {
+                    const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
+                    local.resultsPerRow = n;
+                    save();
+                  }}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', 1, 1, 10)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', -1, 1, 10)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
               <div class="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
                 <input
                   type="checkbox"
@@ -156,13 +212,13 @@
                   bind:checked={local.resultsAutoFit}
                   on:change={() => save()} 
                 />
-                <label for="autofit" class="text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
+                <label for="autofit" class="ui-settings-hint text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
               </div>
             </div>
           </div>
 
           <div class="flex items-center justify-between py-2">
-            <label for="virtualization-enabled" class="text-sm font-medium text-gray-700">Virtualize results</label>
+            <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
             <input
               id="virtualization-enabled"
               type="checkbox"
@@ -173,22 +229,32 @@
           </div>
 
           <div class="flex items-center justify-between py-2">
-            <label for="virtualization-threshold" class="text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
-            <input
-              id="virtualization-threshold"
-              type="number"
-              min="10"
-              max="300"
-              step="5"
-              class="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-              bind:value={local.virtualizationThreshold}
-              disabled={!local.virtualizationEnabled}
-              on:input={(e) => {
-                const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
-                local.virtualizationThreshold = n;
-                save();
-              }}
-            />
+            <label for="virtualization-threshold" class="ui-settings-label text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
+            <div class="relative">
+              <input
+                id="virtualization-threshold"
+                type="number"
+                min="10"
+                max="300"
+                step="5"
+                class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.virtualizationThreshold}
+                disabled={!local.virtualizationEnabled}
+                on:input={(e) => {
+                  const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
+                  local.virtualizationThreshold = n;
+                  save();
+                }}
+              />
+              <div class="ui-settings-stepper">
+                <button type="button" class="ui-settings-stepper-btn" aria-label="Increase virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', 5, 10, 300)}>
+                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                </button>
+                <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', -5, 10, 300)}>
+                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

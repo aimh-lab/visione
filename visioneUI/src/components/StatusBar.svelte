@@ -28,13 +28,13 @@
   $: sortLabel = sortLabels[viewMode] || viewMode;
 </script>
 
-<div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 via-gray-800/98 to-gray-900/98 backdrop-blur-md border-t border-gray-700/50 shadow-2xl z-[100]">
+<div class="ui-statusbar fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 via-gray-800/98 to-gray-900/98 backdrop-blur-md border-t border-gray-700/50 shadow-2xl z-[100]">
   <div class="px-4 py-2">
     <div class="flex items-center justify-between max-w-screen-2xl mx-auto">
       <!-- Left side: Stats -->
       <div class="flex items-center space-x-4 text-xs">
         <!-- Total results (non cliccabile) -->
-        <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-gray-800/50 rounded-full border border-gray-700/50">
+        <div class="ui-status-chip flex items-center space-x-1.5 px-2.5 py-1 bg-gray-800/50 rounded-full border border-gray-700/50">
           <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
@@ -49,7 +49,7 @@
         {#if submittedCount > 0}
           <button
             on:click={onViewSubmitted}
-            class="flex items-center space-x-1.5 px-2.5 py-1 bg-green-900/30 rounded-full border border-green-700/50 
+            class="ui-status-chip ui-status-chip-submitted flex items-center space-x-1.5 px-2.5 py-1 bg-green-900/30 rounded-full border border-green-700/50 
                    hover:bg-green-900/50 hover:border-green-600 transition-all cursor-pointer active:scale-95"
             title="Click to view submitted frames"
           >
@@ -65,7 +65,7 @@
         {#if rfPositiveCount > 0 || rfNegativeCount > 0}
           <button
             on:click={onViewRF}
-            class="flex items-center space-x-2 px-2.5 py-1 bg-gray-800/50 rounded-full border border-gray-700/50
+            class="ui-status-chip ui-status-chip-rf flex items-center space-x-2 px-2.5 py-1 bg-gray-800/50 rounded-full border border-gray-700/50
                    hover:bg-gray-800 hover:border-blue-600 transition-all cursor-pointer active:scale-95"
             title="Click to view relevance feedback"
           >
@@ -91,7 +91,7 @@
         
         <!-- Search time (non cliccabile) -->
         {#if searchTime > 0}
-          <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-purple-900/30 rounded-full border border-purple-700/50">
+          <div class="ui-status-chip ui-status-chip-time flex items-center space-x-1.5 px-2.5 py-1 bg-purple-900/30 rounded-full border border-purple-700/50">
             <svg class="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               ircle cx="12" cy="12" r="1010"/>
               <path d="M12 6v6l4 2"/>
@@ -102,7 +102,7 @@
         
         <!-- Loading indicator -->
         {#if isLoading}
-          <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-blue-900/30 rounded-full border border-blue-700/50">
+          <div class="ui-status-chip ui-status-chip-loading flex items-center space-x-1.5 px-2.5 py-1 bg-blue-900/30 rounded-full border border-blue-700/50">
             <svg class="w-3.5 h-3.5 text-blue-400 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
             </svg>

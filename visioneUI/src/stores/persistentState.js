@@ -96,6 +96,7 @@ class PersistentSet extends PersistentStore {
 
 // Stores specifici per l'app
 export const appSettingsStore = new PersistentStore('visione-app-settings', {
+  theme: 'default',
   contentScale: 1,
   viewMode: 'byvideo',
   isSidebarOpen: true,
