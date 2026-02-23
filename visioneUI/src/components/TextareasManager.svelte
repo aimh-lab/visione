@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { afterUpdate, createEventDispatcher } from "svelte";
+  import { afterUpdate, createEventDispatcher, tick } from "svelte";
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
 
@@ -380,14 +380,34 @@
 
   // ✅ Gestione menu dropdown
   let openMenuIndex: number | null = null;
+  let menuTriggerRefs: Array<HTMLButtonElement | null> = [];
+  let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
   let fileInput: HTMLInputElement | null = null;
 
-  function toggleMenu(index: number) {
+  async function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
+
+    if (openMenuIndex === index) {
+      await tick();
+      updateMenuPlacement(index);
+    }
   }
 
   function closeMenu() {
     openMenuIndex = null;
+  }
+
+  function updateMenuPlacement(index: number) {
+    const trigger = menuTriggerRefs[index];
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const estimatedMenuHeight = 270;
+
+    menuPlacementByIndex[index] =
+      spaceAbove >= estimatedMenuHeight || spaceAbove >= spaceBelow ? "top" : "bottom";
   }
 
   // ✅ NUOVO: Gestione immagini
@@ -484,6 +504,12 @@
     if (openStepActionsIndex !== null && !target.closest('.step-actions-menu')) {
       closeStepActions();
     }
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    closeMenu();
+    closeStepActions();
   }
 
   function openDateFilterModal(index: number) {
@@ -624,22 +650,24 @@
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window on:click={handleClickOutside} on:keydown={handleWindowKeydown} />
 
 <div class="space-y-4">
   <!-- Query cards -->
   <div
-    class="space-y-3"
+    class="relative space-y-4 pl-8"
     role="list"
     aria-label="Query steps"
     on:dragover={handleStepsListDragOver}
     on:drop={handleStepsListDrop}
   >
+    <div class="ui-query-timeline-line pointer-events-none absolute left-[11px] top-2 bottom-2 w-px bg-cyan-400/45"></div>
+
     {#each textareas as textarea, i}
       {@const stepColor = getStepColor(i)}
       <div
         bind:this={stepRefs[i]}
-        class="group relative pl-4 rounded-lg transition-all {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-blue-400/40 bg-slate-900/20' : ''}"
+        class="group relative transition-all rounded-xl {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
         role="group"
         aria-label={`Query step ${i + 1}`}
       >
@@ -651,79 +679,71 @@
             on:dragend={handleStepDragEnd}
             title="Drag from left border to reorder"
             aria-label="Drag step from left border to reorder"
-            class="absolute left-0 top-0 bottom-0 w-6 rounded-l-lg z-10 cursor-grab active:cursor-grabbing hover:bg-slate-700/10"
-            style={`background-image: linear-gradient(to bottom, ${withAlpha(stepColor, 0.65)} 0%, ${withAlpha(stepColor, 0.35)} 62%, ${withAlpha(stepColor, 0)} 100%); background-repeat: no-repeat; background-size: 2px calc(100% - 28px); background-position: 2.75px 28px;`}
+            class="absolute -left-8 top-0 bottom-0 w-8 rounded-lg z-20 cursor-grab active:cursor-grabbing"
           >
             <span class="sr-only">Drag step</span>
           </button>
         {/if}
 
         <div
-          class="absolute left-[-5px] top-[18px] w-4.5 h-4.5 rounded-full border-2 shadow-[0_0_0_2px_rgba(15,23,42,0.55)] z-20 flex items-center justify-center"
-          style={`background: rgba(17, 24, 39, 1); border-color: ${stepColor}; color: ${stepColor};`}
+          class="ui-query-step-index absolute -left-8 top-2 z-30 w-6 h-6 rounded-full border-2 bg-slate-950 shadow-[0_0_0_3px_rgba(2,6,23,0.7)] flex items-center justify-center"
+          style={`border-color: ${withAlpha(stepColor, 0.95)}; color: ${withAlpha(stepColor, 0.95)};`}
         >
-          <span class="text-[9px] font-bold leading-none">{i + 1}</span>
+          <span class="text-[10px] font-semibold leading-none">{i + 1}</span>
         </div>
-        <!-- Card principale -->
-        <div>
-          <!-- Header con numero integrato -->
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <!-- Badge temporale CON numero -->
-            <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full
-                        {textarea.enabled 
-                          ? 'bg-slate-800/65 border border-slate-600/60' 
-                          : 'bg-gray-800/40 border border-gray-700/60'}">
-              <!-- Frecce riordino (spostate vicino al numero step) -->
-              <div class="flex items-center space-x-0.5">
-                {#if i > 0}
-                  <button
-                    type="button"
-                    on:click|stopPropagation={() => swapQueries(i, i - 1)}
-                    title="Move up"
-                    aria-label="Move step up"
-                    class="p-0.5 rounded hover:bg-slate-600/30 transition-all"
-                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.88) : 'rgb(148, 163, 184)'};`}
-                  >
-                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M5 15l7-7 7 7"/>
-                    </svg>
-                  </button>
-                {/if}
-
-                {#if i < textareas.length - 1}
-                  <button
-                    type="button"
-                    on:click|stopPropagation={() => swapQueries(i, i + 1)}
-                    title="Move down"
-                    aria-label="Move step down"
-                    class="p-0.5 rounded hover:bg-slate-600/30 transition-all"
-                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.88) : 'rgb(148, 163, 184)'};`}
-                  >
-                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <path d="M19 9l-7 7-7-7"/>
-                    </svg>
-                  </button>
-                {/if}
-              </div>
-
-              <!-- Icona clock -->
-                  <svg class="w-2.5 h-2.5"
-                    style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.85) : 'rgb(107, 114, 128)'};`}
-                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              
-              <!-- Label temporale -->
-                  <span class="text-[10px] font-bold uppercase tracking-wide"
-                  style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.82) : 'rgb(107, 114, 128)'};`}>
-                {i === 0 ? 'First' : i === textareas.length - 1 ? 'Finally' : 'Then'}
-              </span>
+        <div
+          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {textarea.enabled ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]' : 'bg-slate-900/50 border-slate-700/55 opacity-65'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
+          style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
+          role="group"
+          aria-label={`Drop frame on step ${i + 1}`}
+          on:dragover={(e) => handleTextareaDragOver(i, e)}
+          on:drop={(e) => handleTextareaDrop(i, e)}
+          on:dragleave={(e) => handleTextareaDragLeave(i, e)}
+        >
+          <div
+            class="flex items-center justify-between gap-2 px-2.5 pt-2 pb-1.5 border-b border-slate-700/45 {textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
+            draggable={textareas.length > 1}
+            on:dragstart={(e) => startStepDrag(i, e)}
+            on:dragend={handleStepDragEnd}
+            role="group"
+            aria-label={`Step ${i + 1} header drag area`}
+            title={textareas.length > 1 ? 'Drag this header to reorder step' : undefined}
+          >
+            <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(107, 114, 128)'};`}>
+              {textareas.length > 1 ? (i === 0 ? 'First' : i === textareas.length - 1 ? 'Finally' : 'Then') : ''}
             </div>
-            
-            <!-- Controlli compatti -->
-            <div class="flex items-center space-x-0.5">
-              <!-- Toggle compatto -->
+
+            <div class="flex items-center gap-1">
+              {#if i > 0}
+                <button
+                  type="button"
+                  on:click|stopPropagation={() => swapQueries(i, i - 1)}
+                  title="Move up"
+                  aria-label="Move step up"
+                  class="inline-flex items-center justify-center w-4 h-4 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/45 transition-colors"
+                >
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 19V5"/>
+                    <path d="M5 12l7-7 7 7"/>
+                  </svg>
+                </button>
+              {/if}
+
+              {#if i < textareas.length - 1}
+                <button
+                  type="button"
+                  on:click|stopPropagation={() => swapQueries(i, i + 1)}
+                  title="Move down"
+                  aria-label="Move step down"
+                  class="inline-flex items-center justify-center w-4 h-4 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/45 transition-colors"
+                >
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14"/>
+                    <path d="M19 12l-7 7-7-7"/>
+                  </svg>
+                </button>
+              {/if}
+
               <button
                 type="button"
                 on:click={() => toggle(i)}
@@ -739,19 +759,17 @@
               </button>
 
               {#if textareas.length > 1}
-                <div class="relative step-actions-menu ml-1">
+                <div class="relative step-actions-menu">
                   <button
                     type="button"
                     on:click|stopPropagation={() => toggleStepActions(i)}
-                    title="Remove step"
-                    aria-label="Remove step"
+                    title="Delete step"
+                    aria-label="Delete step"
                     aria-haspopup="menu"
                     aria-expanded={openStepActionsIndex === i}
-                    class="inline-flex items-center justify-center w-5 h-5 rounded-full
-                           bg-gray-700/85 hover:bg-red-900/40 text-gray-200 hover:text-red-100
-                           border border-gray-600/60 hover:border-red-700/50 shadow transition-all"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-500/45 bg-slate-700/75 text-slate-200 hover:text-red-100 hover:bg-red-900/45 hover:border-red-700/60 transition-colors"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M3 6h18"/>
                       <path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/>
                       <path d="M19 6l-1 13a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
@@ -766,7 +784,7 @@
                         class="w-full text-left px-2.5 py-2 rounded-md text-xs text-red-200 hover:text-red-100 hover:bg-red-900/35 transition-colors"
                         role="menuitem"
                       >
-                        Remove step
+                        Delete step
                       </button>
                     </div>
                   {/if}
@@ -774,114 +792,95 @@
               {/if}
             </div>
           </div>
-          
-          <!-- Textarea container con remove button sovrapposto -->
-          <div
-            class="relative textarea-container rounded-lg transition-all {imageDropIndex === i ? 'ring-2 ring-blue-400/45 bg-slate-900/20' : ''}"
-            role="group"
-            aria-label={`Drop frame on step ${i + 1}`}
-            on:dragover={(e) => handleTextareaDragOver(i, e)}
-            on:drop={(e) => handleTextareaDrop(i, e)}
-            on:dragleave={(e) => handleTextareaDragLeave(i, e)}
-          >
-            <!-- Container ibrido con immagini -->
-            <div class="relative">
-              <!-- Immagini sopra la textarea -->
-              {#if textareaImages[i]?.length > 0}
-                <div class="flex flex-wrap gap-2 p-2 bg-gray-900/80 rounded-t-2xl border-2 border-b-0
-                           {textarea.enabled ? 'border-blue-500/50' : 'border-gray-700/50'}"
-                     style={`border-left-color: ${withAlpha(stepColor, 0.7)}; border-left-width: 2px;`}>
-                  {#each textareaImages[i] as image, imgIdx}
-                    <div class="relative group/img">
-                      <img 
-                        src={image.url} 
-                        alt={image.name}
-                        class="w-20 h-20 object-cover rounded-lg border-2 
-                               {image.type === 'result' ? 'border-green-500' : 'border-gray-700'}"
-                      />
-                      <!-- ✅ Badge per immagini da resultset -->
-                      {#if image.type === 'result'}
-                        <div class="absolute top-0 left-0 bg-green-500 text-white text-[8px] font-bold px-1 rounded-br">
-                          RESULT
-                        </div>
-                      {/if}
-                      <!-- Remove image button -->
-                      <button
-                        type="button"
-                        on:click={() => removeImageFromTextarea(i, imgIdx)}
-                        aria-label="Remove image"
-                        class="absolute -top-1 -right-1 w-5 h-5 bg-red-600 hover:bg-red-700 
-                               rounded-full flex items-center justify-center shadow-lg
-                               opacity-0 group-hover/img:opacity-100 transition-opacity"
-                        title="Remove image"
-                      >
-                        <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                      <!-- Image name tooltip -->
-                      <div class="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[8px] px-1 py-0.5 
-                                  truncate rounded-b-lg opacity-0 group-hover/img:opacity-100 transition-opacity">
-                        {image.name}
+
+          <div class="relative">
+            {#if textareaImages[i]?.length > 0}
+              <div class="px-2.5 pt-1.5 pb-1.5 flex flex-wrap gap-2 border-b border-slate-700/45">
+                {#each textareaImages[i] as image, imgIdx}
+                  <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      class="w-full h-14 object-cover"
+                    />
+                    {#if image.type === 'result'}
+                      <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
+                        RESULT
                       </div>
+                    {/if}
+                    <button
+                      type="button"
+                      on:click={() => removeImageFromTextarea(i, imgIdx)}
+                      aria-label="Remove image"
+                      class="absolute top-1 right-1 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                      title="Remove image"
+                    >
+                      <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+
+                    <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
+                      <div class="truncate text-[9px] text-slate-300">{image.name}</div>
+                      <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
                     </div>
-                  {/each}
-                </div>
-              {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
 
-              <!-- Textarea -->
-              <textarea
-                bind:this={textareaRefs[i]}
-                class="w-full p-2.5 pr-9 pb-6 border resize-none transition-all duration-200 font-mono text-xs
-                       {textareaImages[i]?.length > 0 ? 'rounded-b-lg rounded-t-none' : 'rounded-lg'}
-                       {textarea.enabled 
-                         ? 'bg-gray-900 text-white border-blue-500/40 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_6px_14px_rgba(2,6,23,0.35)]' 
-                         : 'bg-gray-800/30 text-gray-500 border-gray-700/50 cursor-not-allowed opacity-60 line-through shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_4px_10px_rgba(2,6,23,0.2)]'}"
-                rows="1"
-                bind:value={textarea.value}
-                placeholder={textarea.enabled 
-                  ? `Define what should appear ${i === 0 ? 'first in the video' : 'at this stage of the video'}` 
-                  : "This step is skipped"}
-                disabled={!textarea.enabled}
-                style={`overflow-y: hidden; border-left-color: ${withAlpha(stepColor, 0.7)}; border-left-width: 2px;`}
-                on:input={(e) => handleTextareaInput(i, e)}
-                on:keydown={(e) => handleKeyDown(e, i)}
-              ></textarea>
+            <textarea
+              bind:this={textareaRefs[i]}
+              class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                     {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-500 placeholder-slate-600 cursor-not-allowed line-through'}"
+              rows="1"
+              bind:value={textarea.value}
+              placeholder={textarea.enabled
+                ? `Describe ${i === 0 ? 'what happens in the scene' : 'a scene appearing after the previous one'}`
+                : 'This step is skipped'}
+              disabled={!textarea.enabled}
+              style="overflow-y: hidden;"
+              on:input={(e) => handleTextareaInput(i, e)}
+              on:keydown={(e) => handleKeyDown(e, i)}
+            ></textarea>
 
-              {#if textarea.enabled && textarea.value?.trim()}
-                <button
-                  type="button"
-                  on:click={() => clearTextareaValue(i)}
-                  class="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-gray-700/85 hover:bg-gray-600 text-gray-200 hover:text-white flex items-center justify-center transition-colors"
-                  title="Clear text"
-                  aria-label="Clear textarea text"
-                >
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-              {/if}
-            </div>
+            {#if textarea.enabled && textarea.value?.trim()}
+              <button
+                type="button"
+                on:click={() => clearTextareaValue(i)}
+                class="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                title="Clear text"
+                aria-label="Clear textarea text"
+              >
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            {/if}
+          </div>
 
             <!-- Menu dropdown button -->
-            <div class="absolute bottom-2.5 left-0 flex items-center justify-between px-2 menu-container">
+            <div class="absolute bottom-2 left-2 flex items-center justify-between menu-container z-40">
               <div class="relative">
                 <button
+                  bind:this={menuTriggerRefs[i]}
                   type="button"
                   on:click|stopPropagation={() => toggleMenu(i)}
                   title="Add attachment or filter"
                   aria-label="Add attachment or filter"
-                    class="p-1 rounded text-slate-300 hover:bg-slate-600/20 shadow transition-all hover:scale-110
-                      {openMenuIndex === i ? 'bg-slate-600/30' : ''}"
+                    class="ui-query-plus-btn w-6 h-6 rounded-full border border-slate-500/45 bg-slate-900/80 text-slate-200
+                      inline-flex items-center justify-center shadow-sm transition-all
+                      hover:bg-slate-800 hover:border-slate-400/70 hover:text-white
+                      {openMenuIndex === i ? 'bg-slate-800 border-slate-300/70 text-white' : ''}"
                 >
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                     <path d="M12 5v14M5 12h14"/>
                   </svg>
                 </button>
 
                 <!-- Dropdown menu -->
                 {#if openMenuIndex === i}
-                  <div class="absolute bottom-full left-0 mb-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 animate-slide-up">
+                  <div class="absolute left-0 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}">
                     <div class="px-3 py-2 bg-gray-900/50 border-b border-gray-700">
                       <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Add to Query</span>
                     </div>
@@ -994,14 +993,13 @@
             </div>
 
             <div class="absolute bottom-2.5 right-0 flex items-center justify-between px-2">
-              <span class="text-[9px] font-medium text-gray-400">
+              <span class="text-[9px] font-medium text-slate-500">
                 {textarea.value?.length || 0} chars
                 {#if textareaImages[i]?.length > 0}
                   · {textareaImages[i].length} img
                 {/if}
               </span>
             </div>
-          </div>
         </div>
 
       </div>
@@ -1009,15 +1007,17 @@
   </div>
 
   <!-- Add button -->
-  <button
-    on:click={() => add(textareas.length - 1)}
-    class="w-full py-2.5 border-2 border-dashed border-gray-700 hover:border-blue-600/50 rounded-lg text-xs text-gray-400 hover:text-blue-400 transition-all flex items-center justify-center space-x-2"
-  >
-    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 5v14M5 12h14"/>
-    </svg>
-    <span>Add Next Step</span>
-  </button>
+  <div class="pl-8">
+    <button
+      on:click={() => add(textareas.length - 1)}
+      class="w-full py-2.5 border-2 border-dashed border-gray-700 hover:border-blue-600/50 rounded-lg text-xs text-gray-400 hover:text-blue-400 transition-all flex items-center justify-center space-x-2"
+    >
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      <span>Describe Next Scene</span>
+    </button>
+  </div>
 
   <InputModal
   isOpen={modalConfig.isOpen}

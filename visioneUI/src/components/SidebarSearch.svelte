@@ -54,6 +54,15 @@
     if (!target.closest('.query-reset-menu')) {
       isResetMenuOpen = false;
     }
+    if (!target.closest('.utility-panel-container')) {
+      activeUtilityPanel = null;
+    }
+  }
+
+  function handleWindowKeydown(e) {
+    if (e.key !== 'Escape') return;
+    isResetMenuOpen = false;
+    activeUtilityPanel = null;
   }
   const swapTA = (idxA, idxB, mode = "swap") => {
     dispatch("swapTextarea", { indexA: idxA, indexB: idxB, mode });
@@ -138,6 +147,7 @@
   on:mousemove={handleMouseMove} 
   on:mouseup={stopResize}
   on:click={handleWindowClick}
+  on:keydown={handleWindowKeydown}
 />
 
 <div 
@@ -162,9 +172,11 @@
         <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700 shadow-lg">
           <div class="flex items-center space-x-2 mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 2"/>
+              <path d="M3 12h2M19 12h2"/>
             </svg>
-            <h3 class="text-xs font-bold text-white uppercase tracking-wide">Build Temporal Query</h3>
+            <h3 class="text-xs font-bold text-white uppercase tracking-wide">Temporal Query</h3>
             <div class="relative group/info ml-0.5">
               <button
                 type="button"
@@ -223,7 +235,7 @@
             </div>
           {/if}
           
-          <div class="mt-3 flex items-center gap-2">
+          <div class="mt-3 pl-8 flex items-center gap-2">
             <button
               on:click={doSearch}
               disabled={searchLoading}
@@ -291,7 +303,7 @@
 
         <!-- Recent + Templates compact row -->
         {#if !searchLoading}
-          <div class="pt-3 border-t border-gray-700/50 space-y-2">
+          <div class="pt-3 border-t border-gray-700/50 space-y-2 utility-panel-container">
             <div class="grid grid-cols-2 gap-2">
               <button
                 type="button"

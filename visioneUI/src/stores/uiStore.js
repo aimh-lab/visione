@@ -12,6 +12,7 @@ const DEFAULT = {
   },
 
   // Persistente
+  theme: 'default',            // 'default' | 'dark' | 'light'
   viewMode: 'byvideo',
   contentScale: 1,
 
@@ -62,6 +63,7 @@ function createUIStore() {
       update(u => ({
         ...u,
         // layoutTab volutamente escluso
+        theme: s.theme ?? u.theme,
         viewMode: s.viewMode ?? u.viewMode,
         contentScale: s.contentScale ?? u.contentScale,
 
@@ -83,8 +85,15 @@ function createUIStore() {
     resetUI() {
       set(DEFAULT);
       persist({
+        theme: DEFAULT.theme,
         viewMode: DEFAULT.viewMode,
         contentScale: DEFAULT.contentScale,
+            setTheme(theme) {
+              const safe = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+              update(u => ({ ...u, theme: safe }));
+              persist({ theme: safe });
+            },
+
         isSidebarOpen: DEFAULT.isSidebarOpen,
         isSidebarRightOpen: DEFAULT.isSidebarRightOpen,
         sidebarLeftWidth: DEFAULT.sidebarLeftWidth,
@@ -169,16 +178,18 @@ function createUIStore() {
     },
 
 
-    applySettings({ keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold }) {
+      const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       update(u => ({
         ...u,
+        theme: safeTheme,
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
         virtualizationEnabled,
         virtualizationThreshold
       }));
-      persist({ keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold });
+      persist({ theme: safeTheme, keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold });
     }
   };
 
