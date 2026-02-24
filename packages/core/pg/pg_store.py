@@ -61,6 +61,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
     ) -> PGVectorStore:
         """Create an PGVectorStore instance.
 
@@ -102,6 +104,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         vs = await engine._run_as_async(coro)
         return cls(cls.__create_key, engine, vs)
@@ -125,6 +129,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
     ) -> PGVectorStore:
         """Create an PGVectorStore instance.
 
@@ -167,6 +173,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         vs = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, vs)
@@ -309,6 +317,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance from texts.
@@ -357,6 +367,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         await vs.aadd_texts(texts, metadatas=metadatas, ids=ids)
         return vs
@@ -382,6 +394,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance from documents.
@@ -430,6 +444,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         await vs.aadd_documents(documents, ids=ids)
         return vs
@@ -456,6 +472,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance from texts.
@@ -504,6 +522,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
             **kwargs,
         )
         vs.add_texts(texts, metadatas=metadatas, ids=ids)
@@ -530,6 +550,8 @@ class PGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance from documents.
@@ -577,6 +599,8 @@ class PGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
             **kwargs,
         )
         vs.add_documents(documents, ids=ids)

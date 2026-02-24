@@ -79,6 +79,8 @@ class AsyncPGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
     ):
         """AsyncPGVectorStore constructor.
         Args:
@@ -123,6 +125,8 @@ class AsyncPGVectorStore(VectorStore):
         self.lambda_mult = lambda_mult
         self.index_query_options = index_query_options
         self.hybrid_search_config = hybrid_search_config
+        self.groupby_column = groupby_column
+        self.temporal_column = temporal_column
 
     @classmethod
     async def create(
@@ -144,6 +148,8 @@ class AsyncPGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
     ) -> AsyncPGVectorStore:
         """Create an AsyncPGVectorStore instance.
 
@@ -256,6 +262,8 @@ class AsyncPGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
 
     @property
@@ -525,6 +533,8 @@ class AsyncPGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> AsyncPGVectorStore:
         """Create an AsyncPGVectorStore instance from texts.
@@ -571,6 +581,8 @@ class AsyncPGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         await vs.aadd_texts(texts, metadatas=metadatas, ids=ids, **kwargs)
         return vs
@@ -597,6 +609,8 @@ class AsyncPGVectorStore(VectorStore):
         lambda_mult: float = 0.5,
         index_query_options: Optional[QueryOptions] = None,
         hybrid_search_config: Optional[HybridSearchConfig] = None,
+        groupby_column: Optional[str] = None,
+        temporal_column: str = "epoch",
         **kwargs: Any,
     ) -> AsyncPGVectorStore:
         """Create an AsyncPGVectorStore instance from documents.
@@ -644,6 +658,8 @@ class AsyncPGVectorStore(VectorStore):
             lambda_mult=lambda_mult,
             index_query_options=index_query_options,
             hybrid_search_config=hybrid_search_config,
+            groupby_column=groupby_column,
+            temporal_column=temporal_column,
         )
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -718,6 +734,7 @@ class AsyncPGVectorStore(VectorStore):
         else:
             async with self.engine.connect() as conn:
                 fetch_k = kwargs.get("fetch_k")
+                await conn.execute(text("SET LOCAL random_page_cost = 0.2;")) # SET LOCAL random_page_cost = 1.1;
                 await conn.execute(text(f"SET LOCAL hnsw.ef_search = {fetch_k};"))
                 result = await conn.execute(text(dense_query_stmt), param_dict)
                 result_map = result.mappings()
@@ -760,16 +777,18 @@ class AsyncPGVectorStore(VectorStore):
 
     async def asimilarity_search(
         self,
-        query: str,
+        query: dict[str, Any],
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
-        
-        # Check for separator token to trigger temporal join
-        separator = kwargs.get("separator", "<sep>")
-        if separator in query:
+
+        if not isinstance(query, dict):
+            raise ValueError("Query must be a dictionary.")
+
+        query_text = query.get("text")
+        if isinstance(query_text, list) and len(query_text) >= 2:
             return await self._atemporal_join_search(
                 query=query, 
                 k=k, 
@@ -777,21 +796,33 @@ class AsyncPGVectorStore(VectorStore):
                 **kwargs
             )
 
+        if isinstance(query_text, list):
+            if len(query_text) == 0:
+                raise ValueError("Query dictionary 'text' list must not be empty.")
+            if not all(isinstance(item, str) for item in query_text):
+                raise ValueError("Query dictionary 'text' list must contain only strings.")
+            query_text = query_text[0]
+
+        if not isinstance(query_text, str):
+            raise ValueError("Query dictionary must include 'text' as a string or list[str].")
+        if not query_text.strip():
+            raise ValueError("Query dictionary 'text' must be a non-empty string.")
+
         # Standard implementation follows...
         inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
         embedding = (
             []
             if callable(inline_embed_func)
-            else await self.embedding_service.aembed_query(text=query)
+            else await self.embedding_service.aembed_query(text=query_text)
         )
-        kwargs["query"] = query
+        kwargs["query"] = query_text
 
         # add fts_query to hybrid_search_config
         hybrid_search_config = kwargs.get(
             "hybrid_search_config", self.hybrid_search_config
         )
         if hybrid_search_config and not hybrid_search_config.fts_query:
-            hybrid_search_config.fts_query = query
+            hybrid_search_config.fts_query = query_text
             kwargs["hybrid_search_config"] = hybrid_search_config
 
         return await self.asimilarity_search_by_vector(
@@ -800,25 +831,45 @@ class AsyncPGVectorStore(VectorStore):
 
     async def _atemporal_join_search(
         self,
-        query: str,
+        query: dict[str, Any],
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """
-        Private method to handle temporal join search when <sep> is detected.
-        Specific to video schema: joins on starttime (float) within the same video_id.
+        Private method to handle temporal join search.
+        Query is a dictionary with:
+        - text: list[str], containing at least two query texts
+        - groupby: optional str, grouping column for temporal join
+        - temporal_column: optional str, temporal column for window join (default: starttime)
+        - window_seconds: optional float, window size in seconds for temporal join (default: 30.0)
         """
         from sqlalchemy import text
-        
-        separator = kwargs.get("separator", "<sep>")
-        window_seconds = kwargs.get("window_seconds", 30.0)
-        
+        window_seconds = query.get("window_seconds", 30.0)
+
+        query_texts = query.get("text")
+        groupby_column = self.groupby_column
+        temporal_column = self.temporal_column
+
+        if not isinstance(query_texts, list):
+            raise ValueError("Temporal query must include 'text' as a list of strings.")
+        if len(query_texts) < 2:
+            raise ValueError("Temporal query requires at least 2 texts in 'text'.")
+        if not all(isinstance(item, str) for item in query_texts):
+            raise ValueError("Temporal query 'text' must contain only strings.")
+        if groupby_column is not None and (
+            not isinstance(groupby_column, str) or not groupby_column.isidentifier()
+        ):
+            raise ValueError("Temporal query 'groupby' must be a valid SQL identifier.")
+        if not isinstance(temporal_column, str) or not temporal_column.isidentifier():
+            raise ValueError(
+                "Temporal query 'temporal_column' must be a valid SQL identifier."
+            )
+
         # 1. Parse Query
-        parts = query.split(separator)
-        if len(parts) != 2:
-             raise ValueError(f"Temporal query expects exactly two parts separated by '{separator}'")
-        query_x, query_y = parts[0].strip(), parts[1].strip()
+        query_x, query_y = query_texts[0].strip(), query_texts[1].strip()
+        if not query_x or not query_y:
+            raise ValueError("Temporal query texts must be non-empty strings.")
 
         # 2. Embed Queries
         inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
@@ -849,46 +900,72 @@ class AsyncPGVectorStore(VectorStore):
 
         # 4. Construct SQL
         full_table_name = f'"{self.schema_name}"."{self.table_name}"'
+        base_columns = [
+            self.id_column,
+            self.content_column,
+        ] + self.metadata_columns
+        if self.metadata_json_column:
+            base_columns.append(self.metadata_json_column)
+
+        cte_columns: list[str] = []
+        extra_columns = [temporal_column]
+        if groupby_column:
+            extra_columns.append(groupby_column)
+        for col in base_columns + extra_columns:
+            if col not in cte_columns:
+                cte_columns.append(col)
+
+        cte_column_names = ", ".join(f'"{col}"' for col in cte_columns)
+        base_column_names_t1 = ", ".join(f't1."{col}"' for col in base_columns)
+        groupby_select = (
+            f't1."{groupby_column}" as groupby_value,' if groupby_column else "NULL as groupby_value,"
+        )
+        join_conditions = [
+            f't2."{temporal_column}" BETWEEN (t1."{temporal_column}" - :window) AND (t1."{temporal_column}" + :window)',
+            f't1."{self.id_column}" != t2."{self.id_column}"',
+        ]
+        if groupby_column:
+            join_conditions.insert(0, f't1."{groupby_column}" = t2."{groupby_column}"')
+        join_clause = " AND ".join(join_conditions)
+
+        safe_filter = None
+        filter_dict = None
+        if filter and isinstance(filter, dict):
+            safe_filter, filter_dict = self._create_filter_clause(filter)
+        where_filters = f"WHERE {safe_filter}" if safe_filter else ""
 
         # The CTE (Common Table Expression) Approach
         sql = text(f"""
             WITH top_x AS (
                 SELECT 
-                    id, video_id, starttime, endframe, startframe, "{self.content_column}",
+                    {cte_column_names},
                     -- Calculate Rank X (1 is best)
                     ROW_NUMBER() OVER (ORDER BY "{self.embedding_column}" {operator} :vec_x) as rank_x
                 FROM {full_table_name}
+                {where_filters}
                 ORDER BY "{self.embedding_column}" {operator} :vec_x
                 LIMIT :candidate_limit
             ),
             top_y AS (
                 SELECT 
-                    id, video_id, starttime, endframe, startframe, "{self.content_column}",
+                    {cte_column_names},
                     -- Calculate Rank Y (1 is best)
                     ROW_NUMBER() OVER (ORDER BY "{self.embedding_column}" {operator} :vec_y) as rank_y
                 FROM {full_table_name}
+                {where_filters}
                 ORDER BY "{self.embedding_column}" {operator} :vec_y
                 LIMIT :candidate_limit
             )
             -- 3. Join only the small candidate pools
             SELECT 
-                t1."{self.content_column}" as content_x,
-                t1.starttime as starttime_x,
-                t1.video_id as video_id,
-                t1.startframe as startframe_x,
-                t1.endframe as endframe_x,
-                
-                t2."{self.content_column}" as content_y,
-                t2.starttime as starttime_y,
-                t2.startframe as startframe_y,
-                t2.endframe as endframe_y,
-                
+                {base_column_names_t1},
+                {groupby_select}
+                t1."{temporal_column}" as temporal_x,
+                t2."{temporal_column}" as temporal_y,
                 (1.0 / t1.rank_x) + (1.0 / t2.rank_y) as rrf_score
             FROM top_x t1
             JOIN top_y t2 ON 
-                t1.video_id = t2.video_id 
-                AND t2.starttime BETWEEN (t1.starttime - :window) AND (t1.starttime + :window)
-                AND t1.id != t2.id
+                {join_clause}
             ORDER BY 
                 rrf_score DESC
             LIMIT :dense_limit
@@ -901,38 +978,42 @@ class AsyncPGVectorStore(VectorStore):
             "candidate_limit": candidate_limit,
             "dense_limit": dense_limit
         }
+        if filter_dict:
+            params.update(filter_dict)
 
         # 5. Execute
         results = []
         async with self.engine.connect() as conn:
-            await conn.execute(text("SET LOCAL random_page_cost = 1.1;"))
-            fetch_k = kwargs.get("fetch_k")
+            await conn.execute(text("SET LOCAL random_page_cost = 0.2;")) # SET LOCAL random_page_cost = 1.1;
+            fetch_k = kwargs.get("fetch_k", self.fetch_k)
             await conn.execute(text(f"SET LOCAL hnsw.ef_search = {fetch_k};"))
             result_proxy = await conn.execute(sql, params)
             rows = result_proxy.mappings().fetchall()
 
             for row in rows:
-                # combined_content = (
-                #     f"Video ID: {row['video_id']}\n"
-                #     f"--- Scene 1 (Time: {row['starttime_x']}s, Frames: {row['startframe_x']}-{row['endframe_x']}) ---\n"
-                #     f"{row['content_x']}\n\n"
-                #     f"--- Scene 2 (Time: {row['starttime_y']}s, Frames: {row['startframe_y']}-{row['endframe_y']}) ---\n"
-                #     f"{row['content_y']}"
-                # )
-                combined_content = row['content_x'] + " - " + row['content_y']
-                
-                meta = {
-                    "source_query_x": query_x,
-                    "source_query_y": query_y,
-                    "video_id": row['video_id'],
-                    "time_x": row['starttime_x'],
-                    "time_y": row['starttime_y'],
-                    "frame_x": row['startframe_x'],
-                    "frame_y": row['startframe_y'],
-                    "rrf_score": row['rrf_score']
-                }
-                
-                results.append(Document(page_content=combined_content, metadata=meta))
+                metadata = (
+                    row[self.metadata_json_column]
+                    if self.metadata_json_column and row[self.metadata_json_column]
+                    else {}
+                )
+                for col in self.metadata_columns:
+                    metadata[col] = row[col]
+
+                metadata.update(
+                    {
+                        "temporal_x": row["temporal_x"],
+                        "temporal_y": row["temporal_y"],
+                        "rrf_score": row["rrf_score"],
+                    }
+                )
+
+                results.append(
+                    Document(
+                        page_content=row[self.content_column],
+                        metadata=metadata,
+                        id=str(row[self.id_column]),
+                    )
+                )
 
         return results
 
