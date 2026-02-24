@@ -19,6 +19,8 @@ async def run_pipeline(cfg: DictConfig):
     # --- 1. Load Data ---
     loader = instantiate(cfg.loader)
     documents, ids = loader.generate_docs()
+
+    table_name = loader.get_table_name()
     
     # Generate hashed IDs for database storage
     all_hashed_ids = [generate_doc_id(id_str) for id_str in ids]
@@ -54,17 +56,17 @@ async def run_pipeline(cfg: DictConfig):
 
     try:
         await pg_engine.ainit_vectorstore_table(
-            table_name=cfg.database.table_name,
+            table_name=table_name,
             vector_size=model_size_dict, # Pass the dictionary {model_name: size}
             metadata_columns=metadata_columns,
             overwrite_existing=False
         )
-        print(f"Table '{cfg.database.table_name}' initialized.")
+        print(f"Table '{table_name}' initialized.")
     except Exception as e:
         if "already exists" in str(e).lower():
-            print(f"Table '{cfg.database.table_name}' already exists. Attempting update...")
+            print(f"Table '{table_name}' already exists. Attempting update...")
             await pg_engine.aupdate_vectorstore_table(
-                table_name=cfg.database.table_name,
+                table_name=table_name,
                 vector_size=model_size_dict,
             )
         else:
@@ -72,7 +74,7 @@ async def run_pipeline(cfg: DictConfig):
 
     vector_store = await PGVectorStore.create(
         engine=pg_engine,
-        table_name=cfg.database.table_name,
+        table_name=table_name,
         embedding_column=model_names,
         embedding_service=embedders,
         metadata_columns=[col.name for col in metadata_columns]
@@ -89,14 +91,14 @@ async def run_pipeline(cfg: DictConfig):
         conn = await asyncpg.connect(raw_conn_string)
         
         # Build query to check if ID exists AND all specific vector columns are not null
-        query = f'SELECT id FROM "{cfg.database.table_name}" WHERE id = ANY($1)'
+        query = f'SELECT id FROM "{table_name}" WHERE id = ANY($1)'
         
         # Note: Assuming your custom engine uses 'id' or 'langchain_id' as primary key.
         # Standard LangChain PG uses 'id'. Adjust 'id' below if your custom engine uses 'langchain_id'.
         # Based on your previous snippet, it seemed to be 'langchain_id'.
         pk_column = "langchain_id" # or "id" depending on your implementation
         
-        query = f'SELECT {pk_column} FROM "{cfg.database.table_name}" WHERE {pk_column} = ANY($1)'
+        query = f'SELECT {pk_column} FROM "{table_name}" WHERE {pk_column} = ANY($1)'
         
         # Add checks for specific vector columns to ensure we only skip if THESE embeddings exist
         for model in model_names:

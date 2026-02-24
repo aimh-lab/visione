@@ -132,6 +132,18 @@ class LSCLoader:
         return [
             "minute_id", "hour_id", "epoch"
         ]
+    
+    def get_table_name(self):
+        # Return the name of the database table to store LSC data
+        return "lsc"
+    
+    def get_temporal_column(self):
+        # Return the name of the temporal column to be used for time-based queries
+        return "epoch"
+    
+    def get_temporal_groupby_column(self):
+        # Return the name of the column to group by for temporal queries (e.g., hourly)
+        return "hour_id"
 
     def get_column_schema(self):
         # --- Define Metadata Schema ---

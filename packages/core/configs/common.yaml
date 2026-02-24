@@ -3,7 +3,6 @@ database:
   user: langchain
   password: langchain
   dbname: langchain
-  table_name: lsc
 
 embedding:
   server_url: "http://trinity.isti.cnr.it:8000"

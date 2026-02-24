@@ -20,7 +20,7 @@ from embeddings import RemoteEmbeddings
 
 # --- Pydantic Models ---
 class SearchRequest(BaseModel):
-    query: str
+    query: Dict[str, Any] = Field(..., description="Structured query with 'text' and optional filters.")
     k: int = Field(default=100, ge=1, description="Number of results to return")
     models: Optional[List[str]] = Field(
         default=None, 
@@ -82,6 +82,7 @@ async def lifespan(app: FastAPI):
     # Initialize specific data loader
     loader = instantiate(cfg.loader)
     app.state.loader = loader
+    table_name = loader.get_table_name()
 
     # 1. Initialize Shared DB Engine
     connection_string = (
@@ -118,10 +119,12 @@ async def lifespan(app: FastAPI):
         # Create/Cache Vector Store
         vs = PGVectorStore.create_sync(
             engine=engine,
-            table_name=cfg.database.table_name,
+            table_name=table_name,
             embedding_service=embedding_service,
             embedding_column=embedding_col,
-            metadata_columns=app.state.loader.retrieved_metadata_columns()
+            metadata_columns=app.state.loader.retrieved_metadata_columns(),
+            groupby_column=loader.get_temporal_groupby_column(),
+            temporal_column=loader.get_temporal_column()
         )
         app.state.vector_stores[model_name] = vs
 
