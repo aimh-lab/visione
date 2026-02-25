@@ -1,12 +1,29 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 const STORAGE_KEY = 'visione_query_templates';
 
 function createTemplatesStore() {
-  // Carica da localStorage
-  const stored = typeof window !== 'undefined' 
-    ? JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    : [];
+  const safeLoad = () => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const persist = (templates) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+    } catch {
+      // ignore persistence errors to avoid breaking UX
+    }
+  };
+
+  const stored = safeLoad();
   
   const { subscribe, set, update } = writable(stored);
   
@@ -15,52 +32,101 @@ function createTemplatesStore() {
     
     // Aggiungi nuovo template
     add: (name, queries) => {
+      let result = { status: 'skipped', name: '' };
+
       update(templates => {
+        const normalizedName = String(name || '').trim();
+        const normalizedQueries = Array.isArray(queries)
+          ? queries.map(q => String(q || '').trim()).filter(Boolean)
+          : [];
+
+        if (normalizedQueries.length === 0) {
+          result = { status: 'skipped', name: '' };
+          return templates;
+        }
+
+        const fallbackName = normalizedQueries[0]?.slice(0, 40) || 'Untitled template';
+        const finalName = normalizedName || fallbackName;
+
+        const querySignature = normalizedQueries.join('||');
+        const existingIndex = templates.findIndex((template) => {
+          const existingName = String(template?.name || '').trim().toLowerCase();
+          const existingQueries = Array.isArray(template?.queries)
+            ? template.queries.map((q) => String(q || '').trim()).filter(Boolean)
+            : [];
+          const existingSignature = existingQueries.join('||');
+          return existingName === finalName.toLowerCase() || existingSignature === querySignature;
+        });
+
+        if (existingIndex >= 0) {
+          const existing = templates[existingIndex];
+          const updatedTemplate = {
+            ...existing,
+            name: finalName,
+            queries: [...normalizedQueries],
+            updatedAt: new Date().toISOString()
+          };
+          const updated = [...templates];
+          updated.splice(existingIndex, 1);
+          const next = [updatedTemplate, ...updated];
+          persist(next);
+          result = { status: 'updated', name: finalName };
+          return next;
+        }
+
         const newTemplate = {
           id: Date.now(),
-          name,
-          queries,
-          createdAt: new Date().toISOString()
+          name: finalName,
+          queries: [...normalizedQueries],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         const updated = [...templates, newTemplate];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        persist(updated);
+        result = { status: 'created', name: finalName };
         return updated;
       });
+
+      return result;
     },
     
     // Elimina template
     delete: (id) => {
       update(templates => {
         const updated = templates.filter(t => t.id !== id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        persist(updated);
         return updated;
       });
     },
     
     // Carica template
     load: (id) => {
-      return new Promise(resolve => {
-        subscribe(templates => {
-          const template = templates.find(t => t.id === id);
-          resolve(template);
-        });
-      });
+      const templates = get({ subscribe });
+      return Promise.resolve(templates.find(t => t.id === id));
     },
     
     // Rinomina
     rename: (id, newName) => {
       update(templates => {
+        const safeName = String(newName || '').trim();
+        if (!safeName) return templates;
         const updated = templates.map(t => 
-          t.id === id ? { ...t, name: newName } : t
+          t.id === id ? { ...t, name: safeName, updatedAt: new Date().toISOString() } : t
         );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        persist(updated);
         return updated;
       });
     },
     
     // Reset (cancella tutto)
     clear: () => {
-      localStorage.removeItem(STORAGE_KEY);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // ignore remove errors
+        }
+      }
       set([]);
     }
   };

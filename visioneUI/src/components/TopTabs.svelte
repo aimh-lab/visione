@@ -125,6 +125,15 @@
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5h10"/>
+              <path d="M11 12h7"/>
+              <path d="M11 19h4"/>
+              <path d="M4 17l-2 2 2 2"/>
+              <path d="M2 19h5"/>
+              <path d="M6 7l2-2 2 2"/>
+              <path d="M8 5v14"/>
+            </svg>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               {@html currentSort.icon}
             </svg>

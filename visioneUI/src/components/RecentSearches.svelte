@@ -51,6 +51,16 @@
     if (minutes > 0) return `${minutes}m ago`;
     return 'just now';
   }
+
+  function getQuerySegments(search) {
+    const items = Array.isArray(search?.textareas) ? search.textareas : [];
+    const active = items
+      .filter((step) => step?.enabled && String(step?.value || '').trim())
+      .map((step) => String(step.value || '').trim());
+
+    if (active.length > 0) return active;
+    return [String(search?.query || '').trim()].filter(Boolean);
+  }
 </script>
 
 {#if show && $recentSearches.length > 0}
@@ -93,13 +103,23 @@
   class="group w-full flex items-start justify-between p-2 bg-gray-800/50 hover:bg-gray-750 rounded-lg transition-all hover:shadow-md cursor-pointer"
 >
   <div class="flex-1 min-w-0 text-left">
-    <div class="flex items-center space-x-2">
-      <p class="text-sm text-gray-200 truncate group-hover:text-white transition-colors">
-        {search.query}
-      </p>
+    <div class="flex items-center space-x-2 min-w-0">
+      <div class="flex items-center gap-1 min-w-0 overflow-hidden">
+        {#each getQuerySegments(search) as segment, idx}
+          <span
+            class="text-sm text-gray-200 truncate max-w-[8.5rem] group-hover:text-white transition-colors"
+            title={segment}
+          >
+            {segment}
+          </span>
+          {#if idx < getQuerySegments(search).length - 1}
+            <span class="text-xs text-gray-500 flex-shrink-0">-&gt;</span>
+          {/if}
+        {/each}
+      </div>
       <!-- ✅ Badge per cache -->
       {#if search.results}
-        <span class="px-1.5 py-0.5 bg-green-600/20 text-green-400 text-[9px] font-medium rounded uppercase">
+        <span class="px-1.5 py-0.5 bg-green-600/20 text-green-400 text-[9px] font-medium rounded uppercase flex-shrink-0">
           Cached
         </span>
       {/if}

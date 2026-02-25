@@ -25,6 +25,7 @@ const DEFAULT = {
   keyframeSize: 130,
   resultsPerRow: 8,
   resultsAutoFit: true,
+  videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
   virtualizationThreshold: 40
 };
@@ -76,6 +77,7 @@ function createUIStore() {
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
         resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
+        videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold
       }));
@@ -102,6 +104,7 @@ function createUIStore() {
         keyframeSize: DEFAULT.keyframeSize,
         resultsPerRow: DEFAULT.resultsPerRow,
         resultsAutoFit: DEFAULT.resultsAutoFit,
+        videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold
       });
@@ -178,18 +181,20 @@ function createUIStore() {
     },
 
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+      const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       update(u => ({
         ...u,
         theme: safeTheme,
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
+        videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
         virtualizationThreshold
       }));
-      persist({ theme: safeTheme, keyframeSize, resultsPerRow, resultsAutoFit, virtualizationEnabled, virtualizationThreshold });
+      persist({ theme: safeTheme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation: safeVideoBadgeOrientation, virtualizationEnabled, virtualizationThreshold });
     }
   };
 

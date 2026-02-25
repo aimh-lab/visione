@@ -13,6 +13,7 @@
   export let isSidebarOpen = true;
   export let contentScale = 1;
   export let viewMode = "byrank";
+  export let videoBadgeOrientation = "vertical";
 
   export let rows: Img[][] = [];              // similarityDisplayRows
   export let loading = false;
@@ -162,6 +163,7 @@
             rows={rows}
             selectedImage={simSelected as any}
             {viewMode}
+            {videoBadgeOrientation}
             {virtualizationEnabled}
             {virtualizationThreshold}
             registerContainer={registerContainer}

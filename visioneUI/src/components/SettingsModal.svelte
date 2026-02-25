@@ -9,6 +9,7 @@
   export let resultsPerRow = 8;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let videoBadgeOrientation = 'vertical';
   export let futureOptionA = "";
   export let futureOptionB = false;
 
@@ -20,6 +21,7 @@
     keyframeSize,
     resultsPerRow,
     resultsAutoFit,
+    videoBadgeOrientation,
     virtualizationEnabled,
     virtualizationThreshold,
     futureOptionA,
@@ -33,6 +35,7 @@
       keyframeSize,
       resultsPerRow,
       resultsAutoFit,
+      videoBadgeOrientation,
       virtualizationEnabled,
       virtualizationThreshold,
       futureOptionA,
@@ -55,6 +58,7 @@
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
+      videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       futureOptionA: local.futureOptionA,
@@ -215,6 +219,19 @@
                 <label for="autofit" class="ui-settings-hint text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
               </div>
             </div>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-video-badge-orientation" class="ui-settings-label text-sm font-medium text-gray-700">Video badge</label>
+            <select
+              id="settings-video-badge-orientation"
+              class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+              bind:value={local.videoBadgeOrientation}
+              on:change={() => save()}
+            >
+              <option value="vertical">Vertical</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
           </div>
 
           <div class="flex items-center justify-between py-2">

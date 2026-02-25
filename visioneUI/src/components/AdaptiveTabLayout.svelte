@@ -233,9 +233,16 @@
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
             title="Sort by"
+            aria-label="Sort by"
           >
             <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              {@html currentSort.icon}
+              <path d="M11 5h10"/>
+              <path d="M11 12h7"/>
+              <path d="M11 19h4"/>
+              <path d="M4 17l-2 2 2 2"/>
+              <path d="M2 19h5"/>
+              <path d="M6 7l2-2 2 2"/>
+              <path d="M8 5v14"/>
             </svg>
           </button>
           
@@ -395,9 +402,16 @@
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
             title="Sort by"
+            aria-label="Sort by"
           >
             <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              {@html currentSort.icon}
+              <path d="M11 5h10"/>
+              <path d="M11 12h7"/>
+              <path d="M11 19h4"/>
+              <path d="M4 17l-2 2 2 2"/>
+              <path d="M2 19h5"/>
+              <path d="M6 7l2-2 2 2"/>
+              <path d="M8 5v14"/>
             </svg>
           </button>
           

@@ -5,6 +5,7 @@
   export let selectedImage = null;
   export let registerContainer = (el) => {};
   export let viewMode = "byrank"; // ✅ AGGIUNGI
+  export let videoBadgeOrientation = "vertical";
   export let isSelectionMode = false; 
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
@@ -19,6 +20,7 @@
   layout="rows"
   showVideoSummary={true}
   {viewMode}
+  {videoBadgeOrientation}
   virtualizeRows={virtualizationEnabled}
   virtualizeThreshold={virtualizationThreshold}
   {registerContainer}

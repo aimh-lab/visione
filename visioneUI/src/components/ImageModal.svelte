@@ -103,8 +103,28 @@
 
             <!-- ✅ OVERLAY BUTTONS (identici a ResultsGrid) -->
             <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <button
+                  class="w-12 h-12 rounded-full bg-slate-200/85 text-slate-900 shadow-xl flex items-center justify-center border border-slate-300/80 ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-slate-100 active:scale-95 pointer-events-auto"
+                            style="--play-size: clamp(44px, calc(var(--kf-size, 160px) * 0.32), 96px); width: var(--play-size); height: var(--play-size);"
+                  title="Play video"
+                  aria-label="Play video"
+                  on:click={handleOpenVideoPlayer}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    class="text-slate-900"
+                              style="width: calc(var(--play-size) * 0.44); height: calc(var(--play-size) * 0.44);"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </button>
+              </div>
               <!-- Barra bottom stile YouTube -->
-              <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-lg px-3 py-2 shadow-xl">
+              <div class="absolute bottom-1 left-3 right-3 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-lg px-3 py-2 shadow-xl">
                 <!-- Left group: video actions -->
                 <div class="flex items-center space-x-1.5">
                   <button
@@ -115,17 +135,6 @@
                   >
                     <svg class="w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
-                    </svg>
-                  </button>
-
-                  <button
-                    class="p-1.5 hover:bg-white/20 rounded-md transition-colors"
-                    title="Play video"
-                    aria-label="Play video"
-                    on:click={handleOpenVideoPlayer}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
-                      <path d="M8 5v14l11-7z"/>
                     </svg>
                   </button>
 
