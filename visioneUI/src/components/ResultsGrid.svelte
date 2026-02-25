@@ -9,6 +9,7 @@
   export let showVideoSummary = false;
   export let registerContainer = (el) => {};
   export let viewMode = "byrank"; // ✅ NUOVA PROP
+  export let videoBadgeOrientation = "vertical";
   export let isSelectionMode = false;
   export let virtualizeRows = true;
   export let virtualizeThreshold = 40;
@@ -493,25 +494,12 @@
     
     <div
       use:measureRow={rowIndex}
-      class="w-full {viewMode === 'byvideo' ? (rowIndex % 2 === 0 ? 'bg-gray-100/35' : 'bg-gray-200/20') : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
+      class="w-full {viewMode === 'byvideo' ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
     >
       
         <!-- ✅ ROW HEADER (solo per byvideo e bydate) -->
         {#if rowInfo}
-          {#if rowInfo.type === 'video'}
-            <div class="px-3 pt-1">
-              <button
-                on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-                class="group/video inline-flex max-w-full items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-500/80 border-b-0 rounded-t-lg text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_6px_14px_rgba(2,6,23,0.35)] transition-colors"
-                title={`Open video ${rowInfo.label}`}
-              >
-                <svg class="w-3.5 h-3.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                </svg>
-                <span class="text-[11px] font-semibold tracking-normal leading-none truncate">{rowInfo.label}</span>
-              </button>
-            </div>
-          {:else if rowInfo.type === 'date'}
+          {#if rowInfo.type === 'date'}
             <div class="sticky top-0 z-30 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-gray-300 flex items-center justify-between shadow-sm">
               <div class="flex items-center space-x-3">
                 <div class="p-1.5 bg-blue-100 rounded-lg">
@@ -535,9 +523,35 @@
       
       <!-- Frames grid -->
       <div
-        class="flex flex-wrap w-full p-3 {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'mx-3 mb-1.5 border border-gray-300 border-l-4 border-l-gray-500 rounded-b-xl rounded-tr-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_20px_rgba(15,23,42,0.16)]' : 'mx-3 mb-1.5 border border-gray-400/70 border-l-4 border-l-gray-600 rounded-b-xl rounded-tr-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_20px_rgba(15,23,42,0.20)]') : ''} {rowInfo?.type === 'video' ? 'pt-1.5 pb-1.5 px-2.5' : ''}"
-        style="gap: var(--grid-gap, 16px);"
+        class="flex flex-wrap w-full p-2.5 {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'relative ml-2 mr-2.5 mb-1 border border-gray-300 border-l-2 border-l-gray-500 rounded-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]' : 'relative ml-2 mr-2.5 mb-1 border border-gray-400/70 border-l-2 border-l-gray-600 rounded-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_5px_14px_rgba(15,23,42,0.14)]') : ''} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
+        style={`gap: ${rowInfo?.type === 'video' ? '12px' : 'var(--grid-gap, 16px)'};`}
       >
+        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
+          <button
+            on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
+            class="group/video absolute left-1.5 top-2 bottom-2 z-20 w-5 inline-flex flex-col items-center justify-center gap-1 rounded-md border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors"
+            title={`Open video ${rowInfo.label}`}
+          >
+            <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+            <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
+          </button>
+        {/if}
+
+        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal'}
+          <button
+            on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
+            class="group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors"
+            title={`Open video ${rowInfo.label}`}
+          >
+            <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+            <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
+          </button>
+        {/if}
+
         {#each row as item (getId(item) ?? getIndex(item))}
           <div>
             <div
@@ -586,8 +600,28 @@
               <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
               <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <button
+                    class="w-12 h-12 rounded-full bg-slate-200/85 text-slate-900 shadow-xl flex items-center justify-center border border-slate-300/80 ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-slate-100 active:scale-95 pointer-events-auto"
+                    style="--play-size: clamp(36px, calc(var(--kf-size, 160px) * 0.28), 72px); width: var(--play-size); height: var(--play-size);"
+                    title="Play video"
+                    aria-label="Play video"
+                    on:click={(e) => handleOpenVideoPlayer(e, item)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      class="text-slate-900"
+                      style="width: calc(var(--play-size) * 0.46); height: calc(var(--play-size) * 0.46);"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+                </div>
                 <!-- Barra bottom stile YouTube -->
-                <div class="absolute bottom-3.5 left-2 right-2 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-md px-1.5 py-0 shadow-xl">
+                <div class="absolute bottom-0.5 left-2 right-2 flex items-center justify-between bg-black/75 backdrop-blur-md rounded-md px-2 py-1 h-9 shadow-xl">
                   <!-- Left group: video actions -->
                   <div class="flex items-center space-x-1">
                     {#if showVideoSummary}
@@ -602,17 +636,6 @@
                         </svg>
                       </button>
                     {/if}
-
-                    <button
-                      class="p-1 hover:bg-white/20 rounded transition-colors"
-                      title="Play video"
-                      aria-label="Play video"
-                      on:click={(e) => handleOpenVideoPlayer(e, item)}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </button>
 
                     <button
                       class="p-1 hover:bg-white/20 rounded transition-colors"

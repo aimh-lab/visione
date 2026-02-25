@@ -266,34 +266,34 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 28px;
-  height: 72px;
-  border: 1px solid rgba(75, 85, 99, 0.9);
-  background: linear-gradient(180deg, rgba(243, 244, 246, 0.98) 0%, rgba(209, 213, 219, 0.98) 100%);
-  color: rgba(31, 41, 55, 0.98);
+  width: 22px;
+  height: 70px;
+  border: 1px solid var(--ui-sidebar-toggle-border);
+  background: linear-gradient(180deg, var(--ui-sidebar-toggle-bg-start) 0%, var(--ui-sidebar-toggle-bg-end) 100%);
+  color: var(--ui-sidebar-toggle-text);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 60;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: var(--ui-sidebar-toggle-shadow);
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .sidebar-toggle-tab:hover {
-  background: linear-gradient(180deg, rgba(229, 231, 235, 0.98) 0%, rgba(156, 163, 175, 0.98) 100%);
-  color: #111827;
-  border-color: rgba(55, 65, 81, 0.95);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, var(--ui-sidebar-toggle-hover-bg-start) 0%, var(--ui-sidebar-toggle-hover-bg-end) 100%);
+  color: var(--ui-sidebar-toggle-hover-text);
+  border-color: var(--ui-sidebar-toggle-hover-border);
+  box-shadow: var(--ui-sidebar-toggle-hover-shadow);
 }
 
 .sidebar-toggle-tab:focus-visible {
-  outline: 2px solid rgba(148, 163, 184, 0.95);
+  outline: 2px solid var(--ui-sidebar-toggle-focus);
   outline-offset: 2px;
 }
 
 .sidebar-toggle-tab-right {
-  left: -13px;
+  left: -10px;
   border-radius: 10px 0 0 10px;
 }
 

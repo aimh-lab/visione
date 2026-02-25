@@ -1098,6 +1098,7 @@ function submitByImgId(imgId, fallback = null) {
   keyframeSize={$uiStore.keyframeSize}
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}
+  videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
   on:close={() => (isSettingsOpen = false)}
@@ -1145,6 +1146,7 @@ function submitByImgId(imgId, fallback = null) {
         images={images}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        videoBadgeOrientation={$uiStore.videoBadgeOrientation}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
 
@@ -1237,6 +1239,7 @@ function submitByImgId(imgId, fallback = null) {
         selectedFrameId={view2SelectedImgId}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        videoBadgeOrientation={$uiStore.videoBadgeOrientation}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1270,6 +1273,7 @@ function submitByImgId(imgId, fallback = null) {
         simIsModalOpen={$similarityModal.isOpen}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        videoBadgeOrientation={$uiStore.videoBadgeOrientation}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 

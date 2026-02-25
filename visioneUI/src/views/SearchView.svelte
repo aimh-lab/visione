@@ -41,6 +41,7 @@
   export let rfNegative: Img[] = [];
   export let submittedImages: Img[] = [];
   export let viewMode = "byrank";
+  export let videoBadgeOrientation = "vertical";
   export let contentScale = 1;
   export let images: Img[] = [];
   export let virtualizationEnabled = true;
@@ -316,6 +317,7 @@
             {rows}
             selectedImage={selectedImage as any}
             {viewMode}
+            {videoBadgeOrientation}
             {virtualizationEnabled}
             {virtualizationThreshold}
             registerContainer={registerContainer}

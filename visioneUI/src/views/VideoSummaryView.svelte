@@ -18,6 +18,7 @@
   export let selectedFrameId: string | null = null;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let videoBadgeOrientation = "vertical";
 
   export let registerContainer = (_el: Element | null) => {};
 
@@ -129,6 +130,7 @@
               selectedId={selectedFrameId as any}
               layout="rows"
               showVideoSummary={false}
+              {videoBadgeOrientation}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
               {registerContainer}

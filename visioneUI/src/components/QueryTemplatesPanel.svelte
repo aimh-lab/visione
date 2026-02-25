@@ -10,28 +10,42 @@
   //export let onRunSearch = () => {};
   
   let isExpanded = false;
-  let showSaveDialog = false;
-  let saveName = '';
   let editingId = null;
   let editingName = '';
   $: effectiveExpanded = headerless ? expanded : isExpanded;
-  
-  $: activeQueries = textareas
-    .filter(t => t.enabled && t.value?.trim())
-    .map(t => t.value);
-  
-  $: canSave = activeQueries.length > 0;
+
+  function getActiveQueriesSnapshot(items = textareas) {
+    const source = Array.isArray(items) ? items : [];
+    return source
+      .filter((step) => step?.enabled)
+      .map((step) => String(step?.value ?? '').trim())
+      .filter(Boolean);
+  }
+
+  $: canSave = getActiveQueriesSnapshot().length > 0;
   
   function handleSaveTemplate() {
-    if (!saveName.trim()) {
-      toasts.warning('Please enter a template name');
+    const currentQueries = getActiveQueriesSnapshot(textareas);
+
+    if (currentQueries.length === 0) {
+      toasts.warning('Current query is empty');
       return;
     }
-    
-    queryTemplates.add(saveName, activeQueries);
-    toasts.success(`Template "${saveName}" saved! ✓`);
-    saveName = '';
-    showSaveDialog = false;
+
+    const autoName = currentQueries.join(' → ').slice(0, 60);
+    const result = queryTemplates.add(autoName, currentQueries);
+
+    if (result?.status === 'updated') {
+      toasts.success(`Template "${result.name}" updated ✓`);
+      return;
+    }
+
+    if (result?.status === 'created') {
+      toasts.success(`Template "${result.name}" saved! ✓`);
+      return;
+    }
+
+    toasts.warning('Unable to save template');
   }
   
   async function handleLoadTemplate(template) {
@@ -93,38 +107,12 @@
     <div class="px-4 py-3 border-t border-gray-700 space-y-2">
       <!-- Save current query -->
       {#if canSave}
-        {#if showSaveDialog}
-          <div class="bg-gray-800/50 rounded-lg p-3 space-y-2 mb-3">
-            <input
-              type="text"
-              placeholder="Template name (e.g., 'Person → Car')"
-              bind:value={saveName}
-              on:keydown={(e) => e.key === 'Enter' && handleSaveTemplate()}
-              class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
-            <div class="flex space-x-2">
-              <button
-                on:click={handleSaveTemplate}
-                class="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-              >
-                Save
-              </button>
-              <button
-                on:click={() => showSaveDialog = false}
-                class="flex-1 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        {:else}
-          <button
-            on:click={() => showSaveDialog = true}
-            class="w-full px-3 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 text-xs rounded transition-colors border border-green-600/30 font-medium"
-          >
-            + Save Current Query
-          </button>
-        {/if}
+        <button
+          on:click={handleSaveTemplate}
+          class="w-full px-3 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 text-xs rounded transition-colors border border-green-600/30 font-medium"
+        >
+          + Save Current Query
+        </button>
       {:else}
         <div class="px-3 py-2 bg-gray-800/30 text-gray-500 text-xs rounded text-center">
           Create a query first
