@@ -9,6 +9,11 @@
   export let resultsPerRow = 8;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let dresEnabled = false;
+  export let dresSubmitServer = '';
+  export let dresUsername = '';
+  export let dresPassword = '';
+  export let dresMemberId = '';
   export let videoBadgeOrientation = 'vertical';
   export let futureOptionA = "";
   export let futureOptionB = false;
@@ -24,6 +29,11 @@
     videoBadgeOrientation,
     virtualizationEnabled,
     virtualizationThreshold,
+    dresEnabled,
+    dresSubmitServer,
+    dresUsername,
+    dresPassword,
+    dresMemberId,
     futureOptionA,
     futureOptionB
   };
@@ -38,6 +48,11 @@
       videoBadgeOrientation,
       virtualizationEnabled,
       virtualizationThreshold,
+      dresEnabled,
+      dresSubmitServer,
+      dresUsername,
+      dresPassword,
+      dresMemberId,
       futureOptionA,
       futureOptionB
     };
@@ -45,6 +60,16 @@
 
   function close() { 
     dispatch('close'); 
+  }
+
+  function testDresConnection() {
+    dispatch('testDres', {
+      dresEnabled: !!local.dresEnabled,
+      dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
+      dresUsername: (local.dresUsername ?? '').trim(),
+      dresPassword: local.dresPassword ?? '',
+      dresMemberId: (local.dresMemberId ?? '').trim()
+    });
   }
 
   // ✅ Salva in localStorage ogni volta che cambia qualcosa
@@ -61,6 +86,11 @@
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
+      dresEnabled: !!local.dresEnabled,
+      dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
+      dresUsername: (local.dresUsername ?? '').trim(),
+      dresPassword: local.dresPassword ?? '',
+      dresMemberId: (local.dresMemberId ?? '').trim(),
       futureOptionA: local.futureOptionA,
       futureOptionB: !!local.futureOptionB
     };
@@ -274,9 +304,80 @@
             </div>
           </div>
         </div>
+
+        <div>
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">DRES Submit</h4>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
+            <input
+              id="dres-enabled"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              bind:checked={local.dresEnabled}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="py-2">
+            <label for="dres-server" class="block text-sm font-medium text-gray-700 mb-1">Submit server URL</label>
+            <input
+              id="dres-server"
+              type="text"
+              placeholder="https://dres.example.org"
+              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+              bind:value={local.dresSubmitServer}
+              disabled={!local.dresEnabled}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="py-2">
+            <label for="dres-user" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input
+              id="dres-user"
+              type="text"
+              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+              bind:value={local.dresUsername}
+              disabled={!local.dresEnabled}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="py-2">
+            <label for="dres-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              id="dres-password"
+              type="password"
+              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+              bind:value={local.dresPassword}
+              disabled={!local.dresEnabled}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="py-2">
+            <label for="dres-member-id" class="block text-sm font-medium text-gray-700 mb-1">Member ID (optional)</label>
+            <input
+              id="dres-member-id"
+              type="text"
+              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+              bind:value={local.dresMemberId}
+              disabled={!local.dresEnabled}
+              on:change={() => save()}
+            />
+          </div>
+        </div>
       </div>
 
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-end">
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-between">
+        <button
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          on:click={testDresConnection}
+          disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
+        >
+          Test DRES connection
+        </button>
         <button
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
           on:click={close}

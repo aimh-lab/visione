@@ -27,7 +27,13 @@ const DEFAULT = {
   resultsAutoFit: true,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
-  virtualizationThreshold: 40
+  virtualizationThreshold: 40,
+
+  dresEnabled: false,
+  dresSubmitServer: '',
+  dresUsername: '',
+  dresPassword: '',
+  dresMemberId: ''
 };
 
 function clampSidebarWidthVw(value, fallback = 18) {
@@ -79,7 +85,13 @@ function createUIStore() {
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
-        virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold
+        virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
+
+        dresEnabled: s.dresEnabled ?? u.dresEnabled,
+        dresSubmitServer: s.dresSubmitServer ?? u.dresSubmitServer,
+        dresUsername: s.dresUsername ?? u.dresUsername,
+        dresPassword: s.dresPassword ?? u.dresPassword,
+        dresMemberId: s.dresMemberId ?? u.dresMemberId
       }));
     },
 
@@ -106,7 +118,12 @@ function createUIStore() {
         resultsAutoFit: DEFAULT.resultsAutoFit,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
-        virtualizationThreshold: DEFAULT.virtualizationThreshold
+        virtualizationThreshold: DEFAULT.virtualizationThreshold,
+        dresEnabled: DEFAULT.dresEnabled,
+        dresSubmitServer: DEFAULT.dresSubmitServer,
+        dresUsername: DEFAULT.dresUsername,
+        dresPassword: DEFAULT.dresPassword,
+        dresMemberId: DEFAULT.dresMemberId
       });
     },
 
@@ -181,7 +198,7 @@ function createUIStore() {
     },
 
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       update(u => ({
@@ -192,9 +209,27 @@ function createUIStore() {
         resultsAutoFit,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
-        virtualizationThreshold
+        virtualizationThreshold,
+        dresEnabled: !!dresEnabled,
+        dresSubmitServer: (dresSubmitServer ?? '').trim(),
+        dresUsername: (dresUsername ?? '').trim(),
+        dresPassword: dresPassword ?? '',
+        dresMemberId: (dresMemberId ?? '').trim()
       }));
-      persist({ theme: safeTheme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation: safeVideoBadgeOrientation, virtualizationEnabled, virtualizationThreshold });
+      persist({
+        theme: safeTheme,
+        keyframeSize,
+        resultsPerRow,
+        resultsAutoFit,
+        videoBadgeOrientation: safeVideoBadgeOrientation,
+        virtualizationEnabled,
+        virtualizationThreshold,
+        dresEnabled: !!dresEnabled,
+        dresSubmitServer: (dresSubmitServer ?? '').trim(),
+        dresUsername: (dresUsername ?? '').trim(),
+        dresPassword: dresPassword ?? '',
+        dresMemberId: (dresMemberId ?? '').trim()
+      });
     }
   };
 
