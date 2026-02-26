@@ -697,6 +697,35 @@
   // ---------------------------
   // Submit + RF
   // ---------------------------
+function applySubmissionVerdict(imgId, submissionVerdict) {
+  if (!imgId) return;
+
+  sessionStore.actions.updateSubmittedFrame({
+    imgId,
+    patch: { submissionVerdict }
+  });
+
+  if (Array.isArray(view2Frames)) {
+    const fIdx = view2Frames.findIndex((f) => f.imgId === imgId);
+    if (fIdx !== -1) {
+      view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict };
+      view2Frames = [...view2Frames];
+    }
+  }
+
+  const sIdx = similarityImages.findIndex((i) => i.imgId === imgId);
+  if (sIdx !== -1) {
+    similarityImages[sIdx] = { ...similarityImages[sIdx], submissionVerdict };
+    similarityImages = [...similarityImages];
+  }
+
+  const gIdx = images.findIndex((i) => i.imgId === imgId);
+  if (gIdx !== -1) {
+    images[gIdx] = { ...images[gIdx], submissionVerdict };
+    images = [...images];
+  }
+}
+
 async function submitByImgId(imgId, fallback = null) {
   if (typeof window !== "undefined") {
     const ok = window.confirm("Are you sure you want to submit this frame?");
@@ -714,6 +743,7 @@ async function submitByImgId(imgId, fallback = null) {
           imgId: fallback.imgId,
           url: fallback.url || "",
           submitted: true,
+          submissionVerdict: fallback.submissionVerdict,
           raw: fallback.raw ?? null
         }
       : null);
@@ -728,26 +758,26 @@ async function submitByImgId(imgId, fallback = null) {
       if (Array.isArray(view2Frames)) {
         const fIdx = view2Frames.findIndex(f => f.imgId === id);
         if (fIdx !== -1) {
-          view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true };
+          view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true, submissionVerdict: view2Frames[fIdx]?.submissionVerdict };
           view2Frames = [...view2Frames];
         }
       }
 
       const sIdx = similarityImages.findIndex(i => i.imgId === id);
       if (sIdx !== -1) {
-        similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true };
+        similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true, submissionVerdict: similarityImages[sIdx]?.submissionVerdict };
         similarityImages = [...similarityImages];
       }
 
       const gIdx = images.findIndex(i => i.imgId === id);
       if (gIdx !== -1) {
-        images[gIdx] = { ...images[gIdx], submitted: true };
+        images[gIdx] = { ...images[gIdx], submitted: true, submissionVerdict: images[gIdx]?.submissionVerdict };
         images = [...images];
       }
     }
   });
 
-  toasts.success(`Frame ${imgId} submitted successfully!`);
+  //toasts.success(`Frame ${imgId} submitted successfully!`);
 
   const settings = get(uiStore);
   if (settings?.dresEnabled) {
@@ -784,7 +814,17 @@ async function submitToDres(frameObj) {
       }
     }
 
-    toasts.success(`DRES submission OK: ${result?.description ?? 'sent'}`);
+    const verdict = String(result?.submission ?? '').toUpperCase();
+    const description = result?.description ?? 'sent';
+    applySubmissionVerdict(imgId, verdict);
+
+    if (verdict === 'WRONG') {
+      toasts.error(`DRES submission WRONG: ${description}`);
+    } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
+      toasts.warning(`DRES submission ${verdict}: ${description}`);
+    } else {
+      toasts.success(`DRES submission OK: ${description}`);
+    }
   } catch (error) {
     const message = error instanceof DresClientError || error instanceof Error
       ? error.message

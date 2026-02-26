@@ -306,7 +306,7 @@
         </div>
 
         <div>
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">DRES Submit</h4>
+          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">DRES Submit</h4>
 
           <div class="flex items-center justify-between py-2">
             <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
@@ -319,53 +319,59 @@
             />
           </div>
 
-          <div class="py-2">
-            <label for="dres-server" class="block text-sm font-medium text-gray-700 mb-1">Submit server URL</label>
-            <input
-              id="dres-server"
-              type="text"
-              placeholder="https://dres.example.org"
-              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-              bind:value={local.dresSubmitServer}
-              disabled={!local.dresEnabled}
-              on:change={() => save()}
-            />
-          </div>
+          <div class="ui-settings-subsection mt-2 space-y-3 p-3">
+            <p class="ui-settings-hint text-xs">
+              Configure endpoint and credentials used for manual DRES submissions.
+            </p>
 
-          <div class="py-2">
-            <label for="dres-user" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input
-              id="dres-user"
-              type="text"
-              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-              bind:value={local.dresUsername}
-              disabled={!local.dresEnabled}
-              on:change={() => save()}
-            />
-          </div>
+            <div>
+              <label for="dres-server" class="ui-settings-label block text-sm font-medium mb-1">Submit server URL</label>
+              <input
+                id="dres-server"
+                type="text"
+                placeholder="https://dres.example.org"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.dresSubmitServer}
+                disabled={!local.dresEnabled}
+                on:change={() => save()}
+              />
+            </div>
 
-          <div class="py-2">
-            <label for="dres-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              id="dres-password"
-              type="password"
-              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-              bind:value={local.dresPassword}
-              disabled={!local.dresEnabled}
-              on:change={() => save()}
-            />
-          </div>
+            <div>
+              <label for="dres-user" class="ui-settings-label block text-sm font-medium mb-1">Username</label>
+              <input
+                id="dres-user"
+                type="text"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.dresUsername}
+                disabled={!local.dresEnabled}
+                on:change={() => save()}
+              />
+            </div>
 
-          <div class="py-2">
-            <label for="dres-member-id" class="block text-sm font-medium text-gray-700 mb-1">Member ID (optional)</label>
-            <input
-              id="dres-member-id"
-              type="text"
-              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-              bind:value={local.dresMemberId}
-              disabled={!local.dresEnabled}
-              on:change={() => save()}
-            />
+            <div>
+              <label for="dres-password" class="ui-settings-label block text-sm font-medium mb-1">Password</label>
+              <input
+                id="dres-password"
+                type="password"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.dresPassword}
+                disabled={!local.dresEnabled}
+                on:change={() => save()}
+              />
+            </div>
+
+            <div>
+              <label for="dres-member-id" class="ui-settings-label block text-sm font-medium mb-1">Member ID (optional)</label>
+              <input
+                id="dres-member-id"
+                type="text"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.dresMemberId}
+                disabled={!local.dresEnabled}
+                on:change={() => save()}
+              />
+            </div>
           </div>
         </div>
       </div>

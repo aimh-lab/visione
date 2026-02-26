@@ -74,7 +74,7 @@
       </svg>
     </OverlayButton>
 
-    <SubmitBadge submitted={!!img.submitted} />
+    <SubmitBadge submitted={!!img.submitted} verdict={img?.submissionVerdict} />
 
     {#if img.url}
       <img src={img.url} alt={img.title} loading="lazy" class="block w-auto h-40 object-contain" />

@@ -258,6 +258,16 @@ body {
   cursor: not-allowed;
 }
 
+.ui-settings-subsection {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+}
+
+.ui-settings-hint {
+  color: #475569;
+}
+
 :root[data-theme='dark'] .ui-settings-input {
   color: #f8fafc !important;
   background-color: #1f2937 !important;
@@ -311,6 +321,11 @@ body {
 :root[data-theme='dark'] .ui-settings-hint,
 :root[data-theme='dark'] .ui-settings-unit {
   color: #cbd5e1 !important;
+}
+
+:root[data-theme='dark'] .ui-settings-subsection {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: #334155;
 }
 
 :root[data-theme='light'] .bg-gray-100,
@@ -510,6 +525,5 @@ body {
 button, input, textarea {
   font-size: clamp(0.75rem, 0.9vw, 0.875rem);
 }
-
 
 

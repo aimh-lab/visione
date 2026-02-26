@@ -33,6 +33,17 @@ function createSessionStore() {
       uiStore.actions.focusRightTab('Submitted');
     },
 
+    updateSubmittedFrame({ imgId, patch }) {
+      if (!imgId || !patch || typeof patch !== 'object') return;
+
+      update((s) => ({
+        ...s,
+        submittedImages: s.submittedImages.map((item) =>
+          item.imgId === imgId ? { ...item, ...patch } : item
+        )
+      }));
+    },
+
     toggleRFPositive({ imgId, imgObj }) {
       if (!imgId || !imgObj) return;
 
