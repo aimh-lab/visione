@@ -750,6 +750,14 @@ async function submitByImgId(imgId, fallback = null) {
 
   if (!frameObj) return;
 
+  const settings = get(uiStore);
+  if (settings?.dresEnabled) {
+    const dresResult = await submitToDres(frameObj);
+    if (!dresResult?.accepted) {
+      return;
+    }
+  }
+
   sessionStore.actions.submitFrame({
     imgId,
     frameObj,
@@ -776,13 +784,6 @@ async function submitByImgId(imgId, fallback = null) {
       }
     }
   });
-
-  //toasts.success(`Frame ${imgId} submitted successfully!`);
-
-  const settings = get(uiStore);
-  if (settings?.dresEnabled) {
-    await submitToDres(frameObj);
-  }
 }
 
 async function submitToDres(frameObj) {
@@ -818,6 +819,11 @@ async function submitToDres(frameObj) {
     const description = result?.description ?? 'sent';
     applySubmissionVerdict(imgId, verdict);
 
+    if (result?.status === false) {
+      toasts.error(`DRES submission rejected: ${description}`);
+      return { accepted: false, verdict, description };
+    }
+
     if (verdict === 'WRONG') {
       toasts.error(`DRES submission WRONG: ${description}`);
     } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
@@ -825,11 +831,13 @@ async function submitToDres(frameObj) {
     } else {
       toasts.success(`DRES submission OK: ${description}`);
     }
+    return { accepted: true, verdict, description };
   } catch (error) {
     const message = error instanceof DresClientError || error instanceof Error
       ? error.message
       : 'Errore sconosciuto durante la submission DRES';
     toasts.error(`DRES submission failed: ${message}`);
+    return { accepted: false, verdict: '', description: message };
   }
 }
 
