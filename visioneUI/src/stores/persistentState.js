@@ -109,6 +109,11 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
+  dresEnabled: false,
+  dresSubmitServer: '',
+  dresUsername: '',
+  dresPassword: '',
+  dresMemberId: '',
   futureOptionA: '',         // ✅ AGGIUNGI (opzionale)
   futureOptionB: false       // ✅ AGGIUNGI (opzionale)
 });

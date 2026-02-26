@@ -9,6 +9,7 @@
   import SettingsModal from "../components/SettingsModal.svelte";
   import Keybindings from "../components/Keybindings.svelte";
   import { visioneAPI } from '../services/api.js';
+  import { createDresClientFromSettings, DresClientError } from '../services/dresClient.ts';
   import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
@@ -178,6 +179,32 @@
   const URL_SYNC_DEBOUNCE_MS = 180;
   let urlSyncTimer = null;
   let lastSearchResultSet = null;
+  let dresClientInstance = null;
+  let dresClientSignature = '';
+
+  function getDresClient() {
+    const settings = get(uiStore);
+    const signature = JSON.stringify({
+      enabled: !!settings?.dresEnabled,
+      server: settings?.dresSubmitServer ?? '',
+      username: settings?.dresUsername ?? '',
+      password: settings?.dresPassword ?? '',
+      memberId: settings?.dresMemberId ?? ''
+    });
+
+    if (!settings?.dresEnabled) {
+      dresClientInstance = null;
+      dresClientSignature = '';
+      throw new DresClientError('DRES è disabilitato nelle impostazioni.');
+    }
+
+    if (!dresClientInstance || dresClientSignature !== signature) {
+      dresClientInstance = createDresClientFromSettings(settings);
+      dresClientSignature = signature;
+    }
+
+    return dresClientInstance;
+  }
 
   function scheduleURLSync() {
     if (isRestoringFromHistory || !browser) return;
@@ -437,6 +464,28 @@
     uiStore.actions.applySettings(e.detail);
   }
 
+  async function handleTestDresConnection(e) {
+    try {
+      const config = e?.detail ?? {};
+      const client = createDresClientFromSettings(config);
+
+      await client.login();
+      const evaluationId = await client.getEvaluationId();
+      toasts.success(`DRES connected. Active evaluation: ${evaluationId}`);
+
+      try {
+        await client.logout();
+      } catch {
+        // ignore logout errors after test
+      }
+    } catch (error) {
+      const message = error instanceof DresClientError || error instanceof Error
+        ? error.message
+        : 'Errore sconosciuto durante il test DRES';
+      toasts.error(`DRES test failed: ${message}`);
+    }
+  }
+
   // ---------------------------
   // Video player helpers
   // ---------------------------
@@ -648,7 +697,7 @@
   // ---------------------------
   // Submit + RF
   // ---------------------------
-function submitByImgId(imgId, fallback = null) {
+async function submitByImgId(imgId, fallback = null) {
   if (typeof window !== "undefined") {
     const ok = window.confirm("Are you sure you want to submit this frame?");
     if (!ok) return;
@@ -699,6 +748,49 @@ function submitByImgId(imgId, fallback = null) {
   });
 
   toasts.success(`Frame ${imgId} submitted successfully!`);
+
+  const settings = get(uiStore);
+  if (settings?.dresEnabled) {
+    await submitToDres(frameObj);
+  }
+}
+
+async function submitToDres(frameObj) {
+  try {
+    const client = getDresClient();
+
+    if (!client.getSessionId()) {
+      await client.login();
+    }
+
+    const imgId = frameObj?.imgId;
+    if (!imgId) {
+      throw new Error('imgId mancante per la submission DRES');
+    }
+
+    const middleSeconds = await visioneAPI.getMiddleTimestamp(imgId);
+    const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
+    const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]).padStart(5, '0');
+
+    let result;
+    try {
+      result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
+    } catch (submitError) {
+      if (submitError instanceof DresClientError && submitError.statusCode === 401) {
+        await client.login();
+        result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
+      } else {
+        throw submitError;
+      }
+    }
+
+    toasts.success(`DRES submission OK: ${result?.description ?? 'sent'}`);
+  } catch (error) {
+    const message = error instanceof DresClientError || error instanceof Error
+      ? error.message
+      : 'Errore sconosciuto durante la submission DRES';
+    toasts.error(`DRES submission failed: ${message}`);
+  }
 }
 
 
@@ -1101,8 +1193,14 @@ function submitByImgId(imgId, fallback = null) {
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
+  dresEnabled={$uiStore.dresEnabled}
+  dresSubmitServer={$uiStore.dresSubmitServer}
+  dresUsername={$uiStore.dresUsername}
+  dresPassword={$uiStore.dresPassword}
+  dresMemberId={$uiStore.dresMemberId}
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}
+  on:testDres={handleTestDresConnection}
 />
 
 <AdaptiveTabLayout
