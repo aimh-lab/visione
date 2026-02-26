@@ -194,7 +194,7 @@
             </div>
 
             <!-- ✅ Submit Badge (sempre visibile se submitted) -->
-            <SubmitBadge submitted={!!image?.submitted} />
+            <SubmitBadge submitted={!!image?.submitted} verdict={image?.submissionVerdict} />
 
           {:else}
             <div class="text-center text-gray-400">
