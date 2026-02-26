@@ -3,7 +3,7 @@ import uvicorn
 import hydra
 from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 from omegaconf import DictConfig
 from hydra.utils import instantiate
@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     print(f"--- Initializing Server Resources ---")
 
     # Initialize specific data loader
-    loader = instantiate(cfg.loader)
+    loader = instantiate(cfg.loader, data_server_url=cfg.data.server_url)  # Pass data_server")
     app.state.loader = loader
     table_name = loader.get_table_name()
 
@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI):
             table_name=table_name,
             embedding_service=embedding_service,
             embedding_column=embedding_col,
-            metadata_columns=app.state.loader.retrieved_metadata_columns(),
+            metadata_columns=app.state.loader.get_retrieved_metadata_columns(),
             groupby_column=loader.get_temporal_groupby_column(),
             temporal_column=loader.get_temporal_column()
         )
@@ -191,6 +191,26 @@ async def search_endpoint(request: SearchRequest):
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/get-element-url")
+def get_element_url(id: str, what: List[str] = Query(default=["images"])):
+    """
+    Given an image name (ID) and one or more element types, return the full URL for each type.
+    Example: /get-element-url?id=20190101_121948_000.jpg&what=images&what=thumbnails
+    """
+    try:
+        types = what
+        if len(types) == 1 and "," in types[0]:
+            types = [item.strip() for item in types[0].split(",") if item.strip()]
+
+        urls = {
+            collection_type: app.state.loader.get_collection_element_url_from_id(id, collection_type)
+            for collection_type in types
+        }
+        return {"urls": urls}
+    except Exception as e:
+        error_str = f"URL Generation Error: {e}"
+        raise HTTPException(status_code=400, detail=error_str)
 
 @hydra.main(version_base=None, config_path="configs", config_name="serve")
 def main(cfg: DictConfig):

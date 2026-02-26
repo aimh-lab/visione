@@ -17,7 +17,7 @@ def generate_doc_id(doc_id_str: str) -> str:
 
 async def run_pipeline(cfg: DictConfig):
     # --- 1. Load Data ---
-    loader = instantiate(cfg.loader)
+    loader = instantiate(cfg.loader, data_server_url=cfg.data.server_url)  # Pass data_server
     documents, ids = loader.generate_docs()
 
     table_name = loader.get_table_name()
