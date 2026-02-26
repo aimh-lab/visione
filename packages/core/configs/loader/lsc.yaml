@@ -1,2 +1,11 @@
 _target_: loaders.LSCLoader
 metadata_file: "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
+old_new_file_mapping_csv: "/data1/lsc-collection/mapping.csv"
+
+collection_paths:
+  images: "selected-frames"
+  videos: "videos"
+  resized-videos-full-day: "resized-videos/full-day-videos"
+  resized-videos-medium: "resized-videos/medium"
+  resized-videos-tiny: "resized-videos/tiny"
+  thumbnails: "thumbnails"

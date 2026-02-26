@@ -1,14 +1,20 @@
 import pandas as pd
 import ast
 import os
+import csv
 from tqdm import tqdm
 # Assuming you are using LangChain or similar for the Document class
 from langchain_core.documents import Document 
 from langchain_postgres.v2.engine import Column
 
 class LSCLoader:
-    def __init__(self, metadata_file):
+    def __init__(self, data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv):
+        self.data_server_url = data_server_url
         self.metadata_file = metadata_file
+        self.collection_paths = collection_paths
+        with open(old_new_file_mapping_csv, mode='r') as f:
+            reader = csv.DictReader(f)
+            self.old_to_new_id_map = {row['Original Filename']: row['New Filename'] for row in reader}
 
     def generate_docs(self):
         # 1. Read the CSV
@@ -113,21 +119,40 @@ class LSCLoader:
 
         return documents, ids
     
-    def get_relative_path_from_id(self, id_str):
+    def get_collection_element_url_from_id(self, id_str, what="images"):
         """
-        Given an image name (ID), construct the relative file path.
+        Given an image name (ID), construct its URL.
         In case of LSC, if "20190101_121948_000.jpg" is the name, the relative path should be "201901/01/20190101_121948_000.jpg"
         """
         date_part = id_str.split('_')[0]
         year = date_part[:4]
         month = date_part[4:6]
         day = date_part[6:8]
-        # Construct the path
-        path = os.path.join(f"{year}{month}", day, id_str)
+        hour = id_str.split('_')[1][:2]
 
-        return path
+        # construct the base path
+        base_path = self.collection_paths[what]
+
+        if what in ["images", "thumbnails"]:
+            new_name = self.old_to_new_id_map[id_str]
+            path = os.path.join(base_path, f"{year}{month}{day}_{hour}", new_name)
+        elif what == "videos":
+            name = f"{year}{month}{day}_{hour}.mp4"
+            path = os.path.join(base_path, name)
+        elif what == "resized-videos-full-day":
+            name = f"{year}{month}{day}.mp4"
+            path = os.path.join(base_path, name)
+        elif what in ["resized-videos-medium", "resized-videos-tiny"]:
+            kind = "medium" if what == "resized-videos-medium" else "tiny"
+            name = f"{year}{month}{day}_{hour}-{kind}.mp4"
+            path = os.path.join(base_path, name)
+        else:
+            raise ValueError(f"Unknown collection type: {what}")
+
+        url = self.data_server_url + '/' + path
+        return url
     
-    def retrieved_metadata_columns(self):
+    def get_retrieved_metadata_columns(self):
         # Return the list of metadata keys that will be returned from a query
         return [
             "minute_id", "hour_id", "epoch"
@@ -172,11 +197,25 @@ class LSCLoader:
         return metadata_columns
 
 if __name__ == "__main__":
+    data_server_url = "http://localhost:8000"
     metadata_file = "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
+    old_new_file_mapping_csv = "/data1/lsc-collection/mapping.csv"
+
+    collection_paths = {
+        "images": "selected-frames",
+        "videos": "videos",
+        "resized-videos-full-day": "resized-videos/full-day-videos",
+        "resized-videos-medium": "resized-videos/medium",
+        "resized-videos-tiny": "resized-videos/tiny",
+        "thumbnails": "thumbnails"
+    }
     
-    lsc = LSCLoader(metadata_file)
-    docs, ids = lsc.generate_docs()
+    lsc = LSCLoader(data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv)
+    url = lsc.get_collection_element_url_from_id("20190101_121948_000.jpg")
+    print(url)
+
+    # docs, ids = lsc.generate_docs()
     
-    print(f"Generated {len(docs)} documents.")
-    if len(docs) > 0:
-        print("Sample Doc Metadata:", docs[0].metadata)
+    # print(f"Generated {len(docs)} documents.")
+    # if len(docs) > 0:
+    #     print("Sample Doc Metadata:", docs[0].metadata)

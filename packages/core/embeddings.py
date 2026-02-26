@@ -280,9 +280,9 @@ class RemoteEmbeddings(Embeddings):
                     # it's a base64 image
                     payload = {"image": validated_input}
                 else:
-                    # it's a URL, construct it
-                    relative_path = self.data_loader.get_relative_path_from_id(validated_input)
-                    payload = {"image": self.data_server_url + '/' + relative_path}
+                    # should be a URL, construct it
+                    url = self.data_loader.get_collection_element_url_from_id(validated_input)
+                    payload = {"image": url}
             else:
                 payload = {"text": text_data}
                 
