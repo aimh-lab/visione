@@ -239,7 +239,7 @@
             <button
               on:click={doSearch}
               disabled={searchLoading}
-              class="{searchResultSet ? 'flex-1' : 'w-full'} py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+              class="ui-search-run-btn {searchResultSet ? 'flex-1' : 'w-full'} py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
                      text-white font-bold rounded-lg shadow-xl hover:shadow-2xl 
                      transform hover:scale-[1.02] active:scale-[0.98] 
                      transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm

@@ -115,10 +115,10 @@
           <div class="flex items-center gap-1">
             <span class="text-[10px]">{tab.label}</span>
             {#if tab.id === "RF"}
-              <span class="ui-feedback-count-badge ui-feedback-count-positive px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-green-900/25 border border-green-700/40 text-green-300">
+              <span class="ui-feedback-count-badge ui-feedback-count-positive px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-green-900/25 border border-green-700/40">
                 {rfPositive.length}
               </span>
-              <span class="ui-feedback-count-badge ui-feedback-count-negative px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-red-900/25 border border-red-700/40 text-red-300">
+              <span class="ui-feedback-count-badge ui-feedback-count-negative px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-red-900/25 border border-red-700/40">
                 {rfNegative.length}
               </span>
             {:else}
@@ -143,8 +143,8 @@
               <h3 class="text-sm font-semibold text-gray-200">Relevance Feedback</h3>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="ui-feedback-count-badge ui-feedback-count-positive px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-green-300 text-xs font-medium rounded-full">{rfPositive.length}</span>
-              <span class="ui-feedback-count-badge ui-feedback-count-negative px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-red-300 text-xs font-medium rounded-full">{rfNegative.length}</span>
+              <span class="ui-feedback-count-badge ui-feedback-count-positive px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-xs font-medium rounded-full">{rfPositive.length}</span>
+              <span class="ui-feedback-count-badge ui-feedback-count-negative px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-xs font-medium rounded-full">{rfNegative.length}</span>
             </div>
           </div>
           <RFLists

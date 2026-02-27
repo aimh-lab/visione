@@ -769,7 +769,7 @@
                     aria-label="Delete step"
                     aria-haspopup="menu"
                     aria-expanded={openStepActionsIndex === i}
-                    class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-500/45 bg-slate-700/75 text-slate-200 hover:text-red-100 hover:bg-red-900/45 hover:border-red-700/60 transition-colors"
+                    class="ui-step-delete-btn inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-500/45 bg-slate-700/75 text-slate-200 hover:text-red-100 hover:bg-red-900/45 hover:border-red-700/60 transition-colors"
                   >
                     <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M3 6h18"/>
@@ -851,7 +851,7 @@
               <button
                 type="button"
                 on:click={() => clearTextareaValue(i)}
-                class="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
                 title="Clear text"
                 aria-label="Clear textarea text"
               >
