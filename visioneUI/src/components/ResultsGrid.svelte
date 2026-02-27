@@ -30,6 +30,12 @@
 
   let fetchedTimecodes = new Map();
   let requestedTimecodeIds = new Set();
+  const TIMECODE_FETCH_CONCURRENCY = 4;
+  const TIMECODE_PREFETCH_MAX = 120;
+  const timecodeQueue = [];
+  let activeTimecodeFetches = 0;
+  const pendingTimecodes = new Map();
+  let timecodeFlushRaf = 0;
 
   function toFiniteNumber(value) {
     if (value == null) return null;
@@ -117,12 +123,8 @@
     return Math.floor(seconds);
   }
 
-  async function resolveTimecodeForItem(item) {
-    const imgId = getId(item);
+  async function resolveTimecodeById(imgId) {
     if (!imgId) return;
-    if (requestedTimecodeIds.has(imgId)) return;
-
-    requestedTimecodeIds = new Set(requestedTimecodeIds).add(imgId);
 
     try {
       const middle = await visioneAPI.getMiddleTimestamp(imgId);
@@ -130,10 +132,54 @@
       if (parsed == null || parsed < 0) return;
 
       const normalized = Math.floor(parsed > 12 * 3600 && parsed / 1000 <= 12 * 3600 ? parsed / 1000 : parsed);
-      fetchedTimecodes = new Map(fetchedTimecodes).set(imgId, normalized);
+      pendingTimecodes.set(imgId, normalized);
+      scheduleTimecodeFlush();
     } catch {
       // Ignore single-item failures; UI stays responsive
     }
+  }
+
+  function scheduleTimecodeFlush() {
+    if (timecodeFlushRaf) return;
+    timecodeFlushRaf = requestAnimationFrame(() => {
+      timecodeFlushRaf = 0;
+      if (pendingTimecodes.size === 0) return;
+
+      const next = new Map(fetchedTimecodes);
+      for (const [imgId, ts] of pendingTimecodes.entries()) {
+        next.set(imgId, ts);
+      }
+      pendingTimecodes.clear();
+      fetchedTimecodes = next;
+    });
+  }
+
+  function pumpTimecodeQueue() {
+    while (activeTimecodeFetches < TIMECODE_FETCH_CONCURRENCY && timecodeQueue.length > 0) {
+      const imgId = timecodeQueue.shift();
+      if (!imgId) continue;
+
+      activeTimecodeFetches += 1;
+      resolveTimecodeById(imgId)
+        .catch(() => {
+          // Ignore single-item failures; UI remains responsive
+        })
+        .finally(() => {
+          activeTimecodeFetches = Math.max(0, activeTimecodeFetches - 1);
+          pumpTimecodeQueue();
+        });
+    }
+  }
+
+  function enqueueTimecodeFetch(item) {
+    const imgId = getId(item);
+    if (!imgId) return;
+    if (fetchedTimecodes.has(imgId)) return;
+    if (requestedTimecodeIds.has(imgId)) return;
+    if (getFrameSeconds(item) != null) return;
+
+    requestedTimecodeIds.add(imgId);
+    timecodeQueue.push(imgId);
   }
 
   function formatTimecode(totalSeconds) {
@@ -155,7 +201,6 @@
       return formatTimecode(totalSeconds);
     }
 
-    resolveTimecodeForItem(item);
     return null;
   }
 
@@ -344,9 +389,32 @@
       measuredRowHeights.clear();
       eagerImageIds.clear();
       eagerVersion += 1;
+      timecodeQueue.length = 0;
+      requestedTimecodeIds.clear();
+      pendingTimecodes.clear();
+      if (timecodeFlushRaf) {
+        cancelAnimationFrame(timecodeFlushRaf);
+        timecodeFlushRaf = 0;
+      }
+      fetchedTimecodes = new Map();
     }
     lastItemsLength = items.length;
     recomputeVirtualWindow();
+  }
+
+  $: {
+    let queued = 0;
+    for (const bucket of visibleRows) {
+      const row = bucket?.row;
+      if (!Array.isArray(row)) continue;
+      for (const item of row) {
+        if (queued >= TIMECODE_PREFETCH_MAX) break;
+        enqueueTimecodeFetch(item);
+        queued += 1;
+      }
+      if (queued >= TIMECODE_PREFETCH_MAX) break;
+    }
+    if (timecodeQueue.length > 0) pumpTimecodeQueue();
   }
 
   $: {
@@ -482,6 +550,7 @@
     if (containerResizeObserver) containerResizeObserver.disconnect();
     if (imagePreloadObserver) imagePreloadObserver.disconnect();
     if (scrollRaf) cancelAnimationFrame(scrollRaf);
+    if (timecodeFlushRaf) cancelAnimationFrame(timecodeFlushRaf);
   });
 </script>
 
@@ -530,7 +599,7 @@
         {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
           <button
             on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class="group/video absolute left-1.5 top-2 bottom-2 z-20 w-5 inline-flex flex-col items-center justify-center gap-1 rounded-md border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors"
+            class="ui-video-badge group/video absolute left-1.5 top-2 bottom-2 z-20 w-5 inline-flex flex-col items-center justify-center gap-1 rounded-md border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors"
             title={`Open video ${rowInfo.label}`}
           >
             <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -543,7 +612,7 @@
         {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal'}
           <button
             on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class="group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors"
+            class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors"
             title={`Open video ${rowInfo.label}`}
           >
             <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">

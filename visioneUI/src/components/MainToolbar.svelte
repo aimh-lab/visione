@@ -128,18 +128,26 @@
           <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
             <button
               type="button"
-              class="w-8 h-8 rounded-full border border-gray-300 bg-white text-base font-semibold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+              class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
               on:click={() => adjustKeyframeSize(10)}
               aria-label="Increase thumbnail size"
               disabled={keyframeSize >= 400}
-            >+</button>
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
             <button
               type="button"
-              class="w-8 h-8 rounded-full border border-gray-300 bg-white text-base font-semibold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+              class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
               on:click={() => adjustKeyframeSize(-10)}
               aria-label="Decrease thumbnail size"
               disabled={keyframeSize <= 80}
-            >-</button>
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M5 12h14"/>
+              </svg>
+            </button>
           </div>
 
         <div class="relative sort-dropdown-container">
@@ -166,12 +174,12 @@
           </button>
 
           {#if isSortDropdownOpen}
-            <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
-                  class="w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors
-                         {viewMode === option.value ? 'bg-blue-50' : ''}"
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors
+                         {viewMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 flex-shrink-0 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}

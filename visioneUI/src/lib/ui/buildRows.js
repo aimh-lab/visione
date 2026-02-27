@@ -40,27 +40,19 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
   if (mode === "byrank") return chunk(items, perRow);
   if (mode === "bydate") return chunk(sortByDateDesc(items), perRow);
 
-  // byvideo (senza auto-fit)
-  const used = new Set();
-  const rows = [];
-
+  // byvideo (senza auto-fit) - grouping O(n) + chunking
+  const byVideo = new Map();
   for (const img of items) {
-    if (used.has(img.index)) continue;
     const vid = img.videoId ?? `vid-${img.index}`;
-    const row = [];
+    if (!byVideo.has(vid)) byVideo.set(vid, []);
+    byVideo.get(vid).push(img);
+  }
 
-    for (const cand of items) {
-      if (used.has(cand.index)) continue;
-      const candVid = cand.videoId ?? `vid-${cand.index}`;
-
-      if (candVid === vid) {
-        row.push(cand);
-        used.add(cand.index);
-        if (row.length >= perRow) break;
-      }
+  const rows = [];
+  for (const group of byVideo.values()) {
+    for (let i = 0; i < group.length; i += perRow) {
+      rows.push(group.slice(i, i + perRow));
     }
-
-    if (row.length > 0) rows.push(row);
   }
 
   return rows;
