@@ -93,7 +93,7 @@
         {#if searchTime > 0}
           <div class="ui-status-chip ui-status-chip-time flex items-center space-x-1.5 px-2.5 py-1 bg-purple-900/30 rounded-full border border-purple-700/50">
             <svg class="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              ircle cx="12" cy="12" r="1010"/>
+              <circle cx="12" cy="12" r="10"/>
               <path d="M12 6v6l4 2"/>
             </svg>
             <span class="text-purple-300 font-semibold">{(searchTime / 1000).toFixed(2)}s</span>

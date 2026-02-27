@@ -77,7 +77,7 @@ export class DresClient {
     try {
       const user = await this.userApi.postApiV2Login({ loginRequest: payload });
       if (!user?.sessionId) {
-        throw new DresClientError('Login riuscito ma sessionId mancante nella risposta.');
+        throw new DresClientError('Login succeeded but sessionId is missing in the response.');
       }
 
       this.sessionId = user.sessionId;
@@ -91,7 +91,7 @@ export class DresClient {
 
       return user;
     } catch (error) {
-      throw await this.mapApiError(error, 'Errore durante il login a DRES');
+      throw await this.mapApiError(error, 'Error during DRES login');
     }
   }
 
@@ -102,12 +102,12 @@ export class DresClient {
     try {
       runs = await this.evaluationClientApi.getApiV2ClientEvaluationList({ session });
     } catch (error) {
-      throw await this.mapApiError(error, 'Errore durante il recupero delle evaluation');
+      throw await this.mapApiError(error, 'Error while fetching evaluations');
     }
 
     const active = runs.find((run) => run.status === ApiEvaluationStatus.Active);
     if (!active?.id) {
-      throw new DresClientError('Nessuna evaluation ACTIVE disponibile per la sessione corrente.', 404);
+      throw new DresClientError('No ACTIVE evaluation is available for the current session.', 404);
     }
 
     return active.id;
@@ -176,7 +176,7 @@ export class DresClient {
         queryResultLog: resultsLog
       });
     } catch (error) {
-      throw await this.mapApiError(error, 'Errore durante l\'invio del log risultati');
+      throw await this.mapApiError(error, 'Error while sending result log');
     }
   }
 
@@ -188,13 +188,13 @@ export class DresClient {
       this.sessionId = null;
       return response;
     } catch (error) {
-      throw await this.mapApiError(error, 'Errore durante il logout da DRES');
+      throw await this.mapApiError(error, 'Error during DRES logout');
     }
   }
 
   private requireSession(): string {
     if (!this.sessionId) {
-      throw new DresClientError('Sessione DRES non presente. Esegui prima login().', 401);
+      throw new DresClientError('DRES session is missing. Run login() first.', 401);
     }
     return this.sessionId;
   }
@@ -214,7 +214,7 @@ export class DresClient {
 
       if (statusCode === 401) {
         return new DresClientError(
-          `DRES 401: autenticazione fallita durante la submission. ${description ?? ''}`.trim(),
+          `DRES 401: authentication failed during submission. ${description ?? ''}`.trim(),
           statusCode,
           description
         );
@@ -222,7 +222,7 @@ export class DresClient {
 
       if (statusCode === 404) {
         return new DresClientError(
-          `DRES 404: nessun task attivo accetta submission. ${description ?? ''}`.trim(),
+          `DRES 404: no active task accepts submissions. ${description ?? ''}`.trim(),
           statusCode,
           description
         );
@@ -230,14 +230,14 @@ export class DresClient {
 
       if (statusCode === 412) {
         return new DresClientError(
-          `DRES 412: submission rifiutata dal server. ${description ?? ''}`.trim(),
+          `DRES 412: submission rejected by server. ${description ?? ''}`.trim(),
           statusCode,
           description
         );
       }
 
       return new DresClientError(
-        `DRES ${statusCode}: errore durante la submission. ${description ?? ''}`.trim(),
+        `DRES ${statusCode}: error during submission. ${description ?? ''}`.trim(),
         statusCode,
         description
       );
@@ -247,7 +247,7 @@ export class DresClient {
       return new DresClientError(error.message);
     }
 
-    return new DresClientError('Errore sconosciuto durante la submission');
+    return new DresClientError('Unknown error during submission');
   }
 
   private async mapApiError(error: unknown, contextMessage: string): Promise<DresClientError> {
@@ -293,7 +293,7 @@ export function createDresClientFromEnv(): DresClient {
 
   if (!basePath || !username || !password) {
     throw new DresClientError(
-      'Config DRES mancante. Imposta VITE_DRES_BASE_URL, VITE_DRES_USERNAME, VITE_DRES_PASSWORD.'
+      'Missing DRES config. Set VITE_DRES_BASE_URL, VITE_DRES_USERNAME, VITE_DRES_PASSWORD.'
     );
   }
 
@@ -319,12 +319,12 @@ export function createDresClientFromSettings(settings: {
   const memberId = settings?.dresMemberId?.trim();
 
   if (!settings?.dresEnabled) {
-    throw new DresClientError('DRES è disabilitato nelle impostazioni.');
+    throw new DresClientError('DRES is disabled in settings.');
   }
 
   if (!basePath || !username || !password) {
     throw new DresClientError(
-      'Config DRES incompleta. Inserisci submit server, username e password nelle impostazioni.'
+      'Incomplete DRES config. Set submit server, username, and password in settings.'
     );
   }
 

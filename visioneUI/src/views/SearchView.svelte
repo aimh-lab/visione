@@ -2,13 +2,11 @@
   import { createEventDispatcher } from 'svelte';
   import SidebarSearch from "../components/SidebarSearch.svelte";
   import SidebarRight from "../components/SidebarRight.svelte";
-  import Topbar from "../components/Topbar.svelte";
   import SearchResults from "../components/SearchResults.svelte";
   import ImageModal from "../components/ImageModal.svelte";
   import EmptyState from '../components/EmptyState.svelte';
   import WelcomeHero from '../components/WelcomeHero.svelte';
 
-  const TopbarAny = Topbar as any;
   const EmptyStateAny = EmptyState as any;
 
   type QueryTextarea = { value: string; enabled: boolean };
@@ -56,9 +54,6 @@
   export let registerContainer = (_el: Element | null) => {};
   export let onToggleSidebar = () => {};
   export let onToggleRightSidebar = () => {};
-  export let onZoomIn = () => {};
-  export let onZoomOut = () => {};
-  export let onChangeViewMode = (_mode: string) => {};
 
   export let onAddTextarea = (_index: number) => {};
   export let onRemoveTextarea = (_index: number) => {};
@@ -214,20 +209,8 @@
       </div>
     {/if}
 
-    <svelte:component
-      this={TopbarAny}
-      {viewMode}
-      {isSidebarOpen}
-      {isSidebarRightOpen}
-      on:toggleSidebar={onToggleSidebar}
-      on:toggleRightSidebar={onToggleRightSidebar}
-      on:zoomIn={onZoomIn}
-      on:zoomOut={onZoomOut}
-      on:changeViewMode={(e: any) => onChangeViewMode(e.detail.mode)}
-    />
-
     <div class="content bg-gray-100 flex-1"
-         style="height:calc(100% - var(--topbar-height)); transform:scale({contentScale});">
+         style="height:100%; transform:scale({contentScale});">
 
       <div class="flex-1 overflow-y-auto h-full" bind:this={container}>
         {#if isFirstVisit}

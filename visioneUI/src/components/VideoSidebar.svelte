@@ -14,12 +14,12 @@
 
   {#if isSidebarOpen}
     <div class="flex space-x-4 p-2">
-      <button class="p-2 bg-gray-700 rounded" on:click={openOptions}>Opzioni</button>
-      <button class="p-2 bg-gray-700 rounded" on:click={openFilters}>Filtri</button>
+      <button class="p-2 bg-gray-700 rounded" on:click={openOptions}>Options</button>
+      <button class="p-2 bg-gray-700 rounded" on:click={openFilters}>Filters</button>
     </div>
 
     <div class="p-4 text-sm text-gray-300">
-      Qui andranno i controlli specifici per i riepiloghi video.
+      Video-summary-specific controls will go here.
     </div>
   {/if}
 </div>
