@@ -24,7 +24,7 @@ export class VisioneAPI {
   // ... #makeRequest e metodi esistenti ...
 
   async getMiddleTimestamp(imgId) {
-    if (!imgId) throw new APIError('imgId richiesto', 400);
+    if (!imgId) throw new APIError('imgId is required', 400);
 
     const key = String(imgId);
     const now = Date.now();
@@ -45,7 +45,7 @@ export class VisioneAPI {
     const res = await this.#makeRequest(url, { retries: 1, timeout: 15000 });
     const text = await res.text();
     const num = Number(text);
-    if (!Number.isFinite(num)) throw new APIError(`Risposta non numerica: ${text}`, 500);
+    if (!Number.isFinite(num)) throw new APIError(`Non-numeric response: ${text}`, 500);
 
       this.middleTimestampCache.set(key, { value: num, ts: Date.now() });
       while (this.middleTimestampCache.size > this.middleTimestampCacheMax) {
@@ -111,7 +111,7 @@ export class VisioneAPI {
     const activeTextareas = textareas.filter(t => t.enabled && t.value.trim());
     
     if (activeTextareas.length === 0) {
-      throw new APIError('Almeno una textarea deve essere abilitata e contenere testo', 400);
+      throw new APIError('At least one textarea must be enabled and contain text', 400);
     }
     
     const queries = activeTextareas.map(t => ({ textual: t.value.trim() }));
@@ -136,7 +136,7 @@ export class VisioneAPI {
   // Similarity Search API
   async similaritySearch(baseImgId) {
     if (!baseImgId) {
-      throw new APIError('BaseImgId è richiesto per similarity search', 400);
+      throw new APIError('BaseImgId is required for similarity search', 400);
     }
 
     const payload = { 
@@ -160,7 +160,7 @@ export class VisioneAPI {
   // Video Keyframes API
   async getVideoKeyframes(videoId) {
     if (!videoId) {
-      throw new APIError('VideoId è richiesto', 400);
+      throw new APIError('VideoId is required', 400);
     }
 
     const url = `${this.baseUrl}/core/getAllVideoKeyframes?videoId=${encodeURIComponent(String(videoId))}`;

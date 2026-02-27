@@ -195,7 +195,7 @@
     if (!settings?.dresEnabled) {
       dresClientInstance = null;
       dresClientSignature = '';
-      throw new DresClientError('DRES è disabilitato nelle impostazioni.');
+      throw new DresClientError('DRES is disabled in settings.');
     }
 
     if (!dresClientInstance || dresClientSignature !== signature) {
@@ -481,7 +481,7 @@
     } catch (error) {
       const message = error instanceof DresClientError || error instanceof Error
         ? error.message
-        : 'Errore sconosciuto durante il test DRES';
+        : 'Unknown error during DRES test';
       toasts.error(`DRES test failed: ${message}`);
     }
   }
@@ -796,7 +796,7 @@ async function submitToDres(frameObj) {
 
     const imgId = frameObj?.imgId;
     if (!imgId) {
-      throw new Error('imgId mancante per la submission DRES');
+      throw new Error('Missing imgId for DRES submission');
     }
 
     const middleSeconds = await visioneAPI.getMiddleTimestamp(imgId);
@@ -835,7 +835,7 @@ async function submitToDres(frameObj) {
   } catch (error) {
     const message = error instanceof DresClientError || error instanceof Error
       ? error.message
-      : 'Errore sconosciuto durante la submission DRES';
+      : 'Unknown error during DRES submission';
     toasts.error(`DRES submission failed: ${message}`);
     return { accepted: false, verdict: '', description: message };
   }
@@ -1267,7 +1267,7 @@ async function submitToDres(frameObj) {
 >
   <div
     class="views-wrapper w-full"
-    style="height: {$tabsPosition === 'top' ? 'calc(100vh - 39px)' : '100vh'}; --topbar-height:56px;"
+    style="height: {$tabsPosition === 'top' ? 'calc(100vh - 39px)' : '100vh'};"
   >
     {#if $uiStore.layoutTab === "View1"}
       <SearchView
@@ -1315,11 +1315,6 @@ async function submitToDres(frameObj) {
         onResizeLeftSidebar={(width) => uiStore.actions.setSidebarLeftWidth(width)}
         onResizeRightSidebar={(width) => uiStore.actions.setSidebarRightWidth(width)}
         onToggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
-
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-
-        onChangeViewMode={(mode) => uiStore.actions.setViewMode(mode)}
 
         openVideoPlayerBy={openVideoPlayerBy}
         onAddTextarea={addTextarea}
@@ -1389,9 +1384,6 @@ async function submitToDres(frameObj) {
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-
         onOpenFrame={(frame) => openFrameModal(frame)}
         onSimilarity={(imgId) => openSimilarity(imgId)}
         addRFPositiveByImg={addRFPositiveByImg}
@@ -1423,10 +1415,6 @@ async function submitToDres(frameObj) {
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-
-        onChangeViewMode={(mode) => uiStore.actions.setViewMode(mode)}
         openVideoPlayerBy={openVideoPlayerBy}
         openByImgId={openByImgId}
         addRFPositiveByImg={addRFPositiveByImg}

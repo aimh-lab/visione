@@ -516,7 +516,6 @@ body {
 
 /* Scala UI components */
 .sidebar-left,
-.topbar,
 .search-results {
   font-size: clamp(0.75rem, 1vw, 1rem);
 }
@@ -525,5 +524,4 @@ body {
 button, input, textarea {
   font-size: clamp(0.75rem, 0.9vw, 0.875rem);
 }
-
 

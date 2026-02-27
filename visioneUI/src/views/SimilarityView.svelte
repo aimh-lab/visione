@@ -1,10 +1,7 @@
 <script lang="ts">
   import SidebarSimilarity from "../components/SidebarSimilarity.svelte";
-  import Topbar from "../components/Topbar.svelte";
   import SearchResults from "../components/SearchResults.svelte";
   import ImageModal from "../components/ImageModal.svelte";
-
-  const TopbarAny = Topbar as any;
 
   type QueryTextarea = { value: string; enabled: boolean };
   type Img = { imgId?: string; videoId?: string; [key: string]: unknown };
@@ -34,9 +31,6 @@
 
   // Toolbar/controls
   export let onToggleSidebar = () => {};
-  export let onZoomIn = () => {};
-  export let onZoomOut = () => {};
-  export let onChangeViewMode = (_mode: string) => {};
 
   // Sidebar azioni (riuso identico a SidebarSearch)
   export let onSelectTab = (_tab: string) => {};
@@ -93,18 +87,8 @@
 
   <!-- Colonna principale (identica a SearchView) -->
  <div class="flex flex-col flex-1 min-w-0">
-    <svelte:component
-      this={TopbarAny}
-      {viewMode}
-      {isSidebarOpen}
-      on:toggleSidebar={onToggleSidebar}
-      on:zoomIn={onZoomIn}
-      on:zoomOut={onZoomOut}
-      on:changeViewMode={(e: any) => onChangeViewMode(e.detail.mode)}
-    />
-
     <div class="content bg-gray-100 flex-1"
-         style="height:calc(100% - var(--topbar-height)); transform:scale({contentScale});">
+         style="height:100%; transform:scale({contentScale});">
 
     <div class="h-full flex flex-col">
       {#if loading}
@@ -188,7 +172,5 @@
   on:prev={onPrevSim}
   on:next={onNextSim}
 />
-
-
 
 

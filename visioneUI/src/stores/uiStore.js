@@ -102,12 +102,6 @@ function createUIStore() {
         theme: DEFAULT.theme,
         viewMode: DEFAULT.viewMode,
         contentScale: DEFAULT.contentScale,
-            setTheme(theme) {
-              const safe = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
-              update(u => ({ ...u, theme: safe }));
-              persist({ theme: safe });
-            },
-
         isSidebarOpen: DEFAULT.isSidebarOpen,
         isSidebarRightOpen: DEFAULT.isSidebarRightOpen,
         sidebarLeftWidth: DEFAULT.sidebarLeftWidth,
@@ -136,6 +130,12 @@ function createUIStore() {
     setViewMode(viewMode) {
       update(u => ({ ...u, viewMode }));
       persist({ viewMode });
+    },
+
+    setTheme(theme) {
+      const safe = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+      update(u => ({ ...u, theme: safe }));
+      persist({ theme: safe });
     },
 
     setContentScale(contentScale) {

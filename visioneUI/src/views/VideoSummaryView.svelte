@@ -1,10 +1,7 @@
 <script lang="ts">
   import VideoSidebar from "../components/VideoSidebar.svelte";
-  import Topbar from "../components/Topbar.svelte";
   import ResultsGrid from "../components/ResultsGrid.svelte";
   import ImageModal from "../components/ImageModal.svelte";
-
-  const TopbarAny = Topbar as any;
   const ResultsGridAny = ResultsGrid as any;
 
   type Frame = { imgId?: string; videoId?: string; [key: string]: unknown };
@@ -23,8 +20,6 @@
   export let registerContainer = (_el: Element | null) => {};
 
   export let onToggleSidebar = () => {};
-  export let onZoomIn = () => {};
-  export let onZoomOut = () => {};
 
   export let onOpenFrame = (_frame: Frame) => {};
   export let onSimilarity = (_imgId: string) => {};
@@ -59,17 +54,8 @@
   <VideoSidebar {isSidebarOpen} on:openOptions={() => {}} on:openFilters={() => {}} />
 
   <div class="flex flex-col flex-grow">
-    <svelte:component
-      this={TopbarAny}
-      viewMode={"byrank"}
-      {isSidebarOpen}
-      on:toggleSidebar={onToggleSidebar}
-      on:zoomIn={onZoomIn}
-      on:zoomOut={onZoomOut}
-    />
-
     <div class="content bg-gray-100 flex-1"
-         style="height:calc(100% - var(--topbar-height)); transform:scale({contentScale});">
+         style="height:100%; transform:scale({contentScale});">
 
     <div class="h-full flex flex-col">
       {#if loading}

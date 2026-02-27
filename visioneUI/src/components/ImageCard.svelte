@@ -38,13 +38,13 @@
     <div class="image-overlay absolute inset-0 z-10 transition-colors pointer-events-none"></div>
 
     <!-- Overlay buttons -->
-    <OverlayButton positionClass="top-2 left-2" title="Video Summary" aria={`Video Summary immagine ${img.index+1}`} on:click={handleVideoSummary}>
+    <OverlayButton positionClass="top-2 left-2" title="Video Summary" aria={`Video Summary image ${img.index+1}`} on:click={handleVideoSummary}>
       <svg class="w-6 h-6 text-white drop-shadow-lg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
     </OverlayButton>
 
-    <OverlayButton positionClass="top-2 left-10" title="Image similarity" aria={`Similarity per immagine ${img.index+1}`} on:click={handleSimilarity}>
+    <OverlayButton positionClass="top-2 left-10" title="Image similarity" aria={`Similarity for image ${img.index+1}`} on:click={handleSimilarity}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
            class="w-6 h-6 text-white drop-shadow-lg" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="9" cy="12" r="4" class="opacity-90"/>
@@ -52,21 +52,21 @@
       </svg>
     </OverlayButton>
 
-    <OverlayButton positionClass="top-0 left-16" title="RF positivo" aria={`RF positivo immagine ${img.index+1}`} on:click={handleRFPositive}>
+    <OverlayButton positionClass="top-0 left-16" title="Positive RF" aria={`Positive RF image ${img.index+1}`} on:click={handleRFPositive}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
            class="w-8 h-8 text-green-400 drop-shadow-lg" fill="currentColor">
         <path d="M2 12h4v10H2z"/><path d="M8 12c0-1 0-3 2-4 1-1 3-1 4 0 1 1 1 3 0 4l-2 3v5H8v-8z"/>
       </svg>
     </OverlayButton>
 
-    <OverlayButton positionClass="top-1 left-20" title="RF negativo" aria={`RF negativo immagine ${img.index+1}`} on:click={handleRFNegative}>
+    <OverlayButton positionClass="top-1 left-20" title="Negative RF" aria={`Negative RF image ${img.index+1}`} on:click={handleRFNegative}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
            class="w-8 h-8 text-red-400 drop-shadow-lg" fill="currentColor">
         <path d="M22 12h-4V2h4z"/><path d="M16 12c0 1 0 3-2 4-1 1-3 1-4 0-1-1-1-3 0-4l2-3V4h5v8z"/>
       </svg>
     </OverlayButton>
 
-    <OverlayButton positionClass="top-2 right-2" title="Submit risultato" aria={`Submit immagine ${img.index+1}`} on:click={handleSubmit}>
+    <OverlayButton positionClass="top-2 right-2" title="Submit result" aria={`Submit image ${img.index+1}`} on:click={handleSubmit}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
            class="w-6 h-6 text-green-500 drop-shadow-lg bg-white/10 rounded-full p-0.5"
            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
