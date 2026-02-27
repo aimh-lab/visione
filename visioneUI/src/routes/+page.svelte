@@ -1262,11 +1262,17 @@ async function submitToDres(frameObj) {
   isSidebarOpen={$uiStore.isSidebarOpen}
   isSidebarRightOpen={$uiStore.isSidebarRightOpen}
   viewMode={$uiStore.viewMode}
+  keyframeSize={$uiStore.keyframeSize}
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
   on:change={(e) => uiStore.actions.setLayoutTab(e.detail.tab)}
   on:toggleSidebar={() => uiStore.actions.toggleSidebar()}
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
   on:changeViewMode={(e) => uiStore.actions.setViewMode(e.detail.mode)}
+  on:adjustKeyframeSize={(e) => {
+    const delta = Number(e?.detail?.delta) || 0;
+    const next = $uiStore.keyframeSize + delta;
+    uiStore.actions.setKeyframeSize(next);
+  }}
   on:openSettings={() => (isSettingsOpen = true)}
   on:reset={resetApp}
 >

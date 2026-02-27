@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { tabsPosition } from '../stores/tabsPosition.js';
-  import TopTabs from './TopTabs.svelte';
+  import MainToolbar from './MainToolbar.svelte';
   
   export let active;
   export let tabs;
@@ -9,6 +9,7 @@
   export let isSidebarRightOpen;
   export let viewMode;
   export let showViewModeRadios;
+  export let keyframeSize = 130;
   
   const dispatch = createEventDispatcher();
   
@@ -82,20 +83,22 @@
 <svelte:window on:click={handleClickOutside} on:keydown={handleWindowKeydown} />
 
 {#if $tabsPosition === 'top'}
-  <!-- Layout TOP con TopTabs completo -->
+  <!-- Layout TOP con MainToolbar completo -->
   <div class="flex flex-col h-full">
     <div class="relative">
-      <TopTabs 
+      <MainToolbar 
         {active} 
         {tabs} 
         {isSidebarOpen}
         {isSidebarRightOpen}
         {viewMode} 
         {showViewModeRadios}
+        {keyframeSize}
         on:change
         on:toggleSidebar
         on:toggleRightSidebar 
         on:changeViewMode
+        on:adjustKeyframeSize
         on:openSettings
         on:reset
       />

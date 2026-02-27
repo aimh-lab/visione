@@ -554,6 +554,7 @@
         {/if}
 
         {#each row as item (getId(item) ?? getIndex(item))}
+          {@const timecodeLabel = getTimecodeLabel(item)}
           <div>
             <div
               use:observeCardForPreload={item}
@@ -697,9 +698,9 @@
                 <SubmitBadge submitted={!!item.submitted} verdict={item?.submissionVerdict} />
               {/if}
 
-              {#if getTimecodeLabel(item)}
+              {#if timecodeLabel}
                 <div class="absolute top-0.5 left-0.5 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md border border-slate-300/35 bg-slate-700/95 text-slate-100 text-[10px] font-semibold tracking-wide shadow-md pointer-events-none">
-                  {getTimecodeLabel(item)}
+                  {timecodeLabel}
                 </div>
               {/if}
 

@@ -138,6 +138,12 @@ function createUIStore() {
       persist({ theme: safe });
     },
 
+    setKeyframeSize(keyframeSize) {
+      const safe = Math.min(400, Math.max(80, Number(keyframeSize) || DEFAULT.keyframeSize));
+      update(u => ({ ...u, keyframeSize: safe }));
+      persist({ keyframeSize: safe });
+    },
+
     setContentScale(contentScale) {
       update(u => ({ ...u, contentScale }));
       persist({ contentScale });

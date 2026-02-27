@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { afterUpdate, createEventDispatcher, tick } from "svelte";
+  import { createEventDispatcher, tick } from "svelte";
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
 
@@ -133,8 +133,7 @@
     return `rgba(${r}, ${g}, ${b}, ${clamped})`;
   }
 
-  function autoResizeTextarea(index: number) {
-    const textarea = textareaRefs[index];
+  function resizeTextareaNode(textarea: HTMLTextAreaElement | null) {
     if (!textarea) return;
 
     textarea.style.height = "auto";
@@ -155,15 +154,19 @@
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
   }
 
-  function autoResizeAllTextareas() {
-    for (let i = 0; i < textareas.length; i += 1) {
-      autoResizeTextarea(i);
-    }
+  function autoResizeTextarea(index: number) {
+    resizeTextareaNode(textareaRefs[index]);
   }
 
-  afterUpdate(() => {
-    autoResizeAllTextareas();
-  });
+  function autoResizeAction(node: HTMLTextAreaElement, _value: string) {
+    resizeTextareaNode(node);
+    return {
+      update(nextValue: string) {
+        void nextValue;
+        resizeTextareaNode(node);
+      }
+    };
+  }
 
   export function focusPrimaryTextarea() {
     const first = textareaRefs[0];
@@ -371,7 +374,6 @@
   const handleTextareaInput = (index: number, e: Event) => {
     const value = (e.currentTarget as HTMLTextAreaElement | null)?.value ?? "";
     update(index, value);
-    autoResizeTextarea(index);
   };
 
   function clearTextareaValue(index: number) {
@@ -831,6 +833,7 @@
 
             <textarea
               bind:this={textareaRefs[i]}
+              use:autoResizeAction={textarea.value}
               class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                      {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-500 placeholder-slate-600 cursor-not-allowed line-through'}"
               rows="1"

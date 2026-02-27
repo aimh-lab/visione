@@ -8,6 +8,7 @@
   export let isSidebarRightOpen = true; // ✅ NUOVO
   export let viewMode = "byrank";
   export let showViewModeRadios = false;
+  export let keyframeSize = 130;
   
   const dispatch = createEventDispatcher();
   
@@ -55,6 +56,9 @@
   const setMode = (mode) => {
     dispatch("changeViewMode", { mode });
     isSortDropdownOpen = false;
+  };
+  const adjustKeyframeSize = (delta) => {
+    dispatch("adjustKeyframeSize", { delta });
   };
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
@@ -120,6 +124,24 @@
     <div class="flex items-center space-x-3 pb-0">
       <!-- Sort by dropdown -->
       {#if showViewModeRadios}
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full border border-gray-300 bg-white text-base font-semibold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+              on:click={() => adjustKeyframeSize(10)}
+              aria-label="Increase thumbnail size"
+              disabled={keyframeSize >= 400}
+            >+</button>
+            <button
+              type="button"
+              class="w-8 h-8 rounded-full border border-gray-300 bg-white text-base font-semibold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+              on:click={() => adjustKeyframeSize(-10)}
+              aria-label="Decrease thumbnail size"
+              disabled={keyframeSize <= 80}
+            >-</button>
+          </div>
+
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
@@ -171,6 +193,7 @@
               {/each}
             </div>
           {/if}
+        </div>
         </div>
       {/if}
 
