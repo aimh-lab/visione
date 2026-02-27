@@ -9,6 +9,7 @@
   export let isSelectionMode = false; 
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let showSubmitUI = false;
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -23,6 +24,7 @@
   {videoBadgeOrientation}
   virtualizeRows={virtualizationEnabled}
   virtualizeThreshold={virtualizationThreshold}
+  {showSubmitUI}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

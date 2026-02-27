@@ -15,6 +15,7 @@
   export let title = "";
   export let videoId = "";
   export let highlightedKeyframes: HighlightedInput[] = [];
+  export let showSubmitUI = false;
 
   const dispatch = createEventDispatcher();
   let videoEl: HTMLVideoElement | null = null;
@@ -47,7 +48,7 @@
 
     if (isTypingContext) return;
 
-    if (e.key?.toLowerCase() === "s") {
+    if (showSubmitUI && e.key?.toLowerCase() === "s") {
       e.preventDefault();
       submitCurrentFrame();
     }
@@ -245,6 +246,7 @@
   }
 
   function submitCurrentFrame() {
+    if (!showSubmitUI) return;
     if (!videoEl) return;
     const w = videoEl.videoWidth || 0;
     const h = videoEl.videoHeight || 0;
@@ -531,17 +533,19 @@
             <span class="font-mono">
               {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
             </span>
-            <button
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold"
-              on:click={submitCurrentFrame}
-              title="Submit current frame (S)"
-              aria-label="Submit current frame (S)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M12 19V7M5 12l7-7 7 7"/>
-              </svg>
-              <span class="text-xs">Submit frame</span>
-            </button>
+            {#if showSubmitUI}
+              <button
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold"
+                on:click={submitCurrentFrame}
+                title="Submit current frame (S)"
+                aria-label="Submit current frame (S)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 19V7M5 12l7-7 7 7"/>
+                </svg>
+                <span class="text-xs">Submit frame</span>
+              </button>
+            {/if}
           </div>
 
           <!-- ✅ Keyframes info + legenda -->

@@ -19,6 +19,7 @@
   export let simIsModalOpen = false;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let showSubmitUI = false;
 
   export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
   export let searchError: string | null = null;
@@ -150,6 +151,7 @@
             {videoBadgeOrientation}
             {virtualizationEnabled}
             {virtualizationThreshold}
+            {showSubmitUI}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
@@ -168,9 +170,9 @@
   isOpen={simIsModalOpen}
   image={simSelected as any}
   total={similarityTotal}
+  {showSubmitUI}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}
 />
-
 

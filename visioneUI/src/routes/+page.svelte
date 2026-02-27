@@ -657,7 +657,8 @@
   }
 
   // Quick actions dalla status bar
-  function handleViewSubmitted() {
+function handleViewSubmitted() {
+    if (!get(uiStore).dresEnabled) return;
     if (!get(uiStore).isSidebarRightOpen) uiStore.actions.toggleRightSidebar();
     uiStore.actions.focusRightTab("Submitted");
     toasts.info("Viewing submitted frames");
@@ -727,6 +728,12 @@ function applySubmissionVerdict(imgId, submissionVerdict) {
 }
 
 async function submitByImgId(imgId, fallback = null) {
+  const settings = get(uiStore);
+  if (!settings?.dresEnabled) {
+    toasts.info("Enable DRES submit in settings to submit frames.");
+    return;
+  }
+
   if (typeof window !== "undefined") {
     const ok = window.confirm("Are you sure you want to submit this frame?");
     if (!ok) return;
@@ -750,12 +757,9 @@ async function submitByImgId(imgId, fallback = null) {
 
   if (!frameObj) return;
 
-  const settings = get(uiStore);
-  if (settings?.dresEnabled) {
-    const dresResult = await submitToDres(frameObj);
-    if (!dresResult?.accepted) {
-      return;
-    }
+  const dresResult = await submitToDres(frameObj);
+  if (!dresResult?.accepted) {
+    return;
   }
 
   sessionStore.actions.submitFrame({
@@ -1228,6 +1232,7 @@ async function submitToDres(frameObj) {
   title={videoPlayer.title}
   videoId={videoPlayer.videoId}
   highlightedKeyframes={videoPlayer.highlightedKeyframes || []}
+  showSubmitUI={$uiStore.dresEnabled}
   on:submitFrame={handleSubmitFrameFromPlayer}
   on:close={() => { isVideoPlayerOpen = false; }}
 />
@@ -1293,6 +1298,7 @@ async function submitToDres(frameObj) {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
+        showSubmitUI={$uiStore.dresEnabled}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
 
@@ -1381,6 +1387,7 @@ async function submitToDres(frameObj) {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
+        showSubmitUI={$uiStore.dresEnabled}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1412,6 +1419,7 @@ async function submitToDres(frameObj) {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
+        showSubmitUI={$uiStore.dresEnabled}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1440,6 +1448,7 @@ async function submitToDres(frameObj) {
     viewMode={$uiStore.viewMode}
     searchTime={searchTime}
     isLoading={searchLoading || similarityLoading || view2Loading}
+    showSubmitted={$uiStore.dresEnabled}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />

@@ -8,6 +8,7 @@
   export let rfPositive = [];
   export let rfNegative = [];
   export let submittedImages = [];
+  export let showSubmittedTab = false;
   export let width = 18;
 
   const dispatch = createEventDispatcher();
@@ -24,6 +25,11 @@
       icon: `<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>`
     }
   ];
+  $: visibleTabs = showSubmittedTab ? tabs : tabs.filter((tab) => tab.id !== "Submitted");
+  $: if (!showSubmittedTab && activeTab === "Submitted") {
+    activeTab = "RF";
+    dispatch('selectTab', { tab: 'RF' });
+  }
 
   function getTabCount(tabId) {
     if (tabId === "Submitted") return submittedImages.length;
@@ -95,7 +101,7 @@
   {#if isOpen}
     <!-- Tabs Navigation -->
     <div class="flex px-2 py-2 space-x-1 bg-gray-900/30 border-b border-gray-700 flex-shrink-0">
-      {#each tabs as tab}
+      {#each visibleTabs as tab}
         <button
           class="ui-sidebar-tab-btn flex-1 flex flex-col items-center justify-center px-2 py-2 rounded-lg font-medium text-xs transition-all duration-200
                  {activeTab === tab.id 

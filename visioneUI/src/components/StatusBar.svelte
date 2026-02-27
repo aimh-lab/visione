@@ -7,6 +7,7 @@
   export let viewMode = 'byrank';
   export let searchTime = 0;
   export let isLoading = false;
+  export let showSubmitted = false;
   
   // ✅ BONUS: Eventi per azioni rapide
   export let onViewSubmitted = () => {};
@@ -46,7 +47,7 @@
         </div>
         
         <!-- ✅ BONUS: Submitted count - CLICCABILE -->
-        {#if submittedCount > 0}
+        {#if showSubmitted && submittedCount > 0}
           <button
             on:click={onViewSubmitted}
             class="ui-status-chip ui-status-chip-submitted flex items-center space-x-1.5 px-2.5 py-1 bg-green-900/30 rounded-full border border-green-700/50 

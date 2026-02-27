@@ -44,6 +44,7 @@
   export let images: Img[] = [];
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let showSubmitUI = false;
 
   // Modale immagini
   export let selectedImage: Img | null = null;
@@ -303,6 +304,7 @@
             {videoBadgeOrientation}
             {virtualizationEnabled}
             {virtualizationThreshold}
+            {showSubmitUI}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}
@@ -327,6 +329,7 @@
     {rfPositive}
     {rfNegative}
     {submittedImages}
+    showSubmittedTab={showSubmitUI}
     on:removePositive={onRemovePositive}
     on:removeNegative={onRemoveNegative}
     on:openFromRF={(e) => onOpenFromRF(e.detail.index)}
@@ -342,6 +345,7 @@
   isOpen={isModalOpen}
   image={selectedImage as any}
   total={totalImages}
+  {showSubmitUI}
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}
