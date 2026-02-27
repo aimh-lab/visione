@@ -30,6 +30,10 @@ export type DresSessionInfo = {
   createdAt: string;
 };
 
+function normalizeBasePath(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
 export class DresClientError extends Error {
   statusCode?: number;
   description?: string;
@@ -52,10 +56,13 @@ export class DresClient {
   private sessionId: string | null = null;
 
   constructor(options: DresClientOptions) {
-    this.options = options;
+    this.options = {
+      ...options,
+      basePath: normalizeBasePath(options.basePath)
+    };
 
     const configuration = new Configuration({
-      basePath: options.basePath
+      basePath: this.options.basePath
     });
 
     this.userApi = new UserApi(configuration);
@@ -286,7 +293,7 @@ export class DresClient {
 }
 
 export function createDresClientFromEnv(): DresClient {
-  const basePath = import.meta.env.VITE_DRES_BASE_URL;
+  const basePath = normalizeBasePath(import.meta.env.VITE_DRES_BASE_URL ?? '');
   const username = import.meta.env.VITE_DRES_USERNAME;
   const password = import.meta.env.VITE_DRES_PASSWORD;
   const memberId = import.meta.env.VITE_DRES_MEMBER_ID;
@@ -313,7 +320,7 @@ export function createDresClientFromSettings(settings: {
   dresMemberId?: string;
   dresEnabled?: boolean;
 }): DresClient {
-  const basePath = settings?.dresSubmitServer?.trim();
+  const basePath = normalizeBasePath(settings?.dresSubmitServer ?? '');
   const username = settings?.dresUsername?.trim();
   const password = settings?.dresPassword ?? '';
   const memberId = settings?.dresMemberId?.trim();

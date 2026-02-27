@@ -5,6 +5,7 @@
   export let isOpen = false;
   export let image = null;
   export let total = 0;
+  export let showSubmitUI = false;
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch("close");
@@ -177,7 +178,7 @@
               </div>
 
               <!-- Submit button: top-right, solo se NON submitted -->
-              {#if !image?.submitted}
+              {#if showSubmitUI && !image?.submitted}
                 <div
                   role="button"
                   tabindex="0"
@@ -194,7 +195,9 @@
             </div>
 
             <!-- ✅ Submit Badge (sempre visibile se submitted) -->
-            <SubmitBadge submitted={!!image?.submitted} verdict={image?.submissionVerdict} />
+            {#if showSubmitUI}
+              <SubmitBadge submitted={!!image?.submitted} verdict={image?.submissionVerdict} />
+            {/if}
 
           {:else}
             <div class="text-center text-gray-400">

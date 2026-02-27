@@ -16,6 +16,7 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let videoBadgeOrientation = "vertical";
+  export let showSubmitUI = false;
 
   export let registerContainer = (_el: Element | null) => {};
 
@@ -117,6 +118,7 @@
               layout="rows"
               showVideoSummary={false}
               {videoBadgeOrientation}
+              {showSubmitUI}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
               {registerContainer}
@@ -138,6 +140,7 @@
   isOpen={frameIsModalOpen}
   image={selectedFrame as any}
   total={totalFrames}
+  {showSubmitUI}
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}
