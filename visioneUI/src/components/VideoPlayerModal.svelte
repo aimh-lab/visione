@@ -30,6 +30,8 @@
   let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
   let keyframesLoadToken = 0;
   const KEYFRAME_TIMESTAMP_CONCURRENCY = 8;
+  const MAX_PRECISE_TIMESTAMP_FETCH = 120;
+  const SAMPLED_PRECISE_POINTS = 48;
 
   function onKeyDown(e: KeyboardEvent) {
     if (!isOpen) return;
@@ -109,34 +111,79 @@
     try {
       const imgIds = await visioneAPI.getVideoKeyframes(vid);
       if (currentToken !== keyframesLoadToken) return;
-      
-      keyframes = await mapWithConcurrency(
-        imgIds,
+
+      const fallbackDuration = Math.max(1, videoDuration || 100);
+      const estimated = imgIds.map((imgId: string, index: number): Keyframe => ({
+        imgId,
+        timestamp: (index / Math.max(1, imgIds.length)) * fallbackDuration,
+        thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
+      }));
+
+      // Show timeline immediately with estimated positions.
+      keyframes = estimated;
+      loadingKeyframes = false;
+
+      const preciseCandidates = selectPreciseTimestampCandidates(imgIds);
+      if (preciseCandidates.length === 0) return;
+
+      const precisePairs = await mapWithConcurrency(
+        preciseCandidates,
         KEYFRAME_TIMESTAMP_CONCURRENCY,
-        async (imgId: string, index: number): Promise<Keyframe> => {
-        try {
-          const timestamp = await visioneAPI.getMiddleTimestamp(imgId);
-          return {
-            imgId: imgId,
-            timestamp: timestamp,
-            thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
-          };
-        } catch (err) {
-          return {
-            imgId: imgId,
-            timestamp: (index / imgIds.length) * (videoDuration || 100),
-            thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
-          };
+        async (imgId: string): Promise<[string, number | null]> => {
+          try {
+            const timestamp = await visioneAPI.getMiddleTimestamp(imgId);
+            const parsed = Number(timestamp);
+            return [imgId, Number.isFinite(parsed) ? parsed : null];
+          } catch {
+            return [imgId, null];
+          }
         }
-      });
+      );
 
       if (currentToken !== keyframesLoadToken) return;
-      keyframes.sort((a, b) => a.timestamp - b.timestamp);
+
+      const preciseMap = new Map(
+        precisePairs.filter(([, ts]) => ts != null) as Array<[string, number]>
+      );
+
+      if (preciseMap.size === 0) return;
+
+      keyframes = estimated
+        .map((frame) => ({
+          ...frame,
+          timestamp: preciseMap.get(frame.imgId) ?? frame.timestamp
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
       console.error("Failed to load keyframes:", err);
     } finally {
       if (currentToken === keyframesLoadToken) loadingKeyframes = false;
     }
+  }
+
+  function selectPreciseTimestampCandidates(imgIds: string[]): string[] {
+    if (!Array.isArray(imgIds) || imgIds.length === 0) return [];
+    if (imgIds.length <= MAX_PRECISE_TIMESTAMP_FETCH) return imgIds;
+
+    const selected = new Set<string>();
+    const highlighted = highlightedKeyframes
+      .map((item) => (typeof item === 'string' ? item : item?.imgId))
+      .filter((id): id is string => !!id);
+
+    for (const id of highlighted) {
+      if (imgIds.includes(id)) selected.add(id);
+    }
+
+    selected.add(imgIds[0]);
+    selected.add(imgIds[imgIds.length - 1]);
+
+    const stride = Math.max(1, Math.ceil(imgIds.length / SAMPLED_PRECISE_POINTS));
+    for (let i = 0; i < imgIds.length; i += stride) {
+      if (selected.size >= MAX_PRECISE_TIMESTAMP_FETCH) break;
+      selected.add(imgIds[i]);
+    }
+
+    return Array.from(selected);
   }
 
   function deriveVideoId() {
