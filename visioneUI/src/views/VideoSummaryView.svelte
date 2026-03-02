@@ -15,6 +15,7 @@
   export let selectedFrameId: string | null = null;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let justifyResultRows = false;
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
 
@@ -119,6 +120,7 @@
               showVideoSummary={false}
               {videoBadgeOrientation}
               {showSubmitUI}
+              {justifyResultRows}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
               {registerContainer}

@@ -979,6 +979,7 @@ function handleViewSubmitted() {
   keyframeSize={$uiStore.keyframeSize}
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}
+  justifyResultRows={$uiStore.justifyResultRows}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -1039,6 +1040,7 @@ function handleViewSubmitted() {
         images={images}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
 
@@ -1128,6 +1130,7 @@ function handleViewSubmitted() {
         selectedFrameId={view2SelectedImgId}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
 
@@ -1160,6 +1163,7 @@ function handleViewSubmitted() {
         simIsModalOpen={$similarityModal.isOpen}
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
+        justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
 

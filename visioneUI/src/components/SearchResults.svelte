@@ -9,6 +9,7 @@
   export let isSelectionMode = false; 
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let justifyResultRows = false;
   export let showSubmitUI = false;
 
   const dispatch = createEventDispatcher();
@@ -24,6 +25,7 @@
   {videoBadgeOrientation}
   virtualizeRows={virtualizationEnabled}
   virtualizeThreshold={virtualizationThreshold}
+  {justifyResultRows}
   {showSubmitUI}
   {registerContainer}
   {isSelectionMode}

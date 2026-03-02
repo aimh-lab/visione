@@ -13,6 +13,7 @@
   export let isSelectionMode = false;
   export let virtualizeRows = true;
   export let virtualizeThreshold = 40;
+  export let justifyResultRows = false;
   export let showSubmitUI = false;
 
   let preview = { imgId: null, videoUrl: null, start: 0, end: 0 };
@@ -617,7 +618,7 @@
       
       <!-- Frames grid -->
       <div
-        class="flex flex-wrap w-full p-2.5 {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'relative ml-2 mr-2.5 mb-1 border border-gray-300 border-l-2 border-l-gray-500 rounded-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]' : 'relative ml-2 mr-2.5 mb-1 border border-gray-400/70 border-l-2 border-l-gray-600 rounded-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_5px_14px_rgba(15,23,42,0.14)]') : ''} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
+        class="flex flex-wrap w-full p-2.5 {justifyResultRows ? 'justify-between' : ''} {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'relative ml-2 mr-2.5 mb-1 border border-gray-300 border-l-2 border-l-gray-500 rounded-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]' : 'relative ml-2 mr-2.5 mb-1 border border-gray-400/70 border-l-2 border-l-gray-600 rounded-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_5px_14px_rgba(15,23,42,0.14)]') : ''} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
         style={`gap: ${rowInfo?.type === 'video' ? '12px' : 'var(--grid-gap, 16px)'};`}
       >
         {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
