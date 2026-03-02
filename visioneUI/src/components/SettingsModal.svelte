@@ -60,7 +60,7 @@
       futureOptionA,
       futureOptionB
     };
-    dresExpanded = !!dresEnabled;
+    dresExpanded = false;
   }
 
   function close() { 
@@ -340,25 +340,22 @@
             </svg>
           </button>
 
-          <div class="flex items-center justify-between py-2">
-            <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
-            <input
-              id="dres-enabled"
-              type="checkbox"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              bind:checked={local.dresEnabled}
-              on:change={() => {
-                if (local.dresEnabled) dresExpanded = true;
-                save();
-              }}
-            />
-          </div>
-
           {#if dresExpanded}
             <div id="dres-settings-panel" class="ui-settings-subsection mt-2 space-y-2.5 p-3">
               <p class="ui-settings-hint text-xs">
                 Configure endpoint and credentials used for manual DRES submissions.
               </p>
+
+              <div class="flex items-center justify-between py-1">
+                <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
+                <input
+                  id="dres-enabled"
+                  type="checkbox"
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  bind:checked={local.dresEnabled}
+                  on:change={() => save()}
+                />
+              </div>
 
             <div>
               <label for="dres-server" class="ui-settings-label block text-sm font-medium mb-1">Submit server URL</label>
@@ -408,19 +405,22 @@
                   on:change={() => save()}
                 />
               </div>
+
+              <div class="pt-1">
+                <button
+                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  on:click={testDresConnection}
+                  disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
+                >
+                  Test DRES connection
+                </button>
+              </div>
             </div>
           {/if}
         </div>
       </div>
 
-      <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-between">
-        <button
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          on:click={testDresConnection}
-          disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
-        >
-          Test DRES connection
-        </button>
+      <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-end">
         <button
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
           on:click={close}
