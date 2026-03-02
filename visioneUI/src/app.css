@@ -200,6 +200,74 @@
   --ui-border: #d1d5db;
   --ui-text: #111827;
   --ui-text-muted: #6b7280;
+
+  /* Sidebar + sidebar internals in dark style */
+  --ui-sidebar-toggle-bg-start: rgba(30, 41, 59, 0.98);
+  --ui-sidebar-toggle-bg-end: rgba(15, 23, 42, 0.98);
+  --ui-sidebar-toggle-text: #dbeafe;
+  --ui-sidebar-toggle-border: rgba(71, 85, 105, 0.9);
+  --ui-sidebar-toggle-shadow: 0 4px 12px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(148, 163, 184, 0.2);
+  --ui-sidebar-toggle-hover-bg-start: rgba(51, 65, 85, 0.98);
+  --ui-sidebar-toggle-hover-bg-end: rgba(30, 41, 59, 0.98);
+  --ui-sidebar-toggle-hover-text: #bfdbfe;
+  --ui-sidebar-toggle-hover-border: rgba(96, 165, 250, 0.8);
+  --ui-sidebar-toggle-hover-shadow: 0 6px 18px rgba(2, 6, 23, 0.5), inset 0 1px 0 rgba(148, 163, 184, 0.26);
+  --ui-sidebar-toggle-focus: rgba(96, 165, 250, 0.85);
+
+  --ui-sidebar-bg-top: #111827;
+  --ui-sidebar-bg-bottom: #1f2937;
+  --ui-sidebar-surface: rgba(31, 41, 55, 0.55);
+  --ui-sidebar-border: #374151;
+  --ui-sidebar-text: #e5e7eb;
+  --ui-sidebar-muted: #9ca3af;
+
+  --ui-query-card-bg: #0f172a;
+  --ui-query-card-border: #334155;
+  --ui-query-card-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.1), 0 8px 18px rgba(2, 6, 23, 0.3);
+  --ui-query-textarea-text: #e5e7eb;
+  --ui-query-textarea-placeholder: #64748b;
+  --ui-query-plus-bg: #1e293b;
+  --ui-query-plus-border: #475569;
+  --ui-query-plus-text: #cbd5e1;
+  --ui-query-plus-hover-bg: rgba(30, 58, 138, 0.35);
+  --ui-query-plus-hover-border: #60a5fa;
+  --ui-query-plus-hover-text: #bfdbfe;
+  --ui-query-timeline-line: rgba(100, 116, 139, 0.55);
+  --ui-query-step-index-bg: #1e293b;
+  --ui-query-step-index-shadow: 0 0 0 3px rgba(51, 65, 85, 0.9);
+
+  --ui-step-delete-bg: rgba(127, 29, 29, 0.2);
+  --ui-step-delete-border: #991b1b;
+  --ui-step-delete-text: #fca5a5;
+  --ui-step-delete-hover-bg: rgba(127, 29, 29, 0.35);
+  --ui-step-delete-hover-border: #b91c1c;
+  --ui-step-delete-hover-text: #fecaca;
+  --ui-textarea-clear-bg: #334155;
+  --ui-textarea-clear-text: #cbd5e1;
+  --ui-textarea-clear-hover-bg: #475569;
+  --ui-textarea-clear-hover-text: #f1f5f9;
+
+  --ui-rf-title-positive: #86efac;
+  --ui-rf-title-negative: #fca5a5;
+  --ui-rf-count-positive-bg: rgba(22, 101, 52, 0.25);
+  --ui-rf-count-positive-border: rgba(34, 197, 94, 0.4);
+  --ui-rf-count-positive-text: #86efac;
+  --ui-rf-count-negative-bg: rgba(153, 27, 27, 0.25);
+  --ui-rf-count-negative-border: rgba(248, 113, 113, 0.4);
+  --ui-rf-count-negative-text: #fca5a5;
+
+  --ui-sidebar-tab-active-bg: rgba(30, 58, 138, 0.4);
+  --ui-sidebar-tab-active-text: #bfdbfe;
+  --ui-sidebar-tab-active-border: #60a5fa;
+  --ui-sidebar-tab-active-shadow: 0 4px 10px rgba(2, 6, 23, 0.4);
+  --ui-sidebar-tab-inactive-bg: rgba(30, 41, 59, 0.6);
+  --ui-sidebar-tab-inactive-text: #94a3b8;
+  --ui-sidebar-tab-inactive-border: #475569;
+  --ui-sidebar-tab-inactive-hover-bg: rgba(51, 65, 85, 0.6);
+  --ui-sidebar-tab-inactive-hover-text: #e2e8f0;
+  --ui-tab-count-badge-bg: rgba(51, 65, 85, 0.6);
+  --ui-tab-count-badge-border: #475569;
+  --ui-tab-count-badge-text: #94a3b8;
 }
 
 /* ================================================================
@@ -626,7 +694,7 @@ body {
   -webkit-appearance: none;
   -moz-appearance: none;
   padding-right: 2rem;
-  background-image: var(--ui-select-arrow-svg);
+  background-image: var(--ui-select-arrow-svg) !important;
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   background-size: 14px 14px;

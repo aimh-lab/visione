@@ -42,6 +42,7 @@
   export let images: Img[] = [];
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
+  export let justifyResultRows = false;
   export let showSubmitUI = false;
 
   // Modale immagini
@@ -302,6 +303,7 @@
             {videoBadgeOrientation}
             {virtualizationEnabled}
             {virtualizationThreshold}
+            {justifyResultRows}
             {showSubmitUI}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}

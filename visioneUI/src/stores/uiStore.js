@@ -19,6 +19,7 @@ const DEFAULT = {
   keyframeSize: 130,
   resultsPerRow: 8,
   resultsAutoFit: true,
+  justifyResultRows: false,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
@@ -77,6 +78,7 @@ function createUIStore() {
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
         resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
+        justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
@@ -104,6 +106,7 @@ function createUIStore() {
         keyframeSize: DEFAULT.keyframeSize,
         resultsPerRow: DEFAULT.resultsPerRow,
         resultsAutoFit: DEFAULT.resultsAutoFit,
+        justifyResultRows: DEFAULT.justifyResultRows,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
@@ -176,7 +179,7 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       update(u => ({
@@ -185,6 +188,7 @@ function createUIStore() {
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
+        justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
         virtualizationThreshold,
@@ -199,6 +203,7 @@ function createUIStore() {
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
+        justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
         virtualizationThreshold,

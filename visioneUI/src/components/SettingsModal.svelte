@@ -7,6 +7,7 @@
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
   export let resultsPerRow = 8;
+  export let justifyResultRows = false;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
@@ -26,6 +27,7 @@
     keyframeSize,
     resultsPerRow,
     resultsAutoFit,
+    justifyResultRows,
     videoBadgeOrientation,
     virtualizationEnabled,
     virtualizationThreshold,
@@ -37,6 +39,7 @@
     futureOptionA,
     futureOptionB
   };
+  let dresExpanded = false;
   
   // ✅ Aggiorna local quando modal si apre
   $: if (isOpen) {
@@ -45,6 +48,7 @@
       keyframeSize,
       resultsPerRow,
       resultsAutoFit,
+      justifyResultRows,
       videoBadgeOrientation,
       virtualizationEnabled,
       virtualizationThreshold,
@@ -56,6 +60,7 @@
       futureOptionA,
       futureOptionB
     };
+    dresExpanded = !!dresEnabled;
   }
 
   function close() { 
@@ -83,6 +88,7 @@
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
+      justifyResultRows: !!local.justifyResultRows,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
@@ -135,8 +141,8 @@
       aria-label="Close settings"
     ></button>
     
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg">
-      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center space-x-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
@@ -151,7 +157,7 @@
         </button>
       </div>
 
-      <div class="px-6 py-5 space-y-6">
+      <div class="px-5 py-4 space-y-4 overflow-y-auto">
         <div>
           <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Appearance</h4>
 
@@ -265,6 +271,17 @@
           </div>
 
           <div class="flex items-center justify-between py-2">
+            <label for="settings-justify-result-rows" class="ui-settings-label text-sm font-medium text-gray-700">Justify result rows</label>
+            <input
+              id="settings-justify-result-rows"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              bind:checked={local.justifyResultRows}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="flex items-center justify-between py-2">
             <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
             <input
               id="virtualization-enabled"
@@ -306,7 +323,22 @@
         </div>
 
         <div>
-          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">DRES Submit</h4>
+          <button
+            type="button"
+            class="ui-settings-subsection w-full mb-2 px-3 py-2 inline-flex items-center justify-between text-left hover:border-blue-300 transition-colors"
+            on:click={() => (dresExpanded = !dresExpanded)}
+            aria-expanded={dresExpanded}
+            aria-controls="dres-settings-panel"
+            title={dresExpanded ? 'Collapse DRES settings' : 'Expand DRES settings'}
+          >
+            <div>
+              <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider">DRES Submit</h4>
+              <p class="ui-settings-hint text-[11px]">Connection and credentials</p>
+            </div>
+            <svg class="w-4 h-4 text-gray-500 transition-transform {dresExpanded ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
 
           <div class="flex items-center justify-between py-2">
             <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
@@ -315,14 +347,18 @@
               type="checkbox"
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               bind:checked={local.dresEnabled}
-              on:change={() => save()}
+              on:change={() => {
+                if (local.dresEnabled) dresExpanded = true;
+                save();
+              }}
             />
           </div>
 
-          <div class="ui-settings-subsection mt-2 space-y-3 p-3">
-            <p class="ui-settings-hint text-xs">
-              Configure endpoint and credentials used for manual DRES submissions.
-            </p>
+          {#if dresExpanded}
+            <div id="dres-settings-panel" class="ui-settings-subsection mt-2 space-y-2.5 p-3">
+              <p class="ui-settings-hint text-xs">
+                Configure endpoint and credentials used for manual DRES submissions.
+              </p>
 
             <div>
               <label for="dres-server" class="ui-settings-label block text-sm font-medium mb-1">Submit server URL</label>
@@ -361,22 +397,23 @@
               />
             </div>
 
-            <div>
-              <label for="dres-member-id" class="ui-settings-label block text-sm font-medium mb-1">Member ID (optional)</label>
-              <input
-                id="dres-member-id"
-                type="text"
-                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                bind:value={local.dresMemberId}
-                disabled={!local.dresEnabled}
-                on:change={() => save()}
-              />
+              <div>
+                <label for="dres-member-id" class="ui-settings-label block text-sm font-medium mb-1">Member ID (optional)</label>
+                <input
+                  id="dres-member-id"
+                  type="text"
+                  class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                  bind:value={local.dresMemberId}
+                  disabled={!local.dresEnabled}
+                  on:change={() => save()}
+                />
+              </div>
             </div>
-          </div>
+          {/if}
         </div>
       </div>
 
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-between">
+      <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-between">
         <button
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           on:click={testDresConnection}
