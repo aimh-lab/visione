@@ -273,6 +273,7 @@
   const eagerImageIds = new Set();
   let eagerVersion = 0;
   let lastItemsLength = 0;
+  let lastItemsFingerprint = '';
 
   $: if (containerEl && containerEl !== lastRegisteredContainer) {
     registerContainer(containerEl);
@@ -384,8 +385,15 @@
     if (rowInfoCache.size > 1000) rowInfoCache.clear();
   }
 
-  $: if (items.length !== lastItemsLength) {
-    if (items.length < lastItemsLength) {
+  $: {
+    // Detect dataset identity changes (not just length) to avoid stale timecode caches
+    const fp = items.length > 0
+      ? `${items.length}:${getId(items[0])}:${getId(items[items.length - 1])}`
+      : '0';
+    const lengthChanged = items.length !== lastItemsLength;
+    const datasetChanged = fp !== lastItemsFingerprint;
+
+    if (datasetChanged) {
       measuredRowHeights.clear();
       eagerImageIds.clear();
       eagerVersion += 1;
@@ -397,9 +405,13 @@
         timecodeFlushRaf = 0;
       }
       fetchedTimecodes = new Map();
+      lastItemsFingerprint = fp;
     }
-    lastItemsLength = items.length;
-    recomputeVirtualWindow();
+
+    if (lengthChanged || datasetChanged) {
+      lastItemsLength = items.length;
+      recomputeVirtualWindow();
+    }
   }
 
   $: {
