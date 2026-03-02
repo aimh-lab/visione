@@ -21,8 +21,26 @@ export function createSearchController({
   syncURL                 // () => void
 }) {
   let reqId = 0;
+  let debounceTimer = null;
+  const DEBOUNCE_MS = 250;
 
-  async function runSearch() {
+  function runSearch() {
+    return new Promise((resolve) => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        resolve(_doSearch());
+      }, DEBOUNCE_MS);
+    });
+  }
+
+  /** Bypass debounce — used by internal programmatic calls that already waited. */
+  function runSearchImmediate() {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+    return _doSearch();
+  }
+
+  async function _doSearch() {
     const textareas = getTextareas();
     if (!textareas?.length) return;
 
@@ -109,5 +127,5 @@ export function createSearchController({
     }
   }
 
-  return { runSearch };
+  return { runSearch, runSearchImmediate };
 }

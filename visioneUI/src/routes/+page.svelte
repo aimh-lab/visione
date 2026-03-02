@@ -353,7 +353,7 @@
     await tick();
 
     if (urlState.textareas?.length > 0 && urlState.textareas[0]?.value) {
-      await runSearch();
+      await runSearchImmediate();
     }
 
     if (urlState.similarityBase) {
@@ -633,8 +633,6 @@ function handleViewSubmitted() {
   // ---------------------------
   // Navigazione selection (keyboard)
   // ---------------------------
-  const GRID_COLS = 5;
-
   function moveSelection(delta) {
     if (!images || images.length === 0) return;
     let next = selectedIndex + delta;
@@ -648,7 +646,8 @@ function handleViewSubmitted() {
   }
 
   function moveSelectionRows(deltaRows) {
-    moveSelection(deltaRows * GRID_COLS);
+    const cols = get(uiStore).resultsPerRow || 5;
+    moveSelection(deltaRows * cols);
   }
 
   function getSelectedItemForShortcuts() {
@@ -688,6 +687,10 @@ function handleViewSubmitted() {
     return searchController.runSearch();
   }
 
+  async function runSearchImmediate() {
+    return searchController.runSearchImmediate();
+  }
+
 
   async function handleRestoreFromURL() {
     const urlState = deserializeFromURL();
@@ -699,7 +702,7 @@ function handleViewSubmitted() {
     if (urlState.activeTab) uiStore.actions.setLayoutTab(urlState.activeTab);
 
     await tick();
-    await runSearch();
+    await runSearchImmediate();
   }
 
   async function openVideoSummary(videoId, highlightImgId = null) {
@@ -757,7 +760,7 @@ function handleViewSubmitted() {
     textareas = result.textareas;
     if (result.shouldSearch) {
       toasts.info("Query step removed, updating results...");
-      setTimeout(() => runSearch(), 0);
+      setTimeout(() => runSearchImmediate(), 0);
     } else if (result.textareas !== textareas) {
       toasts.info("Query step removed");
     }
@@ -887,7 +890,7 @@ function handleViewSubmitted() {
   function loadExampleQuery(queries) {
     textareas = _loadExampleQuery(queries);
     toasts.info("Example loaded! Running search...");
-    setTimeout(() => runSearch(), 300);
+    setTimeout(() => runSearchImmediate(), 300);
   }
 
 </script>
