@@ -176,7 +176,9 @@
     ];
   }
 
-  const flatSimilarity = () => similarityDisplayRows?.flat?.() ?? [];
+  // Memoized flat list (recomputed only when similarityDisplayRows changes)
+  let flatSimilarityList = [];
+  $: flatSimilarityList = similarityDisplayRows?.flat?.() ?? [];
 
   const registerContainer = (el) => { scrollMgr.registerContainer('View1', el); imagesContainer = el; };
   const registerSimilarityContainer = (el) => { scrollMgr.registerContainer('Similarity', el); similarityContainer = el; };
@@ -189,7 +191,9 @@
     prevLayoutTab = nextTab;
   }
 
-  const getSubmittedIds = () => new Set($sessionStore.submittedImages.map(s => s.imgId));
+  let _submittedIdsSet = new Set();
+  $: _submittedIdsSet = new Set(($sessionStore.submittedImages || []).map(s => s.imgId));
+  const getSubmittedIds = () => _submittedIdsSet;
 
   const syncURL = () => {
     scheduleURLSync();
@@ -267,59 +271,66 @@
     }
   });
 
+  // Reactive O(1) lookup indexes for imgId-based operations (DRES, RF, etc.)
+  let _imagesIdx = new Map();
+  let _simIdx = new Map();
+  let _v2Idx = new Map();
+  $: _imagesIdx = new Map(images.map((img, i) => [img.imgId, i]));
+  $: _simIdx = new Map(similarityImages.map((img, i) => [img.imgId, i]));
+  $: _v2Idx = new Map((view2Frames || []).map((f, i) => [f.imgId, i]));
+
   // DRES submission controller
   const dresCtrl = createDresController({
     sessionStore,
     findFrame: (imgId, fallback) => {
-      return images.find(i => i.imgId === imgId)
-        || similarityImages.find(i => i.imgId === imgId)
-        || (Array.isArray(view2Frames) ? view2Frames.find(f => f.imgId === imgId) : null)
-        || (fallback
-          ? {
-              title: fallback.title ?? fallback.imgId,
-              videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
-              imgId: fallback.imgId,
-              url: fallback.url || "",
-              submitted: true,
-              submissionVerdict: fallback.submissionVerdict,
-              raw: fallback.raw ?? null
-            }
-          : null);
+      const gIdx = _imagesIdx.get(imgId);
+      if (gIdx !== undefined) return images[gIdx];
+      const sIdx = _simIdx.get(imgId);
+      if (sIdx !== undefined) return similarityImages[sIdx];
+      const fIdx = _v2Idx.get(imgId);
+      if (fIdx !== undefined) return view2Frames[fIdx];
+      return fallback
+        ? {
+            title: fallback.title ?? fallback.imgId,
+            videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
+            imgId: fallback.imgId,
+            url: fallback.url || "",
+            submitted: true,
+            submissionVerdict: fallback.submissionVerdict,
+            raw: fallback.raw ?? null
+          }
+        : null;
     },
     updateVerdictInViews: (imgId, verdict) => {
-      if (Array.isArray(view2Frames)) {
-        const fIdx = view2Frames.findIndex(f => f.imgId === imgId);
-        if (fIdx !== -1) {
-          view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict: verdict };
-          view2Frames = [...view2Frames];
-        }
+      const fIdx = _v2Idx.get(imgId);
+      if (fIdx !== undefined) {
+        view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict: verdict };
+        view2Frames = [...view2Frames];
       }
-      const sIdx = similarityImages.findIndex(i => i.imgId === imgId);
-      if (sIdx !== -1) {
+      const sIdx = _simIdx.get(imgId);
+      if (sIdx !== undefined) {
         similarityImages[sIdx] = { ...similarityImages[sIdx], submissionVerdict: verdict };
         similarityImages = [...similarityImages];
       }
-      const gIdx = images.findIndex(i => i.imgId === imgId);
-      if (gIdx !== -1) {
+      const gIdx = _imagesIdx.get(imgId);
+      if (gIdx !== undefined) {
         images[gIdx] = { ...images[gIdx], submissionVerdict: verdict };
         images = [...images];
       }
     },
     markSubmittedInViews: (id) => {
-      if (Array.isArray(view2Frames)) {
-        const fIdx = view2Frames.findIndex(f => f.imgId === id);
-        if (fIdx !== -1) {
-          view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true };
-          view2Frames = [...view2Frames];
-        }
+      const fIdx = _v2Idx.get(id);
+      if (fIdx !== undefined) {
+        view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true };
+        view2Frames = [...view2Frames];
       }
-      const sIdx = similarityImages.findIndex(i => i.imgId === id);
-      if (sIdx !== -1) {
+      const sIdx = _simIdx.get(id);
+      if (sIdx !== undefined) {
         similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true };
         similarityImages = [...similarityImages];
       }
-      const gIdx = images.findIndex(i => i.imgId === id);
-      if (gIdx !== -1) {
+      const gIdx = _imagesIdx.get(id);
+      if (gIdx !== undefined) {
         images[gIdx] = { ...images[gIdx], submitted: true };
         images = [...images];
       }
@@ -337,7 +348,7 @@
 
   // Aggiorna i dataset nei controller quando cambiano
   $: searchModal.setItems(images);
-  $: if (!$similarityModal.isOpen) similarityModal.setItems(flatSimilarity());
+  $: if (!$similarityModal.isOpen) similarityModal.setItems(flatSimilarityList);
   $: if (view2Frames) videoModal.setItems(view2Frames);
 
   // ---------------------------
@@ -504,7 +515,7 @@
   }
 
   function moveSimilarityBy(offset, toFirstOfRow = false) {
-    const items = flatSimilarity();
+    const items = flatSimilarityList;
 
     if (toFirstOfRow) {
       const currentIndex = $similarityModal.selected?.index ?? lastViewedSimilarityIndex;
@@ -810,7 +821,7 @@ function handleViewSubmitted() {
         currentIndex,
         direction,
         container: similarityContainer,
-        items: flatSimilarity()
+        items: flatSimilarityList
       });
     }
 

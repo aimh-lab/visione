@@ -4,12 +4,6 @@ import { appSettingsStore } from './persistentState.js';
 const DEFAULT = {
   // Runtime UI (NON persistente)
   layoutTab: 'View1',          // 'View1' | 'View2' | 'Similarity'
-  
-  scrollPositions: {
-    View1: 0,
-    View2: 0,
-    Similarity: 0
-  },
 
   // Persistente
   theme: 'default',            // 'default' | 'dark' | 'light'
@@ -181,28 +175,6 @@ function createUIStore() {
       update(u => ({ ...u, sidebarRightTab: tab, isSidebarRightOpen: true }));
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
-
-    // ---- Scroll positions (runtime only)
-    setScrollTop(tab, scrollTop) {
-      update(u => {
-        const next = Number.isFinite(scrollTop) ? scrollTop : 0;
-        return {
-          ...u,
-          scrollPositions: {
-            ...(u.scrollPositions || {}),
-            [tab]: next
-          }
-        };
-      });
-    },
-
-    resetScrollPositions() {
-      update(u => ({
-        ...u,
-        scrollPositions: { View1: 0, View2: 0, Similarity: 0 }
-      }));
-    },
-
 
     applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
