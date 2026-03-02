@@ -1,10 +1,9 @@
 import { findResultsArray, extractImageInfo } from "../utils/results";
+import { tinyFrameUrl } from '$lib/urlConfig.js';
 
 // src/services/transformers.js
 export function transformSearchResults(resultSet, submittedIds = new Set()) {
   const arr = findResultsArray(resultSet) ?? [];
-  if (arr.length > 0) {
-  }
   return arr.map((item, index) => {
     const info = extractImageInfo(item, index);
     
@@ -80,7 +79,7 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
     const imgId = typeof item === 'string' ? item : (item.imgId || item.id || item);
     const vid = String(imgId).split("-")[0].padStart(5, "0");
     const normalizedImgId = String(imgId).replace(/\.jpg$/i, "");
-    const url = `https://visione.isti.cnr.it/frames/tiny/${vid}/${normalizedImgId}.jpg`;
+    const url = tinyFrameUrl(vid, normalizedImgId);
     
     // ✅ Timestamp dal frame o stima progressiva
     let timestamp = 0;

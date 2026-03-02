@@ -30,36 +30,6 @@ export function ensureImgObj(imgId: string | number, fallback: ImgLike | null | 
   };
 }
 
-export function buildDisplayRows(sourceImages: ImgLike[], viewMode = "byrank", perRow = 5): ImgLike[][] {
-  if (!Array.isArray(sourceImages) || sourceImages.length === 0) return [];
-  const chunk = (arr: ImgLike[], n: number): ImgLike[][] => {
-    const out: ImgLike[][] = [];
-    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
-    return out;
-  };
-  if (viewMode === "byrank") return chunk(sourceImages, perRow);
-  const used = new Set<number>();
-  const rows: ImgLike[][] = [];
-  for (const img of sourceImages) {
-    const imgIndex = img.index ?? -1;
-    if (used.has(imgIndex)) continue;
-    const vid = img.videoId ?? `vid-${imgIndex}`;
-    const row: ImgLike[] = [];
-    for (const cand of sourceImages) {
-      const candIndex = cand.index ?? -1;
-      if (used.has(candIndex)) continue;
-      const candVid = cand.videoId ?? `vid-${candIndex}`;
-      if (candVid === vid) {
-        row.push(cand);
-        used.add(candIndex);
-        if (row.length >= perRow) break;
-      }
-    }
-    if (row.length) rows.push(row);
-  }
-  return rows;
-}
-
 export function scrollToImage(container: Element | null | undefined, target: number | string): void {
   if (!container) return;
   let el: HTMLElement | null = null;

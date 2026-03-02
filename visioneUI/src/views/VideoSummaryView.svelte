@@ -56,7 +56,7 @@
 
   <div class="flex flex-col flex-grow">
     <div class="content bg-gray-100 flex-1"
-         style="height:100%; transform:scale({contentScale});">
+         style="height:100%; zoom:{contentScale};">
 
     <div class="h-full flex flex-col">
       {#if loading}

@@ -1,4 +1,6 @@
 // utils/results.ts
+import { tinyFrameUrl } from '$lib/urlConfig.js';
+
 export function findResultsArray(obj: any): any[] | null {
   if (!obj) return null;
   if (Array.isArray(obj)) return obj;
@@ -44,7 +46,7 @@ export function extractImageInfo(item: any, i: number) {
 
   const imgId = rawImg ? String(rawImg) : null;
   const videoId = rawVid ? String(rawVid).padStart(5, "0") : (imgId ? imgId.split("-")[0] : null);
-  const url = videoId && imgId ? `https://visione.isti.cnr.it/frames/tiny/${videoId}/${imgId}.jpg` : null;
+  const url = videoId && imgId ? tinyFrameUrl(videoId, imgId) : null;
 
   return {
     index: i,
