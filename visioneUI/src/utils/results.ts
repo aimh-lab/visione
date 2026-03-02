@@ -39,9 +39,11 @@ export function extractImageInfo(item: any, i: number) {
   }
 
   if (!rawVid) {
-    const any = JSON.stringify(item);
-    const m2 = any.match(/"videoId"[:\s]*"(\d{3,6})"/i);
-    if (m2) rawVid = m2[1];
+    for (const [key, val] of Object.entries(item)) {
+      if (!/^videoid$/i.test(key)) continue;
+      const s = String(val);
+      if (/^\d{3,6}$/.test(s)) { rawVid = s; break; }
+    }
   }
 
   const imgId = rawImg ? String(rawImg) : null;

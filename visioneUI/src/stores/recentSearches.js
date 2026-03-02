@@ -1,7 +1,23 @@
-import { writable } from 'svelte/store';
+import { writable, get as getStoreValue } from 'svelte/store';
 
 const STORAGE_KEY = 'visione_recent_searches';
 const MAX_RECENT = 10;
+
+/** Persist only lightweight metadata (strip heavy result sets). */
+function persistToStorage(entries) {
+  if (typeof window === 'undefined') return;
+  try {
+    const lightweight = entries.map(({ results, ...meta }) => meta);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+  } catch {
+    try {
+      const reduced = entries.slice(0, 5).map(({ results, ...meta }) => meta);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(reduced));
+    } catch {
+      // give up
+    }
+  }
+}
 
 function createRecentSearchesStore() {
   const loadFromStorage = () => {
@@ -18,7 +34,6 @@ function createRecentSearchesStore() {
   return {
     subscribe,
     
-    // ✅ MODIFICATO: salva anche textareas
     add: (query, resultCount, searchResultSet = null, textareas = null) => {
       update(searches => {
         const filtered = searches.filter(s => s.query !== query);
@@ -27,23 +42,12 @@ function createRecentSearchesStore() {
           query,
           resultCount,
           timestamp: Date.now(),
-          results: searchResultSet,
-          textareas // ✅ AGGIUNGI: salva anche textareas
+          results: searchResultSet,  // kept in memory only
+          textareas
         };
         
         const updated = [newSearch, ...filtered].slice(0, MAX_RECENT);
-        
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          } catch (error) {
-            console.warn('⚠️ localStorage quota exceeded, clearing old searches');
-            const reduced = updated.slice(0, 5);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(reduced));
-            return reduced;
-          }
-        }
-        
+        persistToStorage(updated);
         return updated;
       });
     },
@@ -51,15 +55,7 @@ function createRecentSearchesStore() {
     remove: (query) => {
       update(searches => {
         const updated = searches.filter(s => s.query !== query);
-        
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          } catch {
-            // ignore write errors
-          }
-        }
-        
+        persistToStorage(updated);
         return updated;
       });
     },
@@ -75,8 +71,9 @@ function createRecentSearchesStore() {
       }
     },
     
+    /** Read from the in-memory Svelte store (not localStorage). */
     find: (query) => {
-      const searches = loadFromStorage();
+      const searches = getStoreValue({ subscribe });
       return searches.find(s => s.query === query);
     }
   };

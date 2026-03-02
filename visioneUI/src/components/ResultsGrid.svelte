@@ -395,6 +395,7 @@
 
     if (datasetChanged) {
       measuredRowHeights.clear();
+      prefixHeights = null;
       eagerImageIds.clear();
       eagerVersion += 1;
       timecodeQueue.length = 0;
@@ -436,22 +437,32 @@
   }
 
   function sumHeights(start, end) {
-    let total = 0;
-    for (let i = start; i < end; i += 1) {
-      total += measuredRowHeights.get(i) ?? FALLBACK_ROW_HEIGHT;
-    }
-    return total;
+    if (!prefixHeights || prefixHeights.length !== items.length + 1) rebuildPrefixHeights();
+    return prefixHeights[end] - prefixHeights[start];
   }
 
   function findRowIndexAtOffset(offset) {
+    if (!prefixHeights || prefixHeights.length !== items.length + 1) rebuildPrefixHeights();
     const target = Math.max(0, offset);
-    let acc = 0;
-    for (let i = 0; i < items.length; i += 1) {
-      const h = measuredRowHeights.get(i) ?? FALLBACK_ROW_HEIGHT;
-      if (acc + h > target) return i;
-      acc += h;
+    if (items.length === 0) return 0;
+    if (target >= prefixHeights[items.length]) return Math.max(0, items.length - 1);
+    let lo = 0, hi = items.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (prefixHeights[mid + 1] <= target) lo = mid + 1;
+      else hi = mid;
     }
-    return Math.max(0, items.length - 1);
+    return lo;
+  }
+
+  let prefixHeights = null;
+
+  function rebuildPrefixHeights() {
+    const n = items.length;
+    prefixHeights = new Float64Array(n + 1);
+    for (let i = 0; i < n; i++) {
+      prefixHeights[i + 1] = prefixHeights[i] + (measuredRowHeights.get(i) ?? FALLBACK_ROW_HEIGHT);
+    }
   }
 
   function recomputeVirtualWindow() {
@@ -535,6 +546,7 @@
       const prev = measuredRowHeights.get(currentRowIndex);
       if (prev !== next) {
         measuredRowHeights.set(currentRowIndex, next);
+        prefixHeights = null;
         recomputeVirtualWindow();
       }
     };

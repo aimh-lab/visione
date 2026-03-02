@@ -2,23 +2,24 @@
 //
 // Manages per-tab scroll containers: saves/restores positions,
 // registers DOM elements, and supports cross-tab navigation.
+// Scroll positions are stored in a plain object (NOT in a Svelte store)
+// to avoid triggering reactive subscribers on every scroll event.
 
-import { uiStore } from '../../stores/uiStore.js';
 import { tick } from 'svelte';
-import { get } from 'svelte/store';
 
 const TABS = ['View1', 'View2', 'Similarity'];
 
 export function createScrollManager() {
   const containers = { View1: null, View2: null, Similarity: null };
+  const positions  = { View1: 0, View2: 0, Similarity: 0 };
   let prevLayoutTab = null;
   const suppressNextRestore = { View1: false, View2: false, Similarity: false };
 
-  // One handler per tab, stored so we can remove the exact listener later.
+  // One handler per tab — writes to a plain object, no store involved.
   const scrollHandlers = {
-    View1:      () => { if (containers.View1)      uiStore.actions.setScrollTop('View1',      containers.View1.scrollTop); },
-    View2:      () => { if (containers.View2)      uiStore.actions.setScrollTop('View2',      containers.View2.scrollTop); },
-    Similarity: () => { if (containers.Similarity) uiStore.actions.setScrollTop('Similarity', containers.Similarity.scrollTop); }
+    View1:      () => { if (containers.View1)      positions.View1      = containers.View1.scrollTop; },
+    View2:      () => { if (containers.View2)      positions.View2      = containers.View2.scrollTop; },
+    Similarity: () => { if (containers.Similarity) positions.Similarity = containers.Similarity.scrollTop; }
   };
 
   /** Register (or replace) the scroll container for a given tab. */
@@ -33,22 +34,22 @@ export function createScrollManager() {
     }
   }
 
-  /** Persist current scroll offset for a tab into uiStore. */
+  /** Record the current scroll offset for a tab. */
   function saveScrollTop(tab) {
     const el = containers[tab];
-    if (el) uiStore.actions.setScrollTop(tab, el.scrollTop);
+    if (el) positions[tab] = el.scrollTop;
   }
 
-  /** Restore scroll offset for a tab from uiStore.scrollPositions. */
+  /** Restore scroll offset for a tab. */
   function restoreScrollTop(tab) {
-    const y = get(uiStore).scrollPositions?.[tab] ?? 0;
+    const y = positions[tab] ?? 0;
     const el = containers[tab];
     if (el) el.scrollTop = y;
   }
 
   /** Reset scroll position for a specific tab (sets to 0). */
   function resetScroll(tab) {
-    uiStore.actions.setScrollTop(tab, 0);
+    positions[tab] = 0;
     tick().then(() => {
       const el = containers[tab];
       if (!el) return;
@@ -82,7 +83,9 @@ export function createScrollManager() {
 
   /** Reset all scroll positions (used by resetApp). */
   function resetAllScrollPositions() {
-    uiStore.actions.resetScrollPositions();
+    positions.View1 = 0;
+    positions.View2 = 0;
+    positions.Similarity = 0;
     prevLayoutTab = null;
     tick().then(() => {
       TABS.forEach(tab => {
