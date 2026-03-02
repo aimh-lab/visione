@@ -9,7 +9,6 @@
   import SettingsModal from "../components/SettingsModal.svelte";
   import Keybindings from "../components/Keybindings.svelte";
   import { visioneAPI } from '../services/api.js';
-  import { createDresClientFromSettings, DresClientError } from '../services/dresClient.ts';
   import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
@@ -25,6 +24,10 @@
   import { createSearchController } from '$lib/controllers/searchController.js';
   import { createSimilarityController } from '$lib/controllers/similarityController.js';
   import { createVideoController } from '$lib/controllers/videoController.js';
+  import { createDresController } from '$lib/controllers/dresController.js';
+  import { createScrollManager } from '$lib/controllers/scrollManager.js';
+  import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
+  import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
 
@@ -33,54 +36,17 @@
   // ---------------------------
   // Stato non-UI (locale)
   // ---------------------------
-  // Container separati per ogni view
+  // Scroll manager (owns listeners + position save/restore)
+  const scrollMgr = createScrollManager();
+
+  // Local refs to containers (updated via register callbacks)
   let imagesContainer;
   let similarityContainer;
   let view2Container;
 
-  // Scroll positions per view
-  let prevLayoutTab = null;
-  const suppressNextRestore = {
-    View1: false,
-    View2: false,
-    Similarity: false
-  };
-
-  const handleSearchScroll = () => {
-    if (imagesContainer) uiStore.actions.setScrollTop('View1', imagesContainer.scrollTop);
-  };
-  const handleSimilarityScroll = () => {
-    if (similarityContainer) uiStore.actions.setScrollTop('Similarity', similarityContainer.scrollTop);
-  };
-  const handleView2Scroll = () => {
-    if (view2Container) uiStore.actions.setScrollTop('View2', view2Container.scrollTop);
-  };
-
   function resetSearchScroll() {
-    uiStore.actions.setScrollTop('View1', 0);
     lastViewedSearchIndex = 0;
-    tick().then(() => {
-      if (!imagesContainer) return;
-      if (typeof window !== "undefined") {
-        requestAnimationFrame(() => imagesContainer?.scrollTo?.({ top: 0 }));
-      } else if (imagesContainer) {
-        imagesContainer.scrollTop = 0;
-      }
-    });
-  }
-
-
-  function saveScrollTop(tab) {
-    if (tab === "View1" && imagesContainer) uiStore.actions.setScrollTop("View1", imagesContainer.scrollTop);
-    if (tab === "Similarity" && similarityContainer) uiStore.actions.setScrollTop("Similarity", similarityContainer.scrollTop);
-    if (tab === "View2" && view2Container) uiStore.actions.setScrollTop("View2", view2Container.scrollTop);
-  }
-
-  function restoreScrollTop(tab) {
-    const y = $uiStore.scrollPositions?.[tab] ?? 0;
-    if (tab === "View1" && imagesContainer) imagesContainer.scrollTop = y;
-    if (tab === "Similarity" && similarityContainer) similarityContainer.scrollTop = y;
-    if (tab === "View2" && view2Container) view2Container.scrollTop = y;
+    scrollMgr.resetScroll('View1');
   }
 
 
@@ -179,32 +145,6 @@
   const URL_SYNC_DEBOUNCE_MS = 180;
   let urlSyncTimer = null;
   let lastSearchResultSet = null;
-  let dresClientInstance = null;
-  let dresClientSignature = '';
-
-  function getDresClient() {
-    const settings = get(uiStore);
-    const signature = JSON.stringify({
-      enabled: !!settings?.dresEnabled,
-      server: settings?.dresSubmitServer ?? '',
-      username: settings?.dresUsername ?? '',
-      password: settings?.dresPassword ?? '',
-      memberId: settings?.dresMemberId ?? ''
-    });
-
-    if (!settings?.dresEnabled) {
-      dresClientInstance = null;
-      dresClientSignature = '';
-      throw new DresClientError('DRES is disabled in settings.');
-    }
-
-    if (!dresClientInstance || dresClientSignature !== signature) {
-      dresClientInstance = createDresClientFromSettings(settings);
-      dresClientSignature = signature;
-    }
-
-    return dresClientInstance;
-  }
 
   function scheduleURLSync() {
     if (isRestoringFromHistory || !browser) return;
@@ -238,44 +178,15 @@
 
   const flatSimilarity = () => similarityDisplayRows?.flat?.() ?? [];
 
-  const registerContainer = (el) => {
-    if (imagesContainer && imagesContainer !== el) {
-      imagesContainer.removeEventListener("scroll", handleSearchScroll);
-    }
-    imagesContainer = el;
-    if (imagesContainer) {
-      imagesContainer.addEventListener("scroll", handleSearchScroll, { passive: true });
-    }
-  };
-  const registerSimilarityContainer = (el) => {
-    if (similarityContainer && similarityContainer !== el) {
-      similarityContainer.removeEventListener("scroll", handleSimilarityScroll);
-    }
-    similarityContainer = el;
-    if (similarityContainer) {
-      similarityContainer.addEventListener("scroll", handleSimilarityScroll, { passive: true });
-    }
-  };
-  const registerView2Container = (el) => {
-    if (view2Container && view2Container !== el) {
-      view2Container.removeEventListener("scroll", handleView2Scroll);
-    }
-    view2Container = el;
-    if (view2Container) {
-      view2Container.addEventListener("scroll", handleView2Scroll, { passive: true });
-    }
-  };
+  const registerContainer = (el) => { scrollMgr.registerContainer('View1', el); imagesContainer = el; };
+  const registerSimilarityContainer = (el) => { scrollMgr.registerContainer('Similarity', el); similarityContainer = el; };
+  const registerView2Container = (el) => { scrollMgr.registerContainer('View2', el); view2Container = el; };
 
+  let prevLayoutTab = null;
   $: if ($uiStore.layoutTab && $uiStore.layoutTab !== prevLayoutTab) {
-    if (prevLayoutTab) saveScrollTop(prevLayoutTab);
     const nextTab = $uiStore.layoutTab;
-    const skipRestore = suppressNextRestore[nextTab];
-    suppressNextRestore[nextTab] = false;
+    scrollMgr.handleTabChange(nextTab);
     prevLayoutTab = nextTab;
-
-    tick().then(() => {
-      if (!skipRestore) restoreScrollTop(nextTab);
-    });
   }
 
   const getSubmittedIds = () => new Set($sessionStore.submittedImages.map(s => s.imgId));
@@ -356,6 +267,74 @@
     }
   });
 
+  // DRES submission controller
+  const dresCtrl = createDresController({
+    sessionStore,
+    findFrame: (imgId, fallback) => {
+      return images.find(i => i.imgId === imgId)
+        || similarityImages.find(i => i.imgId === imgId)
+        || (Array.isArray(view2Frames) ? view2Frames.find(f => f.imgId === imgId) : null)
+        || (fallback
+          ? {
+              title: fallback.title ?? fallback.imgId,
+              videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
+              imgId: fallback.imgId,
+              url: fallback.url || "",
+              submitted: true,
+              submissionVerdict: fallback.submissionVerdict,
+              raw: fallback.raw ?? null
+            }
+          : null);
+    },
+    updateVerdictInViews: (imgId, verdict) => {
+      if (Array.isArray(view2Frames)) {
+        const fIdx = view2Frames.findIndex(f => f.imgId === imgId);
+        if (fIdx !== -1) {
+          view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict: verdict };
+          view2Frames = [...view2Frames];
+        }
+      }
+      const sIdx = similarityImages.findIndex(i => i.imgId === imgId);
+      if (sIdx !== -1) {
+        similarityImages[sIdx] = { ...similarityImages[sIdx], submissionVerdict: verdict };
+        similarityImages = [...similarityImages];
+      }
+      const gIdx = images.findIndex(i => i.imgId === imgId);
+      if (gIdx !== -1) {
+        images[gIdx] = { ...images[gIdx], submissionVerdict: verdict };
+        images = [...images];
+      }
+    },
+    markSubmittedInViews: (id) => {
+      if (Array.isArray(view2Frames)) {
+        const fIdx = view2Frames.findIndex(f => f.imgId === id);
+        if (fIdx !== -1) {
+          view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true };
+          view2Frames = [...view2Frames];
+        }
+      }
+      const sIdx = similarityImages.findIndex(i => i.imgId === id);
+      if (sIdx !== -1) {
+        similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true };
+        similarityImages = [...similarityImages];
+      }
+      const gIdx = images.findIndex(i => i.imgId === id);
+      if (gIdx !== -1) {
+        images[gIdx] = { ...images[gIdx], submitted: true };
+        images = [...images];
+      }
+    }
+  });
+
+  const submitByImgId = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
+  const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
+
+  // Video player controller
+  const videoPlayerCtrl = createVideoPlayerController({
+    getImages: () => images,
+    getSimilarityImages: () => similarityImages,
+  });
+
   // Aggiorna i dataset nei controller quando cambiano
   $: searchModal.setItems(images);
   $: if (!$similarityModal.isOpen) similarityModal.setItems(flatSimilarity());
@@ -413,9 +392,7 @@
       clearTimeout(urlSyncTimer);
       urlSyncTimer = null;
     }
-    if (imagesContainer) imagesContainer.removeEventListener("scroll", handleSearchScroll);
-    if (similarityContainer) similarityContainer.removeEventListener("scroll", handleSimilarityScroll);
-    if (view2Container) view2Container.removeEventListener("scroll", handleView2Scroll);
+    scrollMgr.destroy();
   });
 
   // ---------------------------
@@ -464,84 +441,12 @@
     uiStore.actions.applySettings(e.detail);
   }
 
-  async function handleTestDresConnection(e) {
-    try {
-      const config = e?.detail ?? {};
-      const client = createDresClientFromSettings(config);
-
-      await client.login();
-      const evaluationId = await client.getEvaluationId();
-      toasts.success(`DRES connected. Active evaluation: ${evaluationId}`);
-
-      try {
-        await client.logout();
-      } catch {
-        // ignore logout errors after test
-      }
-    } catch (error) {
-      const message = error instanceof DresClientError || error instanceof Error
-        ? error.message
-        : 'Unknown error during DRES test';
-      toasts.error(`DRES test failed: ${message}`);
-    }
-  }
-
   // ---------------------------
   // Video player helpers
   // ---------------------------
-  function getHighlightedKeyframesForVideo(videoId) {
-    if (!videoId) return [];
-    const vid = String(videoId).padStart(5, "0");
-
-    const searchKeyframes = images
-      .filter(img => img.videoId === vid)
-      .map(img => img.imgId);
-
-    const simKeyframes = similarityImages
-      .filter(img => img.videoId === vid)
-      .map(img => img.imgId);
-
-    return [...new Set([...searchKeyframes, ...simKeyframes])];
-  }
-
   async function openVideoPlayerBy(imgId, videoId, startAt) {
-    try {
-      const vid = String(videoId ?? String(imgId).split("-")[0]).padStart(5, "0");
-
-      if (typeof startAt === "number") {
-        videoPlayer = {
-          url: visioneAPI.getVideoUrl(vid, "medium"),
-          startTime: Math.max(0, startAt),
-          title: `${vid}`,
-          videoId: vid,
-          highlightedKeyframes: getHighlightedKeyframesForVideo(vid)
-        };
-        isVideoPlayerOpen = true;
-        return;
-      }
-
-      const middle = await visioneAPI.getMiddleTimestamp(imgId);
-      const url = visioneAPI.getVideoUrl(vid, "medium");
-
-      videoPlayer = {
-        url,
-        startTime: Math.max(0, middle),
-        title: `${vid} @ ${middle.toFixed(2)}s`,
-        videoId: vid,
-        highlightedKeyframes: getHighlightedKeyframesForVideo(vid)
-      };
-      isVideoPlayerOpen = true;
-    } catch (err) {
-      const vid = String(videoId ?? String(imgId).split("-")[0]).padStart(5, "0");
-      videoPlayer = {
-        url: visioneAPI.getVideoUrl(vid, "medium"),
-        startTime: 0,
-        title: `${vid}`,
-        videoId: vid,
-        highlightedKeyframes: getHighlightedKeyframesForVideo(vid)
-      };
-      isVideoPlayerOpen = true;
-    }
+    videoPlayer = await videoPlayerCtrl.buildPlayerData(imgId, videoId, startAt);
+    isVideoPlayerOpen = true;
   }
 
   function handleSubmitFrameFromPlayer(e) {
@@ -696,156 +601,8 @@ function handleViewSubmitted() {
   }
 
   // ---------------------------
-  // Submit + RF
+  // RF helpers
   // ---------------------------
-function applySubmissionVerdict(imgId, submissionVerdict) {
-  if (!imgId) return;
-
-  sessionStore.actions.updateSubmittedFrame({
-    imgId,
-    patch: { submissionVerdict }
-  });
-
-  if (Array.isArray(view2Frames)) {
-    const fIdx = view2Frames.findIndex((f) => f.imgId === imgId);
-    if (fIdx !== -1) {
-      view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict };
-      view2Frames = [...view2Frames];
-    }
-  }
-
-  const sIdx = similarityImages.findIndex((i) => i.imgId === imgId);
-  if (sIdx !== -1) {
-    similarityImages[sIdx] = { ...similarityImages[sIdx], submissionVerdict };
-    similarityImages = [...similarityImages];
-  }
-
-  const gIdx = images.findIndex((i) => i.imgId === imgId);
-  if (gIdx !== -1) {
-    images[gIdx] = { ...images[gIdx], submissionVerdict };
-    images = [...images];
-  }
-}
-
-async function submitByImgId(imgId, fallback = null) {
-  const settings = get(uiStore);
-  if (!settings?.dresEnabled) {
-    toasts.info("Enable DRES submit in settings to submit frames.");
-    return;
-  }
-
-  if (typeof window !== "undefined") {
-    const ok = window.confirm("Are you sure you want to submit this frame?");
-    if (!ok) return;
-  }
-
-  const frameObj =
-    images.find(i => i.imgId === imgId) ||
-    similarityImages.find(i => i.imgId === imgId) ||
-    (Array.isArray(view2Frames) ? view2Frames.find(f => f.imgId === imgId) : null) ||
-    (fallback
-      ? {
-          title: fallback.title ?? fallback.imgId,
-          videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
-          imgId: fallback.imgId,
-          url: fallback.url || "",
-          submitted: true,
-          submissionVerdict: fallback.submissionVerdict,
-          raw: fallback.raw ?? null
-        }
-      : null);
-
-  if (!frameObj) return;
-
-  const dresResult = await submitToDres(frameObj);
-  if (!dresResult?.accepted) {
-    return;
-  }
-
-  sessionStore.actions.submitFrame({
-    imgId,
-    frameObj,
-    markSubmitted: (id) => {
-      // Marca nei resultset (per il badge)
-      if (Array.isArray(view2Frames)) {
-        const fIdx = view2Frames.findIndex(f => f.imgId === id);
-        if (fIdx !== -1) {
-          view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true, submissionVerdict: view2Frames[fIdx]?.submissionVerdict };
-          view2Frames = [...view2Frames];
-        }
-      }
-
-      const sIdx = similarityImages.findIndex(i => i.imgId === id);
-      if (sIdx !== -1) {
-        similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true, submissionVerdict: similarityImages[sIdx]?.submissionVerdict };
-        similarityImages = [...similarityImages];
-      }
-
-      const gIdx = images.findIndex(i => i.imgId === id);
-      if (gIdx !== -1) {
-        images[gIdx] = { ...images[gIdx], submitted: true, submissionVerdict: images[gIdx]?.submissionVerdict };
-        images = [...images];
-      }
-    }
-  });
-}
-
-async function submitToDres(frameObj) {
-  try {
-    const client = getDresClient();
-
-    if (!client.getSessionId()) {
-      await client.login();
-    }
-
-    const imgId = frameObj?.imgId;
-    if (!imgId) {
-      throw new Error('Missing imgId for DRES submission');
-    }
-
-    const middleSeconds = await visioneAPI.getMiddleTimestamp(imgId);
-    const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
-    const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]).padStart(5, '0');
-
-    let result;
-    try {
-      result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
-    } catch (submitError) {
-      if (submitError instanceof DresClientError && submitError.statusCode === 401) {
-        await client.login();
-        result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
-      } else {
-        throw submitError;
-      }
-    }
-
-    const verdict = String(result?.submission ?? '').toUpperCase();
-    const description = result?.description ?? 'sent';
-    applySubmissionVerdict(imgId, verdict);
-
-    if (result?.status === false) {
-      toasts.error(`DRES submission rejected: ${description}`);
-      return { accepted: false, verdict, description };
-    }
-
-    if (verdict === 'WRONG') {
-      toasts.error(`DRES submission WRONG: ${description}`);
-    } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
-      toasts.warning(`DRES submission ${verdict}: ${description}`);
-    } else {
-      toasts.success(`DRES submission OK: ${description}`);
-    }
-    return { accepted: true, verdict, description };
-  } catch (error) {
-    const message = error instanceof DresClientError || error instanceof Error
-      ? error.message
-      : 'Unknown error during DRES submission';
-    toasts.error(`DRES submission failed: ${message}`);
-    return { accepted: false, verdict: '', description: message };
-  }
-}
-
-
   function addRFPositiveByImg(imgId, fallback = null) {
     const fromSim = similarityImages.find(i => i.imgId === imgId);
     const fromSearch = images.find(i => i.imgId === imgId);
@@ -946,7 +703,7 @@ async function submitToDres(frameObj) {
   }
 
   async function openVideoSummary(videoId, highlightImgId = null) {
-    suppressNextRestore.View2 = true;
+    scrollMgr.suppressRestore('View2');
     uiStore.actions.setLayoutTab("View2");
     if (!highlightImgId) lastViewedVideoIndex = 0;
 
@@ -978,7 +735,7 @@ async function submitToDres(frameObj) {
 
   async function openSimilarity(baseImgId) {
     similarityBaseImgId = baseImgId;
-    suppressNextRestore.Similarity = true;
+    scrollMgr.suppressRestore('Similarity');
     uiStore.actions.setLayoutTab("Similarity");
     lastViewedSimilarityIndex = 0;
 
@@ -988,66 +745,36 @@ async function submitToDres(frameObj) {
 
 
   // ---------------------------
-  // Textareas ops
+  // Textareas ops (delegated to textareaController)
   // ---------------------------
   function addTextarea(index) {
-    textareas = [
-      ...textareas.slice(0, index + 1),
-      { value: "", enabled: true },
-      ...textareas.slice(index + 1)
-    ];
+    textareas = _addTextarea(textareas, index);
     toasts.info("New query step added");
   }
 
   function removeTextarea(index) {
-    if (textareas.length > 1) {
-      textareas = textareas.filter((_, i) => i !== index);
-      const hasActiveQuery = textareas.some(t => t.enabled && t.value?.trim());
-      if (hasActiveQuery) {
-        toasts.info("Query step removed, updating results...");
-        setTimeout(() => runSearch(), 0);
-      } else {
-        toasts.info("Query step removed");
-      }
+    const result = _removeTextarea(textareas, index);
+    textareas = result.textareas;
+    if (result.shouldSearch) {
+      toasts.info("Query step removed, updating results...");
+      setTimeout(() => runSearch(), 0);
+    } else if (result.textareas !== textareas) {
+      toasts.info("Query step removed");
     }
   }
 
   function toggleTextarea(index) {
-    textareas[index].enabled = !textareas[index].enabled;
-    textareas = [...textareas];
-    const status = textareas[index].enabled ? "enabled" : "disabled";
+    const next = _toggleTextarea(textareas, index);
+    const status = next[index].enabled ? "enabled" : "disabled";
+    textareas = next;
     toasts.info(`Query step ${index + 1} ${status}`);
   }
 
   function swapTextareas(indexA, indexB, mode = "swap") {
-    if (indexA < 0 || indexA >= textareas.length) return;
-    if (indexB < 0 || indexB >= textareas.length) return;
-    if (indexA === indexB) return;
-
-    const nextTextareas = [...textareas];
-    const nextTextareaImages = { ...textareaImages };
-
-    if (mode === "move") {
-      const [moved] = nextTextareas.splice(indexA, 1);
-      nextTextareas.splice(indexB, 0, moved);
-
-      const imageEntries = Array.from({ length: textareas.length }, (_, i) => nextTextareaImages[i] ?? []);
-      const [movedImages] = imageEntries.splice(indexA, 1);
-      imageEntries.splice(indexB, 0, movedImages);
-      textareaImages = Object.fromEntries(imageEntries.map((images, i) => [i, images]));
-    } else {
-      const temp = nextTextareas[indexA];
-      nextTextareas[indexA] = nextTextareas[indexB];
-      nextTextareas[indexB] = temp;
-
-      const imagesA = nextTextareaImages[indexA] ?? [];
-      const imagesB = nextTextareaImages[indexB] ?? [];
-      nextTextareaImages[indexA] = imagesB;
-      nextTextareaImages[indexB] = imagesA;
-      textareaImages = nextTextareaImages;
-    }
-
-    textareas = nextTextareas;
+    const result = _swapTextareas(textareas, textareaImages, indexA, indexB, mode);
+    if (!result) return;
+    textareas = result.textareas;
+    textareaImages = result.textareaImages;
     toasts.info("Queries reordered, updating results...");
   }
 
@@ -1128,18 +855,13 @@ async function submitToDres(frameObj) {
     lastViewedSimilarityIndex = 0;
     selectedIndex = 0;
 
-    uiStore.actions.resetScrollPositions();
-    prevLayoutTab = null; // consigliato: evita “save” su un tab vecchio dopo reset
+    scrollMgr.resetAllScrollPositions();
+    prevLayoutTab = null;
 
     if (typeof window !== "undefined") {
       window.history.pushState({}, "", window.location.pathname);
     }
 
-    tick().then(() => {
-      if (imagesContainer) imagesContainer.scrollTop = 0;
-      if (view2Container) view2Container.scrollTop = 0;
-      if (similarityContainer) similarityContainer.scrollTop = 0;
-    });
     sessionStore.actions.clearAll();
     toasts.success("🔄 Search session cleared (settings preserved)");
   }
@@ -1163,7 +885,7 @@ async function submitToDres(frameObj) {
 
   // Se vuoi auto-run di query esempio
   function loadExampleQuery(queries) {
-    textareas = queries.map(q => ({ value: q, enabled: true }));
+    textareas = _loadExampleQuery(queries);
     toasts.info("Example loaded! Running search...");
     setTimeout(() => runSearch(), 300);
   }
