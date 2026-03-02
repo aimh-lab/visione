@@ -95,7 +95,6 @@
     focusSearchInput: () => void;
   };
 
-  let container: Element | null = null;
   let sidebarSearchRef: SidebarSearchRef | null = null;
   let lastRegisteredFocusHandler: (() => void) | null = null;
   let isSelectingImage = false;
@@ -212,7 +211,7 @@
     <div class="content bg-gray-100 flex-1"
          style="height:100%; zoom:{contentScale};">
 
-      <div class="flex-1 overflow-y-auto h-full" bind:this={container}>
+      <div class="flex-1 h-full overflow-hidden">
         {#if isFirstVisit}
           <WelcomeHero
             on:getStarted={focusLeftTextarea}

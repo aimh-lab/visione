@@ -482,6 +482,8 @@ html,
 body {
   background: var(--ui-bg);
   color: var(--ui-text);
+  height: 100%;
+  overflow: hidden;
 }
 
 
