@@ -159,8 +159,10 @@
       e.preventDefault();
       /** @type {Record<'1' | '2' | '3', LayoutTab>} */
       const tabs = { '1': 'View1', '2': 'View2', '3': 'Similarity' };
+      /** @type {Record<'1' | '2' | '3', string>} */
+      const tabNames = { '1': 'Search', '2': 'Video Summary', '3': 'Image Similarity' };
       onSwitchTab(tabs[/** @type {'1' | '2' | '3'} */ (e.key)]);
-      showActionFeedback(`Switched to tab ${e.key}`);
+      showActionFeedback(`Switched to ${tabNames[/** @type {'1' | '2' | '3'} */ (e.key)]}`);
       return;
     }
 

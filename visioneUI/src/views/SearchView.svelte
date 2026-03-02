@@ -7,8 +7,6 @@
   import EmptyState from '../components/EmptyState.svelte';
   import WelcomeHero from '../components/WelcomeHero.svelte';
 
-  const EmptyStateAny = EmptyState as any;
-
   type QueryTextarea = { value: string; enabled: boolean };
   type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
 
@@ -211,7 +209,7 @@
     {/if}
 
     <div class="content bg-gray-100 flex-1"
-         style="height:100%; transform:scale({contentScale});">
+         style="height:100%; zoom:{contentScale};">
 
       <div class="flex-1 overflow-y-auto h-full" bind:this={container}>
         {#if isFirstVisit}

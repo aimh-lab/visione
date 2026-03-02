@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { visioneAPI } from "../services/api.js";
+  import { tinyFrameUrl } from '$lib/urlConfig.js';
 
   type HighlightedInput = string | { imgId: string; rank?: number };
   type Keyframe = {
@@ -116,7 +117,7 @@
       const estimated = imgIds.map((imgId: string, index: number): Keyframe => ({
         imgId,
         timestamp: (index / Math.max(1, imgIds.length)) * fallbackDuration,
-        thumbnailUrl: `https://visione.isti.cnr.it/frames/tiny/${vid}/${imgId}.jpg`
+        thumbnailUrl: tinyFrameUrl(vid, imgId)
       }));
 
       // Show timeline immediately with estimated positions.

@@ -1,4 +1,6 @@
 <script>
+  import { tabLabels } from '$lib/tabConfig.js';
+
   export let totalImages = 0;
   export let submittedCount = 0;
   export let rfPositiveCount = 0;
@@ -13,11 +15,7 @@
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
   
-  const viewLabels = {
-    'View1': 'Search',
-    'View2': 'Video Summary',
-    'Similarity': 'Image Similarity'
-  };
+  const viewLabels = tabLabels;
   
   const sortLabels = {
     'byrank': 'By Relevance',

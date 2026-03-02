@@ -113,9 +113,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
-  dresMemberId: '',
-  futureOptionA: '',         // ✅ AGGIUNGI (opzionale)
-  futureOptionB: false       // ✅ AGGIUNGI (opzionale)
+  dresMemberId: ''
 });
 
 // Utility functions

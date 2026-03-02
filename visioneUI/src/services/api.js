@@ -1,4 +1,6 @@
 // src/services/api.js
+import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL } from '$lib/urlConfig.js';
+
 class APIError extends Error {
   constructor(message, status, response) {
     super(message);
@@ -12,7 +14,7 @@ class APIError extends Error {
 
 // src/services/api.js
 export class VisioneAPI {
-  constructor(baseUrl = 'https://visione.isti.cnr.it/services', videosBase = 'https://visione.isti.cnr.it/videos') {
+  constructor(baseUrl = VISIONE_SERVICES_URL, videosBase = VISIONE_VIDEOS_URL) {
     this.baseUrl = baseUrl;
     this.videosBase = videosBase;
     this.middleTimestampCache = new Map();
