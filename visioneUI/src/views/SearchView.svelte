@@ -44,6 +44,9 @@
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
+  export let submittedAnswers: Array<Record<string, unknown>> = [];
+  export let submitTextAnswer = (_text: string) => {};
 
   // Modale immagini
   export let selectedImage: Img | null = null;
@@ -304,6 +307,7 @@
             {virtualizationThreshold}
             {justifyResultRows}
             {showSubmitUI}
+            {challengeType}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}
@@ -328,7 +332,10 @@
     {rfPositive}
     {rfNegative}
     {submittedImages}
+    {submittedAnswers}
+    {challengeType}
     showSubmittedTab={showSubmitUI}
+    {submitTextAnswer}
     on:removePositive={onRemovePositive}
     on:removeNegative={onRemoveNegative}
     on:openFromRF={(e) => onOpenFromRF(e.detail.index)}
@@ -345,6 +352,7 @@
   image={selectedImage as any}
   total={totalImages}
   {showSubmitUI}
+  {challengeType}
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}

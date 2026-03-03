@@ -4,13 +4,15 @@ import { uiStore } from './uiStore.js';
 const DEFAULT = {
   rfPositive: [],
   rfNegative: [],
-  submittedImages: []
+  submittedImages: [],
+  submittedAnswers: []
 };
 
 const freshDefault = () => ({
   rfPositive: [],
   rfNegative: [],
-  submittedImages: []
+  submittedImages: [],
+  submittedAnswers: []
 });
 
 function createSessionStore() {
@@ -19,6 +21,29 @@ function createSessionStore() {
   const actions = {
     clearAll() {
       update(() => freshDefault());
+    },
+
+    submitAnswer({ text, status = 'PENDING', verdict = '', description = '' }) {
+      const value = String(text ?? '').trim();
+      if (!value) return;
+      const timestamp = Date.now();
+
+      update((s) => ({
+        ...s,
+        submittedAnswers: [
+          {
+            id: `answer-${timestamp}`,
+            text: value,
+            status,
+            verdict,
+            description,
+            createdAt: timestamp
+          },
+          ...s.submittedAnswers
+        ]
+      }));
+
+      uiStore.actions.focusRightTab('Submitted');
     },
 
     submitFrame({ imgId, frameObj, markSubmitted }) {

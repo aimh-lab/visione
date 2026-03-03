@@ -18,6 +18,7 @@
   export let justifyResultRows = false;
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   export let registerContainer = (_el: Element | null) => {};
 
@@ -120,6 +121,7 @@
               showVideoSummary={false}
               {videoBadgeOrientation}
               {showSubmitUI}
+              {challengeType}
               {justifyResultRows}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
@@ -143,6 +145,7 @@
   image={selectedFrame as any}
   total={totalFrames}
   {showSubmitUI}
+  {challengeType}
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}

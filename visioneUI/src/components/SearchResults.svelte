@@ -11,6 +11,7 @@
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -27,6 +28,7 @@
   virtualizeThreshold={virtualizationThreshold}
   {justifyResultRows}
   {showSubmitUI}
+  {challengeType}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

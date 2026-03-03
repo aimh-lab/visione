@@ -17,6 +17,7 @@
   export let videoId = "";
   export let highlightedKeyframes: HighlightedInput[] = [];
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   const dispatch = createEventDispatcher();
   let videoEl: HTMLVideoElement | null = null;
@@ -51,7 +52,7 @@
 
     if (isTypingContext) return;
 
-    if (showSubmitUI && e.key?.toLowerCase() === "s") {
+    if (allowFrameSubmit && e.key?.toLowerCase() === "s") {
       e.preventDefault();
       submitCurrentFrame();
     }
@@ -294,7 +295,7 @@
   }
 
   function submitCurrentFrame() {
-    if (!showSubmitUI) return;
+    if (!allowFrameSubmit) return;
     if (!videoEl) return;
     const w = videoEl.videoWidth || 0;
     const h = videoEl.videoHeight || 0;
@@ -344,6 +345,7 @@
       return [imgId, rank];
     })
   );
+  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
 
   function getRankColor(imgId: string) {
     if (!rankMap.has(imgId)) return 'rgb(107, 114, 128)';
@@ -581,7 +583,7 @@
             <span class="font-mono">
               {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
             </span>
-            {#if showSubmitUI}
+            {#if allowFrameSubmit}
               <button
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold"
                 on:click={submitCurrentFrame}

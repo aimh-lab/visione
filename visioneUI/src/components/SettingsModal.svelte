@@ -11,6 +11,7 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
+  export let dresChallengeType = 'KIS';
   export let dresSubmitServer = '';
   export let dresUsername = '';
   export let dresPassword = '';
@@ -32,6 +33,7 @@
     virtualizationEnabled,
     virtualizationThreshold,
     dresEnabled,
+    dresChallengeType,
     dresSubmitServer,
     dresUsername,
     dresPassword,
@@ -53,6 +55,7 @@
       virtualizationEnabled,
       virtualizationThreshold,
       dresEnabled,
+      dresChallengeType,
       dresSubmitServer,
       dresUsername,
       dresPassword,
@@ -70,6 +73,7 @@
   function testDresConnection() {
     dispatch('testDres', {
       dresEnabled: !!local.dresEnabled,
+      dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(local.dresChallengeType) ? local.dresChallengeType : 'KIS',
       dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',

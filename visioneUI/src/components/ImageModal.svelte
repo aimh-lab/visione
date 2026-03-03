@@ -6,6 +6,7 @@
   export let image = null;
   export let total = 0;
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch("close");
@@ -25,6 +26,7 @@
   };
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
+  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
   
   let imageContainer;
 </script>
@@ -178,7 +180,7 @@
               </div>
 
               <!-- Submit button: top-right, solo se NON submitted -->
-              {#if showSubmitUI && !image?.submitted}
+              {#if allowFrameSubmit && !image?.submitted}
                 <div
                   role="button"
                   tabindex="0"
@@ -195,7 +197,7 @@
             </div>
 
             <!-- ✅ Submit Badge (sempre visibile se submitted) -->
-            {#if showSubmitUI}
+            {#if allowFrameSubmit}
               <SubmitBadge submitted={!!image?.submitted} verdict={image?.submissionVerdict} />
             {/if}
 

@@ -21,6 +21,7 @@
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
   export let searchError: string | null = null;
@@ -154,6 +155,7 @@
             {virtualizationThreshold}
             {justifyResultRows}
             {showSubmitUI}
+            {challengeType}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
@@ -173,6 +175,7 @@
   image={simSelected as any}
   total={similarityTotal}
   {showSubmitUI}
+  {challengeType}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}
