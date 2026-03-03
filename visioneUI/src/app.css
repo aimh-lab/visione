@@ -639,6 +639,11 @@ body {
   color: var(--ui-sort-option-active-text);
   stroke: var(--ui-sort-option-active-text);
 }
+.ui-position-menu-header {
+  color: var(--ui-sort-option-text);
+  background: var(--ui-toolbar-hover-bg);
+  border-color: var(--ui-sort-menu-border);
+}
 
 /* ---- Main tab strip ---- */
 .ui-main-tab-strip {

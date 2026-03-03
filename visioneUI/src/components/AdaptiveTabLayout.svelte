@@ -18,6 +18,8 @@
   
   let showPositionMenu = false;
   let isSortDropdownOpen = false; // ✅ Per left/right
+  let isChallengeDropdownOpen = false;
+  const challengeOptions = ["KIS", "AVS", "Q&A"];
   
   // ✅ Sort options
   const sortOptions = [
@@ -51,6 +53,15 @@
     dispatch('changeViewMode', { mode });
     isSortDropdownOpen = false;
   }
+
+  function adjustKeyframeSize(delta) {
+    dispatch('adjustKeyframeSize', { delta });
+  }
+
+  function setChallengeType(type) {
+    dispatch('changeChallengeType', { type });
+    isChallengeDropdownOpen = false;
+  }
   
   function handleClickOutside(event) {
     if (showPositionMenu && !event.target.closest('.position-menu-container')) {
@@ -59,12 +70,16 @@
     if (isSortDropdownOpen && !event.target.closest('.sort-dropdown-container')) {
       isSortDropdownOpen = false;
     }
+    if (isChallengeDropdownOpen && !event.target.closest('.challenge-dropdown-container')) {
+      isChallengeDropdownOpen = false;
+    }
   }
 
   function handleWindowKeydown(event) {
     if (event.key !== 'Escape') return;
     showPositionMenu = false;
     isSortDropdownOpen = false;
+    isChallengeDropdownOpen = false;
   }
 </script>
 
@@ -108,14 +123,13 @@
       </button>
       
       {#if showPositionMenu}
-        <div class="absolute top-12 left-3 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container">
-          <div class="px-3 py-2 bg-gray-50 border-b">
-            <span class="text-xs font-semibold text-gray-700">Tabs Position</span>
+        <div class="ui-sort-dropdown-menu absolute top-12 left-3 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container min-w-36">
+          <div class="ui-position-menu-header px-3 py-2 border-b">
+            <span class="text-xs font-semibold">Tabs Position</span>
           </div>
           <button 
             on:click={() => setPosition('top')} 
-            class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left
-                   {$tabsPosition === 'top' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}"
+            class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'top' ? 'ui-sort-option-active' : ''}"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="6" rx="1"/>
@@ -130,23 +144,33 @@
           </button>
           <button 
             on:click={() => setPosition('left')} 
-            class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left"
+            class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'left' ? 'ui-sort-option-active' : ''}"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="6" height="18" rx="1"/>
               <rect x="11" y="3" width="10" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Left</span>
+            {#if $tabsPosition === 'left'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
           <button 
             on:click={() => setPosition('right')} 
-            class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left"
+            class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'right' ? 'ui-sort-option-active' : ''}"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="11" y="3" width="10" height="18" rx="1"/>
               <rect x="3" y="3" width="6" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Right</span>
+            {#if $tabsPosition === 'right'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
         </div>
       {/if}
@@ -176,27 +200,42 @@
       </button>
       
       {#if showPositionMenu}
-        <div class="absolute top-4 left-20 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container">
-          <div class="px-3 py-2 bg-gray-50 border-b">
-            <span class="text-xs font-semibold text-gray-700">Tabs Position</span>
+        <div class="ui-sort-dropdown-menu absolute top-4 left-20 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container min-w-36">
+          <div class="ui-position-menu-header px-3 py-2 border-b">
+            <span class="text-xs font-semibold">Tabs Position</span>
           </div>
-          <button on:click={() => setPosition('top')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left">
+          <button on:click={() => setPosition('top')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'top' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="6" rx="1"/>
             </svg>
             <span class="text-sm">Top</span>
+            {#if $tabsPosition === 'top'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
-          <button on:click={() => setPosition('left')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left bg-blue-50 text-blue-700">
+          <button on:click={() => setPosition('left')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'left' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="6" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Left</span>
+            {#if $tabsPosition === 'left'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
-          <button on:click={() => setPosition('right')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 transition-colors text-left">
+          <button on:click={() => setPosition('right')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'right' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="11" y="3" width="10" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Right</span>
+            {#if $tabsPosition === 'right'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
         </div>
       {/if}
@@ -222,6 +261,33 @@
       
       <!-- ✅ Sort dropdown (solo se showViewModeRadios) -->
       {#if showViewModeRadios}
+        <div class="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            class="ui-toolbar-btn w-8 h-8 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
+            on:click={() => adjustKeyframeSize(10)}
+            aria-label="Increase thumbnail size"
+            title="Increase thumbnail size"
+            disabled={keyframeSize >= 400}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-toolbar-btn w-8 h-8 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
+            on:click={() => adjustKeyframeSize(-10)}
+            aria-label="Decrease thumbnail size"
+            title="Decrease thumbnail size"
+            disabled={keyframeSize <= 80}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+        </div>
+
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
@@ -241,12 +307,12 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="absolute bottom-0 left-20 mb-0 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 sort-dropdown-container">
+            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 sort-dropdown-container">
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
-                  class="w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
-                         {viewMode === option.value ? 'bg-blue-50' : ''}"
+                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                         {viewMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
                   <svg class="w-4 h-4 flex-shrink-0 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
@@ -256,6 +322,37 @@
                   </span>
                   {#if viewMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if dresEnabled}
+        <div class="relative challenge-dropdown-container">
+          <button
+            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+            title="Challenge type"
+            aria-label="Challenge type"
+          >
+            <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
+          </button>
+
+          {#if isChallengeDropdownOpen}
+            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 challenge-dropdown-container">
+              {#each challengeOptions as option}
+                <button
+                  on:click={() => setChallengeType(option)}
+                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                >
+                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                  {#if challengeType === option}
+                    <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   {/if}
@@ -348,27 +445,42 @@
       </button>
       
       {#if showPositionMenu}
-        <div class="absolute top-4 right-20 bg-white rounded-lg shadow-xl border overflow-hidden z-50 position-menu-container">
-          <div class="px-3 py-2 bg-gray-50 border-b">
-            <span class="text-xs font-semibold text-gray-700">Tabs Position</span>
+        <div class="ui-sort-dropdown-menu absolute top-4 right-20 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container min-w-36">
+          <div class="ui-position-menu-header px-3 py-2 border-b">
+            <span class="text-xs font-semibold">Tabs Position</span>
           </div>
-          <button on:click={() => setPosition('top')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 text-left">
+          <button on:click={() => setPosition('top')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'top' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="6" rx="1"/>
             </svg>
             <span class="text-sm">Top</span>
+            {#if $tabsPosition === 'top'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
-          <button on:click={() => setPosition('left')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 text-left">
+          <button on:click={() => setPosition('left')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'left' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="6" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Left</span>
+            {#if $tabsPosition === 'left'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
-          <button on:click={() => setPosition('right')} class="w-full flex items-center space-x-2 px-4 py-2 hover:bg-blue-50 text-left bg-blue-50 text-blue-700">
+          <button on:click={() => setPosition('right')} class="ui-sort-option w-full flex items-center space-x-2 px-4 py-2 transition-colors text-left {$tabsPosition === 'right' ? 'ui-sort-option-active' : ''}">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="11" y="3" width="10" height="18" rx="1"/>
             </svg>
             <span class="text-sm">Right</span>
+            {#if $tabsPosition === 'right'}
+              <svg class="w-4 h-4 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            {/if}
           </button>
         </div>
       {/if}
@@ -391,6 +503,33 @@
       
       <!-- ✅ Sort dropdown -->
       {#if showViewModeRadios}
+        <div class="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            class="ui-toolbar-btn w-8 h-8 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
+            on:click={() => adjustKeyframeSize(10)}
+            aria-label="Increase thumbnail size"
+            title="Increase thumbnail size"
+            disabled={keyframeSize >= 400}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="ui-toolbar-btn w-8 h-8 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
+            on:click={() => adjustKeyframeSize(-10)}
+            aria-label="Decrease thumbnail size"
+            title="Decrease thumbnail size"
+            disabled={keyframeSize <= 80}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+        </div>
+
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
@@ -410,12 +549,12 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="absolute bottom-0 right-20 mb-0 w-48 bg-white rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
+            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 sort-dropdown-container">
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
-                  class="w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
-                         {viewMode === option.value ? 'bg-blue-50' : ''}"
+                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                         {viewMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
                   <svg class="w-4 h-4 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
@@ -425,6 +564,37 @@
                   </span>
                   {#if viewMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if dresEnabled}
+        <div class="relative challenge-dropdown-container">
+          <button
+            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+            title="Challenge type"
+            aria-label="Challenge type"
+          >
+            <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
+          </button>
+
+          {#if isChallengeDropdownOpen}
+            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 challenge-dropdown-container">
+              {#each challengeOptions as option}
+                <button
+                  on:click={() => setChallengeType(option)}
+                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                >
+                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                  {#if challengeType === option}
+                    <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   {/if}
