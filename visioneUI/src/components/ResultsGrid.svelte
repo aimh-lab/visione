@@ -15,6 +15,7 @@
   export let virtualizeThreshold = 40;
   export let justifyResultRows = false;
   export let showSubmitUI = false;
+  export let challengeType = "KIS";
 
   let preview = { imgId: null, videoUrl: null, start: 0, end: 0 };
 
@@ -40,6 +41,7 @@
 
   function toFiniteNumber(value) {
     if (value == null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -177,7 +179,8 @@
     if (!imgId) return;
     if (fetchedTimecodes.has(imgId)) return;
     if (requestedTimecodeIds.has(imgId)) return;
-    if (getFrameSeconds(item) != null) return;
+    const inlineSeconds = getFrameSeconds(item);
+    if (inlineSeconds != null && inlineSeconds > 0) return;
 
     requestedTimecodeIds.add(imgId);
     timecodeQueue.push(imgId);
@@ -190,10 +193,10 @@
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
 
-  function getTimecodeLabel(item) {
+  function getTimecodeLabel(item, tcMap = fetchedTimecodes) {
     const imgId = getId(item);
-    if (imgId && fetchedTimecodes.has(imgId)) {
-      const fetched = fetchedTimecodes.get(imgId);
+    if (imgId && tcMap.has(imgId)) {
+      const fetched = tcMap.get(imgId);
       return fetched == null ? null : formatTimecode(fetched);
     }
 
@@ -237,6 +240,7 @@
   const handleRFPositive = (item, e) => { e.stopPropagation(); dispatch("rfPositive", { index: getIndex(item), img: item }); };
   const handleRFNegative = (item, e) => { e.stopPropagation(); dispatch("rfNegative", { index: getIndex(item), img: item }); };
   const handleSubmit = (item, e) => { e.stopPropagation(); dispatch("submit", { index: getIndex(item), img: item }); };
+  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
 
   function handleFrameDragStart(event, item) {
     if (!event.dataTransfer) return;
@@ -463,6 +467,27 @@
     if (timecodeQueue.length > 0) pumpTimecodeQueue();
   }
 
+  // Reactive timecode labels map — recomputes whenever fetchedTimecodes or items change.
+  // Using a $: block guarantees Svelte tracks it as a template dependency.
+  $: _tcLabels = (() => {
+    const labels = new Map();
+    for (const [imgId, seconds] of fetchedTimecodes.entries()) {
+      if (seconds != null) labels.set(imgId, formatTimecode(seconds));
+    }
+    // Also include inline timestamp data from items
+    for (const row of items) {
+      if (!Array.isArray(row)) continue;
+      for (const item of row) {
+        const imgId = getId(item);
+        if (imgId && !labels.has(imgId)) {
+          const secs = getFrameSeconds(item);
+          if (secs != null && secs > 0) labels.set(imgId, formatTimecode(secs));
+        }
+      }
+    }
+    return labels;
+  })();
+
   $: {
     const threshold = Math.max(10, Number(virtualizeThreshold) || 40);
     virtualizationEnabled = !!virtualizeRows && items.length > threshold;
@@ -680,7 +705,6 @@
         {/if}
 
         {#each row as item (getId(item) ?? getIndex(item))}
-          {@const timecodeLabel = getTimecodeLabel(item)}
           <div>
             <div
               use:observeCardForPreload={item}
@@ -804,7 +828,7 @@
                 </div>
 
                 <!-- Submit button: top-right, solo se NON submitted -->
-                {#if showSubmitUI && !item.submitted}
+                {#if allowFrameSubmit && !item.submitted}
                   <div
                     role="button"
                     tabindex="0"
@@ -820,13 +844,13 @@
                 {/if}
               </div>
 
-              {#if showSubmitUI}
+              {#if allowFrameSubmit}
                 <SubmitBadge submitted={!!item.submitted} verdict={item?.submissionVerdict} />
               {/if}
 
-              {#if timecodeLabel}
+              {#if _tcLabels.get(getId(item))}
                 <div class="absolute top-0.5 left-0.5 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md border border-slate-300/35 bg-slate-700/95 text-slate-100 text-[10px] font-semibold tracking-wide shadow-md pointer-events-none">
-                  {timecodeLabel}
+                  {_tcLabels.get(getId(item))}
                 </div>
               {/if}
 

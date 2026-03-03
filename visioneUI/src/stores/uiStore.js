@@ -25,6 +25,7 @@ const DEFAULT = {
   virtualizationThreshold: 40,
 
   dresEnabled: false,
+  dresChallengeType: 'KIS',
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
@@ -84,6 +85,7 @@ function createUIStore() {
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
 
         dresEnabled: s.dresEnabled ?? u.dresEnabled,
+        dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(s.dresChallengeType) ? s.dresChallengeType : u.dresChallengeType,
         dresSubmitServer: s.dresSubmitServer ?? u.dresSubmitServer,
         dresUsername: s.dresUsername ?? u.dresUsername,
         dresPassword: s.dresPassword ?? u.dresPassword,
@@ -111,6 +113,7 @@ function createUIStore() {
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
         dresEnabled: DEFAULT.dresEnabled,
+        dresChallengeType: DEFAULT.dresChallengeType,
         dresSubmitServer: DEFAULT.dresSubmitServer,
         dresUsername: DEFAULT.dresUsername,
         dresPassword: DEFAULT.dresPassword,
@@ -133,6 +136,12 @@ function createUIStore() {
       const safe = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       update(u => ({ ...u, theme: safe }));
       persist({ theme: safe });
+    },
+
+    setDresChallengeType(dresChallengeType) {
+      const safe = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
+      update((u) => ({ ...u, dresChallengeType: safe }));
+      persist({ dresChallengeType: safe });
     },
 
     setKeyframeSize(keyframeSize) {
@@ -179,9 +188,10 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
+      const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
       update(u => ({
         ...u,
         theme: safeTheme,
@@ -193,6 +203,7 @@ function createUIStore() {
         virtualizationEnabled,
         virtualizationThreshold,
         dresEnabled: !!dresEnabled,
+        dresChallengeType: safeChallengeType,
         dresSubmitServer: (dresSubmitServer ?? '').trim(),
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',
@@ -208,6 +219,7 @@ function createUIStore() {
         virtualizationEnabled,
         virtualizationThreshold,
         dresEnabled: !!dresEnabled,
+        dresChallengeType: safeChallengeType,
         dresSubmitServer: (dresSubmitServer ?? '').trim(),
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',

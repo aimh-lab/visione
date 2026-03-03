@@ -107,6 +107,7 @@
 
   // submittedImages: per ora “in-session”. (Commit 2: sessionStore)
   $: submittedImages = $sessionStore.submittedImages;
+  $: submittedAnswers = $sessionStore.submittedAnswers;
 
   // Derivate
   $: totalImages = images.length;
@@ -338,6 +339,7 @@
   });
 
   const submitByImgId = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
+  const submitTextAnswer = (text) => dresCtrl.submitTextAnswer(text);
   const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
 
   // Video player controller
@@ -395,7 +397,9 @@
 
     init();
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   });
 
   onDestroy(() => {
@@ -913,6 +917,10 @@ function handleViewSubmitted() {
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
   onSubmitSelected={() => {
+    if ($uiStore.dresChallengeType === 'Q&A') {
+      toasts.info('Q&A mode: submit a text answer from the Submitted panel.');
+      return;
+    }
     const item = getSelectedItemForShortcuts();
     if (item?.imgId) submitByImgId(item.imgId, item);
   }}
@@ -969,6 +977,7 @@ function handleViewSubmitted() {
   videoId={videoPlayer.videoId}
   highlightedKeyframes={videoPlayer.highlightedKeyframes || []}
   showSubmitUI={$uiStore.dresEnabled}
+  challengeType={$uiStore.dresChallengeType}
   on:submitFrame={handleSubmitFrameFromPlayer}
   on:close={() => { isVideoPlayerOpen = false; }}
 />
@@ -984,6 +993,7 @@ function handleViewSubmitted() {
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
   dresEnabled={$uiStore.dresEnabled}
+  dresChallengeType={$uiStore.dresChallengeType}
   dresSubmitServer={$uiStore.dresSubmitServer}
   dresUsername={$uiStore.dresUsername}
   dresPassword={$uiStore.dresPassword}
@@ -1001,6 +1011,8 @@ function handleViewSubmitted() {
   viewMode={$uiStore.viewMode}
   keyframeSize={$uiStore.keyframeSize}
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
+  dresEnabled={$uiStore.dresEnabled}
+  challengeType={$uiStore.dresChallengeType}
   on:change={(e) => uiStore.actions.setLayoutTab(e.detail.tab)}
   on:toggleSidebar={() => uiStore.actions.toggleSidebar()}
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
@@ -1008,9 +1020,12 @@ function handleViewSubmitted() {
   on:adjustKeyframeSize={(e) => {
     const delta = Number(e?.detail?.delta) || 0;
     const next = $uiStore.keyframeSize + delta;
-    uiStore.actions.setKeyframeSize(next);
+    const safe = Math.min(400, Math.max(80, Number(next) || 130));
+    uiStore.actions.setKeyframeSize(safe);
+    toasts.info(`Keyframe size: ${safe}px`, 900);
   }}
   on:openSettings={() => (isSettingsOpen = true)}
+  on:changeChallengeType={(e) => uiStore.actions.setDresChallengeType(e.detail.type)}
   on:reset={resetApp}
 >
   <div
@@ -1031,6 +1046,7 @@ function handleViewSubmitted() {
         {rfPositive}
         {rfNegative}
         {submittedImages}
+        {submittedAnswers}
         viewMode={$uiStore.viewMode}
         contentScale={$uiStore.contentScale}
         selectedImage={$searchModal.selected}
@@ -1043,6 +1059,8 @@ function handleViewSubmitted() {
         justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
+        challengeType={$uiStore.dresChallengeType}
+        submitTextAnswer={submitTextAnswer}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
 
@@ -1133,6 +1151,7 @@ function handleViewSubmitted() {
         justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
+        challengeType={$uiStore.dresChallengeType}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1166,6 +1185,7 @@ function handleViewSubmitted() {
         justifyResultRows={$uiStore.justifyResultRows}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
+        challengeType={$uiStore.dresChallengeType}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 

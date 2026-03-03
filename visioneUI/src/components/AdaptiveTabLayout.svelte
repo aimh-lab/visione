@@ -11,6 +11,8 @@
   export let viewMode;
   export let showViewModeRadios;
   export let keyframeSize = 130;
+  export let dresEnabled = false;
+  export let challengeType = "KIS";
   
   const dispatch = createEventDispatcher();
   
@@ -80,11 +82,14 @@
         {viewMode} 
         {showViewModeRadios}
         {keyframeSize}
+        {dresEnabled}
+        {challengeType}
         on:change
         on:toggleSidebar
         on:toggleRightSidebar 
         on:changeViewMode
         on:adjustKeyframeSize
+        on:changeChallengeType
         on:openSettings
         on:reset
       />

@@ -54,9 +54,33 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     updateVerdictInViews(imgId, submissionVerdict);
   }
 
+  function normalizeChallengeType(value) {
+    const type = String(value ?? '').toUpperCase();
+    if (type === 'AVS') return 'AVS';
+    if (type === 'Q&A') return 'Q&A';
+    return 'KIS';
+  }
+
+  function normalizeVerdict(value) {
+    const v = String(value ?? '').toUpperCase();
+    if (v === 'CORRECT' || v === 'WRONG' || v === 'INDETERMINATE' || v === 'UNDECIDABLE') return v;
+    if (v === 'PENDING') return 'PENDING';
+    return '';
+  }
+
+  function notifyVerdict(verdict, description = 'sent', prefix = 'DRES submission') {
+    if (verdict === 'WRONG') {
+      toasts.error(`${prefix} WRONG: ${description}`);
+    } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
+      toasts.warning(`${prefix} ${verdict}: ${description}`);
+    } else {
+      toasts.success(`${prefix} OK: ${description}`);
+    }
+  }
+
   // ---- Low-level submit to DRES ----------------------------------------
 
-  async function submitToDres(frameObj) {
+  async function submitFrameToDres(frameObj) {
     try {
       const client = getClient();
 
@@ -85,21 +109,12 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
         }
       }
 
-      const verdict = String(result?.submission ?? '').toUpperCase();
+      const verdict = normalizeVerdict(result?.submission);
       const description = result?.description ?? 'sent';
-      applySubmissionVerdict(imgId, verdict);
 
       if (result?.status === false) {
         toasts.error(`DRES submission rejected: ${description}`);
         return { accepted: false, verdict, description };
-      }
-
-      if (verdict === 'WRONG') {
-        toasts.error(`DRES submission WRONG: ${description}`);
-      } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
-        toasts.warning(`DRES submission ${verdict}: ${description}`);
-      } else {
-        toasts.success(`DRES submission OK: ${description}`);
       }
       return { accepted: true, verdict, description };
     } catch (error) {
@@ -120,7 +135,13 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       return;
     }
 
-    if (typeof window !== 'undefined') {
+    const challengeType = normalizeChallengeType(settings?.dresChallengeType);
+    if (challengeType === 'Q&A') {
+      toasts.info('Q&A challenge accepts only text answers. Use the submit panel on the right.');
+      return;
+    }
+
+    if (challengeType === 'KIS' && typeof window !== 'undefined') {
       const ok = window.confirm('Are you sure you want to submit this frame?');
       if (!ok) return;
     }
@@ -128,14 +149,94 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     const frameObj = findFrame(imgId, fallback);
     if (!frameObj) return;
 
-    const dresResult = await submitToDres(frameObj);
+    const dresResult = await submitFrameToDres(frameObj);
     if (!dresResult?.accepted) return;
+
+    const verdictForStore = challengeType === 'AVS'
+      ? 'PENDING'
+      : normalizeVerdict(dresResult?.verdict);
+
+    applySubmissionVerdict(imgId, verdictForStore);
 
     sessionStore.actions.submitFrame({
       imgId,
-      frameObj,
+      frameObj: { ...frameObj, submissionVerdict: verdictForStore },
       markSubmitted: (id) => markSubmittedInViews(id)
     });
+
+    if (challengeType === 'AVS') {
+      toasts.warning('DRES submission queued: waiting for async verdict.');
+      return;
+    }
+
+    const description = dresResult?.description ?? 'sent';
+    notifyVerdict(verdictForStore, description, 'DRES submission');
+  }
+
+  async function submitTextAnswer(text) {
+    const value = String(text ?? '').trim();
+    if (!value) {
+      toasts.warning('Please type an answer before submitting.');
+      return { accepted: false, verdict: '', description: 'Empty answer' };
+    }
+
+    const settings = get(uiStore);
+    if (!settings?.dresEnabled) {
+      toasts.info('Enable DRES submit in settings to submit answers.');
+      return { accepted: false, verdict: '', description: 'DRES disabled' };
+    }
+
+    const challengeType = normalizeChallengeType(settings?.dresChallengeType);
+    if (challengeType !== 'Q&A') {
+      toasts.info('Text answer submission is available only in Q&A mode.');
+      return { accepted: false, verdict: '', description: 'Wrong challenge type' };
+    }
+
+    try {
+      const client = getClient();
+      if (!client.getSessionId()) {
+        await client.login();
+      }
+
+      let result;
+      try {
+        result = await client.submitTextAnswer(value);
+      } catch (submitError) {
+        if (submitError instanceof DresClientError && submitError.statusCode === 401) {
+          await client.login();
+          result = await client.submitTextAnswer(value);
+        } else {
+          throw submitError;
+        }
+      }
+
+      const verdict = normalizeVerdict(result?.submission);
+      const description = result?.description ?? 'sent';
+
+      if (result?.status === false) {
+        toasts.error(`DRES answer rejected: ${description}`);
+        sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict, description });
+        return { accepted: false, verdict, description };
+      }
+
+      sessionStore.actions.submitAnswer({ text: value, status: 'SUBMITTED', verdict, description });
+      if (verdict === 'WRONG') {
+        toasts.error(`DRES answer WRONG: ${description}`);
+      } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
+        toasts.warning(`DRES answer ${verdict}: ${description}`);
+      } else {
+        toasts.success(`DRES answer submitted: ${description}`);
+      }
+
+      return { accepted: true, verdict, description };
+    } catch (error) {
+      const message = error instanceof DresClientError || error instanceof Error
+        ? error.message
+        : 'Unknown error during DRES text submission';
+      toasts.error(`DRES answer failed: ${message}`);
+      sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict: '', description: message });
+      return { accepted: false, verdict: '', description: message };
+    }
   }
 
   // ---- Test connection --------------------------------------------------
@@ -160,6 +261,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
   return {
     submitByImgId,
+    submitTextAnswer,
     testConnection,
     applySubmissionVerdict,
     getClient

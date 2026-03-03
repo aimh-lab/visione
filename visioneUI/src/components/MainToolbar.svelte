@@ -10,10 +10,14 @@
   export let viewMode = "byrank";
   export let showViewModeRadios = false;
   export let keyframeSize = 130;
+  export let dresEnabled = false;
+  export let challengeType = "KIS";
   
   const dispatch = createEventDispatcher();
   
   let isSortDropdownOpen = false;
+  let isChallengeDropdownOpen = false;
+  const challengeOptions = ["KIS", "AVS", "Q&A"];
   
   const sortOptions = [
     { 
@@ -48,12 +52,19 @@
   const adjustKeyframeSize = (delta) => {
     dispatch("adjustKeyframeSize", { delta });
   };
+  const setChallengeType = (type) => {
+    dispatch("changeChallengeType", { type });
+    isChallengeDropdownOpen = false;
+  };
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
   
   function handleClickOutside(event) {
     if (isSortDropdownOpen && !event.target.closest('.sort-dropdown-container')) {
       isSortDropdownOpen = false;
+    }
+    if (isChallengeDropdownOpen && !event.target.closest('.challenge-dropdown-container')) {
+      isChallengeDropdownOpen = false;
     }
   }
 </script>
@@ -119,6 +130,7 @@
               class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
               on:click={() => adjustKeyframeSize(10)}
               aria-label="Increase thumbnail size"
+              title="Increase thumbnail size"
               disabled={keyframeSize >= 400}
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
@@ -130,6 +142,7 @@
               class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
               on:click={() => adjustKeyframeSize(-10)}
               aria-label="Decrease thumbnail size"
+              title="Decrease thumbnail size"
               disabled={keyframeSize <= 80}
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
@@ -190,6 +203,41 @@
             </div>
           {/if}
         </div>
+        </div>
+      {/if}
+
+      {#if dresEnabled}
+        <div class="relative challenge-dropdown-container">
+          <button
+            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+            class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
+            title="Challenge type"
+            aria-label="Challenge type"
+          >
+            <span class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Challenge</span>
+            <span class="text-xs font-semibold text-gray-800">{challengeType}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isChallengeDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {#if isChallengeDropdownOpen}
+            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-36 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+              {#each challengeOptions as option}
+                <button
+                  on:click={() => setChallengeType(option)}
+                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                >
+                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                  {#if challengeType === option}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
 
