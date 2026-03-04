@@ -291,7 +291,7 @@
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
             title="Sort by"
             aria-label="Sort by"
           >
@@ -307,7 +307,7 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 sort-dropdown-container">
+            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-48 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
@@ -332,36 +332,34 @@
         </div>
       {/if}
 
-      {#if dresEnabled}
-        <div class="relative challenge-dropdown-container">
-          <button
-            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Challenge type"
-            aria-label="Challenge type"
-          >
-            <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
-          </button>
+      <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
+        <button
+          on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+          class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+          title="Challenge type"
+          aria-label="Challenge type"
+        >
+          <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
+        </button>
 
-          {#if isChallengeDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 challenge-dropdown-container">
-              {#each challengeOptions as option}
-                <button
-                  on:click={() => setChallengeType(option)}
-                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
-                  {#if challengeType === option}
-                    <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
+        {#if isChallengeDropdownOpen}
+          <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-32 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
+            {#each challengeOptions as option}
+              <button
+                on:click={() => setChallengeType(option)}
+                class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+              >
+                <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                {#if challengeType === option}
+                  <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
       
       <!-- Sidebar toggle -->
       <button
@@ -533,7 +531,7 @@
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
             title="Sort by"
             aria-label="Sort by"
           >
@@ -549,7 +547,7 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 sort-dropdown-container">
+            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-48 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
@@ -574,36 +572,34 @@
         </div>
       {/if}
 
-      {#if dresEnabled}
-        <div class="relative challenge-dropdown-container">
-          <button
-            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg bg-white border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Challenge type"
-            aria-label="Challenge type"
-          >
-            <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
-          </button>
+      <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
+        <button
+          on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+          class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
+          title="Challenge type"
+          aria-label="Challenge type"
+        >
+          <span class="text-[10px] font-semibold text-gray-700">{challengeType}</span>
+        </button>
 
-          {#if isChallengeDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 challenge-dropdown-container">
-              {#each challengeOptions as option}
-                <button
-                  on:click={() => setChallengeType(option)}
-                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
-                  {#if challengeType === option}
-                    <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
+        {#if isChallengeDropdownOpen}
+          <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-32 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
+            {#each challengeOptions as option}
+              <button
+                on:click={() => setChallengeType(option)}
+                class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+              >
+                <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                {#if challengeType === option}
+                  <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
       
       <button class="ui-toolbar-btn ui-toolbar-sidebar p-1.5 rounded-lg transition-all border shadow-sm {isSidebarOpen ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}" on:click={() => dispatch('toggleSidebar')} aria-label={isSidebarOpen ? 'Hide left sidebar' : 'Show left sidebar'} title={isSidebarOpen ? 'Hide left sidebar' : 'Show left sidebar'}>
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -636,7 +636,7 @@
   });
 </script>
 
-<div bind:this={containerEl} class="h-full overflow-y-auto custom-scrollbar" on:scroll={handleScroll}>
+<div bind:this={containerEl} class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" on:scroll={handleScroll}>
   {#if topSpacer > 0}
     <div style={`height: ${topSpacer}px;`} aria-hidden="true"></div>
   {/if}

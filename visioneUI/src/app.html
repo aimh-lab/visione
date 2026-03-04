@@ -4,6 +4,48 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			(function () {
+				document.documentElement.setAttribute('data-initial-dres-enabled', 'false');
+				document.documentElement.setAttribute('data-dres-enabled', 'false');
+				try {
+					var raw = localStorage.getItem('visione-app-settings');
+					if (!raw) return;
+					var parsed = JSON.parse(raw);
+					var theme = parsed && parsed.theme;
+					if (theme === 'default' || theme === 'light' || theme === 'dark') {
+						document.documentElement.setAttribute('data-theme', theme);
+					}
+
+					var leftOpen = parsed && parsed.isSidebarOpen;
+					var rightOpen = parsed && parsed.isSidebarRightOpen;
+					var dresEnabled = parsed && parsed.dresEnabled;
+					if (typeof leftOpen === 'boolean') {
+						document.documentElement.setAttribute('data-initial-sidebar-left-open', String(leftOpen));
+					}
+					if (typeof rightOpen === 'boolean') {
+						document.documentElement.setAttribute('data-initial-sidebar-right-open', String(rightOpen));
+					}
+					if (typeof dresEnabled === 'boolean') {
+						document.documentElement.setAttribute('data-initial-dres-enabled', String(dresEnabled));
+						document.documentElement.setAttribute('data-dres-enabled', String(dresEnabled));
+					}
+
+					var leftWidth = Number.parseFloat(String(parsed && parsed.sidebarLeftWidth));
+					var rightWidth = Number.parseFloat(String(parsed && parsed.sidebarRightWidth));
+					if (Number.isFinite(leftWidth)) {
+						var clampedLeft = Math.max(12, Math.min(40, leftWidth));
+						document.documentElement.style.setProperty('--initial-sidebar-left-width', clampedLeft + 'vw');
+					}
+					if (Number.isFinite(rightWidth)) {
+						var clampedRight = Math.max(12, Math.min(40, rightWidth));
+						document.documentElement.style.setProperty('--initial-sidebar-right-width', clampedRight + 'vw');
+					}
+				} catch (_) {
+					// Ignore malformed storage values.
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

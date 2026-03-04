@@ -90,10 +90,11 @@
   // CSS vars (solo da uiStore)
   // ---------------------------
   $: if (browser) {
-    const { keyframeSize, theme } = $uiStore;
+    const { keyframeSize, theme, dresEnabled } = $uiStore;
     document.documentElement.style.setProperty('--kf-size', `${keyframeSize}px`);
     document.documentElement.style.setProperty('--min-card-w', `${Math.round(keyframeSize * 1.1)}px`);
     document.documentElement.setAttribute('data-theme', theme || 'default');
+    document.documentElement.setAttribute('data-dres-enabled', dresEnabled ? 'true' : 'false');
   }
 
 
@@ -143,6 +144,7 @@
   let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
+  const STATUS_BAR_HEIGHT_PX = 48;
   const URL_SYNC_DEBOUNCE_MS = 180;
   let urlSyncTimer = null;
   let lastSearchResultSet = null;
@@ -375,10 +377,21 @@
   }
 
   onMount(() => {
+    const clearInitialSidebarBootstrap = () => {
+      if (!browser) return;
+      const root = document.documentElement;
+      root.removeAttribute('data-initial-sidebar-left-open');
+      root.removeAttribute('data-initial-sidebar-right-open');
+      root.removeAttribute('data-initial-dres-enabled');
+      root.style.removeProperty('--initial-sidebar-left-width');
+      root.style.removeProperty('--initial-sidebar-right-width');
+    };
+
     const init = async () => {
       uiStore.actions.hydrateFromSettings();
       uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
       await tick();
+      clearInitialSidebarBootstrap();
 
       const urlState = deserializeFromURL();
       if (Object.keys(urlState).length > 0) {
@@ -1029,8 +1042,8 @@ function handleViewSubmitted() {
   on:reset={resetApp}
 >
   <div
-    class="views-wrapper w-full"
-    style="height: {$tabsPosition === 'top' ? 'calc(100vh - 39px)' : '100vh'};"
+    class="views-wrapper w-full overflow-x-hidden"
+    style="height: {$tabsPosition === 'top' ? `calc(100vh - 39px - ${STATUS_BAR_HEIGHT_PX}px)` : `calc(100vh - ${STATUS_BAR_HEIGHT_PX}px)`};"
   >
     {#if $uiStore.layoutTab === "View1"}
       <SearchView
