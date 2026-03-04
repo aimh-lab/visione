@@ -787,7 +787,7 @@ class AsyncPGVectorStore(VectorStore):
         if not isinstance(query, dict):
             raise ValueError("Query must be a dictionary.")
 
-        query_text = query.get("text")
+        query_text = query.get("items")
         if isinstance(query_text, list) and len(query_text) >= 2:
             return await self._atemporal_join_search(
                 query=query, 
@@ -798,15 +798,15 @@ class AsyncPGVectorStore(VectorStore):
 
         if isinstance(query_text, list):
             if len(query_text) == 0:
-                raise ValueError("Query dictionary 'text' list must not be empty.")
+                raise ValueError("Query dictionary 'items' list must not be empty.")
             if not all(isinstance(item, str) for item in query_text):
-                raise ValueError("Query dictionary 'text' list must contain only strings.")
+                raise ValueError("Query dictionary 'items' list must contain only strings.")
             query_text = query_text[0]
 
         if not isinstance(query_text, str):
-            raise ValueError("Query dictionary must include 'text' as a string or list[str].")
+            raise ValueError("Query dictionary must include 'items' as a string or list[str].")
         if not query_text.strip():
-            raise ValueError("Query dictionary 'text' must be a non-empty string.")
+            raise ValueError("Query dictionary 'items' must be a non-empty string.")
 
         # Standard implementation follows...
         inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
@@ -840,12 +840,12 @@ class AsyncPGVectorStore(VectorStore):
         Private method to handle temporal join search.
         Query is a dictionary with:
         - text: list[str], containing at least two query texts
-        - groupby: optional str, grouping column for temporal join
-        - temporal_column: optional str, temporal column for window join (default: starttime)
         - window_seconds: optional float, window size in seconds for temporal join (default: 30.0)
+        - also_backwards_in_time: optional bool, whether to search both forwards and backwards in time (default: False)
         """
         from sqlalchemy import text
         window_seconds = query.get("window_seconds", 30.0)
+        also_backwards_in_time = query.get("also_backwards_in_time", False)
 
         query_texts = query.get("text")
         groupby_column = self.groupby_column
@@ -921,7 +921,8 @@ class AsyncPGVectorStore(VectorStore):
             f't1."{groupby_column}" as groupby_value,' if groupby_column else "NULL as groupby_value,"
         )
         join_conditions = [
-            f't2."{temporal_column}" BETWEEN (t1."{temporal_column}" - :window) AND (t1."{temporal_column}" + :window)',
+            f't2."{temporal_column}" BETWEEN (t1."{temporal_column}" - :window) AND (t1."{temporal_column}" + :window)' if also_backwards_in_time else \
+                f't2."{temporal_column}" BETWEEN t1."{temporal_column}" AND (t1."{temporal_column}" + :window)',
             f't1."{self.id_column}" != t2."{self.id_column}"',
         ]
         if groupby_column:
@@ -1312,15 +1313,21 @@ class AsyncPGVectorStore(VectorStore):
             results = result_map.fetchall()
         return bool(len(results) == 1)
 
-    async def aget_by_ids(self, ids: Sequence[str]) -> list[Document]:
+    async def aget_by_ids(self, ids: Sequence[str], columns_override=None) -> list[Document]:
         """Get documents by ids."""
 
-        columns = self.metadata_columns + [
-            self.id_column,
-            self.content_column,
-        ]
-        if self.metadata_json_column:
-            columns.append(self.metadata_json_column)
+        if columns_override is not None:
+            columns = columns_override + [
+                self.id_column,
+                self.content_column,
+            ]
+        else:
+            columns = self.metadata_columns + [
+                self.id_column,
+                self.content_column,
+            ]
+            if self.metadata_json_column:
+                columns.append(self.metadata_json_column)
 
         column_names = ", ".join(f'"{col}"' for col in columns)
 
@@ -1336,13 +1343,16 @@ class AsyncPGVectorStore(VectorStore):
 
         documents = []
         for row in results:
-            metadata = (
-                row[self.metadata_json_column]
-                if self.metadata_json_column and row[self.metadata_json_column]
-                else {}
-            )
-            for col in self.metadata_columns:
-                metadata[col] = row[col]
+            if columns_override is not None:
+                metadata = {col: row[col] for col in columns_override}
+            else:
+                metadata = (
+                    row[self.metadata_json_column]
+                    if self.metadata_json_column and row[self.metadata_json_column]
+                    else {}
+                )
+                for col in self.metadata_columns:
+                    metadata[col] = row[col]
             documents.append(
                 (
                     Document(

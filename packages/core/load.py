@@ -10,10 +10,7 @@ from hydra.utils import instantiate
 from embeddings import RemoteEmbeddings
 from pg.pg_store import PGVectorStore
 from pg.pg_engine import PGEngineWithMultiVector
-
-def generate_doc_id(doc_id_str: str) -> str:
-    """Generate a unique ID for a document based on its ID string"""
-    return hashlib.md5(doc_id_str.encode("UTF-8")).hexdigest()
+from utils import generate_doc_id
 
 async def run_pipeline(cfg: DictConfig):
     # --- 1. Load Data ---
