@@ -206,44 +206,42 @@
         </div>
       {/if}
 
-      {#if dresEnabled}
-        <div class="relative challenge-dropdown-container">
-          <button
-            on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
-            title="Challenge type"
-            aria-label="Challenge type"
-          >
-            <span class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Challenge</span>
-            <span class="text-xs font-semibold text-gray-800">{challengeType}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isChallengeDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </button>
+      <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
+        <button
+          on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+          class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 rounded-lg shadow-sm hover:shadow-md transition-all"
+          title="Challenge type"
+          aria-label="Challenge type"
+        >
+          <span class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Challenge</span>
+          <span class="text-xs font-semibold text-gray-800">{challengeType}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isChallengeDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
 
-          {#if isChallengeDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-36 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-              {#each challengeOptions as option}
-                <button
-                  on:click={() => setChallengeType(option)}
-                  class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
-                  {#if challengeType === option}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
+        {#if isChallengeDropdownOpen}
+          <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-36 rounded-lg shadow-xl border py-1 z-50">
+            {#each challengeOptions as option}
+              <button
+                on:click={() => setChallengeType(option)}
+                class="ui-sort-option w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition-colors text-left {challengeType === option ? 'bg-blue-50 ui-sort-option-active' : ''}"
+              >
+                <span class="text-sm font-medium {challengeType === option ? 'text-blue-700' : 'text-gray-800'}">{option}</span>
+                {#if challengeType === option}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- ✅ Sidebar LEFT toggle -->
       <button
-        class="ui-toolbar-btn ui-toolbar-sidebar p-2 rounded-lg transition-all duration-200 border shadow-sm
+        class="ui-toolbar-btn ui-toolbar-sidebar ui-left-sidebar-toggle p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarOpen 
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
@@ -253,7 +251,7 @@
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
-          class="w-5 h-5 transition-transform duration-300 {isSidebarOpen ? '' : 'rotate-180'}" 
+          class="w-5 h-5 {isSidebarOpen ? '' : 'rotate-180'}" 
           viewBox="0 0 24 24" 
           fill="none" 
           stroke="currentColor" 
@@ -266,7 +264,7 @@
 
       <!-- ✅ Sidebar RIGHT toggle (NUOVO) -->
       <button
-        class="ui-toolbar-btn ui-toolbar-sidebar p-2 rounded-lg transition-all duration-200 border shadow-sm
+        class="ui-toolbar-btn ui-toolbar-sidebar ui-right-sidebar-toggle p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarRightOpen 
                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}"
@@ -276,7 +274,7 @@
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
-          class="w-5 h-5 transition-transform duration-300 {isSidebarRightOpen ? 'rotate-180' : ''}" 
+          class="w-5 h-5 {isSidebarRightOpen ? 'rotate-180' : ''}" 
           viewBox="0 0 24 24" 
           fill="none" 
           stroke="currentColor" 

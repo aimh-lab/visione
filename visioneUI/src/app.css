@@ -190,6 +190,45 @@
   font-size: clamp(12px, 1.2vw, 16px);
 }
 
+/* Pre-hydration sidebar stabilization (avoids open/close + width flash on reload). */
+html[data-initial-sidebar-left-open='false'] .sidebar-left {
+  width: 12px !important;
+  min-width: 12px !important;
+  max-width: 12px !important;
+}
+html[data-initial-sidebar-left-open='true'] .sidebar-left {
+  width: var(--initial-sidebar-left-width, 18vw) !important;
+  min-width: 200px !important;
+  max-width: 600px !important;
+}
+html[data-initial-sidebar-right-open='false'] .sidebar-right {
+  width: 12px !important;
+  min-width: 12px !important;
+  max-width: 12px !important;
+}
+html[data-initial-sidebar-right-open='true'] .sidebar-right {
+  width: var(--initial-sidebar-right-width, 18vw) !important;
+  min-width: 200px !important;
+  max-width: 600px !important;
+}
+html[data-initial-sidebar-left-open='false'] .ui-left-sidebar-toggle svg {
+  transform: rotate(180deg) !important;
+}
+html[data-initial-sidebar-right-open='true'] .ui-right-sidebar-toggle svg {
+  transform: rotate(180deg) !important;
+}
+/* Keep Challenge control stable across SSR/hydration and honor DRES toggle. */
+.ui-challenge-control {
+  display: none;
+}
+html[data-initial-dres-enabled='true'] .ui-challenge-control,
+html[data-dres-enabled='true'] .ui-challenge-control {
+  display: block;
+}
+html[data-dres-enabled='false'] .ui-challenge-control {
+  display: none;
+}
+
 /* ================================================================
    THEME: DEFAULT  (same as :root — explicit for completeness)
    ================================================================ */
