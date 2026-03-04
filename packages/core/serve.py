@@ -13,14 +13,16 @@ from langchain_classic.retrievers import EnsembleRetriever
 from langchain_postgres import PGEngine
 from langchain_core.structured_query import Operation, Operator, Comparison, Comparator
 from langchain_postgres.translator import PGVectorTranslator
+from langchain_classic.chains.query_constructor.ir import StructuredQuery
 
 # --- Custom Imports ---
 from pg.pg_store import PGVectorStore
-from embeddings import RemoteEmbeddings 
+from embeddings import RemoteEmbeddings
+from utils import generate_doc_id 
 
 # --- Pydantic Models ---
 class SearchRequest(BaseModel):
-    query: Dict[str, Any] = Field(..., description="Structured query with 'text' and optional filters.")
+    query: Dict[str, Any] = Field(..., description="Structured query with 'items' and optional filters.")
     k: int = Field(default=100, ge=1, description="Number of results to return")
     models: Optional[List[str]] = Field(
         default=None, 
@@ -33,44 +35,38 @@ class SearchRequest(BaseModel):
     )
 
 class SearchResult(BaseModel):
-    image_name: str
     metadata: Dict[str, Any]
-    content: str
+    image_id: str
 
-# --- Helper: Filter Builder ---
-def build_pg_filter(filters: Dict[str, Any]):
-    """
-    Converts a simple dictionary of {'field': 'value'} into a 
-    langchain-postgres compatible filter using Operation/Comparison constructs.
-    """
-    if not filters:
+def _parse_dict_to_ir(d: dict):
+    """Recursively maps a dict to LangChain's IR classes."""
+    if not d:
         return None
-
-    comparisons = []
-    for key, value in filters.items():
-        # Create a Comparison for each key-value pair (Equality check)
-        # Note: You can expand this logic to handle ranges if 'value' is a dict.
-        comparisons.append(
-            Comparison(comparator=Comparator.EQ, attribute=key, value=value)
+    # If it has an operator, it's an Operation node
+    if "operator" in d:
+        return Operation(
+            operator=Operator(d["operator"]),
+            arguments=[_parse_dict_to_ir(arg) for arg in d["arguments"]]
         )
+    # Otherwise, it's a Comparison node
+    return Comparison(
+        comparator=Comparator(d["comparator"]),
+        attribute=d["attribute"],
+        value=d["value"]
+    )
 
-    if not comparisons:
-        return None
-
-    translator = PGVectorTranslator()
-
-    # If there is only one filter, it is a Comparison.
-    # We must use visit_comparison, NOT visit_operation.
-    if len(comparisons) == 1:
-        filter = translator.visit_comparison(comparisons[0])
+def build_pg_filter(filter_dict: dict):
+    # 1. Build the StructuredQuery directly using our clean mapper
+    structured_query = StructuredQuery(
+        query="", 
+        filter=_parse_dict_to_ir(filter_dict)
+    )
     
-    # If multiple, wrap them in an AND Operation and use visit_operation.
-    else:
-        _filter = Operation(operator=Operator.AND, arguments=comparisons)
-        filter = translator.visit_operation(_filter)
-    # print(filter)
-
-    return filter
+    # 2. Translate into PGVector's expected format
+    translator = PGVectorTranslator()
+    _, pg_kwargs = translator.visit_structured_query(structured_query)
+    
+    return pg_kwargs['filter']
 
 # --- Lifecycle Manager ---
 @asynccontextmanager
@@ -90,6 +86,7 @@ async def lifespan(app: FastAPI):
         f"@{cfg.database.host}/{cfg.database.dbname}"
     )
     engine = PGEngine.from_connection_string(connection_string)
+    app.state.engine = engine
     print("Database connection established.")
 
     # 2. Initialize Vector Stores (NOT Retrievers)
@@ -178,9 +175,8 @@ async def search_endpoint(request: SearchRequest):
         # 6. Format Response
         results = [
             SearchResult(
-                image_name=app.state.config.data.server_url + '/' + app.state.loader.get_relative_path_from_id(doc.page_content),
                 metadata=doc.metadata,
-                content=doc.page_content
+                image_id=doc.page_content
             ) for doc in docs
         ]
         
@@ -192,11 +188,11 @@ async def search_endpoint(request: SearchRequest):
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.get("/get-element-url")
-def get_element_url(id: str, what: List[str] = Query(default=["images"])):
+@app.get("/element-url")
+def element_url(id: str, what: List[str] = Query(default=["images"])):
     """
     Given an image name (ID) and one or more element types, return the full URL for each type.
-    Example: /get-element-url?id=20190101_121948_000.jpg&what=images&what=thumbnails
+    Example: /element-url?id=20190101_121948_000.jpg&what=images&what=thumbnails
     """
     try:
         types = what
@@ -210,6 +206,23 @@ def get_element_url(id: str, what: List[str] = Query(default=["images"])):
         return {"urls": urls}
     except Exception as e:
         error_str = f"URL Generation Error: {e}"
+        raise HTTPException(status_code=400, detail=error_str)
+    
+@app.get("/metadata-field")
+def metadata_field(id: str, field: List[str] = Query(default=["epoch"])):
+    """
+    Given an image name (ID) and a metadata field name, return the value of that field.
+    Example: /metadata-field?id=20190101_121948_000.jpg&field=hour
+    """
+    try:
+        hashed_id = generate_doc_id(id)
+        doc = app.state.vector_stores[next(iter(app.state.vector_stores))].get_by_ids(ids=[hashed_id], columns_override=field)
+        if not doc:
+            raise HTTPException(status_code=404, detail=f"No record found for ID '{id}'.")
+        return doc[0].metadata
+    
+    except Exception as e:
+        error_str = f"Metadata Field Error: {e}"
         raise HTTPException(status_code=400, detail=error_str)
 
 @hydra.main(version_base=None, config_path="configs", config_name="serve")

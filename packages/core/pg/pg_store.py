@@ -891,13 +891,13 @@ class PGVectorStore(VectorStore):
         """Check if index exists in the table."""
         return self._engine._run_as_sync(self.__vs.is_valid_index(index_name))
 
-    async def aget_by_ids(self, ids: Sequence[str]) -> list[Document]:
+    async def aget_by_ids(self, ids: Sequence[str], columns_override=None) -> list[Document]:
         """Get documents by ids."""
-        return await self._engine._run_as_async(self.__vs.aget_by_ids(ids=ids))
+        return await self._engine._run_as_async(self.__vs.aget_by_ids(ids=ids, columns_override=columns_override))
 
-    def get_by_ids(self, ids: Sequence[str]) -> list[Document]:
+    def get_by_ids(self, ids: Sequence[str], columns_override=None) -> list[Document]:
         """Get documents by ids."""
-        return self._engine._run_as_sync(self.__vs.aget_by_ids(ids=ids))
+        return self._engine._run_as_sync(self.__vs.aget_by_ids(ids=ids, columns_override=columns_override))
 
     def get_table_name(self) -> str:
         return self.__vs.table_name
