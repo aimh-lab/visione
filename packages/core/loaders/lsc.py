@@ -82,8 +82,14 @@ class LSCLoader:
         # Reconstruct utc_time_epoch from ImageID (sometimes utc_time_epoch is null)
         df['epoch'] = df['image_name'].apply(datetime_str_to_epoch)
 
-        # Get hour
+        # Get hour id
         df['hour_id'] = df['image_name'].str[:11]
+
+        # Get year, month, day, hour
+        df['year'] = df['image_name'].str[0:4].astype(int)
+        df['month'] = df['image_name'].str[4:6].astype(int)
+        df['day'] = df['image_name'].str[6:8].astype(int)
+        df['hour'] = df['image_name'].str[9:11].astype(int)
 
         # 5. Select only the columns you strictly need for metadata
         target_cols = [
@@ -93,7 +99,7 @@ class LSCLoader:
             "sleep_level", "time_in_bed", 
             "new_position", "new_semantic_name", "original_name", 
             "categories", "movement", "city", "country", "new_timezone", 
-            "image_name"
+            "image_name", "year", "month", "day", "hour"
         ]
                 
         # Filter DataFrame to only these columns
@@ -176,6 +182,10 @@ class LSCLoader:
         metadata_columns = [
             Column(name="minute_id", data_type="text"),
             Column(name="hour_id", data_type="text"),
+            Column(name="year", data_type="integer"),
+            Column(name="month", data_type="integer"),
+            Column(name="day", data_type="integer"),
+            Column(name="hour", data_type="integer"),
             Column(name="epoch", data_type="bigint"), 
             Column(name="position", data_type="point"),
             Column(name="altitude", data_type="float"),
