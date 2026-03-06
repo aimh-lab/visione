@@ -144,7 +144,7 @@
   let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
-  const STATUS_BAR_HEIGHT_PX = 48;
+  const STATUS_BAR_HEIGHT_PX = 34;
   const URL_SYNC_DEBOUNCE_MS = 180;
   let urlSyncTimer = null;
   let lastSearchResultSet = null;
