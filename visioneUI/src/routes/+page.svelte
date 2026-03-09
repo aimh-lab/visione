@@ -774,6 +774,92 @@ function handleViewSubmitted() {
     tick().then(() => similarityContainer?.scrollTo?.({ top: 0 }));
   }
 
+  function addSimilarityAsSearchStep(baseImgId, frame = null) {
+    const imgId = String(baseImgId || "").trim();
+    if (!imgId) return;
+
+    const existingSimilarityIndex = textareas.findIndex((t) => String(t?.similarityImgId || "").trim());
+    let targetIndex = existingSimilarityIndex;
+    let nextTextareas;
+
+    if (existingSimilarityIndex >= 0) {
+      nextTextareas = textareas.map((t, idx) => {
+        if (idx === existingSimilarityIndex) {
+          return { ...t, enabled: true, similarityImgId: imgId };
+        }
+        // Mark non-similarity steps as disabled-by-similarity so "Restore steps" works
+        const wasEnabled = t._disabledBySimilarity ? t._wasEnabledBeforeSimilarity : !!t.enabled;
+        return {
+          ...t,
+          enabled: false,
+          _wasEnabledBeforeSimilarity: wasEnabled,
+          _disabledBySimilarity: wasEnabled
+        };
+      });
+    } else {
+      const similarityStep = { value: "", enabled: true, similarityImgId: imgId };
+      const disabledExisting = textareas.map((t) => ({
+        ...t,
+        _wasEnabledBeforeSimilarity: !!t.enabled,
+        _disabledBySimilarity: !!t.enabled,
+        enabled: false
+      }));
+      nextTextareas = [...disabledExisting, similarityStep];
+      targetIndex = nextTextareas.length - 1;
+    }
+
+    const resolvedFrame =
+      frame ||
+      images.find((i) => i?.imgId === imgId) ||
+      similarityImages.find((i) => i?.imgId === imgId) ||
+      (view2Frames || []).find((i) => i?.imgId === imgId) ||
+      null;
+
+    textareas = nextTextareas;
+
+    if (resolvedFrame?.url) {
+      textareaImages = {
+        ...textareaImages,
+        [targetIndex]: [
+          {
+            url: resolvedFrame.url,
+            name: resolvedFrame.title || resolvedFrame.imgId || `Similarity ${targetIndex + 1}`,
+            type: "result",
+            imgId: resolvedFrame.imgId || imgId
+          }
+        ]
+      };
+    }
+
+    uiStore.actions.setLayoutTab("View1");
+    toasts.info(existingSimilarityIndex >= 0 ? "Similarity image replaced in active query step" : "Similarity added as active query step");
+    setTimeout(() => runSearchImmediate(), 0);
+  }
+
+  function restoreDisabledStepsFromSimilarity() {
+    const hadRestorableSteps = textareas.some((t) => t?._disabledBySimilarity);
+    if (!hadRestorableSteps) return;
+
+    textareas = textareas.map((t) => {
+      if (!t?._disabledBySimilarity) {
+        return {
+          ...t,
+          _disabledBySimilarity: false,
+          _wasEnabledBeforeSimilarity: false
+        };
+      }
+      return {
+        ...t,
+        enabled: t?._wasEnabledBeforeSimilarity === true,
+        _disabledBySimilarity: false,
+        _wasEnabledBeforeSimilarity: false
+      };
+    });
+
+    toasts.info("Previously disabled steps restored");
+    setTimeout(() => runSearchImmediate(), 0);
+  }
+
 
   // ---------------------------
   // Textareas ops (delegated to textareaController)
@@ -949,7 +1035,7 @@ function handleViewSubmitted() {
   }}
   onSimilaritySelected={() => {
     const item = getSelectedItemForShortcuts();
-    if (item?.imgId) openSimilarity(item.imgId);
+    if (item?.imgId) addSimilarityAsSearchStep(item.imgId, item);
   }}
   onVideoSummarySelected={() => {
     const item = getSelectedItemForShortcuts();
@@ -1104,6 +1190,7 @@ function handleViewSubmitted() {
         onUpdateTextarea={(i, v) => {
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, value: v } : t));
         }}
+        onRestoreDisabledSteps={restoreDisabledStepsFromSimilarity}
         onRunSearch={runSearch}
         onClearResults={() => {
           searchResultSet = null;
@@ -1135,7 +1222,7 @@ function handleViewSubmitted() {
         addRFNegativeByImg={addRFNegativeByImg}
         submitByImgId={submitByImgId}
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
-        onSimilarity={(imgId) => openSimilarity(imgId)}
+        onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         onCloseModal={closeModal}
         onPrev={() => navigateImage(-1)}
         onNext={() => navigateImage(1)}
@@ -1169,7 +1256,7 @@ function handleViewSubmitted() {
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
         onOpenFrame={(frame) => openFrameModal(frame)}
-        onSimilarity={(imgId) => openSimilarity(imgId)}
+        onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         addRFPositiveByImg={addRFPositiveByImg}
         addRFNegativeByImg={addRFNegativeByImg}
         submitByImgId={submitByImgId}
@@ -1208,7 +1295,7 @@ function handleViewSubmitted() {
         addRFNegativeByImg={addRFNegativeByImg}
         submitByImgId={submitByImgId}
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
-        onSimilarity={(imgId) => openSimilarity(imgId)}
+        onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         onCloseSimModal={closeSimilarityModal}
         onPrevSim={() => moveSimilarityBy(-1)}
         onNextSim={() => moveSimilarityBy(1)}

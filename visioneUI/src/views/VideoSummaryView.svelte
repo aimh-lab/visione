@@ -25,7 +25,7 @@
   export let onToggleSidebar = () => {};
 
   export let onOpenFrame = (_frame: Frame) => {};
-  export let onSimilarity = (_imgId: string) => {};
+  export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
   export let addRFPositiveByImg = (..._args: any[]) => {};
   export let addRFNegativeByImg = (..._args: any[]) => {};
   export let submitByImgId = (..._args: any[]) => {};
@@ -128,7 +128,7 @@
               {registerContainer}
                 on:open={(e: any) => onOpenFrame(e.detail.frame)}
                 on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
-                on:similarity={(e: any) => onSimilarity(e.detail.imgId)}
+                on:similarity={(e: any) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
                 on:rfPositive={(e: any) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
                 on:rfNegative={(e: any) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
                 on:submit={(e: any) => submitByImgId(e.detail.img.imgId, e.detail.img)}

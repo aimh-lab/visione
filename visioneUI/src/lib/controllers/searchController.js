@@ -49,8 +49,18 @@ export function createSearchController({
     setSearchState({ loading: true, error: null });
 
     const query = textareas
-      .filter(t => t.enabled && t.value?.trim())
-      .map(t => t.value.trim())
+      .filter((t) => {
+        const text = String(t?.value || '').trim();
+        const simId = String(t?.similarityImgId || '').trim();
+        return !!t?.enabled && (text.length > 0 || simId.length > 0);
+      })
+      .map((t) => {
+        const text = String(t?.value || '').trim();
+        const simId = String(t?.similarityImgId || '').trim();
+        if (simId && text) return `sim:${simId} text:${text}`;
+        if (simId) return `sim:${simId}`;
+        return text;
+      })
       .join(' ');
 
     const start = Date.now();

@@ -104,13 +104,15 @@
     flex-direction: column;
   }
   
-  .thumb-selected { 
-    border-color: #dc2626 !important; 
+  .thumb-selected {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35);
   }
   
   .timeline-container.thumb-selected {
-    border-color: #dc2626 !important;
+    border-color: #0ea5e9 !important;
     border-top: none;
+    box-shadow: 0 3px 12px rgba(14, 165, 233, 0.18);
   }
   
   .image-overlay { 

@@ -203,6 +203,7 @@
             on:remove={(e) => removeTA(e.detail.index)}
             on:toggle={(e) => toggleTA(e.detail.index)}
             on:update={(e) => updateTA(e.detail.index, e.detail.value)}
+            on:restoreDisabledSteps={() => dispatch('restoreDisabledSteps')}
             on:search={handleSearchFromTextarea}
             on:swap={(e) => {
               swapTA(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap');

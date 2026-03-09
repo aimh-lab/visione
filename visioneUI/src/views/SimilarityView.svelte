@@ -48,7 +48,7 @@
 
   // Griglia azioni
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
-  export let onSimilarity = (_imgId: string) => {};
+  export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
 
   export let addRFPositiveByImg = (_imgId: string) => {};
   export let addRFNegativeByImg = (_imgId: string) => {};
@@ -160,7 +160,7 @@
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
             on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
-            on:similarity={(e) => onSimilarity(e.detail.imgId)}
+            on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
             on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
             on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
             on:submit={(e) => submitByImgId(e.detail.img.imgId)}
