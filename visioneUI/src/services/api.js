@@ -110,14 +110,46 @@ export class VisioneAPI {
 
   // Search API
   async search({ textareas, simReorder = false, framesPerRow = 5 }) {
-    const activeTextareas = textareas.filter(t => t.enabled && t.value.trim());
+    const activeTextareas = textareas.filter((t) => {
+      const text = String(t?.value || "").trim();
+      const simId = String(t?.similarityImgId || "").trim();
+      return !!t?.enabled && (text.length > 0 || simId.length > 0);
+    });
     
     if (activeTextareas.length === 0) {
       throw new APIError('At least one textarea must be enabled and contain text', 400);
     }
     
-    const queries = activeTextareas.map(t => ({ textual: t.value.trim() }));
-    const parameters = activeTextareas.map(() => ({ textualMode: "all" }));
+    const SIMILARITY_PREFIX = "similarity:";
+    const queries = activeTextareas.map((t) => {
+      const raw = String(t.value || "").trim();
+      const similarityImgId = String(t?.similarityImgId || "").trim();
+
+      if (similarityImgId) {
+        const queryPart = { comboVisualSim: similarityImgId };
+        if (raw) queryPart.textual = raw;
+        return queryPart;
+      }
+
+      if (raw.toLowerCase().startsWith(SIMILARITY_PREFIX)) {
+        const imgId = raw.slice(SIMILARITY_PREFIX.length).trim();
+        if (!imgId) {
+          throw new APIError('Similarity query requires an image id', 400);
+        }
+        return { comboVisualSim: imgId };
+      }
+      return { textual: raw };
+    });
+    const parameters = activeTextareas.map((t) => {
+      const raw = String(t.value || "").trim().toLowerCase();
+      const similarityImgId = String(t?.similarityImgId || "").trim();
+      const hasLegacySimilarity = raw.startsWith(SIMILARITY_PREFIX);
+      const hasSimilarity = !!similarityImgId || hasLegacySimilarity;
+      const hasText = raw.length > 0 && !hasLegacySimilarity;
+      if (hasSimilarity && hasText) return { simReorder: "true", textualMode: "all" };
+      if (hasSimilarity) return { simReorder: "true" };
+      return { textualMode: "all" };
+    });
     const payload = { query: queries, parameters };
     
     const form = new URLSearchParams();

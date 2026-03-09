@@ -17,6 +17,7 @@
     updateImages: { index: number; images: unknown[] };
     selectRightTab: unknown;
     clearQueryInputs: void;
+    restoreDisabledSteps: void;
   };
 
   // Stato/props dal genitore
@@ -62,6 +63,7 @@
   export let onRemoveTextarea = (_index: number) => {};
   export let onToggleTextarea = (_index: number) => {};
   export let onUpdateTextarea = (_index: number, _value: string) => {};
+  export let onRestoreDisabledSteps = () => {};
 
   export let rows: Img[][] = [];
 
@@ -76,7 +78,7 @@
 
   // Azioni griglia
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
-  export let onSimilarity = (_imgId: string) => {};
+  export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
   export let openByImgId = (_imgId: string) => {};  
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
@@ -163,6 +165,7 @@
   on:removeTextarea={(e) => onRemoveTextarea(e.detail.index)}
   on:toggleTextarea={(e) => onToggleTextarea(e.detail.index)}
   on:updateTextarea={(e) => onUpdateTextarea(e.detail.index, e.detail.value)}
+  on:restoreDisabledSteps={onRestoreDisabledSteps}
   on:runSearch={onRunSearch}
   on:clearResults={onClearResults}
   on:clearQueryInputs={() => dispatch('clearQueryInputs')}
@@ -313,7 +316,7 @@
             on:open={handleImageClick}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}
             on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
-            on:similarity={(e) => onSimilarity(e.detail.imgId)}
+            on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
             on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
             on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
             on:submit={(e) => submitByImgId(e.detail.img.imgId)}
@@ -358,7 +361,7 @@
   on:next={onNext}
   on:submit={(e) => submitByImgId(e.detail.img.imgId)}
   on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
-  on:similarity={(e) => onSimilarity(e.detail.imgId)}
+  on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.img ?? null)}
   on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
   on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}

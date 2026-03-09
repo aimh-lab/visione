@@ -716,8 +716,8 @@
                     cursor-pointer transition-all duration-200 focus:outline-none
                     {isSelectionMode 
                       ? 'ring-4 ring-green-500 hover:ring-green-600 shadow-lg shadow-green-500/30 hover:scale-105' 
-                      : isSelected(item) 
-                        ? 'ring-8 ring-red-500 shadow-lg shadow-blue-500/30' 
+                      : isSelected(item)
+                        ? 'ring-8 ring-sky-500 shadow-lg shadow-sky-500/30'
                         : 'ring-2 ring-gray-200 hover:ring-blue-400 hover:shadow-md'}"
               style="height: var(--kf-size, 160px); min-width: var(--min-card-w, 140px);"
               title={isSelectionMode ? `✓ Click to select: ${getTitle(item)}` : getTitle(item)}

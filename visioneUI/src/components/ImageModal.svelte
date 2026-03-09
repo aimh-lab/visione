@@ -16,7 +16,7 @@
   // Handler per le azioni
   const handleSubmit = (e) => { e?.stopPropagation(); dispatch("submit", { img: image }); };
   const handleVideoSummary = (e) => { e?.stopPropagation(); dispatch("videoSummary", { img: image }); };
-  const handleSimilarity = (e) => { e?.stopPropagation(); dispatch("similarity", { imgId: image?.imgId }); };
+  const handleSimilarity = (e) => { e?.stopPropagation(); dispatch("similarity", { imgId: image?.imgId, img: image }); };
   const handleRFPositive = (e) => { e?.stopPropagation(); dispatch("rfPositive", { img: image }); };
   const handleRFNegative = (e) => { e?.stopPropagation(); dispatch("rfNegative", { img: image }); };
   const handleOpenVideoPlayer = (e) => {

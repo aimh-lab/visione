@@ -6,6 +6,9 @@
   type QueryTextarea = {
     value: string;
     enabled: boolean;
+    similarityImgId?: string;
+    _disabledBySimilarity?: boolean;
+    _wasEnabledBeforeSimilarity?: boolean;
   };
 
   type AvailableImage = {
@@ -62,6 +65,7 @@
     startImageSelection: { textareaIndex: number };
     imageSelected: void;
     updateImages: { index: number; images: AttachedImage[] };
+    restoreDisabledSteps: void;
   };
 
   export let textareas: QueryTextarea[] = [];
@@ -83,6 +87,9 @@
 
   let isSelectingImageFor: number | null = null;
   let textareaRefs: Array<HTMLTextAreaElement | null> = [];
+  let similarityTextConstraintOpen: Record<number, boolean> = {};
+  let enabledStepCount = 0;
+  let showSequenceChrome = false;
 
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
@@ -132,6 +139,92 @@
     const clamped = Math.max(0, Math.min(1, alpha));
     return `rgba(${r}, ${g}, ${b}, ${clamped})`;
   }
+
+  function getStepPhaseLabel(index: number) {
+    const enabledIndexes = textareas
+      .map((t, idx) => (t?.enabled === true ? idx : -1))
+      .filter((idx) => idx >= 0);
+
+    if (enabledIndexes.length <= 1) return '';
+    if (!textareas[index]?.enabled) return '';
+
+    const enabledPos = enabledIndexes.indexOf(index);
+    if (enabledPos === 0) return 'First';
+    if (enabledPos === enabledIndexes.length - 1) return 'Finally';
+    return 'Then';
+  }
+
+  function getEnabledIndexes() {
+    return textareas
+      .map((t, idx) => (t?.enabled === true ? idx : -1))
+      .filter((idx) => idx >= 0);
+  }
+
+  function isSimilarityStep(index: number) {
+    const simId = String(textareas[index]?.similarityImgId || '').trim();
+    if (simId) return true;
+    return (textareaImages[index] || []).some((img) => img?.type === 'result');
+  }
+
+  function getPrimarySimilarityImage(index: number) {
+    const images = textareaImages[index] || [];
+    return images.find((img) => img?.type === 'result') || images[0] || null;
+  }
+
+  function getPrimarySimilarityImageIndex(index: number) {
+    const images = textareaImages[index] || [];
+    const resultIndex = images.findIndex((img) => img?.type === 'result');
+    if (resultIndex >= 0) return resultIndex;
+    return images.length > 0 ? 0 : -1;
+  }
+
+  function shouldShowSimilarityTextConstraint(index: number) {
+    if (!isSimilarityStep(index)) return true;
+    if (similarityTextConstraintOpen[index]) return true;
+    return !!String(textareas[index]?.value || '').trim();
+  }
+
+  function toggleSimilarityTextConstraint(index: number) {
+    similarityTextConstraintOpen = {
+      ...similarityTextConstraintOpen,
+      [index]: !shouldShowSimilarityTextConstraint(index)
+    };
+  }
+
+  function hasDisabledStepsBySimilarity() {
+    return textareas.some((t) => t?._disabledBySimilarity === true);
+  }
+
+  function restoreDisabledStepsBySimilarity() {
+    dispatch('restoreDisabledSteps');
+  }
+
+  function getStepContextLabel(index: number) {
+    const phase = getStepPhaseLabel(index);
+    if (phase) return phase;
+    return '';
+  }
+
+  function getStepPlaceholder(index: number) {
+    if (!textareas[index]?.enabled) return 'Enable this step to edit';
+
+    if (isSimilarityStep(index)) {
+      return 'Optional text constraint for this visual query';
+    }
+
+    const enabledIndexes = getEnabledIndexes();
+
+    if (enabledIndexes.length <= 1) {
+      return 'Describe what happens in the scene';
+    }
+
+    const enabledPos = enabledIndexes.indexOf(index);
+    if (enabledPos <= 0) return 'Describe what happens in the scene';
+    return 'Describe a scene appearing after the previous one';
+  }
+
+  $: enabledStepCount = textareas.filter((t) => t?.enabled === true).length;
+  $: showSequenceChrome = enabledStepCount > 1;
 
   function resizeTextareaNode(textarea: HTMLTextAreaElement | null) {
     if (!textarea) return;
@@ -657,23 +750,26 @@
 <div class="space-y-4">
   <!-- Query cards -->
   <div
-    class="relative space-y-4 pl-8"
+    class="relative space-y-4 {showSequenceChrome ? 'pl-8' : ''}"
     role="list"
     aria-label="Query steps"
     on:dragover={handleStepsListDragOver}
     on:drop={handleStepsListDrop}
   >
-    <div class="ui-query-timeline-line pointer-events-none absolute left-[11px] top-2 bottom-2 w-px bg-cyan-400/45"></div>
+    {#if showSequenceChrome}
+      <div class="ui-query-timeline-line pointer-events-none absolute left-[11px] top-2 bottom-2 w-px bg-cyan-400/45"></div>
+    {/if}
 
     {#each textareas as textarea, i}
       {@const stepColor = getStepColor(i)}
+      {@const isVisualQueryStep = isSimilarityStep(i)}
       <div
         bind:this={stepRefs[i]}
         class="group relative transition-all rounded-xl {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
         role="group"
         aria-label={`Query step ${i + 1}`}
       >
-        {#if textareas.length > 1}
+        {#if showSequenceChrome && textareas.length > 1}
           <button
             type="button"
             draggable="true"
@@ -687,14 +783,16 @@
           </button>
         {/if}
 
+        {#if showSequenceChrome && textarea.enabled}
+          <div
+            class="ui-query-step-index absolute -left-8 top-2 z-30 w-6 h-6 rounded-full border-2 bg-slate-950 shadow-[0_0_0_3px_rgba(2,6,23,0.7)] flex items-center justify-center"
+            style={`border-color: ${withAlpha(stepColor, 0.95)}; color: ${withAlpha(stepColor, 0.95)};`}
+          >
+            <span class="text-[10px] font-semibold leading-none">{i + 1}</span>
+          </div>
+        {/if}
         <div
-          class="ui-query-step-index absolute -left-8 top-2 z-30 w-6 h-6 rounded-full border-2 bg-slate-950 shadow-[0_0_0_3px_rgba(2,6,23,0.7)] flex items-center justify-center"
-          style={`border-color: ${withAlpha(stepColor, 0.95)}; color: ${withAlpha(stepColor, 0.95)};`}
-        >
-          <span class="text-[10px] font-semibold leading-none">{i + 1}</span>
-        </div>
-        <div
-          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {textarea.enabled ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]' : 'bg-slate-900/50 border-slate-700/55 opacity-65'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
+          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {textarea.enabled ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]' : 'bg-slate-900/45 border-slate-700/55 opacity-90'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
           style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
           role="group"
           aria-label={`Drop frame on step ${i + 1}`}
@@ -703,20 +801,35 @@
           on:dragleave={(e) => handleTextareaDragLeave(i, e)}
         >
           <div
-            class="flex items-center justify-between gap-2 px-2.5 pt-2 pb-1.5 border-b border-slate-700/45 {textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
-            draggable={textareas.length > 1}
+            class="flex items-center justify-between gap-2 px-2.5 pt-2 pb-1.5 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
+            draggable={showSequenceChrome && textareas.length > 1}
             on:dragstart={(e) => startStepDrag(i, e)}
             on:dragend={handleStepDragEnd}
             role="group"
             aria-label={`Step ${i + 1} header drag area`}
-            title={textareas.length > 1 ? 'Drag this header to reorder step' : undefined}
+            title={showSequenceChrome && textareas.length > 1 ? 'Drag this header to reorder step' : undefined}
           >
-            <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(107, 114, 128)'};`}>
-              {textareas.length > 1 ? (i === 0 ? 'First' : i === textareas.length - 1 ? 'Finally' : 'Then') : ''}
+            <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
+              {getStepContextLabel(i)}
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              {#if !!String(textarea.similarityImgId || '').trim() && hasDisabledStepsBySimilarity()}
+                <button
+                  type="button"
+                  on:click|stopPropagation={restoreDisabledStepsBySimilarity}
+                  class="text-[9px] font-semibold rounded-md px-1.5 py-0.5 bg-emerald-900/35 border border-emerald-700/45 text-emerald-200 hover:bg-emerald-800/45 transition-colors"
+                  title="Restore text steps"
+                  aria-label="Restore text steps"
+                >
+                  <svg class="w-3 h-3 inline -mt-px mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0115.55-6.36"/><path d="M21 3v6h-6"/><path d="M21 12a9 9 0 01-15.55 6.36"/><path d="M3 21v-6h6"/></svg>
+                  Restore steps
+                </button>
+              {/if}
             </div>
 
             <div class="flex items-center gap-1">
-              {#if i > 0}
+              {#if showSequenceChrome && i > 0}
                 <button
                   type="button"
                   on:click|stopPropagation={() => swapQueries(i, i - 1)}
@@ -731,7 +844,7 @@
                 </button>
               {/if}
 
-              {#if i < textareas.length - 1}
+              {#if showSequenceChrome && i < textareas.length - 1}
                 <button
                   type="button"
                   on:click|stopPropagation={() => swapQueries(i, i + 1)}
@@ -760,7 +873,7 @@
                 ></span>
               </button>
 
-              {#if textareas.length > 1}
+              {#if showSequenceChrome && textareas.length > 1}
                 <div class="relative step-actions-menu">
                   <button
                     type="button"
@@ -797,68 +910,119 @@
 
           <div class="relative">
             {#if textareaImages[i]?.length > 0}
-              <div class="px-2.5 pt-1.5 pb-1.5 flex flex-wrap gap-2 border-b border-slate-700/45">
-                {#each textareaImages[i] as image, imgIdx}
-                  <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
-                    <img
-                      src={image.url}
-                      alt={image.name}
-                      class="w-full h-14 object-cover"
-                    />
-                    {#if image.type === 'result'}
-                      <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
-                        RESULT
+              {#if isVisualQueryStep}
+                {@const similarityImage = getPrimarySimilarityImage(i)}
+                {@const similarityImageIndex = getPrimarySimilarityImageIndex(i)}
+                {#if similarityImage}
+                  <div class="px-2.5 pt-2 pb-2 border-b border-slate-700/45">
+                    <div class="relative rounded-lg overflow-hidden bg-slate-900/80 border border-cyan-700/45">
+                      <img
+                        src={similarityImage.url}
+                        alt={similarityImage.name}
+                        class="w-full max-h-40 object-contain bg-slate-950/50"
+                      />
+                      <div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-semibold bg-cyan-600/90 text-white leading-none">
+                        <svg class="w-3 h-3 inline -mt-px mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        Query image
                       </div>
-                    {/if}
-                    <button
-                      type="button"
-                      on:click={() => removeImageFromTextarea(i, imgIdx)}
-                      aria-label="Remove image"
-                      class="absolute top-1 right-1 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
-                      title="Remove image"
-                    >
-                      <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                      </svg>
-                    </button>
-
-                    <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
-                      <div class="truncate text-[9px] text-slate-300">{image.name}</div>
-                      <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
+                      <button
+                        type="button"
+                        on:click={() => similarityImageIndex >= 0 && removeImageFromTextarea(i, similarityImageIndex)}
+                        aria-label="Remove similarity image"
+                        class="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                        title="Remove image"
+                      >
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      </button>
+                      <div class="px-2 py-1.5 bg-slate-950/70 border-t border-slate-700/60">
+                        <div class="truncate text-[10px] text-slate-200 font-medium">{similarityImage.name}</div>
+                      </div>
                     </div>
                   </div>
-                {/each}
+                {/if}
+              {:else}
+                <div class="px-2.5 pt-1.5 pb-1.5 flex flex-wrap gap-2 border-b border-slate-700/45">
+                  {#each textareaImages[i] as image, imgIdx}
+                    <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                      <img
+                        src={image.url}
+                        alt={image.name}
+                        class="w-full max-h-20 object-contain bg-slate-950/50"
+                      />
+                      {#if image.type === 'result'}
+                        <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
+                          RESULT
+                        </div>
+                      {/if}
+                      <button
+                        type="button"
+                        on:click={() => removeImageFromTextarea(i, imgIdx)}
+                        aria-label="Remove image"
+                        class="absolute top-1 right-1 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                        title="Remove image"
+                      >
+                        <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      </button>
+
+                      <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
+                        <div class="truncate text-[9px] text-slate-300">{image.name}</div>
+                        <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            {/if}
+
+            {#if isVisualQueryStep}
+              <div class="px-2.5 pt-1 flex items-center">
+                <button
+                  type="button"
+                  on:click={() => toggleSimilarityTextConstraint(i)}
+                  class="inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors {shouldShowSimilarityTextConstraint(i) ? 'border-cyan-600/55 bg-cyan-900/40 text-cyan-200 hover:bg-cyan-800/50' : 'border-slate-600/55 bg-slate-800/55 text-slate-400 hover:bg-slate-700/65 hover:text-slate-200'}"
+                  title="{shouldShowSimilarityTextConstraint(i) ? 'Hide text filter' : 'Add text filter'}"
+                  aria-label="{shouldShowSimilarityTextConstraint(i) ? 'Hide text filter' : 'Add text filter'}"
+                  aria-pressed={shouldShowSimilarityTextConstraint(i)}
+                >
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M4 7h16M4 12h12M4 17h8"/>
+                  </svg>
+                </button>
               </div>
             {/if}
 
-            <textarea
-              bind:this={textareaRefs[i]}
-              use:autoResizeAction={textarea.value}
-              class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
-                     {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-500 placeholder-slate-600 cursor-not-allowed line-through'}"
-              rows="1"
-              bind:value={textarea.value}
-              placeholder={textarea.enabled
-                ? `Describe ${i === 0 ? 'what happens in the scene' : 'a scene appearing after the previous one'}`
-                : 'This step is skipped'}
-              disabled={!textarea.enabled}
-              style="overflow-y: hidden;"
-              on:input={(e) => handleTextareaInput(i, e)}
-              on:keydown={(e) => handleKeyDown(e, i)}
-            ></textarea>
+            {#if !isVisualQueryStep || shouldShowSimilarityTextConstraint(i)}
+              <textarea
+                bind:this={textareaRefs[i]}
+                use:autoResizeAction={textarea.value}
+                class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                       {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
+                rows="1"
+                bind:value={textarea.value}
+                placeholder={getStepPlaceholder(i)}
+                disabled={!textarea.enabled}
+                style="overflow-y: hidden;"
+                on:input={(e) => handleTextareaInput(i, e)}
+                on:keydown={(e) => handleKeyDown(e, i)}
+              ></textarea>
 
-            {#if textarea.enabled && textarea.value?.trim()}
-              <button
-                type="button"
-                on:click={() => clearTextareaValue(i)}
-                class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
-                title="Clear text"
-                aria-label="Clear textarea text"
-              >
-                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
+              {#if textarea.enabled && textarea.value?.trim()}
+                <button
+                  type="button"
+                  on:click={() => clearTextareaValue(i)}
+                  class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                  title="Clear text"
+                  aria-label="Clear textarea text"
+                >
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              {/if}
             {/if}
           </div>
 
@@ -995,14 +1159,16 @@
               </div>
             </div>
 
-            <div class="absolute bottom-2.5 right-0 flex items-center justify-between px-2">
-              <span class="text-[9px] font-medium text-slate-500">
-                {textarea.value?.length || 0} chars
-                {#if textareaImages[i]?.length > 0}
-                  · {textareaImages[i].length} img
-                {/if}
-              </span>
-            </div>
+            {#if textarea.enabled}
+              <div class="absolute bottom-2.5 right-0 flex items-center justify-between px-2">
+                <span class="text-[9px] font-medium text-slate-500">
+                  {textarea.value?.length || 0} chars
+                  {#if textareaImages[i]?.length > 0}
+                    · {textareaImages[i].length} img
+                  {/if}
+                </span>
+              </div>
+            {/if}
         </div>
 
       </div>
@@ -1010,7 +1176,7 @@
   </div>
 
   <!-- Add button -->
-  <div class="pl-8">
+  <div class={showSequenceChrome ? "pl-8" : ""}>
     <button
       on:click={() => add(textareas.length - 1)}
       class="w-full py-2.5 border-2 border-dashed border-gray-700 hover:border-blue-600/50 rounded-lg text-xs text-gray-400 hover:text-blue-400 transition-all flex items-center justify-center space-x-2"
