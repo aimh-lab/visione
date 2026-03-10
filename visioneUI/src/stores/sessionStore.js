@@ -5,14 +5,16 @@ const DEFAULT = {
   rfPositive: [],
   rfNegative: [],
   submittedImages: [],
-  submittedAnswers: []
+  submittedAnswers: [],
+  pinnedVideoSummaries: []
 };
 
 const freshDefault = () => ({
   rfPositive: [],
   rfNegative: [],
   submittedImages: [],
-  submittedAnswers: []
+  submittedAnswers: [],
+  pinnedVideoSummaries: []
 });
 
 function createSessionStore() {
@@ -103,6 +105,49 @@ function createSessionStore() {
       });
 
       uiStore.actions.focusRightTab('RF');
+    },
+
+    pinVideoSummary({ videoId, highlightImgId = null, label = '' }) {
+      const safeVideoId = String(videoId || '').trim();
+      if (!safeVideoId) return { added: false, reason: 'missing-video-id' };
+
+      const safeHighlight = String(highlightImgId || '').trim() || null;
+      const safeLabel = String(label || '').trim() || safeVideoId;
+
+      let added = false;
+      update((s) => {
+        const exists = (s.pinnedVideoSummaries || []).some(
+          (item) => item.videoId === safeVideoId && String(item.highlightImgId || '') === String(safeHighlight || '')
+        );
+        if (exists) return s;
+        added = true;
+        return {
+          ...s,
+          pinnedVideoSummaries: [
+            { videoId: safeVideoId, highlightImgId: safeHighlight, label: safeLabel },
+            ...(s.pinnedVideoSummaries || [])
+          ].slice(0, 12)
+        };
+      });
+
+      return { added, reason: added ? 'added' : 'already-exists' };
+    },
+
+    unpinVideoSummary({ videoId, highlightImgId = null }) {
+      const safeVideoId = String(videoId || '').trim();
+      if (!safeVideoId) return;
+      const safeHighlight = String(highlightImgId || '').trim() || null;
+
+      update((s) => ({
+        ...s,
+        pinnedVideoSummaries: (s.pinnedVideoSummaries || []).filter(
+          (item) => !(item.videoId === safeVideoId && String(item.highlightImgId || '') === String(safeHighlight || ''))
+        )
+      }));
+    },
+
+    clearPinnedVideoSummaries() {
+      update((s) => ({ ...s, pinnedVideoSummaries: [] }));
     }
   };
 

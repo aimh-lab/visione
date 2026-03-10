@@ -12,11 +12,14 @@
   export let keyframeSize = 130;
   export let dresEnabled = false;
   export let challengeType = "KIS";
+  export let pinnedSummaries = [];
+  export let activePinnedSummaryKey = '';
   
   const dispatch = createEventDispatcher();
   
   let isSortDropdownOpen = false;
   let isChallengeDropdownOpen = false;
+  let isPinnedDropdownOpen = false;
   const challengeOptions = ["KIS", "AVS", "Q&A"];
   
   const sortOptions = [
@@ -56,6 +59,23 @@
     dispatch("changeChallengeType", { type });
     isChallengeDropdownOpen = false;
   };
+
+  const openPinnedSummary = (item) => {
+    dispatch('openPinnedVideoSummary', { item });
+    isPinnedDropdownOpen = false;
+  };
+
+  const unpinSummary = (event, item) => {
+    event.stopPropagation();
+    dispatch('unpinVideoSummary', { item });
+  };
+
+  const clearPinnedSummaries = () => {
+    dispatch('clearPinnedVideoSummaries');
+    isPinnedDropdownOpen = false;
+  };
+
+  const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
   
@@ -66,6 +86,9 @@
     if (isChallengeDropdownOpen && !event.target.closest('.challenge-dropdown-container')) {
       isChallengeDropdownOpen = false;
     }
+    if (isPinnedDropdownOpen && !event.target.closest('.pinned-dropdown-container')) {
+      isPinnedDropdownOpen = false;
+    }
   }
 </script>
 
@@ -74,38 +97,105 @@
 <div class="w-full bg-gradient-to-b from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
   <div class="w-full px-4 flex items-end justify-between relative">
     <!-- Tab buttons (left) -->
-    <div class="ui-main-tab-strip ml-8 flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-      {#each tabs as view, idx}
-        {@const config = getConfig(view)}
+    <div class="ml-8 flex items-end gap-2">
+      <div class="ui-main-tab-strip flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+        {#each tabs as view, idx}
+          {@const config = getConfig(view)}
+          <button
+            on:click={() => dispatch('change', { tab: view })}
+            class="ui-main-tab group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2 border
+                  {active === view 
+                    ? 'ui-main-tab-active bg-white text-blue-700 border-blue-500 shadow-[0_-1px_0_rgba(255,255,255,0.8),0_6px_14px_rgba(37,99,235,0.18)] -mb-px' 
+                    : 'ui-main-tab-inactive bg-transparent text-gray-700 border-transparent hover:bg-white/70 hover:text-gray-900 hover:border-gray-300'}"
+            aria-current={active === view ? 'page' : undefined}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" 
+                class="w-4 h-4 transition-colors {active === view ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round">
+              {@html config.icon}
+            </svg>
+            <span class="text-sm whitespace-nowrap">{config.label}</span>
+            
+            {#if active === view}
+              <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            {/if}
+          </button>
+
+          {#if idx < tabs.length - 1 && active !== tabs[idx] && active !== tabs[idx + 1]}
+            <div class="ui-main-tab-divider self-center h-4 w-px bg-gray-400/70 mb-0.5"></div>
+          {/if}
+        {/each}
+      </div>
+
+      <div class="relative pinned-dropdown-container pb-1">
         <button
-          on:click={() => dispatch('change', { tab: view })}
-          class="ui-main-tab group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2 border
-                 {active === view 
-                   ? 'ui-main-tab-active bg-white text-blue-700 border-blue-500 shadow-[0_-1px_0_rgba(255,255,255,0.8),0_6px_14px_rgba(37,99,235,0.18)] -mb-px' 
-                   : 'ui-main-tab-inactive bg-transparent text-gray-700 border-transparent hover:bg-white/70 hover:text-gray-900 hover:border-gray-300'}"
-          aria-current={active === view ? 'page' : undefined}
+          type="button"
+          aria-label="Pinned video summaries"
+          title="Pinned video summaries"
+          class="ui-toolbar-btn ui-toolbar-settings p-2 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm hover:shadow-md relative"
+          on:click|stopPropagation={() => isPinnedDropdownOpen = !isPinnedDropdownOpen}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" 
-               class="w-4 h-4 transition-colors {active === view ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}" 
-               viewBox="0 0 24 24" 
-               fill="none" 
-               stroke="currentColor" 
-               stroke-width="2" 
-               stroke-linecap="round" 
-               stroke-linejoin="round">
-            {@html config.icon}
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5a3 3 0 0 1 6 0c0 1.37-.72 2.58-1.8 3.26l1.55 3.24h-5.5l1.55-3.24A3.93 3.93 0 0 1 9 5Z"/>
+            <path d="M12 11.5v7.5"/>
+            <path d="M10 15.5h4"/>
           </svg>
-          <span class="text-sm whitespace-nowrap">{config.label}</span>
-          
-          {#if active === view}
-            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+          {#if pinnedSummaries.length > 0}
+            <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-blue-600 text-white text-[10px] leading-4 text-center font-semibold">{Math.min(pinnedSummaries.length, 99)}</span>
           {/if}
         </button>
 
-        {#if idx < tabs.length - 1 && active !== tabs[idx] && active !== tabs[idx + 1]}
-          <div class="ui-main-tab-divider self-center h-4 w-px bg-gray-400/70 mb-0.5"></div>
+        {#if isPinnedDropdownOpen}
+          <div class="ui-sort-dropdown-menu absolute left-0 top-full mt-2 w-64 rounded-lg shadow-xl border py-1 z-50">
+            <div class="ui-position-menu-header px-3 py-2 border-b flex items-center justify-between">
+              <span class="text-xs font-semibold">Pinned summaries</span>
+              {#if pinnedSummaries.length > 0}
+                <button
+                  type="button"
+                  class="text-[11px] font-medium text-red-500 hover:text-red-400"
+                  on:click={clearPinnedSummaries}
+                >
+                  Clear
+                </button>
+              {/if}
+            </div>
+
+            {#if pinnedSummaries.length === 0}
+              <div class="px-3 py-3 text-xs text-gray-500">No pinned summaries yet</div>
+            {:else}
+              {#each pinnedSummaries as item}
+                <button
+                  type="button"
+                  class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {summaryKey(item) === activePinnedSummaryKey ? 'ui-sort-option-active' : ''}"
+                  on:click={() => openPinnedSummary(item)}
+                  title={`Open ${item.label || item.videoId}`}
+                >
+                  <span class="min-w-0 flex-1 text-xs truncate {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700 font-semibold' : ''}">{item.label || item.videoId}</span>
+                  <span class="text-[10px] opacity-75 {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700' : ''}">{item.videoId}</span>
+                  <span
+                    role="button"
+                    tabindex="0"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50"
+                    on:click={(event) => unpinSummary(event, item)}
+                    on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && unpinSummary(event, item)}
+                    aria-label={`Unpin ${item.label || item.videoId}`}
+                    title="Unpin"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </span>
+                </button>
+              {/each}
+            {/if}
+          </div>
         {/if}
-      {/each}
+      </div>
     </div>
 
     <!-- Logo + Label al centro -->
