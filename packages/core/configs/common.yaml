@@ -11,16 +11,16 @@ embedding:
   models:
     - name: "qwen_embedding_8B"
       dim: 4096
-      mrl_dim_serve: 1024
+      mrl_dim: 1024
     - name: "openclip_clip_vit_b_32"
       dim: 512
-      mrl_dim_serve: null 
+      mrl_dim: null 
     - name: "openclip_clip_vit_l_14"
       dim: 768
-      mrl_dim_serve: null
+      mrl_dim: null
     - name: "dinov2_base"
       dim: 768
-      mrl_dim_serve: null
+      mrl_dim: null
 
 data:
   server_url: "http://visione-dev.isti.cnr.it:3333"

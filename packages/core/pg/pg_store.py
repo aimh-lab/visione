@@ -1,7 +1,7 @@
 # TODO: Remove below import when minimum supported Python version is 3.10
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, Optional, Sequence
+from typing import Any, Callable, Iterable, Optional, Sequence, Union, Dict, List
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -46,11 +46,11 @@ class PGVectorStore(VectorStore):
     async def create(
         cls: type[PGVectorStore],
         engine: PGEngine,
-        embedding_service: Embeddings,
+        embedding_service: Union[Embeddings, Dict[str, Embeddings]],
         table_name: str,
         schema_name: str = "public",
         content_column: str = "content",
-        embedding_column: str = "embedding",
+        embedding_column: Union[str, List[str]] = "embedding",
         metadata_columns: Optional[list[str]] = None,
         ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
@@ -63,6 +63,7 @@ class PGVectorStore(VectorStore):
         hybrid_search_config: Optional[HybridSearchConfig] = None,
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
+        model_column_map: Optional[Dict[str, str]] = None,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance.
 
@@ -106,6 +107,7 @@ class PGVectorStore(VectorStore):
             hybrid_search_config=hybrid_search_config,
             groupby_column=groupby_column,
             temporal_column=temporal_column,
+            model_column_map=model_column_map,
         )
         vs = await engine._run_as_async(coro)
         return cls(cls.__create_key, engine, vs)
@@ -114,11 +116,11 @@ class PGVectorStore(VectorStore):
     def create_sync(
         cls,
         engine: PGEngine,
-        embedding_service: Embeddings,
+        embedding_service: Union[Embeddings, Dict[str, Embeddings]],
         table_name: str,
         schema_name: str = "public",
         content_column: str = "content",
-        embedding_column: str = "embedding",
+        embedding_column: Union[str, List[str]] = "embedding",
         metadata_columns: Optional[list[str]] = None,
         ignore_metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
@@ -131,6 +133,7 @@ class PGVectorStore(VectorStore):
         hybrid_search_config: Optional[HybridSearchConfig] = None,
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
+        model_column_map: Optional[Dict[str, str]] = None,
     ) -> PGVectorStore:
         """Create an PGVectorStore instance.
 
@@ -175,12 +178,13 @@ class PGVectorStore(VectorStore):
             hybrid_search_config=hybrid_search_config,
             groupby_column=groupby_column,
             temporal_column=temporal_column,
+            model_column_map=model_column_map,
         )
         vs = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, vs)
 
     @property
-    def embeddings(self) -> Embeddings:
+    def embeddings(self) -> Union[Embeddings, Dict[str, Embeddings]]:
         return self.__vs.embedding_service
 
     async def aadd_embeddings(
@@ -608,7 +612,7 @@ class PGVectorStore(VectorStore):
 
     def similarity_search(
         self,
-        query: str,
+        query: Any,
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
@@ -620,7 +624,7 @@ class PGVectorStore(VectorStore):
 
     async def asimilarity_search(
         self,
-        query: str,
+        query: Any,
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
