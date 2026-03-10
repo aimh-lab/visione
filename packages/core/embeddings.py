@@ -281,7 +281,10 @@ class RemoteEmbeddings(Embeddings):
                     payload = {"image": validated_input}
                 else:
                     # should be a URL, construct it
-                    url = self.data_loader.get_collection_element_url_from_id(validated_input)
+                    try:
+                        url = self.data_loader.get_collection_element_url_from_id(validated_input)
+                    except Exception as e:
+                        url = validated_input  # fallback to original input if URL construction fails
                     payload = {"image": url}
             else:
                 payload = {"text": text_data}
