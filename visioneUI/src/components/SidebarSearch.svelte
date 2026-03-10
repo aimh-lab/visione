@@ -199,6 +199,8 @@
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}
+            on:replaceSimilarityImage={(e) => dispatch('replaceSimilarityImage', e.detail)}
+            on:closeSimilarityStep={(e) => dispatch('closeSimilarityStep', e.detail)}
             on:add={(e) => addTA(e.detail.index)}
             on:remove={(e) => removeTA(e.detail.index)}
             on:toggle={(e) => toggleTA(e.detail.index)}

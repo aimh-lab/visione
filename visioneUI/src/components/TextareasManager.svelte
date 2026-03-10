@@ -65,6 +65,8 @@
     startImageSelection: { textareaIndex: number };
     imageSelected: void;
     updateImages: { index: number; images: AttachedImage[] };
+    replaceSimilarityImage: { index: number; imgId: string | null; url: string; name: string };
+    closeSimilarityStep: { index: number };
     restoreDisabledSteps: void;
   };
 
@@ -88,6 +90,7 @@
   let isSelectingImageFor: number | null = null;
   let textareaRefs: Array<HTMLTextAreaElement | null> = [];
   let similarityTextConstraintOpen: Record<number, boolean> = {};
+  let previousSimilarityImgIdByIndex: Record<number, string> = {};
   let enabledStepCount = 0;
   let showSequenceChrome = false;
 
@@ -162,8 +165,7 @@
 
   function isSimilarityStep(index: number) {
     const simId = String(textareas[index]?.similarityImgId || '').trim();
-    if (simId) return true;
-    return (textareaImages[index] || []).some((img) => img?.type === 'result');
+    return !!simId;
   }
 
   function getPrimarySimilarityImage(index: number) {
@@ -184,11 +186,19 @@
     return !!String(textareas[index]?.value || '').trim();
   }
 
-  function toggleSimilarityTextConstraint(index: number) {
+  async function enableSimilarityTextConstraint(index: number) {
+    if (!textareas[index]?.enabled) {
+      dispatch('toggle', { index });
+    }
+
     similarityTextConstraintOpen = {
       ...similarityTextConstraintOpen,
-      [index]: !shouldShowSimilarityTextConstraint(index)
+      [index]: true
     };
+    closeMenu();
+    await tick();
+    textareaRefs[index]?.focus();
+    autoResizeTextarea(index);
   }
 
   function hasDisabledStepsBySimilarity() {
@@ -225,6 +235,35 @@
 
   $: enabledStepCount = textareas.filter((t) => t?.enabled === true).length;
   $: showSequenceChrome = enabledStepCount > 1;
+
+  $: {
+    const nextPrev: Record<number, string> = {};
+    let nextOpen = similarityTextConstraintOpen;
+    let changed = false;
+
+    textareas.forEach((t, idx) => {
+      const currentSimId = String(t?.similarityImgId || '').trim();
+      const prevSimId = previousSimilarityImgIdByIndex[idx] || '';
+      nextPrev[idx] = currentSimId;
+
+      if (currentSimId && prevSimId && currentSimId !== prevSimId && similarityTextConstraintOpen[idx]) {
+        if (nextOpen === similarityTextConstraintOpen) nextOpen = { ...similarityTextConstraintOpen };
+        nextOpen[idx] = false;
+        changed = true;
+      }
+
+      if (!currentSimId && similarityTextConstraintOpen[idx]) {
+        if (nextOpen === similarityTextConstraintOpen) nextOpen = { ...similarityTextConstraintOpen };
+        nextOpen[idx] = false;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      similarityTextConstraintOpen = nextOpen;
+    }
+    previousSimilarityImgIdByIndex = nextPrev;
+  }
 
   function resizeTextareaNode(textarea: HTMLTextAreaElement | null) {
     if (!textarea) return;
@@ -413,6 +452,18 @@
       const parsed = JSON.parse(raw);
       if (!parsed?.url) return;
 
+      if (isSimilarityStep(index)) {
+        const nextName = parsed.title || parsed.imgId || `Similarity ${index + 1}`;
+        dispatch('replaceSimilarityImage', {
+          index,
+          imgId: parsed.imgId || null,
+          url: parsed.url,
+          name: nextName
+        });
+        toasts.success(`Similarity image replaced on step ${index + 1}`);
+        return;
+      }
+
       addImageToTextarea(
         index,
         parsed.url,
@@ -587,6 +638,15 @@
     
     // ✅ Notifica il padre
     dispatch('updateImages', { index: textareaIndex, images: textareaImages[textareaIndex] });
+  }
+
+  function removePrimarySimilarityImage(textareaIndex: number, imageIndex: number) {
+    removeImageFromTextarea(textareaIndex, imageIndex);
+    similarityTextConstraintOpen = {
+      ...similarityTextConstraintOpen,
+      [textareaIndex]: false
+    };
+    dispatch('closeSimilarityStep', { index: textareaIndex });
   }
 
   // Click outside per chiudere menu
@@ -919,7 +979,7 @@
                       <img
                         src={similarityImage.url}
                         alt={similarityImage.name}
-                        class="w-full max-h-40 object-contain bg-slate-950/50"
+                        class="w-full object-contain bg-slate-950/50 transition-[max-height] duration-150 {shouldShowSimilarityTextConstraint(i) ? 'max-h-20' : 'max-h-40'}"
                       />
                       <div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-semibold bg-cyan-600/90 text-white leading-none">
                         <svg class="w-3 h-3 inline -mt-px mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -927,7 +987,7 @@
                       </div>
                       <button
                         type="button"
-                        on:click={() => similarityImageIndex >= 0 && removeImageFromTextarea(i, similarityImageIndex)}
+                        on:click={() => similarityImageIndex >= 0 && removePrimarySimilarityImage(i, similarityImageIndex)}
                         aria-label="Remove similarity image"
                         class="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
                         title="Remove image"
@@ -978,51 +1038,36 @@
               {/if}
             {/if}
 
-            {#if isVisualQueryStep}
-              <div class="px-2.5 pt-1 flex items-center">
-                <button
-                  type="button"
-                  on:click={() => toggleSimilarityTextConstraint(i)}
-                  class="inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors {shouldShowSimilarityTextConstraint(i) ? 'border-cyan-600/55 bg-cyan-900/40 text-cyan-200 hover:bg-cyan-800/50' : 'border-slate-600/55 bg-slate-800/55 text-slate-400 hover:bg-slate-700/65 hover:text-slate-200'}"
-                  title="{shouldShowSimilarityTextConstraint(i) ? 'Hide text filter' : 'Add text filter'}"
-                  aria-label="{shouldShowSimilarityTextConstraint(i) ? 'Hide text filter' : 'Add text filter'}"
-                  aria-pressed={shouldShowSimilarityTextConstraint(i)}
-                >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M4 7h16M4 12h12M4 17h8"/>
-                  </svg>
-                </button>
-              </div>
-            {/if}
-
             {#if !isVisualQueryStep || shouldShowSimilarityTextConstraint(i)}
-              <textarea
-                bind:this={textareaRefs[i]}
-                use:autoResizeAction={textarea.value}
-                class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
-                       {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
-                rows="1"
-                bind:value={textarea.value}
-                placeholder={getStepPlaceholder(i)}
-                disabled={!textarea.enabled}
-                style="overflow-y: hidden;"
-                on:input={(e) => handleTextareaInput(i, e)}
-                on:keydown={(e) => handleKeyDown(e, i)}
-              ></textarea>
+              <div class="relative">
+                <textarea
+                  bind:this={textareaRefs[i]}
+                  use:autoResizeAction={textarea.value}
+                  class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                         {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
+                  rows="1"
+                  bind:value={textarea.value}
+                  placeholder={getStepPlaceholder(i)}
+                  disabled={!textarea.enabled}
+                  style="overflow-y: hidden;"
+                  on:input={(e) => handleTextareaInput(i, e)}
+                  on:keydown={(e) => handleKeyDown(e, i)}
+                ></textarea>
 
-              {#if textarea.enabled && textarea.value?.trim()}
-                <button
-                  type="button"
-                  on:click={() => clearTextareaValue(i)}
-                  class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
-                  title="Clear text"
-                  aria-label="Clear textarea text"
-                >
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-              {/if}
+                {#if textarea.enabled && textarea.value?.trim()}
+                  <button
+                    type="button"
+                    on:click={() => clearTextareaValue(i)}
+                    class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                    title="Clear text"
+                    aria-label="Clear textarea text"
+                  >
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                {/if}
+              </div>
             {/if}
           </div>
 
@@ -1053,6 +1098,26 @@
                     </div>
 
                     <div class="py-1">
+                      {#if isVisualQueryStep && !shouldShowSimilarityTextConstraint(i)}
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => enableSimilarityTextConstraint(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M4 7h16M4 12h12M4 17h8"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Add Text Filter</div>
+                            <div class="text-[10px] text-gray-400">Show optional text with similarity image</div>
+                          </div>
+                        </button>
+
+                        <div class="my-1 h-px bg-gray-700"></div>
+                      {/if}
+
                       <!-- ✅ Image from Results -->
                       <button
                         type="button"

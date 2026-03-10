@@ -15,6 +15,8 @@
     restoreFromURL: void;
     updateURL: void;
     updateImages: { index: number; images: unknown[] };
+    replaceSimilarityImage: { index: number; imgId: string | null; url: string; name: string };
+    closeSimilarityStep: { index: number };
     selectRightTab: unknown;
     clearQueryInputs: void;
     restoreDisabledSteps: void;
@@ -178,6 +180,8 @@
   on:restoreFromURL={(e) => dispatch('restoreFromURL')}
   on:updateURL={(e) => dispatch('updateURL')}
   on:updateImages={(e) => dispatch('updateImages', e.detail)}
+  on:replaceSimilarityImage={(e) => dispatch('replaceSimilarityImage', e.detail)}
+  on:closeSimilarityStep={(e) => dispatch('closeSimilarityStep', e.detail)}
   on:startImageSelection={handleStartImageSelection}
   on:imageSelected={() => { isSelectingImage = false; }}
 />
