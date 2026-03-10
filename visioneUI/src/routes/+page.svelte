@@ -11,6 +11,7 @@
   import { visioneAPI } from '../services/api.js';
   import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
+  import VideoSummaryModal from "../components/VideoSummaryModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
   import { deserializeFromURL, updateURL } from '../utils/urlState.js';
   import { tabsPosition } from '../stores/tabsPosition.js';
@@ -50,6 +51,60 @@
     scrollMgr.resetScroll('View1');
   }
 
+  function resolveSummaryLabel(videoId, highlightImgId = null) {
+    const normalizedHighlight = String(highlightImgId || '').trim();
+    if (normalizedHighlight) {
+      const fromSearch = images.find((i) => i?.imgId === normalizedHighlight);
+      const fromSimilarity = similarityImages.find((i) => i?.imgId === normalizedHighlight);
+      const fromView2 = (view2Frames || []).find((i) => i?.imgId === normalizedHighlight);
+      const source = fromSearch || fromSimilarity || fromView2;
+      return source?.title || source?.imgId || normalizedHighlight;
+    }
+    return String(videoId || '').trim();
+  }
+
+  function toPinnedSummaryKey(videoId, highlightImgId = null) {
+    const safeVideoId = String(videoId || '').trim();
+    const safeHighlight = String(highlightImgId || '').trim();
+    return `${safeVideoId}::${safeHighlight}`;
+  }
+
+  function pinCurrentVideoSummary() {
+    const videoId = String(activeVideoSummaryContext.videoId || '').trim();
+    if (!videoId) return;
+
+    const highlightImgId = String(activeVideoSummaryContext.highlightImgId || '').trim() || null;
+    const result = sessionStore.actions.pinVideoSummary({
+      videoId,
+      highlightImgId,
+      label: activeVideoSummaryContext.label || videoId
+    });
+
+    if (!result?.added) {
+      toasts.info('Video summary already pinned');
+      return;
+    }
+
+    toasts.success('Video summary pinned');
+  }
+
+  function openPinnedVideoSummary(item) {
+    if (!item?.videoId) return;
+    openVideoSummary(item.videoId, item.highlightImgId || null);
+  }
+
+  function unpinVideoSummary(item) {
+    if (!item?.videoId) return;
+    sessionStore.actions.unpinVideoSummary({
+      videoId: item.videoId,
+      highlightImgId: item.highlightImgId || null
+    });
+  }
+
+  function clearPinnedVideoSummaries() {
+    sessionStore.actions.clearPinnedVideoSummaries();
+  }
+
 
   // VideoPlayerModal
   let isVideoPlayerOpen = false;
@@ -63,6 +118,10 @@
 
   // Settings modal (solo apertura/chiusura)
   let isSettingsOpen = false;
+  let isVideoSummaryModalOpen = false;
+  let pinnedVideoSummaries = [];
+  let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
+  let activePinnedSummaryKey = '';
 
   // Back/forward
   let isRestoringFromHistory = false;
@@ -110,6 +169,11 @@
   // submittedImages: per ora “in-session”. (Commit 2: sessionStore)
   $: submittedImages = $sessionStore.submittedImages;
   $: submittedAnswers = $sessionStore.submittedAnswers;
+  $: pinnedVideoSummaries = $sessionStore.pinnedVideoSummaries || [];
+  $: activePinnedSummaryKey = toPinnedSummaryKey(
+    activeVideoSummaryContext.videoId,
+    activeVideoSummaryContext.highlightImgId
+  );
 
   // Derivate
   $: totalImages = images.length;
@@ -829,25 +893,18 @@ function handleViewSubmitted() {
   }
 
   async function openVideoSummary(videoId, highlightImgId = null) {
-    scrollMgr.suppressRestore('View2');
-    uiStore.actions.setLayoutTab("View2");
+    isVideoSummaryModalOpen = true;
+    const normalizedVideoId = String(videoId || '').split(/[-_]/)[0];
+    const normalizedHighlight = String(highlightImgId || '').trim() || null;
+    activeVideoSummaryContext = {
+      videoId: normalizedVideoId,
+      highlightImgId: normalizedHighlight,
+      label: resolveSummaryLabel(normalizedVideoId, normalizedHighlight)
+    };
+
     if (!highlightImgId) lastViewedVideoIndex = 0;
 
-    await videoController.openVideoSummary(videoId, highlightImgId);
-
-    // La parte DOM resta qui (perché è legata a view2Container)
-    await tick();
-
-    if (view2SelectedImgId) {
-      setTimeout(() => {
-        const found = view2Container?.querySelector(
-          `[data-frame-id="${CSS.escape(view2SelectedImgId)}"]`
-        );
-        if (found) ui.scrollToImage(view2Container, view2SelectedImgId);
-      }, 300);
-    } else if (view2Container) {
-      view2Container.scrollTop = 0;
-    }
+    await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight);
   }
 
 
@@ -1061,6 +1118,8 @@ function handleViewSubmitted() {
     similarityModal.close();
     videoModal.close();
     isVideoPlayerOpen = false;
+    isVideoSummaryModalOpen = false;
+    activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
 
     lastViewedSearchIndex = 0;
     lastViewedVideoIndex = 0;
@@ -1106,7 +1165,7 @@ function handleViewSubmitted() {
 
 <!-- Template invariato -->
 <Keybindings
-  isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen}
+  isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen}
   isVideoPlayerOpen={isVideoPlayerOpen}
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
@@ -1157,7 +1216,8 @@ function handleViewSubmitted() {
     else navigateImage(offset, toFirstOfRow);
   }}
   onCloseModal={() => {
-    if ($videoModal.isOpen) closeFrameModal();
+    if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
+    else if ($videoModal.isOpen) closeFrameModal();
     else if ($similarityModal.isOpen) closeSimilarityModal();
     else closeModal();
   }}
@@ -1174,6 +1234,30 @@ function handleViewSubmitted() {
   challengeType={$uiStore.dresChallengeType}
   on:submitFrame={handleSubmitFrameFromPlayer}
   on:close={() => { isVideoPlayerOpen = false; }}
+/>
+
+<VideoSummaryModal
+  isOpen={isVideoSummaryModalOpen}
+  loading={view2Loading}
+  error={view2Error}
+  frames={view2Frames}
+  videoId={view2VideoId || activeVideoSummaryContext.videoId}
+  pinnedSummaries={pinnedVideoSummaries}
+  showSubmitUI={$uiStore.dresEnabled}
+  challengeType={$uiStore.dresChallengeType}
+  videoBadgeOrientation={$uiStore.videoBadgeOrientation}
+  virtualizationEnabled={$uiStore.virtualizationEnabled}
+  virtualizationThreshold={$uiStore.virtualizationThreshold}
+  justifyResultRows={$uiStore.justifyResultRows}
+  onClose={() => { isVideoSummaryModalOpen = false; }}
+  onPinCurrent={pinCurrentVideoSummary}
+  onOpenPinned={openPinnedVideoSummary}
+  onOpenFrame={(frame) => openFrameModal(frame)}
+  onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+  addRFPositiveByImg={addRFPositiveByImg}
+  addRFNegativeByImg={addRFNegativeByImg}
+  submitByImgId={submitByImgId}
+  openVideoPlayerBy={openVideoPlayerBy}
 />
 
 <SettingsModal
@@ -1207,6 +1291,8 @@ function handleViewSubmitted() {
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
   dresEnabled={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  {pinnedVideoSummaries}
+  {activePinnedSummaryKey}
   on:change={(e) => uiStore.actions.setLayoutTab(e.detail.tab)}
   on:toggleSidebar={() => uiStore.actions.toggleSidebar()}
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
@@ -1221,6 +1307,9 @@ function handleViewSubmitted() {
   on:openSettings={() => (isSettingsOpen = true)}
   on:changeChallengeType={(e) => uiStore.actions.setDresChallengeType(e.detail.type)}
   on:reset={resetApp}
+  on:openPinnedVideoSummary={(e) => openPinnedVideoSummary(e.detail.item)}
+  on:unpinVideoSummary={(e) => unpinVideoSummary(e.detail.item)}
+  on:clearPinnedVideoSummaries={clearPinnedVideoSummaries}
 >
   <div
     class="views-wrapper w-full overflow-x-hidden"
