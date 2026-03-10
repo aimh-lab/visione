@@ -30,6 +30,7 @@
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
+  import { tinyFrameUrl } from '$lib/urlConfig.js';
 
   import { onMount, onDestroy, tick } from "svelte";
 
@@ -149,6 +150,42 @@
   let urlSyncTimer = null;
   let lastSearchResultSet = null;
 
+  function getSearchImageIdFromTextareas() {
+    const similarityStep = textareas.find((t) => String(t?.similarityImgId || '').trim());
+    return String(similarityStep?.similarityImgId || '').trim() || null;
+  }
+
+  function hydrateSimilarityTextareaImagesFromState() {
+    const nextTextareaImages = { ...textareaImages };
+    let changed = false;
+
+    textareas.forEach((t, idx) => {
+      const imgId = String(t?.similarityImgId || '').trim();
+      if (!imgId) return;
+
+      const currentImages = nextTextareaImages[idx] || [];
+      const alreadyHasQueryImage = currentImages.some((img) => String(img?.imgId || '').trim() === imgId);
+      if (alreadyHasQueryImage) return;
+
+      const videoId = String(imgId).split('-')[0]?.padStart(5, '0');
+      if (!videoId) return;
+
+      nextTextareaImages[idx] = [
+        {
+          url: tinyFrameUrl(videoId, imgId),
+          name: imgId,
+          type: 'result',
+          imgId
+        }
+      ];
+      changed = true;
+    });
+
+    if (changed) {
+      textareaImages = nextTextareaImages;
+    }
+  }
+
   function scheduleURLSync() {
     if (isRestoringFromHistory || !browser) return;
 
@@ -159,7 +196,7 @@
 
     urlSyncTimer = setTimeout(() => {
       urlSyncTimer = null;
-      updateURL({ textareas, activeTab: get(uiStore).layoutTab }, false);
+      updateURL({ textareas, activeTab: get(uiStore).layoutTab, imageId: getSearchImageIdFromTextareas() }, false);
     }, URL_SYNC_DEBOUNCE_MS);
   }
 
@@ -360,6 +397,7 @@
   // ---------------------------
   async function restoreFromURLState(urlState) {
     if (urlState.textareas) textareas = urlState.textareas;
+    hydrateSimilarityTextareaImagesFromState();
 
     if (urlState.activeTab) {
       uiStore.actions.setLayoutTab(urlState.activeTab);
@@ -367,7 +405,10 @@
 
     await tick();
 
-    if (urlState.textareas?.length > 0 && urlState.textareas[0]?.value) {
+    const hasTextQuery = (urlState.textareas || []).some((t) => String(t?.value || '').trim());
+    const hasImageQuery = (urlState.textareas || []).some((t) => String(t?.similarityImgId || '').trim());
+
+    if (urlState.textareas?.length > 0 && (hasTextQuery || hasImageQuery)) {
       await runSearchImmediate();
     }
 
@@ -449,6 +490,60 @@
   function handleUpdateImages(e) {
     const { index, images } = e.detail || {};
     textareaImages = { ...textareaImages, [index]: images };
+  }
+
+  function handleReplaceSimilarityImage(e) {
+    const { index, imgId, url, name } = e.detail || {};
+    if (typeof index !== 'number' || index < 0 || index >= textareas.length) return;
+
+    textareas = textareas.map((t, idx) => {
+      if (idx !== index) return t;
+      return {
+        ...t,
+        enabled: true,
+        similarityImgId: String(imgId || t?.similarityImgId || '').trim()
+      };
+    });
+
+    textareaImages = {
+      ...textareaImages,
+      [index]: [
+        {
+          url,
+          name: name || String(imgId || `Similarity ${index + 1}`),
+          type: 'result',
+          imgId: imgId || null
+        }
+      ]
+    };
+
+    setTimeout(() => runSearchImmediate(), 0);
+  }
+
+  function handleCloseSimilarityStep(e) {
+    const { index } = e.detail || {};
+    if (typeof index !== 'number' || index < 0 || index >= textareas.length) return;
+
+    const hadRestorableSteps = textareas.some((t) => t?._disabledBySimilarity);
+
+    textareas = textareas.map((t, idx) => {
+      if (idx !== index) return t;
+      return {
+        ...t,
+        value: '',
+        similarityImgId: '',
+        enabled: false,
+        _disabledBySimilarity: false,
+        _wasEnabledBeforeSimilarity: false
+      };
+    });
+
+    if (hadRestorableSteps) {
+      restoreDisabledStepsFromSimilarity();
+      return;
+    }
+
+    setTimeout(() => runSearchImmediate(), 0);
   }
 
   function handleUpdateURLRequest() {
@@ -785,7 +880,7 @@ function handleViewSubmitted() {
     if (existingSimilarityIndex >= 0) {
       nextTextareas = textareas.map((t, idx) => {
         if (idx === existingSimilarityIndex) {
-          return { ...t, enabled: true, similarityImgId: imgId };
+          return { ...t, value: "", enabled: true, similarityImgId: imgId };
         }
         // Mark non-similarity steps as disabled-by-similarity so "Restore steps" works
         const wasEnabled = t._disabledBySimilarity ? t._wasEnabledBeforeSimilarity : !!t.enabled;
@@ -1230,6 +1325,8 @@ function handleViewSubmitted() {
         on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap')}
         onLoadExample={(queries) => loadExampleQuery(queries)}
         on:updateImages={handleUpdateImages}
+        on:replaceSimilarityImage={handleReplaceSimilarityImage}
+        on:closeSimilarityStep={handleCloseSimilarityStep}
         on:clearQueryInputs={() => {
           textareas = [{ value: "", enabled: true }];
           textareaImages = {};

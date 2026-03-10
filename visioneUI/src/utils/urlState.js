@@ -16,6 +16,11 @@ export function serializeToURL(state) {
       params.set('q', queries); // ✅ RIMOSSO .join('|')
     }
   }
+
+  // Query per imageID (step similarity dentro Search)
+  if (state.imageId && String(state.imageId).trim()) {
+    params.set('img', String(state.imageId).trim());
+  }
   
   // Tab attivo
   if (state.activeTab && state.activeTab !== 'View1') {
@@ -67,6 +72,21 @@ export function deserializeFromURL(urlString) {
       value: value.trim(), // URLSearchParams decodifica automaticamente
       enabled: true
     }));
+  }
+
+  // Query by imageID: va sempre in uno step separato per preservare la semantica temporale
+  const img = params.get('img');
+  if (img && img.trim()) {
+    const imageId = img.trim();
+    const similarityStep = { value: '', enabled: true, similarityImgId: imageId };
+
+    if (state.textareas?.length > 0) {
+      state.textareas = [...state.textareas, similarityStep];
+    } else {
+      state.textareas = [similarityStep];
+    }
+
+    state.imageId = imageId;
   }
   
   // Tab attivo
