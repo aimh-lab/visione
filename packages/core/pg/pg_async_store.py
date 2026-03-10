@@ -64,12 +64,12 @@ class AsyncPGVectorStore(VectorStore):
         self,
         key: object,
         engine: AsyncEngine,
-        embedding_service: Embeddings,
+        embedding_service: Union[Embeddings, Dict[str, Embeddings]],
         table_name: str,
         *,
         schema_name: str = "public",
         content_column: str = "content",
-        embedding_column: str = "embedding",
+        embedding_column: Union[str, List[str]] = "embedding",
         metadata_columns: Optional[list[str]] = None,
         id_column: str = "langchain_id",
         metadata_json_column: Optional[str] = "langchain_metadata",
@@ -81,6 +81,7 @@ class AsyncPGVectorStore(VectorStore):
         hybrid_search_config: Optional[HybridSearchConfig] = None,
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
+        model_column_map: Optional[Dict[str, str]] = None,
     ):
         """AsyncPGVectorStore constructor.
         Args:
@@ -115,7 +116,23 @@ class AsyncPGVectorStore(VectorStore):
         self.table_name = table_name
         self.schema_name = schema_name
         self.content_column = content_column
-        self.embedding_column = embedding_column
+        if isinstance(embedding_column, list):
+            if len(embedding_column) == 0:
+                raise ValueError("embedding_column list must not be empty.")
+            self.embedding_columns = embedding_column
+            self.embedding_column = embedding_column[0]
+        else:
+            self.embedding_columns = [embedding_column]
+            self.embedding_column = embedding_column
+
+        if isinstance(self.embedding_service, dict):
+            missing_columns = [
+                col for col in self.embedding_service.keys() if col not in self.embedding_columns
+            ]
+            if missing_columns:
+                raise ValueError(
+                    f"Embedding service keys {missing_columns} are not present in embedding columns {self.embedding_columns}."
+                )
         self.metadata_columns = metadata_columns if metadata_columns is not None else []
         self.id_column = id_column
         self.metadata_json_column = metadata_json_column
@@ -127,12 +144,13 @@ class AsyncPGVectorStore(VectorStore):
         self.hybrid_search_config = hybrid_search_config
         self.groupby_column = groupby_column
         self.temporal_column = temporal_column
+        self.model_column_map = model_column_map or {}
 
     @classmethod
     async def create(
         cls: type[AsyncPGVectorStore],
         engine: PGEngine,
-        embedding_service: Embeddings,
+        embedding_service: Union[Embeddings, Dict[str, Embeddings]],
         table_name: str,
         *,
         schema_name: str = "public",
@@ -150,6 +168,7 @@ class AsyncPGVectorStore(VectorStore):
         hybrid_search_config: Optional[HybridSearchConfig] = None,
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
+        model_column_map: Optional[Dict[str, str]] = None,
     ) -> AsyncPGVectorStore:
         """Create an AsyncPGVectorStore instance.
 
@@ -214,14 +233,18 @@ class AsyncPGVectorStore(VectorStore):
             if tsv_column_name not in columns or columns[tsv_column_name] != "tsvector":
                 # mark tsv_column as empty because there is no TSV column in table
                 hybrid_search_config.tsv_column = ""
-        embedding_column = embedding_column if isinstance(embedding_column, str) else embedding_column[0]
+        normalized_embedding_columns = (
+            [embedding_column] if isinstance(embedding_column, str) else embedding_column
+        )
+        if len(normalized_embedding_columns) == 0:
+            raise ValueError("At least one embedding column is required.")
 
-        for emb_col in embedding_column:
-            if embedding_column not in columns:
-                raise ValueError(f"Embedding column, {embedding_column}, does not exist.")
-            if columns[embedding_column] not in ["USER-DEFINED", "vector"]:
+        for emb_col in normalized_embedding_columns:
+            if emb_col not in columns:
+                raise ValueError(f"Embedding column, {emb_col}, does not exist.")
+            if columns[emb_col] not in ["USER-DEFINED", "vector"]:
                 raise ValueError(
-                    f"Embedding column, {embedding_column}, is not type Vector."
+                    f"Embedding column, {emb_col}, is not type Vector."
                 )
 
         metadata_json_column = (
@@ -241,7 +264,7 @@ class AsyncPGVectorStore(VectorStore):
 
             del all_columns[id_column]
             del all_columns[content_column]
-            for emb_col in embedding_column:
+            for emb_col in normalized_embedding_columns:
                 del all_columns[emb_col]
             metadata_columns = [k for k in all_columns.keys()]
 
@@ -252,7 +275,7 @@ class AsyncPGVectorStore(VectorStore):
             table_name,
             schema_name=schema_name,
             content_column=content_column,
-            embedding_column=embedding_column,
+            embedding_column=normalized_embedding_columns,
             metadata_columns=metadata_columns,
             id_column=id_column,
             metadata_json_column=metadata_json_column,
@@ -264,11 +287,52 @@ class AsyncPGVectorStore(VectorStore):
             hybrid_search_config=hybrid_search_config,
             groupby_column=groupby_column,
             temporal_column=temporal_column,
+            model_column_map=model_column_map,
         )
 
     @property
-    def embeddings(self) -> Embeddings:
+    def embeddings(self) -> Union[Embeddings, Dict[str, Embeddings]]:
         return self.embedding_service
+
+    def _resolve_embedding_backend(
+        self,
+        model: Optional[str] = None,
+        embedding_column: Optional[str] = None,
+    ) -> tuple[str, Embeddings]:
+        selected_column = embedding_column or model
+        if model and not embedding_column and model in self.model_column_map:
+            selected_column = self.model_column_map[model]
+
+        if isinstance(self.embedding_service, dict):
+            if selected_column is None:
+                selected_column = self.embedding_column
+            if selected_column not in self.embedding_service:
+                raise ValueError(
+                    f"Unknown model/embedding column '{selected_column}'. Available: {list(self.embedding_service.keys())}"
+                )
+            return selected_column, self.embedding_service[selected_column]
+
+        if selected_column is None:
+            selected_column = self.embedding_column
+        if selected_column not in self.embedding_columns:
+            raise ValueError(
+                f"Unknown embedding column '{selected_column}'. Available: {self.embedding_columns}"
+            )
+        return selected_column, self.embedding_service
+
+    async def _get_query_embedding_expression(
+        self,
+        query_text: str,
+        embedder: Embeddings,
+        param_prefix: str,
+    ) -> tuple[str, dict[str, Any]]:
+        inline_embed_func = getattr(embedder, "embed_query_inline", None)
+        if callable(inline_embed_func):
+            return embedder.embed_query_inline(query_text), {}
+
+        vector = await embedder.aembed_query(query_text)
+        param_name = f"{param_prefix}_query_embedding"
+        return f":{param_name}", {param_name: f"{[float(dimension) for dimension in vector]}"}
 
     async def aadd_embeddings(
         self,
@@ -693,10 +757,15 @@ class AsyncPGVectorStore(VectorStore):
         operator = self.distance_strategy.operator
         search_function = self.distance_strategy.search_function
 
+        selected_embedding_column, selected_embedder = self._resolve_embedding_backend(
+            model=kwargs.get("model"),
+            embedding_column=kwargs.get("embedding_column"),
+        )
+
         columns = [
             self.id_column,
             self.content_column,
-            self.embedding_column,
+            selected_embedding_column,
         ] + self.metadata_columns
         if self.metadata_json_column:
             columns.append(self.metadata_json_column)
@@ -708,16 +777,16 @@ class AsyncPGVectorStore(VectorStore):
         if filter and isinstance(filter, dict):
             safe_filter, filter_dict = self._create_filter_clause(filter)
 
-        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+        inline_embed_func = getattr(selected_embedder, "embed_query_inline", None)
         if not embedding and callable(inline_embed_func) and "query" in kwargs:
-            query_embedding = self.embedding_service.embed_query_inline(kwargs["query"])  # type: ignore
+            query_embedding = selected_embedder.embed_query_inline(kwargs["query"])  # type: ignore
             embedding_data_string = f"{query_embedding}"
         else:
             query_embedding = f"{[float(dimension) for dimension in embedding]}"
             embedding_data_string = ":query_embedding"
         where_filters = f"WHERE {safe_filter}" if safe_filter else ""
-        dense_query_stmt = f"""SELECT {column_names}, {search_function}("{self.embedding_column}", {embedding_data_string}) as distance
-        FROM "{self.schema_name}"."{self.table_name}" {where_filters} ORDER BY "{self.embedding_column}" {operator} {embedding_data_string} LIMIT :dense_limit;
+        dense_query_stmt = f"""SELECT {column_names}, {search_function}("{selected_embedding_column}", {embedding_data_string}) as distance
+        FROM "{self.schema_name}"."{self.table_name}" {where_filters} ORDER BY "{selected_embedding_column}" {operator} {embedding_data_string} LIMIT :dense_limit;
         """
         param_dict = {"query_embedding": query_embedding, "dense_limit": dense_limit}
         if filter_dict:
@@ -777,56 +846,73 @@ class AsyncPGVectorStore(VectorStore):
 
     async def asimilarity_search(
         self,
-        query: dict[str, Any],
+        query: Any,
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected by similarity search on query."""
 
+        if isinstance(query, str):
+            query = {"query": query}
+
         if not isinstance(query, dict):
             raise ValueError("Query must be a dictionary.")
 
-        query_text = query.get("items")
-        if isinstance(query_text, list) and len(query_text) >= 2:
+        query_payload = query.get("item", query.get("items", query.get("text")))
+        if isinstance(query_payload, list) and len(query_payload) >= 2:
             return await self._atemporal_join_search(
-                query=query, 
-                k=k, 
-                filter=filter, 
-                **kwargs
+                query=query,
+                k=k,
+                filter=filter,
+                **kwargs,
             )
 
-        if isinstance(query_text, list):
-            if len(query_text) == 0:
-                raise ValueError("Query dictionary 'items' list must not be empty.")
-            if not all(isinstance(item, str) for item in query_text):
-                raise ValueError("Query dictionary 'items' list must contain only strings.")
-            query_text = query_text[0]
+        if isinstance(query_payload, list):
+            if len(query_payload) != 1 or not isinstance(query_payload[0], str):
+                raise ValueError(
+                    "Leaf query with list payload must contain exactly one string."
+                )
+            query_payload = query_payload[0]
 
-        if not isinstance(query_text, str):
-            raise ValueError("Query dictionary must include 'items' as a string or list[str].")
-        if not query_text.strip():
-            raise ValueError("Query dictionary 'items' must be a non-empty string.")
+        if not isinstance(query_payload, str) or not query_payload.strip():
+            raise ValueError("Leaf query must be a non-empty string.")
 
-        # Standard implementation follows...
-        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+        model = query.get("model")
+        embedding_column = query.get("embedding_column")
+        selected_model, selected_embedder = self._resolve_embedding_backend(
+            model=model,
+            embedding_column=embedding_column,
+        )
+
+        merged_filter = filter
+        if query.get("filters") is not None:
+            leaf_filter = query.get("filters")
+            merged_filter = (
+                {"$and": [filter, leaf_filter]} if filter and leaf_filter else (leaf_filter or filter)
+            )
+
+        inline_embed_func = getattr(selected_embedder, "embed_query_inline", None)
         embedding = (
             []
             if callable(inline_embed_func)
-            else await self.embedding_service.aembed_query(text=query_text)
+            else await selected_embedder.aembed_query(text=query_payload)
         )
-        kwargs["query"] = query_text
+        kwargs["query"] = query_payload
+        kwargs["model"] = selected_model
 
-        # add fts_query to hybrid_search_config
         hybrid_search_config = kwargs.get(
             "hybrid_search_config", self.hybrid_search_config
         )
         if hybrid_search_config and not hybrid_search_config.fts_query:
-            hybrid_search_config.fts_query = query_text
+            hybrid_search_config.fts_query = query_payload
             kwargs["hybrid_search_config"] = hybrid_search_config
 
         return await self.asimilarity_search_by_vector(
-            embedding=embedding, k=k, filter=filter, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=merged_filter,
+            **kwargs,
         )
 
     async def _atemporal_join_search(
@@ -836,27 +922,12 @@ class AsyncPGVectorStore(VectorStore):
         filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
-        """
-        Private method to handle temporal join search.
-        Query is a dictionary with:
-        - text: list[str], containing at least two query texts
-        - window_seconds: optional float, window size in seconds for temporal join (default: 30.0)
-        - also_backwards_in_time: optional bool, whether to search both forwards and backwards in time (default: False)
-        """
-        from sqlalchemy import text
-        window_seconds = query.get("window_seconds", 30.0)
-        also_backwards_in_time = query.get("also_backwards_in_time", False)
+        query_payload = query.get("item", query.get("items", query.get("text")))
+        if not isinstance(query_payload, list) or len(query_payload) < 2:
+            raise ValueError("Temporal query must contain a 'item' list with at least two items.")
 
-        query_texts = query.get("text")
         groupby_column = self.groupby_column
         temporal_column = self.temporal_column
-
-        if not isinstance(query_texts, list):
-            raise ValueError("Temporal query must include 'text' as a list of strings.")
-        if len(query_texts) < 2:
-            raise ValueError("Temporal query requires at least 2 texts in 'text'.")
-        if not all(isinstance(item, str) for item in query_texts):
-            raise ValueError("Temporal query 'text' must contain only strings.")
         if groupby_column is not None and (
             not isinstance(groupby_column, str) or not groupby_column.isidentifier()
         ):
@@ -866,40 +937,16 @@ class AsyncPGVectorStore(VectorStore):
                 "Temporal query 'temporal_column' must be a valid SQL identifier."
             )
 
-        # 1. Parse Query
-        query_x, query_y = query_texts[0].strip(), query_texts[1].strip()
-        if not query_x or not query_y:
-            raise ValueError("Temporal query texts must be non-empty strings.")
-
-        # 2. Embed Queries
-        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
-        if callable(inline_embed_func):
-            vec_x = self.embedding_service.embed_query_inline(query_x)
-            vec_y = self.embedding_service.embed_query_inline(query_y)
-            # Ensure proper string formatting for SQL injection
-            vec_x_str = f"{vec_x}"
-            vec_y_str = f"{vec_y}"
-        else:
-            vec_x = await self.embedding_service.aembed_query(query_x)
-            vec_y = await self.embedding_service.aembed_query(query_y)
-            vec_x_str = f"{[float(d) for d in vec_x]}"
-            vec_y_str = f"{[float(d) for d in vec_y]}"
-
-        # 3. Determine Limit and Strategy (Like __query_collection)
-        final_k = k if k is not None else self.k
+        final_k = k if k is not None else int(query.get("k", self.k))
         hybrid_search_config = kwargs.get("hybrid_search_config", self.hybrid_search_config)
-        candidate_limit = kwargs.get("candidate_limit", 100000)
-        
-        dense_limit = final_k
-        if hybrid_search_config:
-            dense_limit = hybrid_search_config.primary_top_k
+        candidate_limit = int(kwargs.get("candidate_limit", 100000))
+        dense_limit = (
+            hybrid_search_config.primary_top_k if hybrid_search_config else final_k
+        )
 
-        # Retrieve the configured operator (<=>, <->, <#>) and function (cosine_distance, etc.)
         operator = self.distance_strategy.operator
-        search_function = self.distance_strategy.search_function
-
-        # 4. Construct SQL
         full_table_name = f'"{self.schema_name}"."{self.table_name}"'
+
         base_columns = [
             self.id_column,
             self.content_column,
@@ -907,87 +954,186 @@ class AsyncPGVectorStore(VectorStore):
         if self.metadata_json_column:
             base_columns.append(self.metadata_json_column)
 
-        cte_columns: list[str] = []
-        extra_columns = [temporal_column]
-        if groupby_column:
-            extra_columns.append(groupby_column)
-        for col in base_columns + extra_columns:
-            if col not in cte_columns:
-                cte_columns.append(col)
+        cte_statements: list[str] = []
+        params: dict[str, Any] = {}
+        node_counter = 0
 
-        cte_column_names = ", ".join(f'"{col}"' for col in cte_columns)
-        base_column_names_t1 = ", ".join(f't1."{col}"' for col in base_columns)
-        groupby_select = (
-            f't1."{groupby_column}" as groupby_value,' if groupby_column else "NULL as groupby_value,"
-        )
-        join_conditions = [
-            f't2."{temporal_column}" BETWEEN (t1."{temporal_column}" - :window) AND (t1."{temporal_column}" + :window)' if also_backwards_in_time else \
-                f't2."{temporal_column}" BETWEEN t1."{temporal_column}" AND (t1."{temporal_column}" + :window)',
-            f't1."{self.id_column}" != t2."{self.id_column}"',
-        ]
-        if groupby_column:
-            join_conditions.insert(0, f't1."{groupby_column}" = t2."{groupby_column}"')
-        join_clause = " AND ".join(join_conditions)
+        def _as_node(node_like: Any) -> dict[str, Any]:
+            if isinstance(node_like, str):
+                return {"item": node_like}
+            if not isinstance(node_like, dict):
+                raise ValueError("Each temporal query item must be a string or object.")
 
-        safe_filter = None
-        filter_dict = None
-        if filter and isinstance(filter, dict):
-            safe_filter, filter_dict = self._create_filter_clause(filter)
-        where_filters = f"WHERE {safe_filter}" if safe_filter else ""
-
-        # The CTE (Common Table Expression) Approach
-        sql = text(f"""
-            WITH top_x AS (
-                SELECT 
-                    {cte_column_names},
-                    -- Calculate Rank X (1 is best)
-                    ROW_NUMBER() OVER (ORDER BY "{self.embedding_column}" {operator} :vec_x) as rank_x
-                FROM {full_table_name}
-                {where_filters}
-                ORDER BY "{self.embedding_column}" {operator} :vec_x
-                LIMIT :candidate_limit
-            ),
-            top_y AS (
-                SELECT 
-                    {cte_column_names},
-                    -- Calculate Rank Y (1 is best)
-                    ROW_NUMBER() OVER (ORDER BY "{self.embedding_column}" {operator} :vec_y) as rank_y
-                FROM {full_table_name}
-                {where_filters}
-                ORDER BY "{self.embedding_column}" {operator} :vec_y
-                LIMIT :candidate_limit
+            node_copy = dict(node_like)
+            node_copy["item"] = node_copy.get(
+                "item",
+                node_copy.get("items", node_copy.get("text")),
             )
-            -- 3. Join only the small candidate pools
-            SELECT 
-                {base_column_names_t1},
-                {groupby_select}
-                t1."{temporal_column}" as temporal_x,
-                t2."{temporal_column}" as temporal_y,
-                (1.0 / t1.rank_x) + (1.0 / t2.rank_y) as rrf_score
-            FROM top_x t1
-            JOIN top_y t2 ON 
-                {join_clause}
-            ORDER BY 
-                rrf_score DESC
-            LIMIT :dense_limit
-        """)
+            return node_copy
 
-        params = {
-            "vec_x": vec_x_str,
-            "vec_y": vec_y_str,
-            "window": float(window_seconds),
-            "candidate_limit": candidate_limit,
-            "dense_limit": dense_limit
-        }
-        if filter_dict:
-            params.update(filter_dict)
+        def _normalize_windows(raw_window: Any, count: int) -> list[float]:
+            if isinstance(raw_window, list):
+                if len(raw_window) != count:
+                    raise ValueError(
+                        f"window_seconds must have {count} items for a query list of length {count + 1}."
+                    )
+                return [float(w) for w in raw_window]
+            return [float(raw_window)] * count
 
-        # 5. Execute
-        results = []
+        def _merge_filters(global_filter: Optional[dict], leaf_filter: Any) -> Optional[dict]:
+            normalized_leaf = (
+                leaf_filter
+                if leaf_filter is not None
+                else None
+            )
+            if global_filter and normalized_leaf:
+                return {"$and": [global_filter, normalized_leaf]}
+            return normalized_leaf or global_filter
+
+        async def _build_cte(node_like: Any) -> str:
+            nonlocal node_counter
+            node = _as_node(node_like)
+            payload = node.get("item")
+            node_name = f"q_{node_counter}"
+            node_counter += 1
+
+            if isinstance(payload, str):
+                query_text = payload.strip()
+                if not query_text:
+                    raise ValueError("Leaf query string must be non-empty.")
+
+                selected_model, selected_embedder = self._resolve_embedding_backend(
+                    model=node.get("model"),
+                    embedding_column=node.get("embedding_column"),
+                )
+                embedding_expr, emb_params = await self._get_query_embedding_expression(
+                    query_text=query_text,
+                    embedder=selected_embedder,
+                    param_prefix=node_name,
+                )
+                params.update(emb_params)
+
+                local_filter = _merge_filters(filter, node.get("filters"))
+                safe_filter = ""
+                if local_filter:
+                    where_clause, where_params = self._create_filter_clause(local_filter)
+                    safe_filter = f"WHERE {where_clause}"
+                    params.update(where_params)
+
+                leaf_limit_name = f"{node_name}_k"
+                params[leaf_limit_name] = int(node.get("k", candidate_limit))
+
+                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
+                groupby_select = (
+                    f'b."{groupby_column}" AS groupby_value'
+                    if groupby_column
+                    else "NULL AS groupby_value"
+                )
+
+                cte_statements.append(
+                    f"""
+                    {node_name} AS (
+                        SELECT
+                            {base_cols_sql},
+                            b."{temporal_column}" AS start_time,
+                            b."{temporal_column}" AS end_time,
+                            {groupby_select},
+                            (1.0 / NULLIF(ROW_NUMBER() OVER (ORDER BY b.\"{selected_model}\" {operator} {embedding_expr}), 0)) AS score
+                        FROM {full_table_name} b
+                        {safe_filter}
+                        ORDER BY b."{selected_model}" {operator} {embedding_expr}
+                        LIMIT :{leaf_limit_name}
+                    )
+                    """.strip()
+                )
+                return node_name
+
+            if not isinstance(payload, list) or len(payload) < 2:
+                raise ValueError("Temporal query nodes must contain at least two child queries.")
+
+            child_ctes = [await _build_cte(child) for child in payload]
+            windows = _normalize_windows(node.get("window_seconds", 30.0), len(child_ctes) - 1)
+            also_backwards = bool(node.get("also_backwards_in_time", False))
+
+            current = child_ctes[0]
+            for idx in range(1, len(child_ctes)):
+                right = child_ctes[idx]
+                join_name = f"q_{node_counter}"
+                node_counter += 1
+
+                window_param = f"{join_name}_window"
+                join_limit_param = f"{join_name}_k"
+                params[window_param] = windows[idx - 1]
+                params[join_limit_param] = int(node.get("k", dense_limit))
+
+                join_conditions = []
+                if groupby_column:
+                    join_conditions.append("l.groupby_value = r.groupby_value")
+                if also_backwards:
+                    join_conditions.append(
+                        f"r.start_time BETWEEN (l.end_time - :{window_param}) AND (l.end_time + :{window_param})"
+                    )
+                else:
+                    join_conditions.append(
+                        f"r.start_time BETWEEN l.end_time AND (l.end_time + :{window_param})"
+                    )
+
+                carry_cols = ",\n                            ".join(
+                    [f'l."{self.id_column}"', f'l."{self.content_column}"']
+                    + [f'l."{c}"' for c in self.metadata_columns]
+                    + ([f'l."{self.metadata_json_column}"'] if self.metadata_json_column else [])
+                )
+
+                cte_statements.append(
+                    f"""
+                    {join_name} AS (
+                        SELECT
+                            {carry_cols},
+                            l.start_time AS start_time,
+                            r.end_time AS end_time,
+                            COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
+                            (l.score + r.score) AS score
+                        FROM {current} l
+                        JOIN {right} r
+                          ON {' AND '.join(join_conditions)}
+                        ORDER BY score DESC
+                        LIMIT :{join_limit_param}
+                    )
+                    """.strip()
+                )
+                current = join_name
+
+            return current
+
+        root_cte = await _build_cte({"item": query_payload, **query})
+        params["final_limit"] = dense_limit
+
+        sql = text(
+            "WITH\n"
+            + ",\n".join(cte_statements)
+            + f"\nSELECT * FROM {root_cte} ORDER BY score DESC LIMIT :final_limit"
+        )
+
+        results: list[Document] = []
         async with self.engine.connect() as conn:
+            # conn.execute(text("SET enable_indexscan = off;"))
+            await conn.execute(text("SET hnsw.iterative_scan = relaxed_order;"))
+            await conn.execute(text("SET hnsw.max_scan_tuples = 150000;"))
             await conn.execute(text("SET LOCAL random_page_cost = 0.2;")) # SET LOCAL random_page_cost = 1.1;
             fetch_k = kwargs.get("fetch_k", self.fetch_k)
             await conn.execute(text(f"SET LOCAL hnsw.ef_search = {fetch_k};"))
+
+            if kwargs.get("explain_analyze", False):
+                explain_sql = text(
+                    "EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) " + str(sql)
+                )
+                explain_rows = (await conn.execute(explain_sql, params)).fetchall()
+                print("EXPLAIN ANALYZE for temporal query:")
+                for row in explain_rows:
+                    print(row[0])
+                if kwargs.get("explain_analyze_only", False):
+                    return []
+
             result_proxy = await conn.execute(sql, params)
             rows = result_proxy.mappings().fetchall()
 
@@ -1002,9 +1148,9 @@ class AsyncPGVectorStore(VectorStore):
 
                 metadata.update(
                     {
-                        "temporal_x": row["temporal_x"],
-                        "temporal_y": row["temporal_y"],
-                        "rrf_score": row["rrf_score"],
+                        # "temporal_start": row["start_time"],
+                        # "temporal_end": row["end_time"],
+                        "score": row["score"],
                     }
                 )
 
@@ -1037,13 +1183,18 @@ class AsyncPGVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[tuple[Document, float]]:
         """Return docs and distance scores selected by similarity search on query."""
-        inline_embed_func = getattr(self.embedding_service, "embed_query_inline", None)
+        selected_model, selected_embedder = self._resolve_embedding_backend(
+            model=kwargs.get("model"),
+            embedding_column=kwargs.get("embedding_column"),
+        )
+        inline_embed_func = getattr(selected_embedder, "embed_query_inline", None)
         embedding = (
             []
             if callable(inline_embed_func)
-            else await self.embedding_service.aembed_query(text=query)
+            else await selected_embedder.aembed_query(text=query)
         )
         kwargs["query"] = query
+        kwargs["model"] = selected_model
 
         # add fts_query to hybrid_search_config
         hybrid_search_config = kwargs.get(
@@ -1093,6 +1244,8 @@ class AsyncPGVectorStore(VectorStore):
             )
             for col in self.metadata_columns:
                 metadata[col] = row[col]
+            assert self.distance_strategy.search_function == "cosine_distance"
+            metadata["score"] = 1 - row["distance"] # quite bad to add scores to metadata, but easier to handle
             documents_with_scores.append(
                 (
                     Document(
@@ -1116,7 +1269,12 @@ class AsyncPGVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance."""
-        embedding = await self.embedding_service.aembed_query(text=query)
+        selected_model, selected_embedder = self._resolve_embedding_backend(
+            model=kwargs.get("model"),
+            embedding_column=kwargs.get("embedding_column"),
+        )
+        embedding = await selected_embedder.aembed_query(text=query)
+        kwargs["model"] = selected_model
 
         return await self.amax_marginal_relevance_search_by_vector(
             embedding=embedding,

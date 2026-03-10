@@ -1,7 +1,7 @@
 import time
 import uvicorn
 import hydra
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -9,7 +9,6 @@ from omegaconf import DictConfig
 from hydra.utils import instantiate
 
 # --- LangChain Imports ---
-from langchain_classic.retrievers import EnsembleRetriever
 from langchain_postgres import PGEngine
 from langchain_core.structured_query import Operation, Operator, Comparison, Comparator
 from langchain_postgres.translator import PGVectorTranslator
@@ -20,53 +19,82 @@ from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
 from utils import generate_doc_id 
 
-# --- Pydantic Models ---
-class SearchRequest(BaseModel):
-    query: Dict[str, Any] = Field(..., description="Structured query with 'items' and optional filters.")
-    k: int = Field(default=100, ge=1, description="Number of results to return")
-    models: Optional[List[str]] = Field(
-        default=None, 
-        description="List of model names to use. If None, uses all available."
+class TemporalQueryNode(BaseModel):
+    item: Union[str, List["TemporalQueryNode"]] = Field(
+        ...,
+        description="Leaf string query or nested list of temporal query nodes.",
     )
-    # New: Dictionary for exact match filtering (e.g., {"city": "London"})
+    model: Optional[str] = Field(
+        default=None,
+        description="Embedding model/column to use for this leaf query.",
+    )
+    k: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Per-node candidate limit.",
+    )
     filters: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Metadata filters. Example: {'city': 'London', 'year': 2022}"
+        description="Per-node metadata filters.",
+    )
+    window_seconds: Optional[Union[float, List[float]]] = Field(
+        default=None,
+        description="Scalar or list of N-1 windows for this node's query list.",
+    )
+    also_backwards_in_time: Optional[bool] = Field(
+        default=None,
+        description="If true, temporal joins are evaluated in both directions.",
+    )
+
+# --- Pydantic Models ---
+class SearchRequest(BaseModel):
+    query: TemporalQueryNode = Field(..., description="Structured query with 'items' and optional filters.")
+    urls_to_retrieve: Optional[List[str]] = Field(
+        default=None,
+        description="List of element types to retrieve (e.g., ['images', 'thumbnails'])."
+    )
+    fetch_k: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Override for the number of candidates to fetch before re-ranking (default is 10x final k, capped at 1000)."
     )
 
 class SearchResult(BaseModel):
     metadata: Dict[str, Any]
-    image_id: str
+    score: float
+    id: str
+
+
+if hasattr(TemporalQueryNode, "model_rebuild"):
+    TemporalQueryNode.model_rebuild()
+else:
+    TemporalQueryNode.update_forward_refs()
+
 
 def _parse_dict_to_ir(d: dict):
-    """Recursively maps a dict to LangChain's IR classes."""
+    """Recursively map API filter dict to LangChain IR classes."""
     if not d:
         return None
-    # If it has an operator, it's an Operation node
     if "operator" in d:
         return Operation(
             operator=Operator(d["operator"]),
-            arguments=[_parse_dict_to_ir(arg) for arg in d["arguments"]]
+            arguments=[_parse_dict_to_ir(arg) for arg in d["arguments"]],
         )
-    # Otherwise, it's a Comparison node
     return Comparison(
         comparator=Comparator(d["comparator"]),
         attribute=d["attribute"],
-        value=d["value"]
+        value=d["value"],
     )
 
+
 def build_pg_filter(filter_dict: dict):
-    # 1. Build the StructuredQuery directly using our clean mapper
     structured_query = StructuredQuery(
-        query="", 
-        filter=_parse_dict_to_ir(filter_dict)
+        query="",
+        filter=_parse_dict_to_ir(filter_dict),
     )
-    
-    # 2. Translate into PGVector's expected format
     translator = PGVectorTranslator()
     _, pg_kwargs = translator.visit_structured_query(structured_query)
-    
-    return pg_kwargs['filter']
+    return pg_kwargs["filter"]
 
 # --- Lifecycle Manager ---
 @asynccontextmanager
@@ -89,99 +117,114 @@ async def lifespan(app: FastAPI):
     app.state.engine = engine
     print("Database connection established.")
 
-    # 2. Initialize Vector Stores (NOT Retrievers)
-    app.state.vector_stores = {}
-    
+    # 2. Initialize one multi-model Vector Store
+    embedders = {}
+    model_names = []
+    model_column_map = {}
+    available_model_names = set()
     for model_conf in cfg.embedding.models:
-        model_name = model_conf.name
         mrl_dim = model_conf.get("mrl_dim")
-        
-        # Determine Embedding Column
-        embedding_col = f"{model_name}_MRL{mrl_dim}" if mrl_dim else model_name
-        print(f"-> Initializing VectorStore for: {model_name} (Col: {embedding_col})")
+        if mrl_dim is None:
+            mrl_dim = model_conf.get("mrl_dim_serve")
 
-        # Embedding Service
-        emb_kwargs = {
-            "embedding_server_url": cfg.embedding.server_url,
-            "data_server_url": cfg.data.server_url,
-            "data_loader": loader,
-            "model": model_name,
-            "timeout": cfg.embedding.timeout,
-        }
-        if mrl_dim is not None:
-             emb_kwargs["mrl_dimension"] = mrl_dim
+        model_name = model_conf.name
+        embedding_column_name = f"{model_name}_MRL{mrl_dim}" if mrl_dim else model_name
 
-        embedding_service = RemoteEmbeddings(**emb_kwargs)
-
-        # Create/Cache Vector Store
-        vs = PGVectorStore.create_sync(
-            engine=engine,
-            table_name=table_name,
-            embedding_service=embedding_service,
-            embedding_column=embedding_col,
-            metadata_columns=app.state.loader.get_retrieved_metadata_columns(),
-            groupby_column=loader.get_temporal_groupby_column(),
-            temporal_column=loader.get_temporal_column()
+        embedders[embedding_column_name] = RemoteEmbeddings(
+            embedding_server_url=cfg.embedding.server_url,
+            data_server_url=cfg.data.server_url,
+            data_loader=loader,
+            model=model_name,
+            timeout=cfg.embedding.timeout,
+            mrl_dimension=mrl_dim if mrl_dim else None,
         )
-        app.state.vector_stores[model_name] = vs
+        model_names.append(embedding_column_name)
+        model_column_map[model_name] = embedding_column_name
+        available_model_names.add(model_name)
+        available_model_names.add(embedding_column_name)
 
-    print(f"Ready. Available models: {list(app.state.vector_stores.keys())}")
+    app.state.vector_store = PGVectorStore.create_sync(
+        engine=engine,
+        table_name=table_name,
+        embedding_service=embedders,
+        embedding_column=model_names,
+        model_column_map=model_column_map,
+        metadata_columns=app.state.loader.get_retrieved_metadata_columns(),
+        groupby_column=loader.get_temporal_groupby_column(),
+        temporal_column=loader.get_temporal_column(),
+    )
+    app.state.available_models = sorted(available_model_names)
+
+    print(f"Ready. Available models: {app.state.available_models}")
     yield
     print("Shutting down...")
 
 # --- FastAPI App ---
 app = FastAPI(lifespan=lifespan)
 
+def _collect_models(node: TemporalQueryNode) -> List[str]:
+    models: List[str] = []
+    if node.model:
+        models.append(node.model)
+    if isinstance(node.item, list):
+        for child in node.item:
+            models.extend(_collect_models(child))
+    return models
+
+
+def _convert_filters_to_pg(node: Dict[str, Any]) -> Dict[str, Any]:
+    converted = dict(node)
+    if "filters" in converted and isinstance(converted["filters"], dict):
+        converted["filters"] = build_pg_filter(converted["filters"])
+
+    payload = converted.get("item")
+    if isinstance(payload, list):
+        converted["item"] = [
+            _convert_filters_to_pg(child) if isinstance(child, dict) else child
+            for child in payload
+        ]
+    return converted
+
+
 @app.post("/search", response_model=List[SearchResult])
 async def search_endpoint(request: SearchRequest):
     start_time = time.time()
-    
-    # 1. Select Models
-    available_stores = app.state.vector_stores
-    target_models = request.models if request.models else list(available_stores.keys())
-    
-    # 2. Prepare Filter (Once for all retrievers)
-    pg_filter = build_pg_filter(request.filters) if request.filters else None
 
-    # 3. Create Dynamic Retrievers
-    active_retrievers = []
-    for model_name in target_models:
-        if model_name not in available_stores:
-            raise HTTPException(status_code=400, detail=f"Model '{model_name}' unknown.")
-        
-        store = available_stores[model_name]
-        
-        # Construct search_kwargs
-        search_kwargs = {'k': request.k, 'fetch_k': min(request.k * 10, 1000)}  # fetch_k can be higher for better recall
-        if pg_filter:
-            search_kwargs['filter'] = pg_filter
-            
-        retriever = store.as_retriever(search_kwargs=search_kwargs)
-        active_retrievers.append(retriever)
+    query_dict = (
+        request.model_dump(exclude_none=True)
+        if hasattr(request, "model_dump")
+        else request.dict(exclude_none=True)
+    )
+    actual_query = query_dict.get("query")
+    actual_query = _convert_filters_to_pg(actual_query)
+    requested_models = _collect_models(request.query)
+    unknown_models = [m for m in requested_models if m not in app.state.available_models]
+    if unknown_models:
+        raise HTTPException(status_code=400, detail=f"Unknown model(s): {sorted(set(unknown_models))}")
 
-    # 4. Create Ensemble
-    if not active_retrievers:
-        raise HTTPException(status_code=400, detail="No valid models selected.")
-
-    if len(active_retrievers) > 1:
-        final_retriever = EnsembleRetriever(retrievers=active_retrievers)
-    else:
-        final_retriever = active_retrievers[0]
+    default_k = int(getattr(app.state.config, "default_k", 100))
+    final_k = int(request.query.k or default_k)
 
     try:
-        # 5. Execute Search
-        docs = final_retriever.invoke(request.query)
+        docs = app.state.vector_store.similarity_search(
+            actual_query,
+            k=final_k,
+            filter=None,
+            fetch_k=request.fetch_k if request.fetch_k else min(final_k * 10, 1000),
+        )
+
+        urls_to_retrieve = query_dict.get("urls_to_retrieve", None)
         
-        # 6. Format Response
         results = [
             SearchResult(
-                metadata=doc.metadata,
-                image_id=doc.page_content
+                score=doc.metadata.pop("score"),
+                metadata=doc.metadata | {what: app.state.loader.get_collection_element_url_from_id(doc.page_content, what) for what in urls_to_retrieve} if urls_to_retrieve else doc.metadata,
+                id=doc.page_content
             ) for doc in docs
         ]
         
         duration = time.time() - start_time
-        print(f"Query: '{request.query}' | Filter: {request.filters} | Time: {duration:.4f}s")
+        print(f"Query: '{query_dict}' | Time: {duration:.4f}s")
         return results
 
     except Exception as e:
@@ -208,15 +251,15 @@ def element_url(id: str, what: List[str] = Query(default=["images"])):
         error_str = f"URL Generation Error: {e}"
         raise HTTPException(status_code=400, detail=error_str)
     
-@app.get("/metadata-field")
+@app.get("/field")
 def metadata_field(id: str, field: List[str] = Query(default=["epoch"])):
     """
     Given an image name (ID) and a metadata field name, return the value of that field.
-    Example: /metadata-field?id=20190101_121948_000.jpg&field=hour
+    Example: /field?id=20190101_121948_000.jpg&field=hour
     """
     try:
         hashed_id = generate_doc_id(id)
-        doc = app.state.vector_stores[next(iter(app.state.vector_stores))].get_by_ids(ids=[hashed_id], columns_override=field)
+        doc = app.state.vector_store.get_by_ids(ids=[hashed_id], columns_override=field)
         if not doc:
             raise HTTPException(status_code=404, detail=f"No record found for ID '{id}'.")
         return doc[0].metadata
