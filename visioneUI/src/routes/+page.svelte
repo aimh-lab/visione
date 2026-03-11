@@ -1242,6 +1242,7 @@ function handleViewSubmitted() {
   error={view2Error}
   frames={view2Frames}
   videoId={view2VideoId || activeVideoSummaryContext.videoId}
+  selectedFrameId={view2SelectedImgId}
   pinnedSummaries={pinnedVideoSummaries}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}

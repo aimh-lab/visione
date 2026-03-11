@@ -32,8 +32,7 @@
 
   let fetchedTimecodes = new Map();
   let requestedTimecodeIds = new Set();
-  const TIMECODE_FETCH_CONCURRENCY = 4;
-  const TIMECODE_PREFETCH_MAX = 120;
+  const TIMECODE_FETCH_CONCURRENCY = 8;
   const timecodeQueue = [];
   let activeTimecodeFetches = 0;
   const pendingTimecodes = new Map();
@@ -104,9 +103,9 @@
       item.raw?.middleTimestamp,
       item.raw?.middle_time,
       item.raw?.frame_time,
-      item.raw?.frameTime,
-      item.raw?.time,
-      item.raw?.timestamp
+      item.raw?.frameTime
+      // NOTE: item.raw?.time and item.raw?.timestamp intentionally excluded —
+      // these generic fields may represent dates, scores, or other non-timecode values
     ]);
 
     if (seconds == null || seconds < 0) return null;
@@ -452,19 +451,19 @@
     }
   }
 
-  $: {
-    let queued = 0;
+  function enqueueTimecodeForVisibleRows() {
     for (const bucket of visibleRows) {
       const row = bucket?.row;
       if (!Array.isArray(row)) continue;
       for (const item of row) {
-        if (queued >= TIMECODE_PREFETCH_MAX) break;
         enqueueTimecodeFetch(item);
-        queued += 1;
       }
-      if (queued >= TIMECODE_PREFETCH_MAX) break;
     }
     if (timecodeQueue.length > 0) pumpTimecodeQueue();
+  }
+
+  $: if (visibleRows) {
+    enqueueTimecodeForVisibleRows();
   }
 
   // Reactive timecode labels map — recomputes whenever fetchedTimecodes or items change.
@@ -567,6 +566,7 @@
       scrollRaf = 0;
       scrollTop = containerEl.scrollTop || 0;
       recomputeVirtualWindow();
+      enqueueTimecodeForVisibleRows();
     });
   }
 

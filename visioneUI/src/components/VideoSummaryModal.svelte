@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
   import ResultsGrid from "./ResultsGrid.svelte";
   const ResultsGridAny = ResultsGrid as any;
 
@@ -24,6 +24,8 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
+
+  export let selectedFrameId: string | null = null;
 
   export let onClose = () => {};
   export let onPinCurrent = () => {};
@@ -133,9 +135,74 @@
     modalRect = clampRect(modalRect);
   }
 
+  /* ── scroll-to-selected keyframe ── */
+  let gridContainer: HTMLElement | null = null;
+  let scrollTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  function registerGridContainer(el: HTMLElement) {
+    gridContainer = el;
+  }
+
+  function clearPendingScroll() {
+    if (scrollTimerId !== null) { clearTimeout(scrollTimerId); scrollTimerId = null; }
+  }
+
+  function scrollContainerToElement(container: HTMLElement, el: HTMLElement, smooth = true) {
+    // Don't use scrollIntoView — it scrolls ALL ancestors including overflow:hidden
+    // wrappers, which shifts the modal layout and causes wrong scroll positions.
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const elTop = eRect.top - cRect.top + container.scrollTop;
+    const target = elTop - cRect.height / 2 + eRect.height / 2;
+    container.scrollTo({ top: Math.max(0, target), behavior: smooth ? "smooth" : "instant" });
+  }
+
+  function tryScrollToSelected() {
+    clearPendingScroll();
+    if (!gridContainer || !selectedFrameId) return;
+
+    const base = String(selectedFrameId);
+    const noJpg = base.replace(/\.jpg$/i, "");
+    const withJpg = noJpg + ".jpg";
+    const candidates = [base, noJpg, withJpg];
+
+    function findEl(): HTMLElement | null {
+      if (!gridContainer) return null;
+      for (const id of candidates) {
+        const el = gridContainer.querySelector(`[data-frame-id="${id}"], [data-img-id="${id}"]`) as HTMLElement | null;
+        if (el) return el;
+      }
+      return null;
+    }
+
+    const deadline = Date.now() + 9000;
+    function attempt() {
+      if (!gridContainer) return;
+      const el = findEl();
+      if (el) {
+        scrollContainerToElement(gridContainer, el, false);
+        // Refine after layout stabilizes (images loading, flex reflow)
+        scrollTimerId = setTimeout(() => {
+          const el2 = findEl();
+          if (el2 && gridContainer) scrollContainerToElement(gridContainer, el2, true);
+        }, 400);
+        return;
+      }
+      if (Date.now() < deadline) {
+        scrollTimerId = setTimeout(attempt, 80);
+      }
+    }
+    attempt();
+  }
+
+  $: if (isOpen && selectedFrameId && frames?.length) {
+    tick().then(() => requestAnimationFrame(() => tryScrollToSelected()));
+  }
+
   onDestroy(() => {
     isDragging = false;
     isResizing = false;
+    clearPendingScroll();
   });
 </script>
 
@@ -231,7 +298,7 @@
             <svelte:component
               this={ResultsGridAny}
               items={framesAsRows}
-              selectedId={null}
+              selectedId={selectedFrameId as any}
               layout="rows"
               showVideoSummary={false}
               {videoBadgeOrientation}
@@ -240,7 +307,7 @@
               {justifyResultRows}
               virtualizeRows={false}
               virtualizeThreshold={virtualizationThreshold}
-              registerContainer={() => {}}
+              registerContainer={registerGridContainer}
               on:open={(e: any) => onOpenFrame(e.detail.frame)}
               on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
               on:similarity={(e: any) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
