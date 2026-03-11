@@ -13,13 +13,8 @@ export function transformSearchResults(resultSet, submittedIds = new Set()) {
       submitted: submittedIds.has(info.imgId),
       matchScore: item.score || item.similarity || item.distance || item.confidence || 0,
       
-      // ✅ DATI TEMPORALI
-      // L'API VISIONE potrebbe fornire questi campi:
-      timestamp: item.timestamp || item.time || item.frame_time || 0,
-      videoDuration: item.videoDuration || item.video_duration || item.duration || 0,
-      
-      // Se l'API non fornisce videoDuration, prova a derivarlo dal videoId
-      // oppure usa un valore di fallback
+      // Timecodes are resolved per-frame via getMiddleTimestamp API
+      // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
       raw: item
     };
   });
@@ -42,9 +37,8 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
       tags: item.tags ?? item.labels ?? [],
       submitted: submittedIds.has(info.imgId),
       
-      // ✅ DATI TEMPORALI
-      timestamp: item.timestamp || item.time || item.frame_time || 0,
-      videoDuration: item.videoDuration || item.video_duration || item.duration || 0,
+      // Timecodes are resolved per-frame via getMiddleTimestamp API
+      // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
       
       // ✅ SIMILARITY SCORE (se disponibile)
       similarityScore: item.score || item.similarity || item.distance || 0,
@@ -55,41 +49,13 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
 }
 
 export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new Set()) {
-  // ✅ Calcola durata video dal massimo timestamp (se disponibile)
-  let videoDuration = 0;
-  
-  // Se rawFrames contiene oggetti con timestamp
-  if (rawFrames.length > 0 && typeof rawFrames[0] === 'object') {
-    const timestamps = rawFrames
-      .map(f => f.timestamp || f.time || 0)
-      .filter(t => t > 0);
-    
-    if (timestamps.length > 0) {
-      videoDuration = Math.max(...timestamps);
-    }
-  }
-  
-  // Fallback: stima dalla lunghezza (es. 1 frame ogni 2 secondi)
-  if (videoDuration === 0) {
-    videoDuration = rawFrames.length * 2;
-  }
-  
   return rawFrames.map((item, index) => {
     // Se item è una stringa (solo imgId)
     const imgId = typeof item === 'string' ? item : (item.imgId || item.id || item);
     const vid = String(imgId).split("-")[0].padStart(5, "0");
     const normalizedImgId = String(imgId).replace(/\.jpg$/i, "");
     const url = tinyFrameUrl(vid, normalizedImgId);
-    
-    // ✅ Timestamp dal frame o stima progressiva
-    let timestamp = 0;
-    if (typeof item === 'object' && (item.timestamp || item.time)) {
-      timestamp = item.timestamp || item.time;
-    } else {
-      // Stima: distribuisci uniformemente i frame nel video
-      timestamp = (index / rawFrames.length) * videoDuration;
-    }
-    
+
     return {
       index,
       imgId: normalizedImgId,
@@ -97,11 +63,8 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
       url,
       title: normalizedImgId,
       submitted: submittedIds.has(normalizedImgId),
-      
-      // ✅ DATI TEMPORALI
-      timestamp,
-      videoDuration,
-      
+      // Timecodes are resolved per-frame via getMiddleTimestamp API in ResultsGrid.
+      // Do NOT estimate timestamps here — wrong estimates block the accurate API call.
       raw: item
     };
   });
