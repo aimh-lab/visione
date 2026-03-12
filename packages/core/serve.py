@@ -1,7 +1,7 @@
 import time
 import uvicorn
 import hydra
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Any, Union, Literal
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -44,6 +44,10 @@ class TemporalQueryNode(BaseModel):
     also_backwards_in_time: Optional[bool] = Field(
         default=None,
         description="If true, temporal joins are evaluated in both directions.",
+    )
+    aggregation_type: Optional[Literal["temporal", "rrf"]] = Field(
+        default="temporal",
+        description="Aggregation strategy for list items: 'temporal' (default) or 'rrf'.",
     )
 
 # --- Pydantic Models ---

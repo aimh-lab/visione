@@ -980,6 +980,15 @@ class AsyncPGVectorStore(VectorStore):
                 return [float(w) for w in raw_window]
             return [float(raw_window)] * count
 
+        def _normalize_aggregation_type(raw_aggregation_type: Any) -> str:
+            if raw_aggregation_type is None:
+                return "temporal"
+            if isinstance(raw_aggregation_type, str):
+                normalized = raw_aggregation_type.lower()
+                if normalized in {"temporal", "rrf"}:
+                    return normalized
+            raise ValueError("aggregation_type must be either 'temporal' or 'rrf'.")
+
         def _merge_filters(global_filter: Optional[dict], leaf_filter: Any) -> Optional[dict]:
             normalized_leaf = (
                 leaf_filter
@@ -1052,6 +1061,70 @@ class AsyncPGVectorStore(VectorStore):
                 raise ValueError("Temporal query nodes must contain at least two child queries.")
 
             child_ctes = [await _build_cte(child) for child in payload]
+            aggregation_type = _normalize_aggregation_type(node.get("aggregation_type"))
+
+            if aggregation_type == "rrf":
+                current = child_ctes[0]
+                for idx in range(1, len(child_ctes)):
+                    right = child_ctes[idx]
+                    join_name = f"q_{node_counter}"
+                    node_counter += 1
+
+                    join_limit_param = f"{join_name}_k"
+                    params[join_limit_param] = int(node.get("k", candidate_limit))
+
+                    cte_statements.append(
+                        f"""
+                        {join_name} AS (
+                            SELECT
+                                COALESCE(l."{self.id_column}", r."{self.id_column}") AS "{self.id_column}",
+                                LEAST(
+                                    COALESCE(l.start_time, r.start_time),
+                                    COALESCE(r.start_time, l.start_time)
+                                ) AS start_time,
+                                GREATEST(
+                                    COALESCE(l.end_time, r.end_time),
+                                    COALESCE(r.end_time, l.end_time)
+                                ) AS end_time,
+                                COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
+                                (COALESCE(l.score, 0.0) + COALESCE(r.score, 0.0)) AS score
+                            FROM {current} l
+                            FULL OUTER JOIN {right} r
+                              ON l."{self.id_column}" = r."{self.id_column}"
+                            ORDER BY score DESC
+                            LIMIT :{join_limit_param}
+                        )
+                        """.strip()
+                    )
+                    current = join_name
+
+                agg_name = f"q_{node_counter}"
+                node_counter += 1
+                agg_limit_param = f"{agg_name}_k"
+                params[agg_limit_param] = int(node.get("k", dense_limit))
+
+                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
+
+                cte_statements.append(
+                    f"""
+                    {agg_name} AS (
+                        SELECT
+                            {base_cols_sql},
+                            s.start_time AS start_time,
+                            s.end_time AS end_time,
+                            s.groupby_value AS groupby_value,
+                            s.score AS score
+                        FROM {current} s
+                        JOIN {full_table_name} b
+                          ON b."{self.id_column}" = s."{self.id_column}"
+                        ORDER BY s.score DESC
+                        LIMIT :{agg_limit_param}
+                    )
+                    """.strip()
+                )
+                return agg_name
+
+            # Temporal aggregation
             windows = _normalize_windows(node.get("window_seconds", 30.0), len(child_ctes) - 1)
             also_backwards = bool(node.get("also_backwards_in_time", False))
 
