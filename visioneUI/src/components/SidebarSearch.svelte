@@ -156,16 +156,6 @@
 >
   
   {#if isSidebarOpen}
-    <!-- Header -->
-    <div class="px-3 py-2 bg-gray-900/30 border-b border-gray-700 flex-shrink-0">
-      <div class="flex items-center space-x-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <h2 class="text-base font-bold text-white">Search</h2>
-      </div>
-    </div>
-
     <!-- Content Area -->
     <div class="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
         <!-- Query Builder -->
