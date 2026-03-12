@@ -17,6 +17,7 @@
   export let videoId: string | null = null;
 
   export let pinnedSummaries: PinnedSummary[] = [];
+  export let activePinnedSummaryKey = "";
 
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
@@ -30,6 +31,7 @@
   export let onClose = () => {};
   export let onPinCurrent = () => {};
   export let onOpenPinned = (_item: PinnedSummary) => {};
+  export let onUnpinPinned = (_item: PinnedSummary) => {};
 
   export let onOpenFrame = (_frame: Frame) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
@@ -37,6 +39,9 @@
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+
+  const summaryKey = (item: PinnedSummary) =>
+    `${String(item?.videoId || "").trim()}::${String(item?.highlightImgId || "").trim()}`;
 
   $: framesAsRows = frames ? [frames] : [];
   $: hasFrames = (frames?.length ?? 0) > 0;
@@ -272,14 +277,33 @@
         <div class="px-4 py-2 border-b border-slate-700 bg-slate-900/85 flex items-center gap-2 flex-wrap">
           <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Pinned</span>
           {#each pinnedSummaries as item}
-            <button
-              type="button"
-              class="px-2 py-1 rounded-md text-[11px] bg-slate-800 text-slate-200 border border-slate-600/70 hover:bg-slate-700 transition-colors"
-              on:click={() => onOpenPinned(item)}
-              title={`Open pinned summary ${item.videoId}`}
+            <div
+              class="inline-flex items-center rounded-md border text-slate-200 {summaryKey(item) === activePinnedSummaryKey
+                ? 'border-sky-500/60 bg-sky-900/30 ring-1 ring-sky-500/40'
+                : 'border-slate-600/70 bg-slate-800'}"
             >
-              {item.label || item.videoId}
-            </button>
+              <button
+                type="button"
+                class="px-2 py-1 text-[11px] transition-colors rounded-l-md {summaryKey(item) === activePinnedSummaryKey
+                  ? 'text-sky-100 font-semibold hover:bg-sky-800/35'
+                  : 'hover:bg-slate-700'}"
+                on:click={() => onOpenPinned(item)}
+                title={`Open pinned summary ${item.videoId}`}
+              >
+                {item.label || item.videoId}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center w-6 h-6 border-l border-slate-600/70 text-slate-400 hover:text-red-300 hover:bg-red-900/25 transition-colors rounded-r-md"
+                on:click={() => onUnpinPinned(item)}
+                aria-label={`Unpin ${item.label || item.videoId}`}
+                title="Unpin"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
           {/each}
         </div>
       {/if}
