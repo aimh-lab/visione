@@ -919,19 +919,21 @@
                 </button>
               {/if}
 
-              <button
-                type="button"
-                on:click={() => toggle(i)}
-                title={textarea.enabled ? 'Skip this step' : 'Enable this step'}
-                aria-label={textarea.enabled ? 'Skip this step' : 'Enable this step'}
-                class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
-                style={`background-color: ${textarea.enabled ? withAlpha(stepColor, 0.9) : 'rgb(75, 85, 99)'};`}
-              >
-                <span
-                  class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform
-                         {textarea.enabled ? 'translate-x-3' : 'translate-x-0.5'}"
-                ></span>
-              </button>
+              {#if textareas.length > 1}
+                <button
+                  type="button"
+                  on:click={() => toggle(i)}
+                  title={textarea.enabled ? 'Skip this step' : 'Enable this step'}
+                  aria-label={textarea.enabled ? 'Skip this step' : 'Enable this step'}
+                  class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
+                  style={`background-color: ${textarea.enabled ? withAlpha(stepColor, 0.9) : 'rgb(75, 85, 99)'};`}
+                >
+                  <span
+                    class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform
+                           {textarea.enabled ? 'translate-x-3' : 'translate-x-0.5'}"
+                  ></span>
+                </button>
+              {/if}
 
               {#if showSequenceChrome && textareas.length > 1}
                 <div class="relative step-actions-menu">
