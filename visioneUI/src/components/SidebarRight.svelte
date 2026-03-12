@@ -141,18 +141,6 @@
     <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
       {#if activeTab === "RF"}
         <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center space-x-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
-              </svg>
-              <h3 class="text-sm font-semibold text-gray-200">Relevance Feedback</h3>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="ui-feedback-count-badge ui-feedback-count-positive px-2 py-0.5 bg-green-900/25 border border-green-700/40 text-xs font-medium rounded-full">{rfPositive.length}</span>
-              <span class="ui-feedback-count-badge ui-feedback-count-negative px-2 py-0.5 bg-red-900/25 border border-red-700/40 text-xs font-medium rounded-full">{rfNegative.length}</span>
-            </div>
-          </div>
           <RFLists
             {rfPositive}
             {rfNegative}

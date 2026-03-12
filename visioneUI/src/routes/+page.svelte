@@ -1244,6 +1244,7 @@ function handleViewSubmitted() {
   videoId={view2VideoId || activeVideoSummaryContext.videoId}
   selectedFrameId={view2SelectedImgId}
   pinnedSummaries={pinnedVideoSummaries}
+  {activePinnedSummaryKey}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
@@ -1253,6 +1254,7 @@ function handleViewSubmitted() {
   onClose={() => { isVideoSummaryModalOpen = false; }}
   onPinCurrent={pinCurrentVideoSummary}
   onOpenPinned={openPinnedVideoSummary}
+  onUnpinPinned={unpinVideoSummary}
   onOpenFrame={(frame) => openFrameModal(frame)}
   onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
   addRFPositiveByImg={addRFPositiveByImg}
