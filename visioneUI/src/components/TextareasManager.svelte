@@ -823,6 +823,7 @@
     {#each textareas as textarea, i}
       {@const stepColor = getStepColor(i)}
       {@const isVisualQueryStep = isSimilarityStep(i)}
+      {@const isDisabledBySimilarity = !textarea.enabled && textarea?._disabledBySimilarity === true}
       <div
         bind:this={stepRefs[i]}
         class="group relative transition-all rounded-xl {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
@@ -852,8 +853,12 @@
           </div>
         {/if}
         <div
-          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {textarea.enabled ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]' : 'bg-slate-900/45 border-slate-700/55 opacity-90'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
-          style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
+          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {isDisabledBySimilarity
+            ? 'bg-slate-950/80 border-amber-600/60 ring-1 ring-amber-500/35'
+            : textarea.enabled
+              ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]'
+              : 'bg-slate-900/45 border-slate-700/55 opacity-90'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
+          style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${isDisabledBySimilarity ? 'rgba(245, 158, 11, 0.85)' : withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
           role="group"
           aria-label={`Drop frame on step ${i + 1}`}
           on:dragover={(e) => handleTextareaDragOver(i, e)}
@@ -869,8 +874,15 @@
             aria-label={`Step ${i + 1} header drag area`}
             title={showSequenceChrome && textareas.length > 1 ? 'Drag this header to reorder step' : undefined}
           >
-            <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
-              {getStepContextLabel(i)}
+            <div class="flex items-center gap-1.5 min-w-0">
+              <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
+                {getStepContextLabel(i)}
+              </div>
+              {#if isDisabledBySimilarity}
+                <span class="px-1.5 py-0.5 rounded-md border border-amber-600/60 bg-amber-900/30 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
+                  Disabled by similarity
+                </span>
+              {/if}
             </div>
 
             <div class="flex items-center gap-1.5">
