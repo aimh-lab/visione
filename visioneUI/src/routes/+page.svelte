@@ -46,6 +46,93 @@
   let similarityContainer;
   let view2Container;
 
+  // Drag & Drop for Similarity
+  let showDropzone = false;
+  let dragCounter = 0;
+
+  function onGlobalDragEnter(e) {
+    const types = e.dataTransfer?.types;
+    if (types && (types.includes ? (types.includes('Files') || types.includes('text/uri-list')) : (types.indexOf('Files') !== -1 || types.indexOf('text/uri-list') !== -1))) {
+      e.preventDefault();
+      dragCounter++;
+      showDropzone = true;
+    }
+  }
+
+  function onGlobalDragLeave(e) {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      showDropzone = false;
+    }
+  }
+
+  function onGlobalDragOver(e) {
+    const types = e.dataTransfer?.types;
+    if (types && (types.includes ? (types.includes('Files') || types.includes('text/uri-list')) : (types.indexOf('Files') !== -1 || types.indexOf('text/uri-list') !== -1))) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      if (!showDropzone) {
+         showDropzone = true;
+         dragCounter = 1;
+      }
+    }
+  }
+
+  function onGlobalDrop(e) {
+    e.preventDefault();
+    dragCounter = 0;
+    showDropzone = false;
+    
+    if (e.dataTransfer && e.dataTransfer.files) {
+      const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let { width, height } = img;
+            const MAX_DIM = 512;
+            if (width > MAX_DIM || height > MAX_DIM) {
+              if (width > height) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              } else {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Compressione leggera a JPEG
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            const fakeImgId = `upload-${Date.now()}`;
+            const frame = { imgId: fakeImgId, url: dataUrl, title: file.name };
+            
+            // Aggiungiamo lo step e avviamo la ricerca
+            addSimilarityAsSearchStep(dataUrl, frame);
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+    
+    // Fallback: controllo se è stato trascinato un URL
+    const url = e.dataTransfer?.getData('URL') || e.dataTransfer?.getData('text/uri-list');
+    if (url && url.startsWith('http')) {
+       const fakeImgId = `url-${Date.now()}`;
+       const frame = { imgId: fakeImgId, url: url, title: "Dropped Image" };
+       addSimilarityAsSearchStep(url, frame);
+    }
+  }
+
   function resetSearchScroll() {
     lastViewedSearchIndex = 0;
     scrollMgr.resetScroll('View1');
@@ -662,22 +749,24 @@
   const closeModal = () => searchModal.close({ keepSelection: true });
 
   function navigateImage(offset, toFirstOfRow = false) {
+    const currentIndex = $searchModal.selected?.index ?? lastViewedSearchIndex ?? -1;
+    let targetIndex = -1;
+
     if (toFirstOfRow) {
-      const currentIndex = $searchModal.selected?.index ?? lastViewedSearchIndex;
-      const targetIndex = getFirstOfNextRow(currentIndex, offset);
-      if (targetIndex >= 0 && targetIndex < images.length) {
-        const targetItem = images[targetIndex];
-        searchModal.open(targetItem);
-        lastViewedSearchIndex = targetIndex;
-        tick().then(() => ui.scrollToImage(imagesContainer, targetIndex));
-      }
+      targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
     } else {
-      searchModal.navigate(offset);
-      const current = $searchModal.selected;
-      if (current) {
-        lastViewedSearchIndex = current.index;
-        tick().then(() => ui.scrollToImage(imagesContainer, current.index));
+      if (currentIndex === -1) {
+        targetIndex = 0;
+      } else {
+        targetIndex = (currentIndex + offset + images.length) % images.length;
       }
+    }
+
+    if (targetIndex >= 0 && targetIndex < images.length) {
+      const targetItem = images[targetIndex];
+      searchModal.select(targetItem);
+      lastViewedSearchIndex = targetIndex;
+      tick().then(() => ui.scrollToImage(imagesContainer, targetIndex));
     }
   }
 
@@ -692,24 +781,26 @@
 
   function moveSimilarityBy(offset, toFirstOfRow = false) {
     const items = flatSimilarityList;
+    if (!items || items.length === 0) return;
+
+    const currentIndex = $similarityModal.selected?.index ?? lastViewedSimilarityIndex ?? -1;
+    let targetIndex = -1;
 
     if (toFirstOfRow) {
-      const currentIndex = $similarityModal.selected?.index ?? lastViewedSimilarityIndex;
-      const targetIndex = getFirstOfNextRow(currentIndex, offset);
-      if (targetIndex >= 0 && targetIndex < items.length) {
-        const targetItem = items[targetIndex];
-        similarityModal.open(targetItem);
-        lastViewedSimilarityIndex = targetIndex;
-        tick().then(() => ui.scrollToImage(similarityContainer, targetIndex));
-      }
+      targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
     } else {
-      if (items.length > 0 && $similarityModal.selected) similarityModal.setItems(items);
-      similarityModal.navigate(offset);
-      const current = $similarityModal.selected;
-      if (current) {
-        lastViewedSimilarityIndex = current.index ?? 0;
-        tick().then(() => ui.scrollToImage(similarityContainer, current.index));
+      if (currentIndex === -1) {
+        targetIndex = 0;
+      } else {
+        targetIndex = (currentIndex + offset + items.length) % items.length;
       }
+    }
+
+    if (targetIndex >= 0 && targetIndex < items.length) {
+      const targetItem = items[targetIndex];
+      similarityModal.select(targetItem);
+      lastViewedSimilarityIndex = targetIndex;
+      tick().then(() => ui.scrollToImage(similarityContainer, targetIndex));
     }
   }
 
@@ -726,25 +817,28 @@
   }
 
   function navigateFrame(offset, toFirstOfRow = false) {
-    if (toFirstOfRow) {
-      const currentIndex = $videoModal.selected?.index ?? lastViewedVideoIndex;
-      const targetIndex = getFirstOfNextRow(currentIndex, offset);
+    const items = view2Frames || [];
+    if (items.length === 0) return;
 
-      if (targetIndex >= 0 && targetIndex < (view2Frames?.length ?? 0)) {
-        const targetFrame = view2Frames[targetIndex];
-        videoModal.open(targetFrame);
-        view2SelectedImgId = targetFrame.imgId;
-        lastViewedVideoIndex = targetIndex;
-        tick().then(() => ui.scrollToImage(view2Container, targetFrame.imgId));
-      }
+    const currentIndex = $videoModal.selected?.index ?? lastViewedVideoIndex ?? -1;
+    let targetIndex = -1;
+
+    if (toFirstOfRow) {
+      targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
     } else {
-      videoModal.navigate(offset);
-      const current = $videoModal.selected;
-      if (current) {
-        view2SelectedImgId = current.imgId;
-        lastViewedVideoIndex = current.index ?? 0;
-        tick().then(() => ui.scrollToImage(view2Container, current.index));
+      if (currentIndex === -1) {
+        targetIndex = 0;
+      } else {
+        targetIndex = (currentIndex + offset + items.length) % items.length;
       }
+    }
+
+    if (targetIndex >= 0 && targetIndex < items.length) {
+      const targetFrame = items[targetIndex];
+      videoModal.select(targetFrame);
+      view2SelectedImgId = targetFrame.imgId;
+      lastViewedVideoIndex = targetIndex;
+      tick().then(() => ui.scrollToImage(view2Container, targetFrame.imgId));
     }
   }
 
@@ -1162,6 +1256,25 @@ function handleViewSubmitted() {
   }
 
 </script>
+
+<svelte:window 
+  on:dragenter={onGlobalDragEnter}
+  on:dragleave={onGlobalDragLeave}
+  on:dragover={onGlobalDragOver}
+  on:drop={onGlobalDrop}
+/>
+
+{#if showDropzone}
+  <div class="fixed inset-0 z-[9999] bg-blue-900/80 backdrop-blur-[4px] flex items-center justify-center transition-all duration-300 pointer-events-none">
+    <div class="border-4 border-dashed border-blue-300 rounded-3xl p-16 text-center transform scale-105">
+      <svg class="w-24 h-24 text-blue-200 mx-auto mb-6 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+      </svg>
+      <h2 class="text-4xl font-bold text-white mb-3">Drop image here</h2>
+      <p class="text-blue-200 text-xl font-medium">Instantly run a visual similarity search</p>
+    </div>
+  </div>
+{/if}
 
 <!-- Template invariato -->
 <Keybindings

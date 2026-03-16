@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { focusTrap } from "../utils/ui.ts";
   import SubmitBadge from "./SubmitBadge.svelte";
   
   export let isOpen = false;
@@ -32,7 +33,8 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-[1000] flex items-start justify-center pt-10">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div use:focusTrap class="fixed inset-0 z-[1000] flex items-start justify-center pt-10">
     <!-- Backdrop -->
     <button
       type="button"

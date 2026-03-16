@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from "svelte";
+  import { focusTrap } from "../utils/ui.ts";
 
   /** @typedef {'View1' | 'View2' | 'Similarity'} LayoutTab */
 
@@ -214,19 +215,31 @@
       return;
     }
 
-    // ✅ CODICE NUOVO: frecce aprono modal se chiusa
-    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Enter"," "].includes(e.key)) {
-      e.preventDefault();
-    }
+    if (!isModalOpen) {
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Enter"," "].includes(e.key)) {
+        e.preventDefault();
+      }
 
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
-      // ✅ Le frecce APRONO modal (non muovono selezione)
-      onOpenAtSelected();
-      showActionFeedback('Opened frame');
-    }
-    else if (e.key === "Enter" || e.key === " ") {
-      onOpenAtSelected();
-      showActionFeedback('Opened frame details');
+      if (e.key === "ArrowLeft") {
+        onNavigateImage(-1);
+        showActionFeedback('Previous frame');
+      }
+      else if (e.key === "ArrowRight") {
+        onNavigateImage(1);
+        showActionFeedback('Next frame');
+      }
+      else if (e.key === "ArrowUp") {
+        onNavigateImage(-1, true);
+        showActionFeedback('Row up');
+      }
+      else if (e.key === "ArrowDown") {
+        onNavigateImage(1, true);
+        showActionFeedback('Row down');
+      }
+      else if (e.key === "Enter" || e.key === " ") {
+        onOpenAtSelected();
+        showActionFeedback('Opened frame details');
+      }
     }
 
   }
@@ -261,7 +274,9 @@
 
 <!-- Help overlay -->
 {#if showHelp}
+  <!-- svelte-ignore a11y-no-interactive-element-to-noninteractive-role -->
   <div
+    use:focusTrap
     class="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 backdrop-blur-sm"
     on:click|self={() => (showHelp = false)}
     on:keydown={handleHelpOverlayKeydown}

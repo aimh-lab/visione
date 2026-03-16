@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
+  import { focusTrap } from "../utils/ui.ts";
   import ResultsGrid from "./ResultsGrid.svelte";
   const ResultsGridAny = ResultsGrid as any;
 
@@ -214,7 +215,8 @@
 <svelte:window on:mousemove={handlePointerMove} on:mouseup={handlePointerUp} on:resize={handleWindowResize} />
 
 {#if isOpen}
-  <div class="fixed inset-0 z-[1000]">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div use:focusTrap class="fixed inset-0 z-[1000]">
     <button
       type="button"
       class="absolute inset-0 bg-black/60 backdrop-blur-[2px]"

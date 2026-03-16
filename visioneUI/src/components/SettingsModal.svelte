@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { focusTrap } from "../utils/ui.ts";
   import { appSettingsStore } from "../stores/persistentState.js"; // ✅ Importa store
   
   export let isOpen = false;
@@ -137,7 +138,8 @@
 
 <!-- Template invariato, cambiano solo i binding on:input e on:change -->
 {#if isOpen}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div use:focusTrap class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <button
       type="button"
       class="absolute inset-0 bg-black/50 backdrop-blur-sm"
