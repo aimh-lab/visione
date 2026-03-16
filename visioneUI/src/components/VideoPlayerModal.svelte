@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
-  import { focusTrap, tooltip } from "../utils/ui";
+  import { focusTrap, tooltip } from "../utils/ui.ts";
   import { visioneAPI } from "../services/api.js";
   import { tinyFrameUrl } from '$lib/urlConfig.js';
 
