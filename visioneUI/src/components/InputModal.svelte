@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { focusTrap } from '../utils/ui.ts';
   
   export let isOpen = false;
   export let title = 'Input';
@@ -55,7 +56,8 @@
 <svelte:window on:keydown={handleKeyDown} />
 
 {#if isOpen}
-  <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div use:focusTrap class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
     <!-- Backdrop -->
     <button
       type="button"

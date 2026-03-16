@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
+  import { focusTrap, tooltip } from "../utils/ui.ts";
   import { visioneAPI } from "../services/api.js";
   import { tinyFrameUrl } from '$lib/urlConfig.js';
 
@@ -537,7 +538,8 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div use:focusTrap class="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center">
     <button
       type="button"
       class="absolute inset-0"
@@ -555,9 +557,9 @@
           <span class="text-sm font-medium text-white">{title}</span>
         </div>
         <button 
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700" 
+          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={() => dispatch("close")}
-          title="Close (Esc)"
+          use:tooltip={{ text: 'Close', shortcut: 'Esc' }}
           aria-label="Close video player"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -595,7 +597,7 @@
         <button
           class="text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={togglePlayPause}
-          title={isVideoPaused ? 'Play (Space)' : 'Pause (Space)'}
+          use:tooltip={{ text: isVideoPaused ? 'Play' : 'Pause', shortcut: 'Space' }}
           aria-label={isVideoPaused ? 'Play' : 'Pause'}
         >
           {#if isVideoPaused}
@@ -611,7 +613,7 @@
           on:mousedown={() => startFrameStep(-1)}
           on:mouseup={stopFrameStep}
           on:mouseleave={stopFrameStep}
-          title="Previous frame (,) — pause first"
+          use:tooltip={{ text: 'Previous frame (pause first)', shortcut: ',' }}
           aria-label="Step backward one frame"
           disabled={!isVideoPaused}
         >
@@ -626,7 +628,7 @@
           on:mousedown={() => startFrameStep(1)}
           on:mouseup={stopFrameStep}
           on:mouseleave={stopFrameStep}
-          title="Next frame (.) — pause first"
+          use:tooltip={{ text: 'Next frame (pause first)', shortcut: '.' }}
           aria-label="Step forward one frame"
           disabled={!isVideoPaused}
         >
@@ -642,7 +644,7 @@
           <button
             class="text-xs font-mono px-2 py-1 rounded transition-colors {playbackSpeed !== 1 ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'text-gray-400 hover:text-white hover:bg-gray-700'}"
             on:click={() => showSpeedMenu = !showSpeedMenu}
-            title="Playback speed (Shift+< / Shift+>)"
+            use:tooltip={{ text: 'Playback speed', shortcut: 'Shift+<' }}
             aria-label="Playback speed: {playbackSpeed}x"
           >
             {playbackSpeed}x
@@ -673,7 +675,7 @@
         <button
           class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
           on:click={captureFrameForSimilarity}
-          title="Capture current frame for similarity search"
+          use:tooltip={{ text: 'Capture frame for similarity' }}
           aria-label="Capture frame for similarity"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -696,7 +698,7 @@
           <button
             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold text-xs"
             on:click={submitCurrentFrame}
-            title="Submit current frame (S)"
+            use:tooltip={{ text: 'Submit frame', shortcut: 'S', position: 'top' }}
             aria-label="Submit current frame"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -804,7 +806,7 @@
                 <button
                   class="absolute inset-y-0 w-1 rounded-full shadow-md transition-all hover:w-2 hover:scale-y-150 cursor-pointer z-10"
                   style="left: {(frame.timestamp / videoDuration * 100)}%; background-color: {getRankColor(frame.imgId)}"
-                  title="Click to jump to {getRankLabel(frame.imgId)}: {frame.imgId} at {formatTime(frame.timestamp)}"
+                  use:tooltip={{ text: `Jump to ${getRankLabel(frame.imgId)} at ${formatTime(frame.timestamp)}`, position: 'top' }}
                   aria-label="Jump to keyframe {getRankLabel(frame.imgId)} at {formatTime(frame.timestamp)}"
                   on:click|stopPropagation={() => jumpToKeyframe(frame.timestamp)}
                 ></button>
@@ -842,6 +844,9 @@
               bind:this={keyframeStripEl}
               class="flex gap-1 overflow-x-auto py-1 scrollbar-thin"
               style="scrollbar-color: #4B5563 transparent;"
+              on:wheel|preventDefault={(e) => {
+                if (keyframeStripEl) keyframeStripEl.scrollLeft += e.deltaY;
+              }}
             >
               {#each keyframes as frame}
                 {@const isHighlighted = highlightedSet.has(frame.imgId)}
