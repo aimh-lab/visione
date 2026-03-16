@@ -1233,6 +1233,10 @@ function handleViewSubmitted() {
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
   on:submitFrame={handleSubmitFrameFromPlayer}
+  on:captureForSimilarity={(e) => {
+    isVideoPlayerOpen = false;
+    addSimilarityAsSearchStep(e.detail.imgId);
+  }}
   on:close={() => { isVideoPlayerOpen = false; }}
 />
 
@@ -1504,6 +1508,8 @@ function handleViewSubmitted() {
     searchTime={searchTime}
     isLoading={searchLoading || similarityLoading || view2Loading}
     showSubmitted={$uiStore.dresEnabled}
+    dresEnabled={$uiStore.dresEnabled}
+    dresUsername={$uiStore.dresUsername}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />

@@ -35,6 +35,17 @@
   const MAX_PRECISE_TIMESTAMP_FETCH = 120;
   const SAMPLED_PRECISE_POINTS = 48;
 
+  // Advanced controls state
+  const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2];
+  let playbackSpeed = 1;
+  let showSpeedMenu = false;
+  let isVideoPaused = true;
+  let keyframeStripEl: HTMLDivElement | null = null;
+  const FRAME_STEP_SECONDS = 1 / 30; // ~1 frame at 30fps
+  let frameStepInterval: ReturnType<typeof setInterval> | undefined;
+  const FRAME_STEP_INITIAL_DELAY = 400; // ms before auto-repeat starts
+  const FRAME_STEP_REPEAT_RATE = 80;    // ms between repeats
+
   function onKeyDown(e: KeyboardEvent) {
     if (!isOpen) return;
 
@@ -56,6 +67,30 @@
       e.preventDefault();
       submitCurrentFrame();
     }
+
+    // Frame-by-frame stepping (comma/period like YouTube/VLC)
+    if (e.key === "," || e.key === ".") {
+      e.preventDefault();
+      if (videoEl && videoEl.paused) {
+        stepFrame(e.key === "," ? -1 : 1);
+      }
+    }
+
+    // Playback speed (< / > i.e. Shift+comma / Shift+period)
+    if (e.key === "<") {
+      e.preventDefault();
+      cyclePlaybackSpeed(-1);
+    }
+    if (e.key === ">") {
+      e.preventDefault();
+      cyclePlaybackSpeed(1);
+    }
+
+    // Space to toggle play/pause
+    if (e.key === " " || e.key === "k") {
+      e.preventDefault();
+      togglePlayPause();
+    }
   }
 
   onMount(() => {
@@ -67,6 +102,7 @@
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", onKeyDown);
       if (scrollPreviewTimeout) clearTimeout(scrollPreviewTimeout);
+      stopFrameStep();
     }
   });
 
@@ -75,9 +111,92 @@
     try { 
       videoEl.currentTime = startTime ?? 0;
       videoDuration = videoEl.duration;
+      videoEl.playbackRate = playbackSpeed;
     } catch {}
     videoEl.play().catch(() => {});
     loadKeyframes();
+  }
+
+  function togglePlayPause() {
+    if (!videoEl) return;
+    if (videoEl.paused) videoEl.play().catch(() => {});
+    else videoEl.pause();
+  }
+
+  function setPlaybackSpeed(speed: number) {
+    playbackSpeed = speed;
+    if (videoEl) videoEl.playbackRate = speed;
+    showSpeedMenu = false;
+  }
+
+  function cyclePlaybackSpeed(direction: 1 | -1) {
+    const currentIdx = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+    const nextIdx = Math.max(0, Math.min(PLAYBACK_SPEEDS.length - 1, currentIdx + direction));
+    setPlaybackSpeed(PLAYBACK_SPEEDS[nextIdx]);
+  }
+
+  function stepFrame(direction: 1 | -1) {
+    if (!videoEl) return;
+    videoEl.currentTime = Math.max(0, Math.min(
+      videoDuration || videoEl.duration,
+      videoEl.currentTime + direction * FRAME_STEP_SECONDS
+    ));
+  }
+
+  function startFrameStep(direction: 1 | -1) {
+    if (!videoEl?.paused) return;
+    stepFrame(direction);
+    stopFrameStep();
+    // Initial delay, then continuous repeat
+    frameStepInterval = setTimeout(() => {
+      frameStepInterval = setInterval(() => stepFrame(direction), FRAME_STEP_REPEAT_RATE);
+    }, FRAME_STEP_INITIAL_DELAY) as unknown as ReturnType<typeof setInterval>;
+  }
+
+  function stopFrameStep() {
+    if (frameStepInterval !== undefined) {
+      clearTimeout(frameStepInterval);
+      clearInterval(frameStepInterval);
+      frameStepInterval = undefined;
+    }
+  }
+
+  function captureFrameForSimilarity() {
+    if (!videoEl) return;
+    const w = videoEl.videoWidth || 0;
+    const h = videoEl.videoHeight || 0;
+    if (!w || !h) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    try {
+      ctx.drawImage(videoEl, 0, 0, w, h);
+    } catch { return; }
+
+    let dataUrl = "";
+    try {
+      dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    } catch { return; }
+
+    const vid = deriveVideoId();
+    const tsMs = Math.round((videoEl.currentTime || 0) * 1000);
+    const imgId = `${vid}-T${tsMs}`;
+    dispatch("captureForSimilarity", { imgId, videoId: vid, dataUrl, currentTime: videoEl.currentTime || 0 });
+  }
+
+  function scrollToActiveKeyframe() {
+    if (!keyframeStripEl || !videoEl || keyframes.length === 0) return;
+    const currentTime = videoEl.currentTime;
+    const closest = keyframes.reduce((prev, curr) =>
+      Math.abs(curr.timestamp - currentTime) < Math.abs(prev.timestamp - currentTime) ? curr : prev
+    );
+    const idx = keyframes.indexOf(closest);
+    const thumbWidth = 72; // w-16 = 64px + 8px gap
+    const scrollTarget = idx * thumbWidth - keyframeStripEl.clientWidth / 2 + thumbWidth / 2;
+    keyframeStripEl.scrollTo({ left: scrollTarget, behavior: 'smooth' });
   }
 
   async function mapWithConcurrency<T, R>(
@@ -453,22 +572,143 @@
         <video
           bind:this={videoEl}
           src={videoUrl}
-          class="w-full h-auto max-h-[70vh]"
-          controls
+          class="w-full h-auto max-h-[65vh] cursor-pointer"
           autoplay
           playsinline
           preload="metadata"
           crossOrigin="anonymous"
           on:loadedmetadata={onLoaded}
+          on:play={() => isVideoPaused = false}
+          on:pause={() => isVideoPaused = true}
+          on:timeupdate={() => { isVideoPaused = videoEl?.paused ?? true; }}
+          on:click={togglePlayPause}
         ></video>
         
-        <!-- ✅ Overlay scuro (appare solo all'hover) -->
+        <!-- Overlay scuro (appare solo all'hover) -->
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-all duration-200 pointer-events-none z-10"></div>
       </div>
 
 
+      <!-- Controls bar -->
+      <div class="px-4 py-2 bg-gray-850 border-t border-gray-700 flex items-center gap-3">
+        <!-- Play/Pause -->
+        <button
+          class="text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          on:click={togglePlayPause}
+          title={isVideoPaused ? 'Play (Space)' : 'Pause (Space)'}
+          aria-label={isVideoPaused ? 'Play' : 'Pause'}
+        >
+          {#if isVideoPaused}
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+          {:else}
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          {/if}
+        </button>
+
+        <!-- Frame step backward -->
+        <button
+          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 cursor-not-allowed'}"
+          on:mousedown={() => startFrameStep(-1)}
+          on:mouseup={stopFrameStep}
+          on:mouseleave={stopFrameStep}
+          title="Previous frame (,) — pause first"
+          aria-label="Step backward one frame"
+          disabled={!isVideoPaused}
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 20L9 12l10-8v16z"/><line x1="5" y1="4" x2="5" y2="20"/>
+          </svg>
+        </button>
+
+        <!-- Frame step forward -->
+        <button
+          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 cursor-not-allowed'}"
+          on:mousedown={() => startFrameStep(1)}
+          on:mouseup={stopFrameStep}
+          on:mouseleave={stopFrameStep}
+          title="Next frame (.) — pause first"
+          aria-label="Step forward one frame"
+          disabled={!isVideoPaused}
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="4" x2="19" y2="20"/>
+          </svg>
+        </button>
+
+        <div class="w-px h-5 bg-gray-600"></div>
+
+        <!-- Playback speed -->
+        <div class="relative">
+          <button
+            class="text-xs font-mono px-2 py-1 rounded transition-colors {playbackSpeed !== 1 ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'text-gray-400 hover:text-white hover:bg-gray-700'}"
+            on:click={() => showSpeedMenu = !showSpeedMenu}
+            title="Playback speed (Shift+< / Shift+>)"
+            aria-label="Playback speed: {playbackSpeed}x"
+          >
+            {playbackSpeed}x
+          </button>
+          {#if showSpeedMenu}
+            <div class="absolute bottom-full mb-1 left-0 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 z-50 min-w-[72px]">
+              {#each PLAYBACK_SPEEDS as speed}
+                <button
+                  class="block w-full text-left text-xs font-mono px-3 py-1.5 transition-colors {speed === playbackSpeed ? 'bg-blue-600/30 text-blue-300' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
+                  on:click={() => setPlaybackSpeed(speed)}
+                >
+                  {speed}x
+                </button>
+              {/each}
+            </div>
+            <!-- Click-away to close speed menu -->
+            <button
+              class="fixed inset-0 z-40"
+              on:click={() => showSpeedMenu = false}
+              aria-label="Close speed menu"
+            ></button>
+          {/if}
+        </div>
+
+        <div class="w-px h-5 bg-gray-600"></div>
+
+        <!-- Capture frame for similarity -->
+        <button
+          class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
+          on:click={captureFrameForSimilarity}
+          title="Capture current frame for similarity search"
+          aria-label="Capture frame for similarity"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M3 9h2M19 9h2M9 3v2M9 19v2M15 3v2M15 19v2M3 15h2M19 15h2"/>
+          </svg>
+          <span>Similarity</span>
+        </button>
+
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Time display -->
+        <span class="text-xs font-mono text-gray-400">
+          {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
+        </span>
+
+        {#if allowFrameSubmit}
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold text-xs"
+            on:click={submitCurrentFrame}
+            title="Submit current frame (S)"
+            aria-label="Submit current frame"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 19V7M5 12l7-7 7 7"/>
+            </svg>
+            Submit
+          </button>
+        {/if}
+      </div>
+
       <!-- Timeline -->
-      <div class="px-4 py-3 bg-gray-800 rounded-b-xl border-t border-gray-700">
+      <div class="px-4 py-3 bg-gray-800 border-t border-gray-700">
         <div class="space-y-2">
           <div 
             bind:this={timelineContainer}
@@ -578,27 +818,7 @@
             {/each}
           </div>
 
-          <!-- ✅ Time info + submit -->
-          <div class="flex items-center justify-between gap-3 text-xs text-gray-400">
-            <span class="font-mono">
-              {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
-            </span>
-            {#if allowFrameSubmit}
-              <button
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold"
-                on:click={submitCurrentFrame}
-                title="Submit current frame (S)"
-                aria-label="Submit current frame (S)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M12 19V7M5 12l7-7 7 7"/>
-                </svg>
-                <span class="text-xs">Submit frame</span>
-              </button>
-            {/if}
-          </div>
-
-          <!-- ✅ Keyframes info + legenda -->
+          <!-- Keyframes info + legenda -->
           <div class="flex items-center justify-end gap-3 text-xs text-gray-400">
             <span class="text-[10px]">
               {loadingKeyframes ? 'Loading...' : `${keyframes.length} keyframes`}
@@ -615,6 +835,36 @@
               </div>
             {/if}
           </div>
+
+          <!-- Keyframe thumbnail strip -->
+          {#if keyframes.length > 0}
+            <div
+              bind:this={keyframeStripEl}
+              class="flex gap-1 overflow-x-auto py-1 scrollbar-thin"
+              style="scrollbar-color: #4B5563 transparent;"
+            >
+              {#each keyframes as frame}
+                {@const isHighlighted = highlightedSet.has(frame.imgId)}
+                {@const isActive = videoEl && Math.abs(frame.timestamp - (videoEl.currentTime ?? 0)) < (videoDuration / Math.max(1, keyframes.length) / 2)}
+                <button
+                  class="flex-shrink-0 rounded overflow-hidden border-2 transition-all duration-150 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400
+                    {isActive ? 'border-blue-500 ring-1 ring-blue-400/50' : isHighlighted ? 'border-opacity-80' : 'border-transparent opacity-60 hover:opacity-100'}"
+                  style={isHighlighted && !isActive ? `border-color: ${getRankColor(frame.imgId)}` : ''}
+                  on:click={() => jumpToKeyframe(frame.timestamp)}
+                  title="{formatTime(frame.timestamp)}{isHighlighted ? ' — ' + getRankLabel(frame.imgId) : ''}"
+                  aria-label="Jump to keyframe at {formatTime(frame.timestamp)}"
+                >
+                  <img
+                    src={frame.thumbnailUrl}
+                    alt="Keyframe at {formatTime(frame.timestamp)}"
+                    class="w-16 h-10 object-cover"
+                    loading="lazy"
+                    on:error={handlePreviewImageError}
+                  />
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -624,5 +874,18 @@
 <style>
   video::-webkit-media-controls-timeline {
     display: none;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #4B5563;
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #6B7280;
   }
 </style>

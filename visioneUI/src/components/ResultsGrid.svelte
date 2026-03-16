@@ -268,6 +268,8 @@
   let scrollTop = 0;
   let viewportHeight = 0;
   let containerWidth = 0;
+  const FAB_SCROLL_THRESHOLD = 400;
+  $: showFab = scrollTop > FAB_SCROLL_THRESHOLD;
   let virtualizationEnabled = false;
   let visibleStart = 0;
   let visibleEnd = 0;
@@ -636,6 +638,7 @@
   });
 </script>
 
+<div class="relative h-full">
 <div bind:this={containerEl} class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" on:scroll={handleScroll}>
   {#if topSpacer > 0}
     <div style={`height: ${topSpacer}px;`} aria-hidden="true"></div>
@@ -888,6 +891,20 @@
   {/if}
 </div>
 
+{#if showFab}
+  <button
+    class="fab-scroll-top"
+    on:click={() => containerEl?.scrollTo({ top: 0, behavior: 'smooth' })}
+    title="Scroll to top"
+    aria-label="Scroll to top"
+  >
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M18 15l-6-6-6 6"/>
+    </svg>
+  </button>
+{/if}
+</div>
+
 <style>
   .image-overlay {
     background-color: rgba(0, 0, 0, 0);
@@ -914,5 +931,30 @@
   
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(59, 130, 246, 0.6);
+  }
+
+  .fab-scroll-top {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 40;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    background: rgba(59, 130, 246, 0.85);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+    opacity: 0.8;
+  }
+  .fab-scroll-top:hover {
+    opacity: 1;
+    background: rgba(59, 130, 246, 1);
+    transform: scale(1.1);
   }
 </style>

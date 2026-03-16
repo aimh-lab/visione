@@ -10,6 +10,8 @@
   export let searchTime = 0;
   export let isLoading = false;
   export let showSubmitted = false;
+  export let dresEnabled = false;
+  export let dresUsername = '';
   
   // ✅ BONUS: Eventi per azioni rapide
   export let onViewSubmitted = () => {};
@@ -112,6 +114,18 @@
       
       <!-- Right side: Context info -->
       <div class="flex items-center space-x-2.5 text-[11px] text-gray-400">
+        {#if dresEnabled && String(dresUsername || '').trim()}
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c1.8-3.2 4.7-5 8-5s6.2 1.8 8 5"/>
+            </svg>
+            <span>DRES:</span>
+            <span class="text-cyan-200 font-semibold">{dresUsername}</span>
+          </div>
+          <span class="text-gray-700">•</span>
+        {/if}
+
         <div class="flex items-center space-x-1.5">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
