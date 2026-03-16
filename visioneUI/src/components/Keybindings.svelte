@@ -395,6 +395,47 @@
             </div>
           </div>
         </div>
+
+        <!-- Video Player -->
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800 mb-3">Video Player</h3>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Play / Pause</span>
+              <div class="flex items-center space-x-1">
+                <kbd class="kbd">Space</kbd><span class="text-gray-400">or</span><kbd class="kbd">K</kbd>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Step frame backward (when paused)</span>
+              <kbd class="kbd">,</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Step frame forward (when paused)</span>
+              <kbd class="kbd">.</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Decrease playback speed</span>
+              <div class="flex items-center space-x-1">
+                <kbd class="kbd">Shift</kbd><span class="text-gray-400">+</span><kbd class="kbd">&lt;</kbd>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Increase playback speed</span>
+              <div class="flex items-center space-x-1">
+                <kbd class="kbd">Shift</kbd><span class="text-gray-400">+</span><kbd class="kbd">&gt;</kbd>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Submit current frame</span>
+              <kbd class="kbd">S</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
+              <span class="text-gray-700">Close player</span>
+              <kbd class="kbd">Esc</kbd>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Footer -->
