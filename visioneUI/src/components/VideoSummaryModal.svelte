@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
-  import { focusTrap } from "../utils/ui.ts";
+  import { focusTrap } from "../utils/ui";
   import ResultsGrid from "./ResultsGrid.svelte";
   const ResultsGridAny = ResultsGrid as any;
 

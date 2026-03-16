@@ -2,6 +2,7 @@
   import { createEventDispatcher, tick } from "svelte";
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
+  import { recentSearches } from "../stores/recentSearches.js";
 
   type QueryTextarea = {
     value: string;
@@ -93,6 +94,72 @@
   let previousSimilarityImgIdByIndex: Record<number, string> = {};
   let enabledStepCount = 0;
   let showSequenceChrome = false;
+
+  // --- Autocomplete State ---
+  let focusedTextareaIndex: number | null = null;
+  let activeSuggestionIndex: number = -1;
+  let showSuggestions: boolean = false;
+
+  $: suggestions = getSuggestions(focusedTextareaIndex, textareas, $recentSearches);
+
+  $: if (suggestions) {
+    activeSuggestionIndex = -1;
+  }
+
+  function getSuggestions(idx: number | null, currentTextareas: any[], history: any[]) {
+    if (idx === null || !currentTextareas[idx]?.enabled) return [];
+    const val = (currentTextareas[idx]?.value || "").toLowerCase().trim();
+    
+    const allSegments = new Set<string>();
+    
+    (history || []).forEach(search => {
+      const items = Array.isArray(search?.textareas) ? search.textareas : [];
+      let active = items
+        .filter((step: any) => step?.enabled && String(step?.value || '').trim())
+        .map((step: any) => String(step.value || '').trim());
+      
+      if (active.length === 0 && search?.query) {
+         active = [String(search.query).trim()];
+      }
+      
+      active.forEach((s: string) => {
+         if (s) allSegments.add(s);
+      });
+    });
+
+    const matches = Array.from(allSegments)
+       .filter(s => val.length > 0 ? (s.toLowerCase().includes(val) && s.toLowerCase() !== val) : true) 
+       .slice(0, 7);
+    
+    return matches;
+  }
+
+  function selectSuggestion(index: number, suggestion: string) {
+    update(index, suggestion);
+    showSuggestions = false;
+    tick().then(() => {
+      const el = textareaRefs[index];
+      if (el) {
+        el.focus();
+        el.selectionStart = el.selectionEnd = el.value.length;
+      }
+    });
+  }
+
+  function handleFocus(index: number) {
+    focusedTextareaIndex = index;
+    showSuggestions = true;
+  }
+
+  function handleBlur(index: number) {
+    setTimeout(() => {
+      if (focusedTextareaIndex === index) {
+        showSuggestions = false;
+        focusedTextareaIndex = null;
+      }
+    }, 200);
+  }
+  // -------------------------
 
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
@@ -509,8 +576,32 @@
 
 
   const handleKeyDown = (e: KeyboardEvent, textareaIndex: number) => {
+    if (showSuggestions && suggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex + 1) % suggestions.length;
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeSuggestionIndex = activeSuggestionIndex <= 0 ? suggestions.length - 1 : activeSuggestionIndex - 1;
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey && activeSuggestionIndex >= 0) {
+        e.preventDefault();
+        selectSuggestion(textareaIndex, suggestions[activeSuggestionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        showSuggestions = false;
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey && textareas[textareaIndex]?.enabled) {
       e.preventDefault();
+      showSuggestions = false;
       dispatch("search");
     }
   };
@@ -1066,6 +1157,8 @@
                   style="overflow-y: hidden;"
                   on:input={(e) => handleTextareaInput(i, e)}
                   on:keydown={(e) => handleKeyDown(e, i)}
+                  on:focus={() => handleFocus(i)}
+                  on:blur={() => handleBlur(i)}
                 ></textarea>
 
                 {#if textarea.enabled && textarea.value?.trim()}
@@ -1079,7 +1172,30 @@
                     <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M18 6L6 18M6 6l12 12"/>
                     </svg>
-                  </button>
+</button>
+                {/if}
+
+                <!-- Autocomplete Dropdown -->
+                {#if showSuggestions && focusedTextareaIndex === i && suggestions.length > 0}
+                  <div class="absolute {i === textareas.length - 1 ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 w-[calc(100%+2rem)] -ml-4 bg-slate-800 border border-slate-700/80 rounded-lg shadow-xl overflow-hidden z-[100] animate-slide-up">
+                    <div class="px-3 py-1.5 bg-slate-900/50 border-b border-slate-700/50">
+                      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Suggerimenti Ricerca</span>
+                    </div>
+                    <div class="max-h-56 overflow-y-auto custom-scrollbar">
+                      {#each suggestions as suggestion, sIdx}
+                        <button
+                          type="button"
+                          class="w-full text-left px-3 py-2 text-sm transition-colors {sIdx === activeSuggestionIndex ? 'bg-sky-500/20 text-white block w-full' : 'text-slate-300 hover:bg-slate-700 hover:text-white block w-full'}"
+                          on:mousedown|preventDefault={() => selectSuggestion(i, suggestion)}
+                        >
+                          <div class="flex items-center gap-2">
+                            <svg class="h-3 w-3 text-slate-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span class="truncate">{suggestion}</span>
+                          </div>
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
                 {/if}
               </div>
             {/if}
