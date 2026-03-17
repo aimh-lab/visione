@@ -7,8 +7,5 @@ pandas
 hydra-core==1.3.2
 fastapi
 uvicorn
-
-
-# langchain-ollama
-# langchain-community
-# lark
+langchain-ollama
+lark>=1.1.5

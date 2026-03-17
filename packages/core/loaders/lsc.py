@@ -5,6 +5,7 @@ import csv
 from tqdm import tqdm
 # Assuming you are using LangChain or similar for the Document class
 from langchain_core.documents import Document 
+from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
 
 class LSCLoader:
@@ -205,6 +206,48 @@ class LSCLoader:
             Column(name="image_name", data_type="text"),
         ]
         return metadata_columns
+
+    def get_attribute_info(self):
+        column_descriptions = {
+            "minute_id": "Identifier of the minute segment that contains the image.",
+            "hour_id": "Identifier of the hour segment that contains the image.",
+            "year": "Four-digit year extracted from the image timestamp.",
+            "month": "Month number extracted from the image timestamp.",
+            "day": "Day of month extracted from the image timestamp.",
+            "hour": "Hour of day in 24-hour format extracted from the image timestamp.",
+            "epoch": "Unix timestamp in seconds for the image capture time.",
+            # "position": "Original geographic coordinates stored as a point.",
+            "altitude": "Altitude associated with the image, as a numeric value.",
+            # "semantic_name": "Original semantic place or scene label.",
+            "heart_rate_bpm": "Heart rate in beats per minute.",
+            "now_playing": "Audio track or media title playing at capture time.",
+            "sleep_level": "Sleep stage annotation associated with the moment.",
+            "time_in_bed": "Time spent in bed, expressed as a numeric duration.",
+            "new_position": "Refined geographic coordinates stored as a point.",
+            # "new_semantic_name": "Refined semantic place or scene label used for textual filtering.",
+            "original_name": "Original image filename or identifier before remapping.",
+            "categories": "Category labels associated with the image.",
+            "movement": "Movement or activity label associated with the image.",
+            "city": "City associated with the image.",
+            "country": "Country associated with the image.",
+            # "new_timezone": "Timezone associated with the image.",
+            # "image_name": "Image filename in the collection, typically formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
+        }
+        type_map = {
+            "text": "string",
+            "integer": "integer",
+            "bigint": "integer",
+            "float": "float",
+            "point": "string",
+        }
+        return [
+            AttributeInfo(
+                name=column.name,
+                description=column_descriptions.get(column.name, f"Collection metadata field {column.name}."),
+                type=type_map.get(column.data_type, "string"),
+            )
+            for column in column_descriptions.keys()
+        ]
 
 if __name__ == "__main__":
     data_server_url = "http://localhost:8000"

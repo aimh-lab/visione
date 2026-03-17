@@ -10,6 +10,7 @@ from langchain_postgres import PGEngine
 
 from endpoints.element_url import router as element_url_router
 from endpoints.field import router as field_router
+from endpoints.llm_query import router as llm_query_router
 from endpoints.search import router as search_router
 from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
@@ -81,6 +82,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(search_router)
+app.include_router(llm_query_router)
 app.include_router(element_url_router)
 app.include_router(field_router)
 
