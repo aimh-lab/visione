@@ -103,8 +103,31 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
   let tooltipEl: HTMLDivElement | null = null;
   let timeoutId: ReturnType<typeof setTimeout>;
   let { text, shortcut, position = 'top', showDelay = 400 } = options;
+  let isHovering = false;
+  let isFocused = false;
+  let disabledObserver: MutationObserver | null = null;
+
+  function clearTooltip() {
+    clearTimeout(timeoutId);
+    if (tooltipEl) {
+      tooltipEl.remove();
+      tooltipEl = null;
+    }
+  }
+
+  function isNodeDisabled() {
+    if (!(node instanceof HTMLButtonElement || node instanceof HTMLInputElement || node instanceof HTMLSelectElement || node instanceof HTMLTextAreaElement)) {
+      return false;
+    }
+    return node.disabled;
+  }
 
   function createTooltip() {
+    if (!node.isConnected) return;
+    if (!isHovering && !isFocused) return;
+    if (isNodeDisabled()) return;
+
+    clearTooltip();
     tooltipEl = document.createElement('div');
     tooltipEl.className = 'fixed z-[99999] px-2 py-1.5 text-xs font-medium text-slate-100 bg-slate-900 border border-slate-700/80 rounded block shadow-xl pointer-events-none opacity-0 transition-opacity duration-150';
     
@@ -150,22 +173,43 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
   }
 
   function onMouseEnter() {
+    isHovering = true;
+    if (isNodeDisabled()) return;
     timeoutId = setTimeout(createTooltip, showDelay);
   }
 
   function onMouseLeave() {
-    clearTimeout(timeoutId);
-    if (tooltipEl) {
-      tooltipEl.remove();
-      tooltipEl = null;
-    }
+    isHovering = false;
+    clearTooltip();
+  }
+
+  function onFocus() {
+    isFocused = true;
+    if (isNodeDisabled()) return;
+    timeoutId = setTimeout(createTooltip, showDelay);
+  }
+
+  function onBlur() {
+    isFocused = false;
+    clearTooltip();
   }
 
   node.addEventListener('mouseenter', onMouseEnter);
   node.addEventListener('mouseleave', onMouseLeave);
   node.addEventListener('click', onMouseLeave);
-  node.addEventListener('focus', onMouseEnter);
-  node.addEventListener('blur', onMouseLeave);
+  node.addEventListener('focus', onFocus);
+  node.addEventListener('blur', onBlur);
+
+  if (typeof MutationObserver !== 'undefined') {
+    disabledObserver = new MutationObserver(() => {
+      if (isNodeDisabled()) {
+        isHovering = false;
+        isFocused = false;
+        clearTooltip();
+      }
+    });
+    disabledObserver.observe(node, { attributes: true, attributeFilter: ['disabled', 'aria-disabled'] });
+  }
 
   return {
     update(newOptions: any) {
@@ -173,15 +217,23 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
       shortcut = newOptions.shortcut;
       position = newOptions.position || 'top';
       showDelay = newOptions.showDelay || 400;
+      if (isNodeDisabled()) {
+        isHovering = false;
+        isFocused = false;
+      }
+      clearTooltip();
     },
     destroy() {
       node.removeEventListener('mouseenter', onMouseEnter);
       node.removeEventListener('mouseleave', onMouseLeave);
       node.removeEventListener('click', onMouseLeave);
-      node.removeEventListener('focus', onMouseEnter);
-      node.removeEventListener('blur', onMouseLeave);
-      clearTimeout(timeoutId);
-      if (tooltipEl) tooltipEl.remove();
+      node.removeEventListener('focus', onFocus);
+      node.removeEventListener('blur', onBlur);
+      if (disabledObserver) {
+        disabledObserver.disconnect();
+        disabledObserver = null;
+      }
+      clearTooltip();
     }
   }
 }

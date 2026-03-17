@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { focusTrap } from "../utils/ui.ts";
+  import { focusTrap } from "../utils/ui";
   import { appSettingsStore } from "../stores/persistentState.js"; // ✅ Importa store
   
   export let isOpen = false;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
-  import { focusTrap, tooltip } from "../utils/ui.ts";
+  import { focusTrap, tooltip } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
   import { tinyFrameUrl } from '$lib/urlConfig.js';
 
@@ -608,34 +608,42 @@
         </button>
 
         <!-- Frame step backward -->
-        <button
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 cursor-not-allowed'}"
-          on:mousedown={() => startFrameStep(-1)}
-          on:mouseup={stopFrameStep}
-          on:mouseleave={stopFrameStep}
+        <span
+          class="inline-flex {isVideoPaused ? '' : 'cursor-not-allowed'}"
           use:tooltip={{ text: 'Previous frame (pause first)', shortcut: ',' }}
-          aria-label="Step backward one frame"
-          disabled={!isVideoPaused}
         >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 20L9 12l10-8v16z"/><line x1="5" y1="4" x2="5" y2="20"/>
-          </svg>
-        </button>
+          <button
+            class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
+            on:mousedown={() => startFrameStep(-1)}
+            on:mouseup={stopFrameStep}
+            on:mouseleave={stopFrameStep}
+            aria-label="Step backward one frame"
+            disabled={!isVideoPaused}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 20L9 12l10-8v16z"/><line x1="5" y1="4" x2="5" y2="20"/>
+            </svg>
+          </button>
+        </span>
 
         <!-- Frame step forward -->
-        <button
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 cursor-not-allowed'}"
-          on:mousedown={() => startFrameStep(1)}
-          on:mouseup={stopFrameStep}
-          on:mouseleave={stopFrameStep}
+        <span
+          class="inline-flex {isVideoPaused ? '' : 'cursor-not-allowed'}"
           use:tooltip={{ text: 'Next frame (pause first)', shortcut: '.' }}
-          aria-label="Step forward one frame"
-          disabled={!isVideoPaused}
         >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="4" x2="19" y2="20"/>
-          </svg>
-        </button>
+          <button
+            class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
+            on:mousedown={() => startFrameStep(1)}
+            on:mouseup={stopFrameStep}
+            on:mouseleave={stopFrameStep}
+            aria-label="Step forward one frame"
+            disabled={!isVideoPaused}
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="4" x2="19" y2="20"/>
+            </svg>
+          </button>
+        </span>
 
         <div class="w-px h-5 bg-gray-600"></div>
 
