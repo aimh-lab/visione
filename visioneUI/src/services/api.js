@@ -1,5 +1,5 @@
 // src/services/api.js
-import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL } from '$lib/urlConfig.js';
+import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL, VISIONE_SEARCH_URL } from '$lib/urlConfig.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -14,13 +14,20 @@ class APIError extends Error {
 
 // src/services/api.js
 export class VisioneAPI {
-  constructor(baseUrl = VISIONE_SERVICES_URL, videosBase = VISIONE_VIDEOS_URL) {
+  constructor(baseUrl = VISIONE_SERVICES_URL, videosBase = VISIONE_VIDEOS_URL, searchUrl = VISIONE_SEARCH_URL) {
     this.baseUrl = baseUrl;
     this.videosBase = videosBase;
+    this.searchUrl = searchUrl;
     this.middleTimestampCache = new Map();
     this.middleTimestampInFlight = new Map();
     this.middleTimestampCacheMax = 500;
     this.middleTimestampTtlMs = 5 * 60 * 1000;
+    this.defaultTextModel = 'openclip_clip_vit_b_32';
+    this.defaultImageModel = 'dinov2_base';
+    this.defaultSubqueryK = 100000;
+    this.defaultSingleK = 1000;
+    this.defaultAggregatedK = 1000;
+    this.defaultTemporalWindowSeconds = 50;
   }
 
   // ... #makeRequest e metodi esistenti ...
@@ -43,11 +50,33 @@ export class VisioneAPI {
     }
 
     const run = (async () => {
-    const url = `${this.baseUrl}/core/getMiddleTimestamp?id=${encodeURIComponent(imgId)}`;
-    const res = await this.#makeRequest(url, { retries: 1, timeout: 15000 });
-    const text = await res.text();
-    const num = Number(text);
-    if (!Number.isFinite(num)) throw new APIError(`Non-numeric response: ${text}`, 500);
+      let num = null;
+
+      // New API contract: /field?id=...&field=...
+      try {
+        const metadata = await this.getField(imgId, ['middle_timestamp', 'middleTimestamp', 'timestamp', 'epoch']);
+        const candidate = Number(
+          metadata?.middle_timestamp
+            ?? metadata?.middleTimestamp
+            ?? metadata?.timestamp
+            ?? metadata?.epoch
+        );
+        if (Number.isFinite(candidate)) {
+          num = candidate;
+        }
+      } catch {
+        // Fallback handled below.
+      }
+
+      // Legacy fallback kept for older deployments.
+      if (!Number.isFinite(num)) {
+        const url = `${this.baseUrl}/core/getMiddleTimestamp?id=${encodeURIComponent(imgId)}`;
+        const res = await this.#makeRequest(url, { retries: 1, timeout: 15000 });
+        const text = await res.text();
+        const legacyNum = Number(text);
+        if (!Number.isFinite(legacyNum)) throw new APIError(`Non-numeric response: ${text}`, 500);
+        num = legacyNum;
+      }
 
       this.middleTimestampCache.set(key, { value: num, ts: Date.now() });
       while (this.middleTimestampCache.size > this.middleTimestampCacheMax) {
@@ -56,7 +85,7 @@ export class VisioneAPI {
         this.middleTimestampCache.delete(oldestKey);
       }
 
-    return num;
+      return num;
     })();
 
     this.middleTimestampInFlight.set(key, run);
@@ -110,6 +139,9 @@ export class VisioneAPI {
 
   // Search API
   async search({ textareas, simReorder = false, framesPerRow = 5 }) {
+    void simReorder;
+    void framesPerRow;
+
     const activeTextareas = textareas.filter((t) => {
       const text = String(t?.value || "").trim();
       const simId = String(t?.similarityImgId || "").trim();
@@ -117,50 +149,15 @@ export class VisioneAPI {
     });
     
     if (activeTextareas.length === 0) {
-      throw new APIError('At least one textarea must be enabled and contain text', 400);
+      throw new APIError('At least one textarea must be enabled and contain text or image similarity', 400);
     }
-    
-    const SIMILARITY_PREFIX = "similarity:";
-    const queries = activeTextareas.map((t) => {
-      const raw = String(t.value || "").trim();
-      const similarityImgId = String(t?.similarityImgId || "").trim();
 
-      if (similarityImgId) {
-        const queryPart = { comboVisualSim: similarityImgId };
-        if (raw) queryPart.textual = raw;
-        return queryPart;
-      }
+    const payload = this.#buildSearchPayload(activeTextareas);
 
-      if (raw.toLowerCase().startsWith(SIMILARITY_PREFIX)) {
-        const imgId = raw.slice(SIMILARITY_PREFIX.length).trim();
-        if (!imgId) {
-          throw new APIError('Similarity query requires an image id', 400);
-        }
-        return { comboVisualSim: imgId };
-      }
-      return { textual: raw };
-    });
-    const parameters = activeTextareas.map((t) => {
-      const raw = String(t.value || "").trim().toLowerCase();
-      const similarityImgId = String(t?.similarityImgId || "").trim();
-      const hasLegacySimilarity = raw.startsWith(SIMILARITY_PREFIX);
-      const hasSimilarity = !!similarityImgId || hasLegacySimilarity;
-      const hasText = raw.length > 0 && !hasLegacySimilarity;
-      if (hasSimilarity && hasText) return { simReorder: "true", textualMode: "all" };
-      if (hasSimilarity) return { simReorder: "true" };
-      return { textualMode: "all" };
-    });
-    const payload = { query: queries, parameters };
-    
-    const form = new URLSearchParams();
-    form.append("query", JSON.stringify(payload));
-    form.append("simreorder", String(simReorder));
-    form.append("n_frames_per_row", String(framesPerRow));
-
-    const response = await this.#makeRequest(`${this.baseUrl}/core/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: form.toString(),
+    const response = await this.#makeRequest(this.searchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
       retries: 2
     });
 
@@ -173,21 +170,52 @@ export class VisioneAPI {
       throw new APIError('BaseImgId is required for similarity search', 400);
     }
 
-    const payload = { 
-      query: [{ comboVisualSim: baseImgId }], 
-      parameters: [{ simReorder: "true" }] 
+    const payload = {
+      query: {
+        item: `image:${String(baseImgId).trim()}`,
+        model: this.defaultImageModel,
+        k: this.defaultSingleK
+      },
+      urls_to_retrieve: ['images', 'thumbnails', 'videos']
     };
-    
-    const form = new URLSearchParams();
-    form.append("query", JSON.stringify(payload));
 
-    const response = await this.#makeRequest(`${this.baseUrl}/core/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: form.toString(),
+    const response = await this.#makeRequest(this.searchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
       retries: 2
     });
 
+    return response.json();
+  }
+
+  async getElementUrl(id, what = ['images']) {
+    if (!id) throw new APIError('id is required', 400);
+    const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
+    if (list.length === 0) throw new APIError('what is required', 400);
+
+    const params = new URLSearchParams();
+    params.set('id', String(id));
+    list.forEach((w) => params.append('what', w));
+
+    const response = await this.#makeRequest(`${this.baseUrl}/element-url?${params.toString()}`, {
+      retries: 2
+    });
+    return response.json();
+  }
+
+  async getField(id, fields = ['epoch']) {
+    if (!id) throw new APIError('id is required', 400);
+    const list = (Array.isArray(fields) ? fields : [fields]).map((f) => String(f).trim()).filter(Boolean);
+    if (list.length === 0) throw new APIError('field is required', 400);
+
+    const params = new URLSearchParams();
+    params.set('id', String(id));
+    list.forEach((f) => params.append('field', f));
+
+    const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
+      retries: 2
+    });
     return response.json();
   }
 
@@ -222,6 +250,65 @@ export class VisioneAPI {
     } catch (error) {
       return { status: 'error', error: error.message, timestamp: new Date().toISOString() };
     }
+  }
+
+  #buildSearchPayload(activeTextareas) {
+    const queryItems = activeTextareas.flatMap((t) => this.#expandTextareaToItems(t));
+    if (queryItems.length === 0) {
+      throw new APIError('No valid query items', 400);
+    }
+
+    if (queryItems.length === 1) {
+      const item = queryItems[0];
+      return {
+        query: {
+          item: item.value,
+          model: item.type === 'image' ? this.defaultImageModel : this.defaultTextModel,
+          k: this.defaultSingleK
+        },
+        urls_to_retrieve: ['images', 'thumbnails', 'videos']
+      };
+    }
+
+    return {
+      query: {
+        item: queryItems.map((item) => ({
+          item: item.value,
+          model: item.type === 'image' ? this.defaultImageModel : this.defaultTextModel,
+          k: this.defaultSubqueryK
+        })),
+        aggregation_type: 'temporal',
+        window_seconds: this.defaultTemporalWindowSeconds,
+        k: this.defaultAggregatedK
+      },
+      urls_to_retrieve: ['images', 'thumbnails', 'videos']
+    };
+  }
+
+  #expandTextareaToItems(textarea) {
+    const raw = String(textarea?.value || '').trim();
+    const similarityImgId = String(textarea?.similarityImgId || '').trim();
+    const out = [];
+
+    if (similarityImgId) {
+      out.push({ type: 'image', value: `image:${similarityImgId}` });
+    }
+
+    if (raw) {
+      const lowerRaw = raw.toLowerCase();
+      if (lowerRaw.startsWith('similarity:')) {
+        const legacyId = raw.slice('similarity:'.length).trim();
+        if (legacyId) {
+          out.push({ type: 'image', value: `image:${legacyId}` });
+        }
+      } else if (lowerRaw.startsWith('image:')) {
+        out.push({ type: 'image', value: raw });
+      } else {
+        out.push({ type: 'text', value: raw });
+      }
+    }
+
+    return out;
   }
 }
 

@@ -125,20 +125,16 @@
     return Math.floor(seconds);
   }
 
-  async function resolveTimecodeById(imgId) {
+  async function resolveTimecodeByItem(item) {
+    const imgId = getId(item);
     if (!imgId) return;
 
-    try {
-      const middle = await visioneAPI.getMiddleTimestamp(imgId);
-      const parsed = toFiniteNumber(middle);
-      if (parsed == null || parsed < 0) return;
+    const parsed = getFrameSeconds(item);
+    if (parsed == null || parsed < 0) return;
 
-      const normalized = Math.floor(parsed > 12 * 3600 && parsed / 1000 <= 12 * 3600 ? parsed / 1000 : parsed);
-      pendingTimecodes.set(imgId, normalized);
-      scheduleTimecodeFlush();
-    } catch {
-      // Ignore single-item failures; UI stays responsive
-    }
+    const normalized = Math.floor(parsed);
+    pendingTimecodes.set(imgId, normalized);
+    scheduleTimecodeFlush();
   }
 
   function scheduleTimecodeFlush() {
@@ -158,11 +154,11 @@
 
   function pumpTimecodeQueue() {
     while (activeTimecodeFetches < TIMECODE_FETCH_CONCURRENCY && timecodeQueue.length > 0) {
-      const imgId = timecodeQueue.shift();
-      if (!imgId) continue;
+      const item = timecodeQueue.shift();
+      if (!item) continue;
 
       activeTimecodeFetches += 1;
-      resolveTimecodeById(imgId)
+      resolveTimecodeByItem(item)
         .catch(() => {
           // Ignore single-item failures; UI remains responsive
         })
@@ -182,7 +178,7 @@
     if (inlineSeconds != null && inlineSeconds > 0) return;
 
     requestedTimecodeIds.add(imgId);
-    timecodeQueue.push(imgId);
+    timecodeQueue.push(item);
   }
 
   function formatTimecode(totalSeconds) {
@@ -333,10 +329,11 @@
     try {
       const imgId = getId(item);
       const videoId = getVideoId(item);
-      const middle = await visioneAPI.getMiddleTimestamp(imgId);
-      const start = Math.max(0, middle - 2);
-      const end = middle + 2;
-      preview = { imgId, videoUrl: visioneAPI.getVideoUrl(videoId, "medium"), start, end };
+      const timestamp = getFrameSeconds(item) ?? 0;
+      const start = Math.max(0, timestamp - 2);
+      const end = timestamp + 2;
+      const explicitVideoUrl = item?.videoUrl || item?.raw?.metadata?.videos || null;
+      preview = { imgId, videoUrl: explicitVideoUrl || visioneAPI.getVideoUrl(videoId, "medium"), start, end };
     } catch (err) {
       console.error("Preview error", err);
     }

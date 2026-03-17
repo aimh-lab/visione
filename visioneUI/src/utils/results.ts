@@ -23,12 +23,14 @@ export function extractImageInfo(item: any, i: number) {
     return null;
   };
 
+  const metadata = (item && typeof item.metadata === 'object' && item.metadata) ? item.metadata : {};
+
   let rawImg =
-    pick(item, "imgId", "imgid", "imageId", "imageid", "frameId", "frameid", "id", "file", "fileName", "filename", "path", "uri");
+    pick(item, "imgId", "imgid", "imageId", "imageid", "image_id", "frameId", "frameid", "id", "file", "fileName", "filename", "path", "uri");
   let rawVid = pick(item, "videoId", "videoid", "vid", "video", "camera");
 
   if (typeof rawImg === "string") {
-    let s = rawImg.replace(/.jpg/i, "");
+    let s = rawImg.replace(/\.jpg$/i, "");
     const m = s.match(/-(\d+)-(\d+)$/);
     if (m) {
       rawVid = rawVid ?? m[1];
@@ -36,6 +38,10 @@ export function extractImageInfo(item: any, i: number) {
     } else {
       rawImg = s;
     }
+  }
+
+  if (!rawVid) {
+    rawVid = pick(metadata, 'hour_id', 'hourId', 'video_id', 'videoId');
   }
 
   if (!rawVid) {
@@ -47,8 +53,13 @@ export function extractImageInfo(item: any, i: number) {
   }
 
   const imgId = rawImg ? String(rawImg) : null;
-  const videoId = rawVid ? String(rawVid).padStart(5, "0") : (imgId ? imgId.split("-")[0] : null);
-  const url = videoId && imgId ? tinyFrameUrl(videoId, imgId) : null;
+  const videoId = rawVid ? String(rawVid) : (imgId ? imgId.split("-")[0] : null);
+  const imageUrl = String(pick(metadata, 'images', 'image_url', 'imageUrl', 'url') || '').trim() || null;
+  const thumbnailUrl = String(pick(metadata, 'thumbnails', 'thumbnail_url', 'thumbnailUrl') || '').trim() || null;
+  const videoUrl = String(pick(metadata, 'videos', 'video_url', 'videoUrl') || '').trim() || null;
+  const fallbackId = imgId ? imgId.replace(/\.jpg$/i, '') : null;
+  const url = thumbnailUrl || imageUrl || (videoId && fallbackId ? tinyFrameUrl(videoId, fallbackId) : null);
+  const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? item.timestamp ?? item.date ?? null;
 
   return {
     index: i,
@@ -56,7 +67,11 @@ export function extractImageInfo(item: any, i: number) {
     videoId,
     imgId,
     url,
-    date: item.date ?? item.timestamp ?? null,
+    imageUrl,
+    thumbnailUrl,
+    videoUrl,
+    timestamp,
+    date: timestamp,
     size: item.size ?? null,
     resolution: item.resolution ?? null,
     tags: item.tags ?? item.labels ?? [],
