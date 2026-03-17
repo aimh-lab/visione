@@ -11,13 +11,19 @@ import { visioneAPI } from '../../services/api.js';
  * @param {() => Array} deps.getSimilarityImages  – current similarity results
  */
 export function createVideoPlayerController({ getImages, getSimilarityImages }) {
+  const normalizeVideoId = (value) => {
+    const vid = String(value || '').trim();
+    if (!vid) return '';
+    return /^\d+$/.test(vid) ? vid.padStart(5, '0') : vid;
+  };
+
 
   /**
    * Collect imgIds from search + similarity results that belong to `videoId`.
    */
   function getHighlightedKeyframesForVideo(videoId) {
     if (!videoId) return [];
-    const vid = String(videoId).padStart(5, '0');
+    const vid = normalizeVideoId(videoId);
 
     const searchKf = getImages()
       .filter(img => img.videoId === vid)
@@ -38,14 +44,32 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
    * @returns {Promise<{ url: string, startTime: number, title: string, videoId: string, highlightedKeyframes: string[] }>}
    */
   async function buildPlayerData(imgId, videoId, startAt) {
-    const vid = String(videoId ?? String(imgId).split('-')[0]).padStart(5, '0');
+    const fallbackVid = videoId ?? String(imgId).split('-')[0];
+    const vid = normalizeVideoId(fallbackVid);
+    const matched = getImages().find((img) => img?.imgId === imgId)
+      || getSimilarityImages().find((img) => img?.imgId === imgId)
+      || null;
+    const explicitVideoUrl = matched?.videoUrl || matched?.raw?.metadata?.videos || null;
+    const resolvedVideoUrl = explicitVideoUrl || visioneAPI.getVideoUrl(vid, 'medium');
+    const parsedTimestamp = Number(matched?.timestamp);
+    const hasResultsetTimestamp = Number.isFinite(parsedTimestamp) && parsedTimestamp >= 0;
     const highlighted = getHighlightedKeyframesForVideo(vid);
 
     if (typeof startAt === 'number') {
       return {
-        url: visioneAPI.getVideoUrl(vid, 'medium'),
+        url: resolvedVideoUrl,
         startTime: Math.max(0, startAt),
         title: `${vid}`,
+        videoId: vid,
+        highlightedKeyframes: highlighted
+      };
+    }
+
+    if (hasResultsetTimestamp) {
+      return {
+        url: resolvedVideoUrl,
+        startTime: Math.max(0, parsedTimestamp),
+        title: `${vid} @ ${parsedTimestamp.toFixed(2)}s`,
         videoId: vid,
         highlightedKeyframes: highlighted
       };
@@ -54,7 +78,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
     try {
       const middle = await visioneAPI.getMiddleTimestamp(imgId);
       return {
-        url: visioneAPI.getVideoUrl(vid, 'medium'),
+        url: resolvedVideoUrl,
         startTime: Math.max(0, middle),
         title: `${vid} @ ${middle.toFixed(2)}s`,
         videoId: vid,
@@ -62,7 +86,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
       };
     } catch {
       return {
-        url: visioneAPI.getVideoUrl(vid, 'medium'),
+        url: resolvedVideoUrl,
         startTime: 0,
         title: `${vid}`,
         videoId: vid,
