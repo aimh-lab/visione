@@ -99,10 +99,10 @@ export function focusTrap(node: HTMLElement) {
   };
 }
 
-export function tooltip(node: HTMLElement, options: { text: string, shortcut?: string, position?: 'top'|'bottom'|'left'|'right', showDelay?: number }) {
+export function tooltip(node: HTMLElement, options: { text: string, shortcut?: string, position?: 'top'|'bottom'|'left'|'right', showDelay?: number, enabled?: boolean }) {
   let tooltipEl: HTMLDivElement | null = null;
   let timeoutId: ReturnType<typeof setTimeout>;
-  let { text, shortcut, position = 'top', showDelay = 400 } = options;
+  let { text, shortcut, position = 'top', showDelay = 400, enabled = true } = options;
   let isHovering = false;
   let isFocused = false;
   let disabledObserver: MutationObserver | null = null;
@@ -123,6 +123,7 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
   }
 
   function createTooltip() {
+    if (!enabled) return;
     if (!node.isConnected) return;
     if (!isHovering && !isFocused) return;
     if (isNodeDisabled()) return;
@@ -173,6 +174,7 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
   }
 
   function onMouseEnter() {
+    if (!enabled) return;
     isHovering = true;
     if (isNodeDisabled()) return;
     timeoutId = setTimeout(createTooltip, showDelay);
@@ -184,6 +186,7 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
   }
 
   function onFocus() {
+    if (!enabled) return;
     isFocused = true;
     if (isNodeDisabled()) return;
     timeoutId = setTimeout(createTooltip, showDelay);
@@ -217,6 +220,11 @@ export function tooltip(node: HTMLElement, options: { text: string, shortcut?: s
       shortcut = newOptions.shortcut;
       position = newOptions.position || 'top';
       showDelay = newOptions.showDelay || 400;
+      enabled = newOptions.enabled ?? true;
+      if (!enabled) {
+        isHovering = false;
+        isFocused = false;
+      }
       if (isNodeDisabled()) {
         isHovering = false;
         isFocused = false;

@@ -81,17 +81,19 @@
   }
 
   function handleSelectRecentSearch(e) {
-    const { cachedResults, textareas: savedTextareas } = e.detail;
+    const { textareas: savedTextareas } = e.detail;
 
-    if (cachedResults) {
-      dispatch('loadCachedResults', { cachedResults });
+    // Restore the exact saved query state so similarity steps are preserved.
+    if (Array.isArray(savedTextareas) && savedTextareas.length > 0) {
+      dispatch('restoreRecentSearch', { textareas: savedTextareas });
+      return;
     }
 
-    const queries = (savedTextareas ?? [])
-      .filter(t => t.enabled && t.value?.trim())
-      .map(t => t.value.trim());
-
-    applyQueriesToURLAndRestore(queries, 'View1');
+    // Fallback for legacy entries without structured textarea payload.
+    const query = String(e?.detail?.query || '').trim();
+    if (query) {
+      applyQueriesToURLAndRestore([query], 'View1');
+    }
   }
 
 

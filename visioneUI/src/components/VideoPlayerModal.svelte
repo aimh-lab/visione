@@ -29,6 +29,7 @@
   let hoveredTime: number | null = null;
   let hoveredKeyframe: Keyframe | null = null;
   let videoDuration = 0;
+  let currentTime = 0;
   let isScrolling = false;
   let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
   let keyframesLoadToken = 0;
@@ -37,7 +38,7 @@
   const SAMPLED_PRECISE_POINTS = 48;
 
   // Advanced controls state
-  const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2];
+  const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4, 8, 16];
   let playbackSpeed = 1;
   let showSpeedMenu = false;
   let isVideoPaused = true;
@@ -113,9 +114,16 @@
       videoEl.currentTime = startTime ?? 0;
       videoDuration = videoEl.duration;
       videoEl.playbackRate = playbackSpeed;
+      currentTime = videoEl.currentTime || 0;
     } catch {}
     videoEl.play().catch(() => {});
     loadKeyframes();
+  }
+
+  function onVideoTimeUpdate() {
+    if (!videoEl) return;
+    currentTime = videoEl.currentTime || 0;
+    isVideoPaused = videoEl.paused;
   }
 
   function togglePlayPause() {
@@ -142,6 +150,7 @@
       videoDuration || videoEl.duration,
       videoEl.currentTime + direction * FRAME_STEP_SECONDS
     ));
+    currentTime = videoEl.currentTime || 0;
   }
 
   function startFrameStep(direction: 1 | -1) {
@@ -356,11 +365,15 @@
       
       for (let i = 0; i <= steps; i++) {
         setTimeout(() => {
-          if (videoEl) videoEl.currentTime = videoEl.currentTime + increment;
+          if (videoEl) {
+            videoEl.currentTime = videoEl.currentTime + increment;
+            currentTime = videoEl.currentTime || 0;
+          }
         }, i * stepTime);
       }
     } else {
       videoEl.currentTime = newTime;
+      currentTime = videoEl.currentTime || 0;
     }
   }
 
@@ -368,6 +381,7 @@
   function jumpToKeyframe(timestamp: number) {
     if (!videoEl || !videoDuration) return;
     videoEl.currentTime = timestamp;
+    currentTime = videoEl.currentTime || 0;
   }
 
   function handleWheel(e: WheelEvent) {
@@ -386,6 +400,7 @@
     
     const newTime = Math.max(0, Math.min(videoDuration, videoEl.currentTime + delta));
     videoEl.currentTime = newTime;
+    currentTime = videoEl.currentTime || 0;
     
     if (keyframes.length > 0) {
       isScrolling = true;
@@ -580,9 +595,9 @@
           preload="metadata"
           crossOrigin="anonymous"
           on:loadedmetadata={onLoaded}
-          on:play={() => isVideoPaused = false}
-          on:pause={() => isVideoPaused = true}
-          on:timeupdate={() => { isVideoPaused = videoEl?.paused ?? true; }}
+          on:play={onVideoTimeUpdate}
+          on:pause={onVideoTimeUpdate}
+          on:timeupdate={onVideoTimeUpdate}
           on:click={togglePlayPause}
         ></video>
         
@@ -652,7 +667,7 @@
           <button
             class="text-xs font-mono px-2 py-1 rounded transition-colors {playbackSpeed !== 1 ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50' : 'text-gray-400 hover:text-white hover:bg-gray-700'}"
             on:click={() => showSpeedMenu = !showSpeedMenu}
-            use:tooltip={{ text: 'Playback speed', shortcut: 'Shift+<' }}
+            use:tooltip={{ text: 'Playback speed', shortcut: 'Shift+<', enabled: !showSpeedMenu }}
             aria-label="Playback speed: {playbackSpeed}x"
           >
             {playbackSpeed}x
@@ -699,7 +714,7 @@
 
         <!-- Time display -->
         <span class="text-xs font-mono text-gray-400">
-          {videoEl ? formatTime(videoEl.currentTime) : '0:00'} / {formatTime(videoDuration)}
+          {formatTime(currentTime)} / {formatTime(videoDuration)}
         </span>
 
         {#if allowFrameSubmit}
@@ -722,7 +737,7 @@
         <div class="space-y-2">
           <div 
             bind:this={timelineContainer}
-            class="relative h-2 bg-gray-700 rounded-full cursor-pointer group hover:h-2.5 transition-all"
+            class="relative h-2 bg-slate-800 ring-1 ring-slate-600/70 rounded-full cursor-pointer group hover:h-2.5 transition-all"
             on:mousemove={handleTimelineHover}
             on:mouseleave={handleTimelineLeave}
             on:click={handleTimelineClick}
@@ -733,13 +748,13 @@
             aria-label="Video timeline"
             aria-valuemin="0"
             aria-valuemax={Math.max(0, Math.floor(videoDuration || 0))}
-            aria-valuenow={Math.max(0, Math.floor(videoEl?.currentTime || 0))}
+            aria-valuenow={Math.max(0, Math.floor(currentTime || 0))}
           >
             <!-- Progress -->
-            {#if videoEl && videoDuration > 0}
+            {#if videoDuration > 0}
               <div 
-                class="absolute inset-y-0 left-0 bg-blue-600 rounded-full pointer-events-none transition-all duration-200"
-                style="width: {(videoEl.currentTime / videoDuration * 100)}%"
+                class="absolute inset-y-0 left-0 bg-cyan-400 rounded-full pointer-events-none transition-all duration-200 shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                style="width: {(currentTime / videoDuration * 100)}%"
               ></div>
 
             {/if}
@@ -798,10 +813,10 @@
             {/if}
 
             <!-- Current time indicator -->
-            {#if videoEl && videoDuration > 0}
+            {#if videoDuration > 0}
               <div 
                 class="absolute inset-y-0 w-1 bg-white rounded-full shadow-lg pointer-events-none transition-all group-hover:scale-y-125"
-                style="left: {(videoEl.currentTime / videoDuration * 100)}%"
+                style="left: {(currentTime / videoDuration * 100)}%"
               >
                 <div class="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg border-2 border-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
@@ -858,7 +873,7 @@
             >
               {#each keyframes as frame}
                 {@const isHighlighted = highlightedSet.has(frame.imgId)}
-                {@const isActive = videoEl && Math.abs(frame.timestamp - (videoEl.currentTime ?? 0)) < (videoDuration / Math.max(1, keyframes.length) / 2)}
+                {@const isActive = Math.abs(frame.timestamp - currentTime) < (videoDuration / Math.max(1, keyframes.length) / 2)}
                 <button
                   class="flex-shrink-0 rounded overflow-hidden border-2 transition-all duration-150 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400
                     {isActive ? 'border-blue-500 ring-1 ring-blue-400/50' : isHighlighted ? 'border-opacity-80' : 'border-transparent opacity-60 hover:opacity-100'}"

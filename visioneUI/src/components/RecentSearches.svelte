@@ -61,6 +61,15 @@
     if (active.length > 0) return active;
     return [String(search?.query || '').trim()].filter(Boolean);
   }
+
+  function hasSimilarityPreview(search) {
+    return !!String(search?.similarityPreview?.url || '').trim();
+  }
+
+  function isSimilarityQuery(search) {
+    if (search?.similarityPreview?.imgId) return true;
+    return String(search?.query || '').includes('sim:');
+  }
 </script>
 
 {#if show && $recentSearches.length > 0}
@@ -102,7 +111,23 @@
   on:keydown={(e) => e.key === 'Enter' && selectSearch(search)}
   class="group w-full flex items-start justify-between p-2 bg-gray-800/50 hover:bg-gray-750 rounded-lg transition-all hover:shadow-md cursor-pointer"
 >
-  <div class="flex-1 min-w-0 text-left">
+  <div class="flex items-start min-w-0 flex-1 text-left">
+    {#if hasSimilarityPreview(search)}
+      <div class="mr-2 mt-0.5 flex-shrink-0">
+        <img
+          src={search.similarityPreview.url}
+          alt={search.similarityPreview?.name || 'Similarity preview'}
+          class="w-9 h-9 rounded-md object-cover border border-blue-500/30 bg-gray-900"
+          loading="lazy"
+        />
+      </div>
+    {:else if isSimilarityQuery(search)}
+      <div class="mr-2 mt-0.5 flex-shrink-0 w-9 h-9 rounded-md border border-blue-500/30 bg-blue-950/30 text-blue-200 flex items-center justify-center text-[9px] font-semibold tracking-wide">
+        SIM
+      </div>
+    {/if}
+
+    <div class="flex-1 min-w-0">
     <div class="flex items-center space-x-2 min-w-0">
       <div class="flex items-center gap-1 min-w-0 overflow-hidden">
         {#each getQuerySegments(search) as segment, idx}
@@ -131,6 +156,7 @@
       <span class="text-[12px] text-gray-600">
         {formatTimestamp(search.timestamp)}
       </span>
+    </div>
     </div>
   </div>
   

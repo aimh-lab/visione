@@ -1,7 +1,28 @@
 import { writable, get as getStoreValue } from 'svelte/store';
 
 const STORAGE_KEY = 'visione_recent_searches';
-const MAX_RECENT = 10;
+const MAX_RECENT = 30;
+
+function normalizeSimilarityPreview(preview) {
+  if (!preview || typeof preview !== 'object') return null;
+
+  const imgIdRaw = String(preview.imgId || '').trim();
+  const nameRaw = String(preview.name || imgIdRaw || 'Similarity').trim();
+  let urlRaw = String(preview.url || '').trim();
+
+  // Keep storage lightweight: do not persist data URLs or excessively long URLs.
+  if (urlRaw.startsWith('data:') || urlRaw.length > 2048) {
+    urlRaw = '';
+  }
+
+  if (!imgIdRaw && !urlRaw) return null;
+
+  return {
+    imgId: imgIdRaw || null,
+    url: urlRaw || null,
+    name: nameRaw || 'Similarity'
+  };
+}
 
 /** Persist only lightweight metadata (strip heavy result sets). */
 function persistToStorage(entries) {
@@ -34,7 +55,7 @@ function createRecentSearchesStore() {
   return {
     subscribe,
     
-    add: (query, resultCount, searchResultSet = null, textareas = null) => {
+    add: (query, resultCount, searchResultSet = null, textareas = null, similarityPreview = null) => {
       update(searches => {
         const filtered = searches.filter(s => s.query !== query);
         
@@ -43,7 +64,8 @@ function createRecentSearchesStore() {
           resultCount,
           timestamp: Date.now(),
           results: searchResultSet,  // kept in memory only
-          textareas
+          textareas,
+          similarityPreview: normalizeSimilarityPreview(similarityPreview)
         };
         
         const updated = [newSearch, ...filtered].slice(0, MAX_RECENT);
