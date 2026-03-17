@@ -92,7 +92,7 @@ class RemoteEmbeddings(Embeddings):
         if model not in self.available_models:
             raise ValueError(
                 f"Model '{model}' not available. "
-                f"Available models: {list(self.available_models.keys())}"
+                # f"Available models: {list(self.available_models.keys())}"
             )
         
     def _get_available_models(self) -> List[str]:
