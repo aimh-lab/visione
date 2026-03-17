@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { focusTrap } from "../utils/ui.ts";
+  import { focusTrap } from "../utils/ui";
 
   /** @typedef {'View1' | 'View2' | 'Similarity'} LayoutTab */
 
