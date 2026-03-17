@@ -306,6 +306,31 @@
     return String(similarityStep?.similarityImgId || '').trim() || null;
   }
 
+  function getRecentSimilarityPreview(searchTextareas = textareas) {
+    const steps = Array.isArray(searchTextareas) ? searchTextareas : [];
+    const similarityIndex = steps.findIndex((t) => {
+      return !!t?.enabled && !!String(t?.similarityImgId || '').trim();
+    });
+    if (similarityIndex < 0) return null;
+
+    const similarityImgId = String(steps[similarityIndex]?.similarityImgId || '').trim();
+    const imagesForStep = Array.isArray(textareaImages[similarityIndex]) ? textareaImages[similarityIndex] : [];
+    const primaryImage = imagesForStep.find((img) => img?.type === 'result') || imagesForStep[0] || null;
+
+    const rawUrl = String(primaryImage?.url || '').trim();
+    const safeUrl = rawUrl && !rawUrl.startsWith('data:') && rawUrl.length <= 2048 ? rawUrl : '';
+    const fallbackImgId = String(primaryImage?.imgId || '').trim();
+    const imgId = similarityImgId || fallbackImgId || null;
+
+    if (!imgId && !safeUrl) return null;
+
+    return {
+      imgId,
+      url: safeUrl || null,
+      name: String(primaryImage?.name || similarityImgId || 'Similarity').trim()
+    };
+  }
+
   function hydrateSimilarityTextareaImagesFromState() {
     const nextTextareaImages = { ...textareaImages };
     let changed = false;
@@ -401,6 +426,7 @@
     setTextareas: (t) => { textareas = t; },
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getSubmittedIds,
+    getSimilarityPreview: getRecentSimilarityPreview,
 
     setSearchState: ({ loading, error, resultSet, searchTime: st }) => {
       if (loading !== undefined) searchLoading = loading;
@@ -986,6 +1012,18 @@ function handleViewSubmitted() {
     await runSearchImmediate();
   }
 
+  async function handleRestoreRecentSearch(e) {
+    const savedTextareas = Array.isArray(e?.detail?.textareas) ? e.detail.textareas : [];
+    if (savedTextareas.length === 0) return;
+
+    textareas = savedTextareas.map((t) => ({ ...t }));
+    hydrateSimilarityTextareaImagesFromState();
+    uiStore.actions.setLayoutTab('View1');
+
+    await tick();
+    await runSearchImmediate();
+  }
+
   async function openVideoSummary(videoId, highlightImgId = null) {
     isVideoSummaryModalOpen = true;
     const normalizedVideoId = String(videoId || '').split(/[-_]/)[0];
@@ -1474,6 +1512,7 @@ function handleViewSubmitted() {
           toasts.success(`📦 Loaded ${images.length} cached results!`);
         }}
 
+        on:restoreRecentSearch={handleRestoreRecentSearch}
         on:restoreFromURL={handleRestoreFromURL}
         on:updateURL={handleUpdateURLRequest}
 

@@ -13,6 +13,7 @@
   type DispatchEvents = {
     loadCachedResults: { cachedResults: unknown };
     restoreFromURL: void;
+    restoreRecentSearch: { textareas: QueryTextarea[] };
     updateURL: void;
     updateImages: { index: number; images: unknown[] };
     replaceSimilarityImage: { index: number; imgId: string | null; url: string; name: string };
@@ -177,6 +178,7 @@
   on:loadCachedResults={(e) => {
     dispatch('loadCachedResults', e.detail);
   }}
+  on:restoreRecentSearch={(e) => dispatch('restoreRecentSearch', e.detail)}
   on:restoreFromURL={(e) => dispatch('restoreFromURL')}
   on:updateURL={(e) => dispatch('updateURL')}
   on:updateImages={(e) => dispatch('updateImages', e.detail)}

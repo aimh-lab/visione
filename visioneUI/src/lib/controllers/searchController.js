@@ -11,6 +11,7 @@ export function createSearchController({
   setTextareas,
   getFramesPerRow,        // () => number
   getSubmittedIds,        // () => Set<string>
+  getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
 
   // state sinks
   setSearchState,         // ({ loading?, error?, resultSet?, searchTime? }) => void
@@ -119,7 +120,10 @@ export function createSearchController({
       if (!isRestoringFromHistory()) syncURL();
 
       if (query && transformed.length > 0) {
-        recentSearches.add(query, transformed.length, resultSet, textareas);
+        const similarityPreview = typeof getSimilarityPreview === 'function'
+          ? getSimilarityPreview(textareas)
+          : null;
+        recentSearches.add(query, transformed.length, resultSet, textareas, similarityPreview);
         toasts.success(`🌐 Found ${transformed.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');
