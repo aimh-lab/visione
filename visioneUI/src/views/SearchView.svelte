@@ -223,7 +223,7 @@
     <div class="content bg-gray-100 flex-1 overflow-x-hidden"
          style="height:100%; zoom:{contentScale};">
 
-      <div class="flex-1 h-full overflow-hidden">
+      <div class="flex-1 h-full" class:overflow-y-auto={isFirstVisit} class:overflow-hidden={!isFirstVisit}>
         {#if isFirstVisit}
           <WelcomeHero
             on:getStarted={focusLeftTextarea}

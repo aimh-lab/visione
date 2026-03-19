@@ -17,6 +17,14 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
     return /^\d+$/.test(vid) ? vid.padStart(5, '0') : vid;
   };
 
+  const extractVideoIdFromImageId = (imgId) => {
+    const raw = String(imgId || '').trim();
+    if (!raw) return '';
+    const match = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+    if (match) return match[1];
+    return raw.split('-')[0] || '';
+  };
+
 
   /**
    * Collect imgIds from search + similarity results that belong to `videoId`.
@@ -44,7 +52,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
    * @returns {Promise<{ url: string, startTime: number, title: string, videoId: string, highlightedKeyframes: string[] }>}
    */
   async function buildPlayerData(imgId, videoId, startAt) {
-    const fallbackVid = videoId ?? String(imgId).split('-')[0];
+    const fallbackVid = videoId ?? extractVideoIdFromImageId(imgId);
     const vid = normalizeVideoId(fallbackVid);
     const matched = getImages().find((img) => img?.imgId === imgId)
       || getSimilarityImages().find((img) => img?.imgId === imgId)

@@ -30,11 +30,13 @@ export function extractImageInfo(item: any, i: number) {
   let rawVid = pick(item, "videoId", "videoid", "vid", "video", "camera");
 
   if (typeof rawImg === "string") {
-    let s = rawImg.replace(/\.jpg$/i, "");
-    const m = s.match(/-(\d+)-(\d+)$/);
+    const s = String(rawImg);
+    const noExt = s.replace(/\.jpg$/i, "");
+    const m = noExt.match(/-(\d+)-(\d+)$/);
     if (m) {
       rawVid = rawVid ?? m[1];
-      rawImg = `${m[1]}-${m[2]}`;
+      // Keep the original id exactly as provided by the backend.
+      rawImg = s;
     } else {
       rawImg = s;
     }
@@ -57,6 +59,7 @@ export function extractImageInfo(item: any, i: number) {
   const imageUrl = String(pick(metadata, 'images', 'image_url', 'imageUrl', 'url') || '').trim() || null;
   const thumbnailUrl = String(pick(metadata, 'thumbnails', 'thumbnail_url', 'thumbnailUrl') || '').trim() || null;
   const videoUrl = String(pick(metadata, 'videos', 'video_url', 'videoUrl') || '').trim() || null;
+  const hourId = String(pick(metadata, 'hour_id', 'hourId') || '').trim() || null;
   const fallbackId = imgId ? imgId.replace(/\.jpg$/i, '') : null;
   const url = thumbnailUrl || imageUrl || (videoId && fallbackId ? tinyFrameUrl(videoId, fallbackId) : null);
   const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? item.timestamp ?? item.date ?? null;
@@ -70,6 +73,7 @@ export function extractImageInfo(item: any, i: number) {
     imageUrl,
     thumbnailUrl,
     videoUrl,
+    hourId,
     timestamp,
     date: timestamp,
     size: item.size ?? null,

@@ -33,9 +33,7 @@
   let isScrolling = false;
   let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
   let keyframesLoadToken = 0;
-  const KEYFRAME_TIMESTAMP_CONCURRENCY = 8;
-  const MAX_PRECISE_TIMESTAMP_FETCH = 120;
-  const SAMPLED_PRECISE_POINTS = 48;
+  const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
 
   // Advanced controls state
   const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4, 8, 16];
@@ -240,31 +238,35 @@
     
     loadingKeyframes = true;
     try {
-      const imgIds = await visioneAPI.getVideoKeyframes(vid);
+      // getVideoKeyframes returns Array<{ imgId, timestamp }> where timestamp is video-relative seconds.
+      const entries = await visioneAPI.getVideoKeyframes(vid);
       if (currentToken !== keyframesLoadToken) return;
 
       const fallbackDuration = Math.max(1, videoDuration || 100);
-      const estimated = imgIds.map((imgId: string, index: number): Keyframe => ({
-        imgId,
-        timestamp: (index / Math.max(1, imgIds.length)) * fallbackDuration,
-        thumbnailUrl: tinyFrameUrl(vid, imgId)
+
+      const initial: Keyframe[] = entries.map((entry: { imgId: string; timestamp: number | null }, index: number) => ({
+        imgId: entry.imgId,
+        timestamp: entry.timestamp != null
+          ? entry.timestamp
+          : (index / Math.max(1, entries.length)) * fallbackDuration,
+        thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, vid)
+          || tinyFrameUrl(vid, String(entry.imgId).replace(/\.jpg$/i, ''))
       }));
 
-      // Show timeline immediately with estimated positions.
-      keyframes = estimated;
+      // Show timeline immediately with positions from epochs.
+      keyframes = initial;
       loadingKeyframes = false;
 
-      const preciseCandidates = selectPreciseTimestampCandidates(imgIds);
-      if (preciseCandidates.length === 0) return;
-
-      const precisePairs = await mapWithConcurrency(
-        preciseCandidates,
-        KEYFRAME_TIMESTAMP_CONCURRENCY,
-        async (imgId: string): Promise<[string, number | null]> => {
+      // Resolve real thumbnail URLs via /element-url.
+      const imgIds = entries.map((e: { imgId: string }) => e.imgId);
+      const thumbPairs = await mapWithConcurrency(
+        imgIds,
+        KEYFRAME_ELEMENT_URL_CONCURRENCY,
+        async (imgId: string): Promise<[string, string | null]> => {
           try {
-            const timestamp = await visioneAPI.getMiddleTimestamp(imgId);
-            const parsed = Number(timestamp);
-            return [imgId, Number.isFinite(parsed) ? parsed : null];
+            const urls = await visioneAPI.getElementUrls(imgId, ['images', 'thumbnails', 'resized-videos-tiny']);
+            const thumb = String(urls?.thumbnails || '').trim() || null;
+            return [imgId, thumb];
           } catch {
             return [imgId, null];
           }
@@ -273,18 +275,14 @@
 
       if (currentToken !== keyframesLoadToken) return;
 
-      const preciseMap = new Map(
-        precisePairs.filter(([, ts]) => ts != null) as Array<[string, number]>
+      const thumbnailMap = new Map(
+        thumbPairs.filter(([, url]) => !!url) as Array<[string, string]>
       );
 
-      if (preciseMap.size === 0) return;
-
-      keyframes = estimated
-        .map((frame) => ({
-          ...frame,
-          timestamp: preciseMap.get(frame.imgId) ?? frame.timestamp
-        }))
-        .sort((a, b) => a.timestamp - b.timestamp);
+      keyframes = initial.map((frame) => ({
+        ...frame,
+        thumbnailUrl: thumbnailMap.get(frame.imgId) || frame.thumbnailUrl
+      }));
     } catch (err) {
       console.error("Failed to load keyframes:", err);
     } finally {
@@ -292,37 +290,18 @@
     }
   }
 
-  function selectPreciseTimestampCandidates(imgIds: string[]): string[] {
-    if (!Array.isArray(imgIds) || imgIds.length === 0) return [];
-    if (imgIds.length <= MAX_PRECISE_TIMESTAMP_FETCH) return imgIds;
-
-    const selected = new Set<string>();
-    const highlighted = highlightedKeyframes
-      .map((item) => (typeof item === 'string' ? item : item?.imgId))
-      .filter((id): id is string => !!id);
-
-    for (const id of highlighted) {
-      if (imgIds.includes(id)) selected.add(id);
-    }
-
-    selected.add(imgIds[0]);
-    selected.add(imgIds[imgIds.length - 1]);
-
-    const stride = Math.max(1, Math.ceil(imgIds.length / SAMPLED_PRECISE_POINTS));
-    for (let i = 0; i < imgIds.length; i += stride) {
-      if (selected.size >= MAX_PRECISE_TIMESTAMP_FETCH) break;
-      selected.add(imgIds[i]);
-    }
-
-    return Array.from(selected);
-  }
-
   function deriveVideoId() {
-    if (videoId) return String(videoId).padStart(5, "0");
+    if (videoId) {
+      const raw = String(videoId).trim().replace(/\.mp4$/i, '');
+      if (!raw) return '';
+      return /^\d+$/.test(raw) ? raw.padStart(5, "0") : raw;
+    }
     try {
       const file = videoUrl.split("/").pop() || "";
-      const base = file.split("-")[0] || "";
-      return String(base).padStart(5, "0");
+      const noExt = file.replace(/\.mp4$/i, '');
+      const base = noExt.replace(/-(tiny|small|medium|large)$/i, '') || "";
+      if (!base) return '';
+      return /^\d+$/.test(base) ? String(base).padStart(5, "0") : String(base);
     } catch { return ""; }
   }
 
