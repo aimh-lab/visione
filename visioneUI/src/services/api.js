@@ -28,6 +28,33 @@ export class VisioneAPI {
     this.defaultSingleK = 1000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
+    this.defaultMetadataToRetrieve = ['hour_id'];
+    this.elementUrlCache = new Map();
+    this.elementUrlInFlight = new Map();
+    this.elementUrlCacheMax = 3000;
+    this.elementUrlTtlMs = 10 * 60 * 1000;
+  }
+
+  #normalizeVideoId(videoId) {
+    const raw = String(videoId || '').trim().replace(/\.mp4$/i, '');
+    if (!raw) return '';
+    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
+  }
+
+  /** Convert an hour_id like '20190110_10' to its UTC epoch (seconds). Returns null for non-matching formats. */
+  #hourIdToEpoch(hourId) {
+    const m = String(hourId || '').match(/^(\d{4})(\d{2})(\d{2})_(\d{2})$/);
+    if (!m) return null;
+    return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], 0, 0) / 1000;
+  }
+
+  /** Convert an absolute epoch to video-relative seconds using the hour_id derived from an imgId or videoId. */
+  #epochToVideoTime(epoch, hint) {
+    if (!Number.isFinite(epoch)) return null;
+    const hourId = String(hint || '').match(/^(\d{8}_\d{2})/)?.[1] || '';
+    const base = this.#hourIdToEpoch(hourId);
+    if (base == null) return null;
+    return epoch - base;
   }
 
   // ... #makeRequest e metodi esistenti ...
@@ -55,14 +82,22 @@ export class VisioneAPI {
       // New API contract: /field?id=...&field=...
       try {
         const metadata = await this.getField(imgId, ['middle_timestamp', 'middleTimestamp', 'timestamp', 'epoch']);
-        const candidate = Number(
+        // Prefer relative fields first; fall back to epoch.
+        const relCandidate = Number(
           metadata?.middle_timestamp
             ?? metadata?.middleTimestamp
             ?? metadata?.timestamp
-            ?? metadata?.epoch
         );
-        if (Number.isFinite(candidate)) {
-          num = candidate;
+        if (Number.isFinite(relCandidate) && relCandidate < 1e9) {
+          // It's a relative time (seconds within the video).
+          num = relCandidate;
+        } else {
+          // Use epoch and convert to video-relative seconds.
+          const absCandidate = Number.isFinite(relCandidate) ? relCandidate : Number(metadata?.epoch);
+          if (Number.isFinite(absCandidate)) {
+            const relative = this.#epochToVideoTime(absCandidate, key);
+            num = relative != null ? relative : absCandidate;
+          }
         }
       } catch {
         // Fallback handled below.
@@ -97,8 +132,22 @@ export class VisioneAPI {
   }
 
   getVideoUrl(videoId, quality = 'medium') {
-    const vid = String(videoId).padStart(5, '0');
-    return `${this.videosBase}/${vid}-${quality}.mp4`;
+    const vid = this.#normalizeVideoId(videoId);
+    if (/^\d+$/.test(vid)) {
+      return `${this.videosBase}/${vid}-${quality}.mp4`;
+    }
+    return `${this.videosBase}/${vid}.mp4`;
+  }
+
+  getThumbnailUrlByImgId(imgId, videoId = '') {
+    const rawId = String(imgId || '').trim();
+    if (!rawId) return null;
+
+    const hour = String(videoId || '').trim() || (rawId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i)?.[1] || '');
+    const mmss = rawId.match(/^\d{8}_\d{2}(\d{4})_\d{3}(?:\.jpg)?$/i)?.[1] || '';
+    if (!hour || !mmss) return null;
+
+    return `${this.baseUrl}/thumbnails/${hour}/${hour}-${mmss}.jpg`;
   }
 
 
@@ -153,6 +202,10 @@ export class VisioneAPI {
     }
 
     const payload = this.#buildSearchPayload(activeTextareas);
+    const payloadText = JSON.stringify(payload);
+
+    console.info('[VisioneAPI] POST /search payload', payload);
+    console.info('[VisioneAPI] POST /search payload (text)', payloadText);
 
     const response = await this.#makeRequest(this.searchUrl, {
       method: 'POST',
@@ -161,7 +214,9 @@ export class VisioneAPI {
       retries: 2
     });
 
-    return response.json();
+    const data = await response.json();
+    console.info('[VisioneAPI] POST /search response', data);
+    return data;
   }
 
   // Similarity Search API
@@ -176,8 +231,13 @@ export class VisioneAPI {
         model: this.defaultImageModel,
         k: this.defaultSingleK
       },
-      urls_to_retrieve: ['images', 'thumbnails', 'videos']
+      urls_to_retrieve: ['images', 'thumbnails', 'videos'],
+      metadata_to_retrieve: this.defaultMetadataToRetrieve
     };
+    const payloadText = JSON.stringify(payload);
+
+    console.info('[VisioneAPI] POST /search payload (similarity)', payload);
+    console.info('[VisioneAPI] POST /search payload (similarity, text)', payloadText);
 
     const response = await this.#makeRequest(this.searchUrl, {
       method: 'POST',
@@ -186,7 +246,9 @@ export class VisioneAPI {
       retries: 2
     });
 
-    return response.json();
+    const data = await response.json();
+    console.info('[VisioneAPI] POST /search response (similarity)', data);
+    return data;
   }
 
   async getElementUrl(id, what = ['images']) {
@@ -202,6 +264,54 @@ export class VisioneAPI {
       retries: 2
     });
     return response.json();
+  }
+
+  async getElementUrls(id, what = ['images', 'thumbnails', 'resized-videos-tiny']) {
+    if (!id) throw new APIError('id is required', 400);
+    const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
+    if (list.length === 0) throw new APIError('what is required', 400);
+
+    const cacheKey = `${String(id)}::${list.join(',')}`;
+    const now = Date.now();
+    const cached = this.elementUrlCache.get(cacheKey);
+    if (cached && now - cached.ts < this.elementUrlTtlMs) {
+      this.elementUrlCache.delete(cacheKey);
+      this.elementUrlCache.set(cacheKey, cached);
+      return cached.value;
+    }
+
+    if (this.elementUrlInFlight.has(cacheKey)) {
+      return this.elementUrlInFlight.get(cacheKey);
+    }
+
+    const run = (async () => {
+      const raw = await this.getElementUrl(id, list);
+      const urls = raw && typeof raw === 'object'
+        ? (raw.urls && typeof raw.urls === 'object' ? raw.urls : raw)
+        : {};
+
+      const normalized = {
+        images: String(urls.images || '').trim() || null,
+        thumbnails: String(urls.thumbnails || '').trim() || null,
+        resizedVideosTiny: String(urls['resized-videos-tiny'] || urls.resizedVideosTiny || '').trim() || null,
+      };
+
+      this.elementUrlCache.set(cacheKey, { value: normalized, ts: Date.now() });
+      while (this.elementUrlCache.size > this.elementUrlCacheMax) {
+        const oldestKey = this.elementUrlCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        this.elementUrlCache.delete(oldestKey);
+      }
+
+      return normalized;
+    })();
+
+    this.elementUrlInFlight.set(cacheKey, run);
+    try {
+      return await run;
+    } finally {
+      this.elementUrlInFlight.delete(cacheKey);
+    }
   }
 
   async getField(id, fields = ['epoch']) {
@@ -220,24 +330,60 @@ export class VisioneAPI {
   }
 
   // Video Keyframes API
+  // Returns Array<{ imgId: string, timestamp: number | null }>
+  // timestamp = seconds from the start of the video (epoch − hour-start-epoch).
   async getVideoKeyframes(videoId) {
     if (!videoId) {
       throw new APIError('VideoId is required', 400);
     }
 
-    const url = `${this.baseUrl}/core/getAllVideoKeyframes?videoId=${encodeURIComponent(String(videoId))}`;
-    
-    const response = await this.#makeRequest(url, {
+    const normalizedVideoId = this.#normalizeVideoId(videoId);
+    const hourStart = this.#hourIdToEpoch(normalizedVideoId);
+
+    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=epoch
+    try {
+      const params = new URLSearchParams();
+      params.set('select_field', 'hour_id');
+      params.set('select_value', normalizedVideoId);
+      params.append('field', 'content');
+      params.append('field', 'epoch');
+
+      const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
+        retries: 2
+      });
+
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        return data
+          .filter((item) => item?.content)
+          .map((item) => {
+            const epoch = Number(item.epoch);
+            return {
+              imgId: String(item.content),
+              timestamp: (hourStart != null && Number.isFinite(epoch)) ? epoch - hourStart : null
+            };
+          });
+      }
+    } catch {
+      // Fall back to legacy endpoint below.
+    }
+
+    // Legacy fallback for older deployments (returns only imgIds, no timestamp).
+    const legacyUrl = `${this.baseUrl}/core/getAllVideoKeyframes?videoId=${encodeURIComponent(normalizedVideoId)}`;
+    const legacyResponse = await this.#makeRequest(legacyUrl, {
       retries: 2
     });
-    
-    const data = await response.json();
-    
-    if (!Array.isArray(data)) {
+    const legacyData = await legacyResponse.json();
+
+    if (!Array.isArray(legacyData)) {
       throw new APIError('Invalid response: expected array', 500);
     }
-    
-    return data;
+
+    return legacyData
+      .map((v) => String(v))
+      .filter(Boolean)
+      .map((imgId) => ({ imgId, timestamp: null }));
   }
 
   // Health check API (opzionale)
@@ -266,7 +412,8 @@ export class VisioneAPI {
           model: item.type === 'image' ? this.defaultImageModel : this.defaultTextModel,
           k: this.defaultSingleK
         },
-        urls_to_retrieve: ['images', 'thumbnails', 'videos']
+        urls_to_retrieve: ['images', 'thumbnails', 'videos'],
+        metadata_to_retrieve: this.defaultMetadataToRetrieve
       };
     }
 
@@ -281,7 +428,8 @@ export class VisioneAPI {
         window_seconds: this.defaultTemporalWindowSeconds,
         k: this.defaultAggregatedK
       },
-      urls_to_retrieve: ['images', 'thumbnails', 'videos']
+      urls_to_retrieve: ['images', 'thumbnails', 'videos'],
+      metadata_to_retrieve: this.defaultMetadataToRetrieve
     };
   }
 

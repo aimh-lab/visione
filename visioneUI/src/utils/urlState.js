@@ -1,3 +1,5 @@
+import { pushState, replaceState } from '$app/navigation';
+
 /**
  * Serializza lo stato dell'app in URL params
  */
@@ -140,9 +142,9 @@ export function updateURL(state, replace = false) {
     url.search = queryString ? `?${queryString}` : '';
     
     if (replace) {
-      window.history.replaceState({}, '', url);
+      replaceState(url, {});
     } else {
-      window.history.pushState({}, '', url);
+      pushState(url, {});
     }
   } catch (err) {
     console.warn('Failed to update URL:', err);

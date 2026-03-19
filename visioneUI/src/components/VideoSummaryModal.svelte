@@ -168,17 +168,10 @@
     if (!gridContainer || !selectedFrameId) return;
 
     const base = String(selectedFrameId);
-    const noJpg = base.replace(/\.jpg$/i, "");
-    const withJpg = noJpg + ".jpg";
-    const candidates = [base, noJpg, withJpg];
 
     function findEl(): HTMLElement | null {
       if (!gridContainer) return null;
-      for (const id of candidates) {
-        const el = gridContainer.querySelector(`[data-frame-id="${id}"], [data-img-id="${id}"]`) as HTMLElement | null;
-        if (el) return el;
-      }
-      return null;
+      return gridContainer.querySelector(`[data-frame-id="${base}"], [data-img-id="${base}"]`) as HTMLElement | null;
     }
 
     const deadline = Date.now() + 9000;

@@ -22,6 +22,7 @@
   import { get } from 'svelte/store';
   import { sessionStore } from '../stores/sessionStore.js';
   import { browser } from '$app/environment';
+  import { pushState } from '$app/navigation';
   import { createSearchController } from '$lib/controllers/searchController.js';
   import { createSimilarityController } from '$lib/controllers/similarityController.js';
   import { createVideoController } from '$lib/controllers/videoController.js';
@@ -902,7 +903,7 @@ function handleViewSubmitted() {
     }
 
     if (layoutTab === "View2") {
-      view2SelectedImgId = String(imgId).replace(/\.jpg$/i, "");
+      view2SelectedImgId = String(imgId);
       tick().then(() => ui.scrollToImage(view2Container, view2SelectedImgId));
     }
   }
@@ -1026,7 +1027,8 @@ function handleViewSubmitted() {
 
   async function openVideoSummary(videoId, highlightImgId = null) {
     isVideoSummaryModalOpen = true;
-    const normalizedVideoId = String(videoId || '').split(/[-_]/)[0];
+    const rawVideoId = String(videoId || '').trim().replace(/\.mp4$/i, '');
+    const normalizedVideoId = /^\d+$/.test(rawVideoId) ? rawVideoId.padStart(5, '0') : rawVideoId;
     const normalizedHighlight = String(highlightImgId || '').trim() || null;
     activeVideoSummaryContext = {
       videoId: normalizedVideoId,
@@ -1262,7 +1264,7 @@ function handleViewSubmitted() {
     prevLayoutTab = null;
 
     if (typeof window !== "undefined") {
-      window.history.pushState({}, "", window.location.pathname);
+      pushState(window.location.pathname, {});
     }
 
     sessionStore.actions.clearAll();

@@ -25,6 +25,20 @@ export function createSearchController({
   let debounceTimer = null;
   const DEBOUNCE_MS = 250;
 
+  function assertUniqueImageIds(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const seen = new Map();
+    for (let i = 0; i < items.length; i += 1) {
+      const id = String(items[i]?.imgId ?? '').trim();
+      if (!id) continue;
+      if (seen.has(id)) {
+        const firstIndex = seen.get(id);
+        throw new Error(`Duplicate image id in search results: ${id} (indexes ${firstIndex} and ${i})`);
+      }
+      seen.set(id, i);
+    }
+  }
+
   function runSearch() {
     return new Promise((resolve) => {
       if (debounceTimer) clearTimeout(debounceTimer);
@@ -67,34 +81,36 @@ export function createSearchController({
     const start = Date.now();
 
     // 1) Cache
-    const cached = recentSearches.find(query);
-    if (cached?.results) {
-      if (req !== reqId) return;
+    try {
+      const cached = recentSearches.find(query);
+      if (cached?.results) {
+        if (req !== reqId) return;
 
-      if (cached.textareas?.length && isRestoringFromHistory()) {
-        setTextareas(cached.textareas.map(t => ({ ...t })));
+        if (cached.textareas?.length && isRestoringFromHistory()) {
+          setTextareas(cached.textareas.map(t => ({ ...t })));
+        }
+
+        const submittedIds = getSubmittedIds();
+        const transformed = transformSearchResults(cached.results, submittedIds);
+        assertUniqueImageIds(transformed);
+
+        setSearchState({
+          resultSet: cached.results,
+          searchTime: Date.now() - start,
+          loading: false,
+          error: null
+        });
+
+        setImages(transformed);
+
+        await tick();
+        if (!isRestoringFromHistory()) syncURL();
+
+        toasts.success(`📦 Loaded ${transformed.length} cached results!`);
+        return;
       }
 
-      setSearchState({
-        resultSet: cached.results,
-        searchTime: Date.now() - start,
-        loading: false,
-        error: null
-      });
-
-      const submittedIds = getSubmittedIds();
-      const transformed = transformSearchResults(cached.results, submittedIds);
-      setImages(transformed);
-
-      await tick();
-      if (!isRestoringFromHistory()) syncURL();
-
-      toasts.success(`📦 Loaded ${transformed.length} cached results!`);
-      return;
-    }
-
-    // 2) API
-    try {
+      // 2) API
       const framesPerRow = getFramesPerRow();
 
       const resultSet = await api.search({
@@ -114,6 +130,7 @@ export function createSearchController({
 
       const submittedIds = getSubmittedIds();
       const transformed = transformSearchResults(resultSet, submittedIds);
+      assertUniqueImageIds(transformed);
       setImages(transformed);
 
       await tick();

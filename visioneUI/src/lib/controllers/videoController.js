@@ -11,6 +11,12 @@ export function createVideoController({
 }) {
   let reqId = 0;
 
+  const normalizeVideoId = (value) => {
+    const raw = String(value || '').trim().replace(/\.mp4$/i, '');
+    if (!raw) return '';
+    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
+  };
+
   async function fetchVideoKeyframes(videoId) {
     if (!videoId) return [];
     const rawFrames = await api.getVideoKeyframes(videoId);
@@ -22,8 +28,7 @@ export function createVideoController({
 
     const req = ++reqId;
 
-    const vid = String(videoId).split(/[-_]/)[0];
-    const padded = String(vid).padStart(5, "0");
+    const padded = normalizeVideoId(videoId);
     const selectedImgId = highlightImgId ? String(highlightImgId).replace(/\.jpg$/i, "") : null;
 
     setVideoState({

@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { pushState } from "$app/navigation";
   import SearchControls from "../components/SearchControls.svelte";
   import TextareasManager from "./TextareasManager.svelte";
   import RecentSearches from "../components/RecentSearches.svelte";
@@ -137,7 +138,7 @@
     params.set('tab', tab);
 
     const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
+    pushState(newUrl, {});
 
     dispatch('restoreFromURL');
   }
