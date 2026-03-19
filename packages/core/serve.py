@@ -9,6 +9,7 @@ from hydra.utils import instantiate
 from langchain_postgres import PGEngine
 
 from endpoints.element_url import router as element_url_router
+from endpoints.discovery import router as discovery_router
 from endpoints.field import router as field_router
 from endpoints.llm_query import router as llm_query_router
 from endpoints.qa import router as qa_router
@@ -87,6 +88,7 @@ app.include_router(llm_query_router)
 app.include_router(qa_router)
 app.include_router(element_url_router)
 app.include_router(field_router)
+app.include_router(discovery_router)
 
 @hydra.main(version_base=None, config_path="configs", config_name="serve")
 def main(cfg: DictConfig):

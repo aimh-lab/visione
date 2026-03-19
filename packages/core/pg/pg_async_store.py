@@ -762,11 +762,14 @@ class AsyncPGVectorStore(VectorStore):
             embedding_column=kwargs.get("embedding_column"),
         )
 
+        additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
+        metadata_columns = list(set(self.metadata_columns + additional_metadata_columns))
+
         columns = [
             self.id_column,
             self.content_column,
             selected_embedding_column,
-        ] + self.metadata_columns
+        ] + metadata_columns
         if self.metadata_json_column:
             columns.append(self.metadata_json_column)
 
@@ -947,10 +950,13 @@ class AsyncPGVectorStore(VectorStore):
         operator = self.distance_strategy.operator
         full_table_name = f'"{self.schema_name}"."{self.table_name}"'
 
+        additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
+        metadata_columns = list(set(self.metadata_columns + additional_metadata_columns))
+
         base_columns = [
             self.id_column,
             self.content_column,
-        ] + self.metadata_columns
+        ] + metadata_columns
         if self.metadata_json_column:
             base_columns.append(self.metadata_json_column)
 
@@ -1153,7 +1159,7 @@ class AsyncPGVectorStore(VectorStore):
 
                 carry_cols = ",\n                            ".join(
                     [f'l."{self.id_column}"', f'l."{self.content_column}"']
-                    + [f'l."{c}"' for c in self.metadata_columns]
+                    + [f'l."{c}"' for c in metadata_columns]
                     + ([f'l."{self.metadata_json_column}"'] if self.metadata_json_column else [])
                 )
 
@@ -1181,10 +1187,22 @@ class AsyncPGVectorStore(VectorStore):
         root_cte = await _build_cte({"item": query_payload, **query})
         params["final_limit"] = dense_limit
 
+        joined_statements = ",\n".join(cte_statements)
         sql = text(
-            "WITH\n"
-            + ",\n".join(cte_statements)
-            + f"\nSELECT * FROM {root_cte} ORDER BY score DESC LIMIT :final_limit"
+            f"""
+            WITH
+            {joined_statements},
+            deduped AS (
+                SELECT DISTINCT ON ("{self.id_column}")
+                    *
+                FROM {root_cte}
+                ORDER BY "{self.id_column}", score DESC, end_time DESC, start_time ASC
+            )
+            SELECT *
+            FROM deduped
+            ORDER BY score DESC
+            LIMIT :final_limit
+            """
         )
 
         results: list[Document] = []
@@ -1216,7 +1234,7 @@ class AsyncPGVectorStore(VectorStore):
                     if self.metadata_json_column and row[self.metadata_json_column]
                     else {}
                 )
-                for col in self.metadata_columns:
+                for col in metadata_columns:
                     metadata[col] = row[col]
 
                 metadata.update(
@@ -1308,6 +1326,9 @@ class AsyncPGVectorStore(VectorStore):
             embedding=embedding, k=k, filter=filter, **kwargs
         )
 
+        additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
+        metadata_columns = list(set(self.metadata_columns + additional_metadata_columns))
+
         documents_with_scores = []
         for row in results:
             metadata = (
@@ -1315,7 +1336,7 @@ class AsyncPGVectorStore(VectorStore):
                 if self.metadata_json_column and row[self.metadata_json_column]
                 else {}
             )
-            for col in self.metadata_columns:
+            for col in metadata_columns:
                 metadata[col] = row[col]
             assert self.distance_strategy.search_function == "cosine_distance"
             metadata["score"] = 1 - row["distance"] # quite bad to add scores to metadata, but easier to handle

@@ -46,6 +46,11 @@ class SearchRequest(BaseModel):
         default=None,
         description="List of element types to retrieve (e.g., ['images', 'thumbnails']).",
     )
+    metadata_to_retrieve: Optional[List[str]] = Field(
+        default=None,
+        description="List of metadata fields to include in results (e.g., ['month', 'city']). If None, only default metadata is included.",
+    )
+
     fetch_k: Optional[int] = Field(
         default=None,
         ge=1,
@@ -136,6 +141,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
 
     default_k = int(getattr(request.app.state.config, "default_k", 100))
     final_k = int(payload.query.k or default_k)
+    metadata_to_retrieve = payload.metadata_to_retrieve or []
 
     try:
         docs = request.app.state.vector_store.similarity_search(
@@ -143,6 +149,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
             k=final_k,
             filter=None,
             fetch_k=payload.fetch_k if payload.fetch_k else min(final_k * 10, 1000),
+            metadata_to_retrieve=metadata_to_retrieve,
         )
 
         urls_to_retrieve = query_dict.get("urls_to_retrieve")

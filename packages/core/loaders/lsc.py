@@ -9,7 +9,8 @@ from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
 
 class LSCLoader:
-    def __init__(self, data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv):
+    def __init__(self, name, data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv):
+        self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
         self.collection_paths = collection_paths
@@ -162,7 +163,7 @@ class LSCLoader:
     def get_retrieved_metadata_columns(self):
         # Return the list of metadata keys that will be returned from a query
         return [
-            "minute_id", "hour_id", "epoch"
+            "epoch"
         ]
     
     def get_table_name(self):
@@ -231,7 +232,7 @@ class LSCLoader:
             "city": "City associated with the image.",
             "country": "Country associated with the image.",
             # "new_timezone": "Timezone associated with the image.",
-            # "image_name": "Image filename in the collection, typically formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
+            "image_name": "Image filename in the collection, typically formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
         }
         type_map = {
             "text": "string",
