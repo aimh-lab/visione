@@ -213,7 +213,7 @@ class LSCLoader:
             "hour_id": "Identifier of the hour segment that contains the image.",
             "year": "Four-digit year extracted from the image timestamp.",
             "month": "Month number extracted from the image timestamp.",
-            "day": "Day of month extracted from the image timestamp.",
+            # "day": "Day of month extracted from the image timestamp.",
             "hour": "Hour of day in 24-hour format extracted from the image timestamp.",
             "epoch": "Unix timestamp in seconds for the image capture time.",
             # "position": "Original geographic coordinates stored as a point.",
@@ -225,9 +225,9 @@ class LSCLoader:
             "time_in_bed": "Time spent in bed, expressed as a numeric duration.",
             "new_position": "Refined geographic coordinates stored as a point.",
             # "new_semantic_name": "Refined semantic place or scene label used for textual filtering.",
-            "original_name": "Original image filename or identifier before remapping.",
-            "categories": "Category labels associated with the image.",
-            "movement": "Movement or activity label associated with the image.",
+            # "original_name": "Original image filename or identifier before remapping.",
+            # "categories": "Category labels associated with the image.",
+            # "movement": "Movement or activity label associated with the image.",
             "city": "City associated with the image.",
             "country": "Country associated with the image.",
             # "new_timezone": "Timezone associated with the image.",
@@ -246,7 +246,7 @@ class LSCLoader:
                 description=column_descriptions.get(column.name, f"Collection metadata field {column.name}."),
                 type=type_map.get(column.data_type, "string"),
             )
-            for column in column_descriptions.keys()
+            for column in self.get_column_schema() if column.name in column_descriptions
         ]
 
 if __name__ == "__main__":
