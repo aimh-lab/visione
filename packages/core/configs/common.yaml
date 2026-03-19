@@ -32,3 +32,13 @@ llm_query:
   default_model: "openclip_clip_vit_b_32"
   leaf_k: 100000
   final_k: 1000
+
+qa:
+  model: "ministral-3:8b"
+  base_url: ???
+  temperature: 0
+  max_iterations: 5
+  max_total_images: 10
+  max_images_per_call: 2
+  default_model: "openclip_clip_vit_b_32"
+  debug: true
