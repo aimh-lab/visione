@@ -908,14 +908,14 @@ class PGVectorStore(VectorStore):
         *,
         select_field: str,
         select_value: Any,
-        retrieve_field: str,
-    ) -> list[Any]:
-        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+        retrieve_fields: Sequence[str],
+    ) -> list[dict[str, Any]]:
+        """Return requested fields where ``select_field`` equals ``select_value``."""
         return await self._engine._run_as_async(
             self.__vs.aget_by_field_value(
                 select_field=select_field,
                 select_value=select_value,
-                retrieve_field=retrieve_field,
+                retrieve_fields=retrieve_fields,
             )
         )
 
@@ -924,14 +924,14 @@ class PGVectorStore(VectorStore):
         *,
         select_field: str,
         select_value: Any,
-        retrieve_field: str,
-    ) -> list[Any]:
-        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+        retrieve_fields: Sequence[str],
+    ) -> list[dict[str, Any]]:
+        """Return requested fields where ``select_field`` equals ``select_value``."""
         return self._engine._run_as_sync(
             self.__vs.aget_by_field_value(
                 select_field=select_field,
                 select_value=select_value,
-                retrieve_field=retrieve_field,
+                retrieve_fields=retrieve_fields,
             )
         )
 

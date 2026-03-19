@@ -1622,16 +1622,21 @@ class AsyncPGVectorStore(VectorStore):
         *,
         select_field: str,
         select_value: Any,
-        retrieve_field: str,
-    ) -> list[Any]:
-        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+        retrieve_fields: Sequence[str],
+    ) -> list[dict[str, Any]]:
+        """Return requested fields where ``select_field`` equals ``select_value``."""
+
+        if not retrieve_fields:
+            raise ValueError("retrieve_fields must contain at least one field.")
 
         safe_filter, filter_dict = self._create_filter_clause(
             {select_field: {"$eq": select_value}}
         )
 
+        selected_columns = ", ".join(f'"{field}"' for field in retrieve_fields)
+
         query = (
-            f'SELECT "{retrieve_field}" FROM "{self.schema_name}"."{self.table_name}" '
+            f'SELECT {selected_columns} FROM "{self.schema_name}"."{self.table_name}" '
             f"WHERE {safe_filter};"
         )
 
@@ -1639,7 +1644,7 @@ class AsyncPGVectorStore(VectorStore):
             result = await conn.execute(text(query), filter_dict)
             rows = result.mappings().fetchall()
 
-        return [row[retrieve_field] for row in rows]
+        return [{field: row[field] for field in retrieve_fields} for row in rows]
 
     def _handle_field_filter(
         self,

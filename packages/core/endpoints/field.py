@@ -15,14 +15,13 @@ def metadata_field(
     field: List[str] = Query(default=["epoch"]),
     select_field: str | None = None,
     select_value: str | None = None,
-    retrieve_field: str | None = None,
 ):
     """
     Two supported modes:
     1) Existing behavior: given an image ID and a metadata field list, return those metadata values.
        Example: /field?id=20190101_121948_000.jpg&field=hour
-    2) Overloaded behavior: return all values from retrieve_field where select_field == select_value.
-       Example: /field?select_field=hour_id&select_value=1208&retrieve_field=content
+     2) Overloaded behavior: return requested fields for all rows where select_field == select_value.
+         Example: /field?select_field=hour_id&select_value=1208&field=content&field=epoch
     """
     try:
         # Keep old behavior unchanged when ID is provided.
@@ -33,22 +32,22 @@ def metadata_field(
                 raise HTTPException(status_code=404, detail=f"No record found for ID '{id}'.")
             return doc[0].metadata
 
-        # Overloaded mode requires all three parameters.
-        if not (select_field and select_value is not None and retrieve_field):
+        # Overloaded mode requires select_field and select_value.
+        if not (select_field and select_value is not None):
             raise HTTPException(
                 status_code=400,
                 detail=(
                     "Provide either 'id' (with optional 'field') or all of "
-                    "'select_field', 'select_value', and 'retrieve_field'."
+                    "'select_field' and 'select_value' (with one or more 'field')."
                 ),
             )
 
-        values = request.app.state.vector_store.get_by_field_value(
+        rows = request.app.state.vector_store.get_by_field_value(
             select_field=select_field,
             select_value=_coerce_select_value(select_value),
-            retrieve_field=retrieve_field,
+            retrieve_fields=field,
         )
-        return {retrieve_field: values}
+        return rows
     except HTTPException:
         raise
     except Exception as exc:
