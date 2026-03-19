@@ -903,5 +903,37 @@ class PGVectorStore(VectorStore):
         """Get documents by ids."""
         return self._engine._run_as_sync(self.__vs.aget_by_ids(ids=ids, columns_override=columns_override))
 
+    async def aget_by_field_value(
+        self,
+        *,
+        select_field: str,
+        select_value: Any,
+        retrieve_field: str,
+    ) -> list[Any]:
+        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+        return await self._engine._run_as_async(
+            self.__vs.aget_by_field_value(
+                select_field=select_field,
+                select_value=select_value,
+                retrieve_field=retrieve_field,
+            )
+        )
+
+    def get_by_field_value(
+        self,
+        *,
+        select_field: str,
+        select_value: Any,
+        retrieve_field: str,
+    ) -> list[Any]:
+        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+        return self._engine._run_as_sync(
+            self.__vs.aget_by_field_value(
+                select_field=select_field,
+                select_value=select_value,
+                retrieve_field=retrieve_field,
+            )
+        )
+
     def get_table_name(self) -> str:
         return self.__vs.table_name

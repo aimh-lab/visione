@@ -1617,6 +1617,30 @@ class AsyncPGVectorStore(VectorStore):
 
         return documents
 
+    async def aget_by_field_value(
+        self,
+        *,
+        select_field: str,
+        select_value: Any,
+        retrieve_field: str,
+    ) -> list[Any]:
+        """Return values from ``retrieve_field`` where ``select_field`` equals ``select_value``."""
+
+        safe_filter, filter_dict = self._create_filter_clause(
+            {select_field: {"$eq": select_value}}
+        )
+
+        query = (
+            f'SELECT "{retrieve_field}" FROM "{self.schema_name}"."{self.table_name}" '
+            f"WHERE {safe_filter};"
+        )
+
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), filter_dict)
+            rows = result.mappings().fetchall()
+
+        return [row[retrieve_field] for row in rows]
+
     def _handle_field_filter(
         self,
         *,
