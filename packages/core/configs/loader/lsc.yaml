@@ -1,4 +1,5 @@
 _target_: loaders.LSCLoader
+name: lsc
 metadata_file: "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
 old_new_file_mapping_csv: "/data1/lsc-collection/mapping.csv"
 
