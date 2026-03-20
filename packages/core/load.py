@@ -65,6 +65,7 @@ async def run_pipeline(cfg: DictConfig):
             await pg_engine.aupdate_vectorstore_table(
                 table_name=table_name,
                 vector_size=model_size_dict,
+                metadata_columns=metadata_columns
             )
         else:
             raise e

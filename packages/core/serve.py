@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
         model_names.append(embedding_column_name)
         model_column_map[model_name] = embedding_column_name
         available_model_names.add(model_name)
-        available_model_names.add(embedding_column_name)
+        # available_model_names.add(embedding_column_name)
 
     app.state.vector_store = PGVectorStore.create_sync(
         engine=engine,
