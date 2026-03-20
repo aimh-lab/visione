@@ -11,7 +11,7 @@
 export function addTextarea(textareas, index) {
   return [
     ...textareas.slice(0, index + 1),
-    { value: '', enabled: true },
+    { value: '', enabled: true, model: '' },
     ...textareas.slice(index + 1)
   ];
 }
@@ -87,5 +87,5 @@ export function swapTextareas(textareas, textareaImages, indexA, indexB, mode = 
  * @returns {Array} New textareas array.
  */
 export function loadExampleQuery(queries) {
-  return queries.map(q => ({ value: q, enabled: true }));
+  return queries.map(q => ({ value: q, enabled: true, model: '' }));
 }

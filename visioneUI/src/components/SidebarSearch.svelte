@@ -10,6 +10,7 @@
 
   export let isSidebarOpen = true;
   export let textareas = [];
+  export let availableModels = [];
   export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
@@ -189,6 +190,7 @@
           <TextareasManager
             bind:this={textareasManagerRef}
             {textareas}
+            {availableModels}
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}
@@ -198,6 +200,7 @@
             on:remove={(e) => removeTA(e.detail.index)}
             on:toggle={(e) => toggleTA(e.detail.index)}
             on:update={(e) => updateTA(e.detail.index, e.detail.value)}
+            on:updateModel
             on:restoreDisabledSteps={() => dispatch('restoreDisabledSteps')}
             on:search={handleSearchFromTextarea}
             on:swap={(e) => {

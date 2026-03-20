@@ -33,6 +33,28 @@ export class VisioneAPI {
     this.elementUrlInFlight = new Map();
     this.elementUrlCacheMax = 3000;
     this.elementUrlTtlMs = 10 * 60 * 1000;
+    this.discoveryCache = null;
+    this.discoveryInFlight = null;
+  }
+
+  /** Fetch /discovery once and cache the result for the session. */
+  async discovery() {
+    if (this.discoveryCache) return this.discoveryCache;
+    if (this.discoveryInFlight) return this.discoveryInFlight;
+
+    const run = (async () => {
+      const response = await this.#makeRequest(`${this.baseUrl}/discovery`, { retries: 2 });
+      const data = await response.json();
+      this.discoveryCache = data;
+      return data;
+    })();
+
+    this.discoveryInFlight = run;
+    try {
+      return await run;
+    } finally {
+      this.discoveryInFlight = null;
+    }
   }
 
   #normalizeVideoId(videoId) {
@@ -406,10 +428,11 @@ export class VisioneAPI {
 
     if (queryItems.length === 1) {
       const item = queryItems[0];
+      const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
       return {
         query: {
           item: item.value,
-          model: item.type === 'image' ? this.defaultImageModel : this.defaultTextModel,
+          model: item.model || defaultModel,
           k: this.defaultSingleK
         },
         urls_to_retrieve: ['images', 'thumbnails', 'videos'],
@@ -419,11 +442,14 @@ export class VisioneAPI {
 
     return {
       query: {
-        item: queryItems.map((item) => ({
-          item: item.value,
-          model: item.type === 'image' ? this.defaultImageModel : this.defaultTextModel,
-          k: this.defaultSubqueryK
-        })),
+        item: queryItems.map((item) => {
+          const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
+          return {
+            item: item.value,
+            model: item.model || defaultModel,
+            k: this.defaultSubqueryK
+          };
+        }),
         aggregation_type: 'temporal',
         window_seconds: this.defaultTemporalWindowSeconds,
         k: this.defaultAggregatedK
@@ -436,10 +462,11 @@ export class VisioneAPI {
   #expandTextareaToItems(textarea) {
     const raw = String(textarea?.value || '').trim();
     const similarityImgId = String(textarea?.similarityImgId || '').trim();
+    const model = String(textarea?.model || '').trim();
     const out = [];
 
     if (similarityImgId) {
-      out.push({ type: 'image', value: `image:${similarityImgId}` });
+      out.push({ type: 'image', value: `image:${similarityImgId}`, model });
     }
 
     if (raw) {
@@ -447,12 +474,12 @@ export class VisioneAPI {
       if (lowerRaw.startsWith('similarity:')) {
         const legacyId = raw.slice('similarity:'.length).trim();
         if (legacyId) {
-          out.push({ type: 'image', value: `image:${legacyId}` });
+          out.push({ type: 'image', value: `image:${legacyId}`, model });
         }
       } else if (lowerRaw.startsWith('image:')) {
-        out.push({ type: 'image', value: raw });
+        out.push({ type: 'image', value: raw, model });
       } else {
-        out.push({ type: 'text', value: raw });
+        out.push({ type: 'text', value: raw, model });
       }
     }
 

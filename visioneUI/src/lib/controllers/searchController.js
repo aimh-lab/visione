@@ -72,9 +72,12 @@ export function createSearchController({
       .map((t) => {
         const text = String(t?.value || '').trim();
         const simId = String(t?.similarityImgId || '').trim();
-        if (simId && text) return `sim:${simId} text:${text}`;
-        if (simId) return `sim:${simId}`;
-        return text;
+        const model = String(t?.model || '').trim();
+        let part = '';
+        if (simId && text) part = `sim:${simId} text:${text}`;
+        else if (simId) part = `sim:${simId}`;
+        else part = text;
+        return model ? `${part} model:${model}` : part;
       })
       .join(' ');
 
