@@ -871,6 +871,17 @@ class AsyncPGVectorStore(VectorStore):
                 **kwargs,
             )
 
+        # Empty/missing item means "no semantic query": rely on metadata filters only.
+        if query_payload is None or (
+            isinstance(query_payload, str) and not query_payload.strip()
+        ):
+            return await self._atemporal_join_search(
+                query=query,
+                k=k,
+                filter=filter,
+                **kwargs,
+            )
+
         if isinstance(query_payload, list):
             if len(query_payload) != 1 or not isinstance(query_payload[0], str):
                 raise ValueError(
@@ -926,7 +937,12 @@ class AsyncPGVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[Document]:
         query_payload = query.get("item", query.get("items", query.get("text")))
-        if not isinstance(query_payload, list) or len(query_payload) < 2:
+        root_filter_only = query_payload is None or (
+            isinstance(query_payload, str) and not query_payload.strip()
+        )
+        if not root_filter_only and (
+            not isinstance(query_payload, list) or len(query_payload) < 2
+        ):
             raise ValueError("Temporal query must contain a 'item' list with at least two items.")
 
         groupby_column = self.groupby_column
@@ -1012,10 +1028,40 @@ class AsyncPGVectorStore(VectorStore):
             node_name = f"q_{node_counter}"
             node_counter += 1
 
+            local_filter = _merge_filters(filter, node.get("filters"))
+            safe_filter = ""
+            if local_filter:
+                where_clause, where_params = self._create_filter_clause(local_filter)
+                safe_filter = f"WHERE {where_clause}"
+                params.update(where_params)
+
+            # Empty or missing item means "filter-only" selection with no embedding search.
+            if payload is None or (isinstance(payload, str) and not payload.strip()):
+                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
+                groupby_select = (
+                    f'b."{groupby_column}" AS groupby_value'
+                    if groupby_column
+                    else "NULL AS groupby_value"
+                )
+
+                cte_statements.append(
+                    f"""
+                    {node_name} AS (
+                        SELECT
+                            {base_cols_sql},
+                            b."{temporal_column}" AS start_time,
+                            b."{temporal_column}" AS end_time,
+                            {groupby_select},
+                            1.0 AS score
+                        FROM {full_table_name} b
+                        {safe_filter}
+                    )
+                    """.strip()
+                )
+                return node_name
+
             if isinstance(payload, str):
                 query_text = payload.strip()
-                if not query_text:
-                    raise ValueError("Leaf query string must be non-empty.")
 
                 selected_model, selected_embedder = self._resolve_embedding_backend(
                     model=node.get("model"),
@@ -1027,13 +1073,6 @@ class AsyncPGVectorStore(VectorStore):
                     param_prefix=node_name,
                 )
                 params.update(emb_params)
-
-                local_filter = _merge_filters(filter, node.get("filters"))
-                safe_filter = ""
-                if local_filter:
-                    where_clause, where_params = self._create_filter_clause(local_filter)
-                    safe_filter = f"WHERE {where_clause}"
-                    params.update(where_params)
 
                 leaf_limit_name = f"{node_name}_k"
                 params[leaf_limit_name] = int(node.get("k", candidate_limit))

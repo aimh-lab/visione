@@ -189,6 +189,7 @@ class PGEngineWithMultiVector(PGEngine):
         table_name: str,
         vector_size: Union[int, Dict[str, int]],
         *,
+        metadata_columns: Optional[list[Union[Column, ColumnDict]]] = None,
         schema_name: str = "public",
         embedding_column: str = "embedding",
     ) -> None:
@@ -212,6 +213,15 @@ class PGEngineWithMultiVector(PGEngine):
         safe_schema = self._escape_postgres_identifier(schema_name)
         safe_table = self._escape_postgres_identifier(table_name)
 
+        # Validate/escape metadata columns when provided.
+        if metadata_columns is not None:
+            for col in metadata_columns:
+                if isinstance(col, Column):
+                    col.name = self._escape_postgres_identifier(col.name)
+                elif isinstance(col, dict):
+                    self._validate_column_dict(col)
+                    col["name"] = self._escape_postgres_identifier(col["name"])
+
         # 2. Build the ALTER TABLE Query
         # We start with the base command
         query = f'ALTER TABLE "{safe_schema}"."{safe_table}" \n'
@@ -222,6 +232,20 @@ class PGEngineWithMultiVector(PGEngine):
             # We use IF NOT EXISTS to be safe. 
             # Columns are added as NULLable so they work with existing data.
             add_column_clauses.append(f'ADD COLUMN IF NOT EXISTS "{safe_col}" halfvec({v_size})')
+
+        # Add metadata columns that are not already present.
+        if metadata_columns is not None:
+            for column in metadata_columns:
+                if isinstance(column, Column):
+                    nullable = "NOT NULL" if not column.nullable else ""
+                    add_column_clauses.append(
+                        f'ADD COLUMN IF NOT EXISTS "{column.name}" {column.data_type} {nullable}'.strip()
+                    )
+                elif isinstance(column, dict):
+                    nullable = "NOT NULL" if not column["nullable"] else ""
+                    add_column_clauses.append(
+                        f'ADD COLUMN IF NOT EXISTS "{column["name"]}" {column["data_type"]} {nullable}'.strip()
+                    )
 
         if not add_column_clauses:
             return
@@ -237,6 +261,7 @@ class PGEngineWithMultiVector(PGEngine):
         self,
         table_name: str,
         vector_size: Union[int, Dict[str, int]],
+        metadata_columns: Optional[list[Union[Column, ColumnDict]]] = None,
         *,
         schema_name: str = "public",
         embedding_column: str = "embedding",
@@ -258,5 +283,6 @@ class PGEngineWithMultiVector(PGEngine):
                 vector_size,
                 schema_name=schema_name,
                 embedding_column=embedding_column,
+                metadata_columns=metadata_columns
             )
         )
