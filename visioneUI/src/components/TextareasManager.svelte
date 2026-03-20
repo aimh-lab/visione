@@ -97,9 +97,30 @@
   let enabledStepCount = 0;
   let showSequenceChrome = false;
 
+  const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const DEFAULT_IMAGE_MODEL = 'dinov2_base';
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
   const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
+  let modelOptions: string[] = [];
+
+  function getDefaultModelForStep(textarea: QueryTextarea) {
+    const hasSimilarity = !!String(textarea?.similarityImgId || '').trim();
+    return hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
+  }
+
+  function getModelValueForStep(textarea: QueryTextarea) {
+    const explicitModel = String(textarea?.model || '').trim();
+    return explicitModel || getDefaultModelForStep(textarea);
+  }
+
+  $: modelOptions = Array.from(
+    new Set([
+      DEFAULT_TEXT_MODEL,
+      DEFAULT_IMAGE_MODEL,
+      ...availableModels.map((m) => String(m || '').trim()).filter(Boolean)
+    ])
+  );
 
   function hexToRgb(hex: string) {
     const clean = hex.replace("#", "");
@@ -1037,7 +1058,7 @@
                         type="button"
                         on:click={() => removeImageFromTextarea(i, imgIdx)}
                         aria-label="Remove image"
-                        class="absolute top-1 right-1 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                        class="absolute top-1 right-1 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
                         title="Remove image"
                       >
                         <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
@@ -1060,7 +1081,7 @@
                 <textarea
                   bind:this={textareaRefs[i]}
                   use:autoResizeAction={textarea.value}
-                  class="ui-query-textarea w-full p-2.5 pr-8 pb-7 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                  class="ui-query-textarea w-full p-2.5 pr-8 pb-2.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
                   rows="1"
                   bind:value={textarea.value}
@@ -1091,8 +1112,9 @@
             {/if}
           </div>
 
-            <!-- Menu dropdown button -->
-            <div class="absolute bottom-2 left-2 flex items-center justify-between menu-container z-40">
+          <!-- Footer toolbar -->
+          <div class="flex items-center justify-between px-2.5 py-1.5">
+            <div class="menu-container z-40">
               <div class="relative">
                 <button
                   bind:this={menuTriggerRefs[i]}
@@ -1245,19 +1267,18 @@
             </div>
 
             {#if textarea.enabled}
-              <div class="absolute bottom-2.5 right-0 flex items-center gap-2 px-2">
-                {#if availableModels.length > 0}
+              <div class="flex items-center gap-2">
+                {#if modelOptions.length > 0}
                   <select
                     class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[9rem] truncate"
-                    value={textarea.model || ''}
+                    value={getModelValueForStep(textarea)}
                     title="Embedding model for this query"
                     on:change={(e) => {
                       const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
                       dispatch('updateModel', { index: i, model: target.value });
                     }}
                   >
-                    <option value="">default model</option>
-                    {#each availableModels as m}
+                    {#each modelOptions as m}
                       <option value={m}>{m}</option>
                     {/each}
                   </select>
@@ -1270,6 +1291,7 @@
                 </span>
               </div>
             {/if}
+          </div>
         </div>
 
       </div>

@@ -130,11 +130,22 @@
     if (!imgId) return;
 
     const parsed = getFrameSeconds(item);
-    if (parsed == null || parsed < 0) return;
+    if (parsed != null && parsed >= 0) {
+      pendingTimecodes.set(imgId, Math.floor(parsed));
+      scheduleTimecodeFlush();
+      return;
+    }
 
-    const normalized = Math.floor(parsed);
-    pendingTimecodes.set(imgId, normalized);
-    scheduleTimecodeFlush();
+    // Inline value is missing/unusable: resolve from API video_offset_seconds.
+    try {
+      const seconds = await visioneAPI.getMiddleTimestamp(imgId);
+      if (Number.isFinite(seconds) && seconds >= 0) {
+        pendingTimecodes.set(imgId, Math.floor(seconds));
+        scheduleTimecodeFlush();
+      }
+    } catch {
+      // Ignore single-item failures to keep the UI responsive.
+    }
   }
 
   function scheduleTimecodeFlush() {
@@ -175,7 +186,7 @@
     if (fetchedTimecodes.has(imgId)) return;
     if (requestedTimecodeIds.has(imgId)) return;
     const inlineSeconds = getFrameSeconds(item);
-    if (inlineSeconds != null && inlineSeconds > 0) return;
+    if (inlineSeconds != null && inlineSeconds >= 0) return;
 
     requestedTimecodeIds.add(imgId);
     timecodeQueue.push(item);
@@ -196,7 +207,7 @@
     }
 
     const totalSeconds = getFrameSeconds(item);
-    if (totalSeconds != null && totalSeconds > 0) {
+    if (totalSeconds != null && totalSeconds >= 0) {
       return formatTimecode(totalSeconds);
     }
 
@@ -479,7 +490,7 @@
         const imgId = getId(item);
         if (imgId && !labels.has(imgId)) {
           const secs = getFrameSeconds(item);
-          if (secs != null && secs > 0) labels.set(imgId, formatTimecode(secs));
+          if (secs != null && secs >= 0) labels.set(imgId, formatTimecode(secs));
         }
       }
     }

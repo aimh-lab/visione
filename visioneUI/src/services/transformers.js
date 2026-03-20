@@ -54,11 +54,23 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
 
 export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new Set()) {
   return rawFrames.map((item, index) => {
-    // Se item è una stringa (solo imgId)
-    const imgId = typeof item === 'string' ? item : (item.imgId || item.id || item);
-    const vid = String(imgId).split("-")[0].padStart(5, "0");
-    const normalizedImgId = String(imgId).replace(/\.jpg$/i, "");
-    const url = tinyFrameUrl(vid, normalizedImgId);
+    const imgId = typeof item === 'string'
+      ? item
+      : (item?.imgId || item?.id || item?.content || item);
+
+    const normalizedImgId = String(imgId || '').replace(/\.jpg$/i, '');
+    const itemVideoId = typeof item === 'object' && item
+      ? String(item.videoId || videoId || '').trim().replace(/\.mp4$/i, '')
+      : String(videoId || '').trim().replace(/\.mp4$/i, '');
+    const vid = /^\d+$/.test(itemVideoId) ? itemVideoId.padStart(5, '0') : itemVideoId;
+
+    const explicitThumb = typeof item === 'object' && item
+      ? String(item.thumbnailUrl || item.imageUrl || item.url || '').trim()
+      : '';
+    const url = explicitThumb || tinyFrameUrl(vid, normalizedImgId);
+
+    const rawTs = typeof item === 'object' && item ? Number(item.timestamp) : NaN;
+    const timestamp = Number.isFinite(rawTs) ? rawTs : null;
 
     return {
       index,
@@ -67,6 +79,8 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
       url,
       title: normalizedImgId,
       submitted: submittedIds.has(normalizedImgId),
+      timestamp,
+      date: timestamp,
       // Timecodes are resolved per-frame via getMiddleTimestamp API in ResultsGrid.
       // Do NOT estimate timestamps here — wrong estimates block the accurate API call.
       raw: item
