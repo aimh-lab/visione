@@ -267,7 +267,8 @@
   $: totalImages = images.length;
 
   // Query UI
-  let textareas = [{ value: "", enabled: true }];
+  let textareas = [{ value: "", enabled: true, model: '' }];
+  let availableModels = [];
   let textareaImages = {};
   $: rfPositive = $sessionStore.rfPositive;
   $: rfNegative = $sessionStore.rfNegative;
@@ -393,7 +394,9 @@
     ];
   }
 
-  // Memoized flat list (recomputed only when similarityDisplayRows changes)
+  // Memoized flat lists (recomputed only when display rows change)
+  let flatDisplayList = [];
+  $: flatDisplayList = displayRows?.flat?.() ?? [];
   let flatSimilarityList = [];
   $: flatSimilarityList = similarityDisplayRows?.flat?.() ?? [];
 
@@ -612,6 +615,13 @@
       await tick();
       clearInitialSidebarBootstrap();
 
+      // Load available models from /discovery (non-blocking)
+      visioneAPI.discovery().then((data) => {
+        if (Array.isArray(data?.available_models)) {
+          availableModels = data.available_models;
+        }
+      }).catch(() => {});
+
       const urlState = deserializeFromURL();
       if (Object.keys(urlState).length > 0) {
         isRestoringFromHistory = true;
@@ -782,11 +792,14 @@
     if (toFirstOfRow) {
       targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
     } else {
-      if (currentIndex === -1) {
-        targetIndex = 0;
-      } else {
-        targetIndex = (currentIndex + offset + images.length) % images.length;
-      }
+      // Navigate in display order (respects byvideo/bydate grouping)
+      const list = flatDisplayList;
+      if (!list || list.length === 0) return;
+      const curPos = list.findIndex(item => item.index === currentIndex);
+      const nextPos = curPos < 0
+        ? 0
+        : (curPos + offset + list.length) % list.length;
+      targetIndex = list[nextPos]?.index ?? 0;
     }
 
     if (targetIndex >= 0 && targetIndex < images.length) {
@@ -816,15 +829,16 @@
     if (toFirstOfRow) {
       targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
     } else {
-      if (currentIndex === -1) {
-        targetIndex = 0;
-      } else {
-        targetIndex = (currentIndex + offset + items.length) % items.length;
-      }
+      // Navigate in display order (respects byvideo/bydate grouping)
+      const curPos = items.findIndex(item => item.index === currentIndex);
+      const nextPos = curPos < 0
+        ? 0
+        : (curPos + offset + items.length) % items.length;
+      targetIndex = items[nextPos]?.index ?? 0;
     }
 
-    if (targetIndex >= 0 && targetIndex < items.length) {
-      const targetItem = items[targetIndex];
+    if (targetIndex >= 0 && targetIndex < similarityImages.length) {
+      const targetItem = similarityImages[targetIndex];
       similarityModal.select(targetItem);
       lastViewedSimilarityIndex = targetIndex;
       tick().then(() => ui.scrollToImage(similarityContainer, targetIndex));
@@ -1228,7 +1242,7 @@ function handleViewSubmitted() {
 
     uiStore.actions.setLayoutTab('View1');
 
-    textareas = [{ value: "", enabled: true }];
+    textareas = [{ value: "", enabled: true, model: '' }];
     textareaImages = {};
 
     images = [];
@@ -1462,7 +1476,6 @@ function handleViewSubmitted() {
     const next = $uiStore.keyframeSize + delta;
     const safe = Math.min(400, Math.max(80, Number(next) || 130));
     uiStore.actions.setKeyframeSize(safe);
-    toasts.info(`Keyframe size: ${safe}px`, 900);
   }}
   on:openSettings={() => (isSettingsOpen = true)}
   on:changeChallengeType={(e) => uiStore.actions.setDresChallengeType(e.detail.type)}
@@ -1482,6 +1495,7 @@ function handleViewSubmitted() {
         isSidebarRightOpen={$uiStore.isSidebarRightOpen}
         sidebarRightTab={$uiStore.sidebarRightTab}
         {textareas}
+        {availableModels}
         {textareaImages}
         {searchLoading}
         {searchError}
@@ -1535,6 +1549,10 @@ function handleViewSubmitted() {
         onUpdateTextarea={(i, v) => {
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, value: v } : t));
         }}
+        on:updateModel={(e) => {
+          const { index: i, model: m } = e.detail;
+          textareas = textareas.map((t, idx) => (idx === i ? { ...t, model: m } : t));
+        }}
         onRestoreDisabledSteps={restoreDisabledStepsFromSimilarity}
         onRunSearch={runSearch}
         onClearResults={() => {
@@ -1578,7 +1596,7 @@ function handleViewSubmitted() {
         on:replaceSimilarityImage={handleReplaceSimilarityImage}
         on:closeSimilarityStep={handleCloseSimilarityStep}
         on:clearQueryInputs={() => {
-          textareas = [{ value: "", enabled: true }];
+          textareas = [{ value: "", enabled: true, model: '' }];
           textareaImages = {};
           toasts.info("Query inputs cleared");
         }}

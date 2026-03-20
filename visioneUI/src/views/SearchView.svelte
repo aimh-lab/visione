@@ -32,6 +32,7 @@
   export let onResizeLeftSidebar = (_width: number) => {};
   export let onResizeRightSidebar = (_width: number) => {};
   export let textareas: QueryTextarea[] = [];
+  export let availableModels: string[] = [];
   export let textareaImages: Record<number, unknown[]> = {};
 
   export let searchLoading = false;
@@ -159,6 +160,7 @@
   {isSidebarOpen}
   width={sidebarLeftWidth}
   {textareas}
+  {availableModels}
   {textareaImages}
   {searchLoading}
   searchError={searchError as any}
@@ -168,6 +170,7 @@
   on:removeTextarea={(e) => onRemoveTextarea(e.detail.index)}
   on:toggleTextarea={(e) => onToggleTextarea(e.detail.index)}
   on:updateTextarea={(e) => onUpdateTextarea(e.detail.index, e.detail.value)}
+  on:updateModel
   on:restoreDisabledSteps={onRestoreDisabledSteps}
   on:runSearch={onRunSearch}
   on:clearResults={onClearResults}
