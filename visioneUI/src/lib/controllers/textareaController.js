@@ -4,6 +4,8 @@
 // in the multi-step query builder. Each function returns the new state
 // so the caller can assign it back.
 
+const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+
 /**
  * Insert a new empty textarea after `index`.
  * @returns {Array} Updated textareas array.
@@ -11,7 +13,7 @@
 export function addTextarea(textareas, index) {
   return [
     ...textareas.slice(0, index + 1),
-    { value: '', enabled: true, model: '' },
+    { value: '', enabled: true, model: DEFAULT_TEXT_MODEL },
     ...textareas.slice(index + 1)
   ];
 }
@@ -87,5 +89,5 @@ export function swapTextareas(textareas, textareaImages, indexA, indexB, mode = 
  * @returns {Array} New textareas array.
  */
 export function loadExampleQuery(queries) {
-  return queries.map(q => ({ value: q, enabled: true, model: '' }));
+  return queries.map(q => ({ value: q, enabled: true, model: DEFAULT_TEXT_MODEL }));
 }

@@ -267,7 +267,9 @@
   $: totalImages = images.length;
 
   // Query UI
-  let textareas = [{ value: "", enabled: true, model: '' }];
+  const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const DEFAULT_IMAGE_MODEL = 'dinov2_base';
+  let textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
   let availableModels = [];
   let textareaImages = {};
   $: rfPositive = $sessionStore.rfPositive;
@@ -333,35 +335,78 @@
     };
   }
 
-  function hydrateSimilarityTextareaImagesFromState() {
+  async function hydrateSimilarityTextareaImagesFromState() {
     const nextTextareaImages = { ...textareaImages };
     let changed = false;
+    const pendingResolves = [];
 
     textareas.forEach((t, idx) => {
-      const imgId = String(t?.similarityImgId || '').trim();
-      if (!imgId) return;
+      const rawImgId = String(t?.similarityImgId || '').trim();
+      if (!rawImgId) return;
+      const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
 
       const currentImages = nextTextareaImages[idx] || [];
-      const alreadyHasQueryImage = currentImages.some((img) => String(img?.imgId || '').trim() === imgId);
+      const alreadyHasQueryImage = currentImages.some(
+        (img) => String(img?.imgId || '').trim().replace(/\.jpg$/i, '') === normalizedImgId
+      );
       if (alreadyHasQueryImage) return;
 
-      const videoId = String(imgId).split('-')[0]?.padStart(5, '0');
+      const hourMatch = normalizedImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}$/i);
+      const videoId = hourMatch?.[1] || normalizedImgId.split('-')[0]?.padStart(5, '0') || '';
       if (!videoId) return;
 
       nextTextareaImages[idx] = [
         {
-          url: tinyFrameUrl(videoId, imgId),
-          name: imgId,
+          url: tinyFrameUrl(videoId, normalizedImgId),
+          name: rawImgId,
           type: 'result',
-          imgId
+          imgId: normalizedImgId
         }
       ];
       changed = true;
+      pendingResolves.push({ idx, rawImgId, normalizedImgId });
     });
 
     if (changed) {
       textareaImages = nextTextareaImages;
     }
+
+    await Promise.allSettled(
+      pendingResolves.map(async ({ idx, rawImgId, normalizedImgId }) => {
+        try {
+          let urls = null;
+          try {
+            urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
+          } catch {
+            urls = await visioneAPI.getElementUrls(normalizedImgId, ['thumbnails', 'images']);
+          }
+
+          const resolvedUrl = String(urls?.thumbnails || urls?.images || '').trim();
+          if (!resolvedUrl) return;
+
+          const activeSimilarity = String(textareas[idx]?.similarityImgId || '').trim().replace(/\.jpg$/i, '');
+          if (activeSimilarity !== normalizedImgId) return;
+
+          const currentImages = Array.isArray(textareaImages[idx]) ? textareaImages[idx] : [];
+          const primary = currentImages[0] || {};
+
+          textareaImages = {
+            ...textareaImages,
+            [idx]: [
+              {
+                ...primary,
+                url: resolvedUrl,
+                name: String(primary?.name || rawImgId),
+                type: 'result',
+                imgId: normalizedImgId
+              }
+            ]
+          };
+        } catch {
+          // Keep synthesized fallback URL when metadata lookup fails.
+        }
+      })
+    );
   }
 
   function scheduleURLSync() {
@@ -577,8 +622,17 @@
   // URL restore
   // ---------------------------
   async function restoreFromURLState(urlState) {
-    if (urlState.textareas) textareas = urlState.textareas;
-    hydrateSimilarityTextareaImagesFromState();
+    if (urlState.textareas) {
+      textareas = urlState.textareas.map((t) => {
+        const hasSimilarity = !!String(t?.similarityImgId || '').trim();
+        const fallbackModel = hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
+        return {
+          ...t,
+          model: String(t?.model || '').trim() || fallbackModel
+        };
+      });
+    }
+    await hydrateSimilarityTextareaImagesFromState();
 
     if (urlState.activeTab) {
       uiStore.actions.setLayoutTab(urlState.activeTab);
@@ -689,6 +743,7 @@
       return {
         ...t,
         enabled: true,
+        model: String(t?.model || '').trim() || DEFAULT_IMAGE_MODEL,
         similarityImgId: String(imgId || t?.similarityImgId || '').trim()
       };
     });
@@ -1018,7 +1073,15 @@ function handleViewSubmitted() {
     const urlState = deserializeFromURL();
 
     if (urlState.textareas && urlState.textareas.length > 0) {
-      textareas = urlState.textareas;
+      textareas = urlState.textareas.map((t) => {
+        const hasSimilarity = !!String(t?.similarityImgId || '').trim();
+        const fallbackModel = hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
+        return {
+          ...t,
+          model: String(t?.model || '').trim() || fallbackModel
+        };
+      });
+      await hydrateSimilarityTextareaImagesFromState();
     }
 
     if (urlState.activeTab) uiStore.actions.setLayoutTab(urlState.activeTab);
@@ -1032,7 +1095,7 @@ function handleViewSubmitted() {
     if (savedTextareas.length === 0) return;
 
     textareas = savedTextareas.map((t) => ({ ...t }));
-    hydrateSimilarityTextareaImagesFromState();
+    await hydrateSimilarityTextareaImagesFromState();
     uiStore.actions.setLayoutTab('View1');
 
     await tick();
@@ -1085,7 +1148,13 @@ function handleViewSubmitted() {
     if (existingSimilarityIndex >= 0) {
       nextTextareas = textareas.map((t, idx) => {
         if (idx === existingSimilarityIndex) {
-          return { ...t, value: "", enabled: true, similarityImgId: imgId };
+          return {
+            ...t,
+            value: "",
+            enabled: true,
+            model: DEFAULT_IMAGE_MODEL,
+            similarityImgId: imgId
+          };
         }
         // Mark non-similarity steps as disabled-by-similarity so "Restore steps" works
         const wasEnabled = t._disabledBySimilarity ? t._wasEnabledBeforeSimilarity : !!t.enabled;
@@ -1097,7 +1166,12 @@ function handleViewSubmitted() {
         };
       });
     } else {
-      const similarityStep = { value: "", enabled: true, similarityImgId: imgId };
+      const similarityStep = {
+        value: "",
+        enabled: true,
+        model: DEFAULT_IMAGE_MODEL,
+        similarityImgId: imgId
+      };
       const disabledExisting = textareas.map((t) => ({
         ...t,
         _wasEnabledBeforeSimilarity: !!t.enabled,
@@ -1242,7 +1316,7 @@ function handleViewSubmitted() {
 
     uiStore.actions.setLayoutTab('View1');
 
-    textareas = [{ value: "", enabled: true, model: '' }];
+    textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
     textareaImages = {};
 
     images = [];
@@ -1596,7 +1670,7 @@ function handleViewSubmitted() {
         on:replaceSimilarityImage={handleReplaceSimilarityImage}
         on:closeSimilarityStep={handleCloseSimilarityStep}
         on:clearQueryInputs={() => {
-          textareas = [{ value: "", enabled: true, model: '' }];
+          textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
           textareaImages = {};
           toasts.info("Query inputs cleared");
         }}
