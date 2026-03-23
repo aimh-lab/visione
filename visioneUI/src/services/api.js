@@ -63,22 +63,6 @@ export class VisioneAPI {
     return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
   }
 
-  /** Convert an hour_id like '20190110_10' to its UTC epoch (seconds). Returns null for non-matching formats. */
-  #hourIdToEpoch(hourId) {
-    const m = String(hourId || '').match(/^(\d{4})(\d{2})(\d{2})_(\d{2})$/);
-    if (!m) return null;
-    return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], 0, 0) / 1000;
-  }
-
-  /** Convert an absolute epoch to video-relative seconds using the hour_id derived from an imgId or videoId. */
-  #epochToVideoTime(epoch, hint) {
-    if (!Number.isFinite(epoch)) return null;
-    const hourId = String(hint || '').match(/^(\d{8}_\d{2})/)?.[1] || '';
-    const base = this.#hourIdToEpoch(hourId);
-    if (base == null) return null;
-    return epoch - base;
-  }
-
   // ... #makeRequest e metodi esistenti ...
 
   async getMiddleTimestamp(imgId) {
@@ -101,25 +85,12 @@ export class VisioneAPI {
     const run = (async () => {
       let num = null;
 
-      // New API contract: /field?id=...&field=...
+      // New API contract: /field?id=...&field=video_offset_seconds
       try {
-        const metadata = await this.getField(imgId, ['middle_timestamp', 'middleTimestamp', 'timestamp', 'epoch']);
-        // Prefer relative fields first; fall back to epoch.
-        const relCandidate = Number(
-          metadata?.middle_timestamp
-            ?? metadata?.middleTimestamp
-            ?? metadata?.timestamp
-        );
-        if (Number.isFinite(relCandidate) && relCandidate < 1e9) {
-          // It's a relative time (seconds within the video).
-          num = relCandidate;
-        } else {
-          // Use epoch and convert to video-relative seconds.
-          const absCandidate = Number.isFinite(relCandidate) ? relCandidate : Number(metadata?.epoch);
-          if (Number.isFinite(absCandidate)) {
-            const relative = this.#epochToVideoTime(absCandidate, key);
-            num = relative != null ? relative : absCandidate;
-          }
+        const metadata = await this.getField(imgId, ['video_offset_seconds']);
+        const offset = Number(metadata?.video_offset_seconds);
+        if (Number.isFinite(offset) && offset >= 0) {
+          num = offset;
         }
       } catch {
         // Fallback handled below.
@@ -353,22 +324,21 @@ export class VisioneAPI {
 
   // Video Keyframes API
   // Returns Array<{ imgId: string, timestamp: number | null }>
-  // timestamp = seconds from the start of the video (epoch − hour-start-epoch).
+  // timestamp = video_offset_seconds (seconds from the start of the video).
   async getVideoKeyframes(videoId) {
     if (!videoId) {
       throw new APIError('VideoId is required', 400);
     }
 
     const normalizedVideoId = this.#normalizeVideoId(videoId);
-    const hourStart = this.#hourIdToEpoch(normalizedVideoId);
 
-    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=epoch
+    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=video_offset_seconds
     try {
       const params = new URLSearchParams();
       params.set('select_field', 'hour_id');
       params.set('select_value', normalizedVideoId);
       params.append('field', 'content');
-      params.append('field', 'epoch');
+      params.append('field', 'video_offset_seconds');
 
       const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
         retries: 2
@@ -380,10 +350,10 @@ export class VisioneAPI {
         return data
           .filter((item) => item?.content)
           .map((item) => {
-            const epoch = Number(item.epoch);
+            const offset = Number(item.video_offset_seconds);
             return {
               imgId: String(item.content),
-              timestamp: (hourStart != null && Number.isFinite(epoch)) ? epoch - hourStart : null
+              timestamp: Number.isFinite(offset) && offset >= 0 ? offset : null
             };
           });
       }

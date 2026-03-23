@@ -23,6 +23,21 @@ export function serializeToURL(state) {
   if (state.imageId && String(state.imageId).trim()) {
     params.set('img', String(state.imageId).trim());
   }
+
+  // Query image inline (stessa textarea del testo), separata da img= per non confondere la semantica similarity.
+  if (Array.isArray(state.inlineQueryImages) && state.inlineQueryImages.length > 0) {
+    const packed = state.inlineQueryImages
+      .map((entry) => {
+        const index = Number(entry?.index);
+        const imgId = String(entry?.imgId || '').trim();
+        if (!Number.isInteger(index) || index < 0 || !imgId) return null;
+        return `${index}:${imgId}`;
+      })
+      .filter(Boolean)
+      .join(',');
+
+    if (packed) params.set('qimg', packed);
+  }
   
   // Tab attivo
   if (state.activeTab && state.activeTab !== 'View1') {
@@ -89,6 +104,32 @@ export function deserializeFromURL(urlString) {
     }
 
     state.imageId = imageId;
+  }
+
+  // Inline query images (testo + immagine nella stessa textarea): formato qimg=0:imgA,2:imgB
+  const qimg = params.get('qimg');
+  if (qimg && qimg.trim()) {
+    const parsed = qimg
+      .split(',')
+      .map((chunk) => {
+        const [rawIndex, ...rest] = String(chunk || '').split(':');
+        const index = Number(rawIndex);
+        const imgId = rest.join(':').trim();
+        if (!Number.isInteger(index) || index < 0 || !imgId) return null;
+        return { index, imgId };
+      })
+      .filter(Boolean);
+
+    if (parsed.length > 0) {
+      state.inlineQueryImages = parsed;
+
+      // Ensure referenced textarea indexes exist.
+      const maxIndex = parsed.reduce((acc, entry) => Math.max(acc, entry.index), -1);
+      if (!Array.isArray(state.textareas)) state.textareas = [];
+      while (state.textareas.length <= maxIndex) {
+        state.textareas.push({ value: '', enabled: true });
+      }
+    }
   }
   
   // Tab attivo
