@@ -8,6 +8,7 @@ export function createSearchController({
 
   // data accessors
   getTextareas,
+  getSearchTextareas,
   setTextareas,
   getFramesPerRow,        // () => number
   getSubmittedIds,        // () => Set<string>
@@ -56,8 +57,11 @@ export function createSearchController({
   }
 
   async function _doSearch() {
-    const textareas = getTextareas();
-    if (!textareas?.length) return;
+    const rawTextareas = getTextareas();
+    if (!rawTextareas?.length) return;
+    const textareas = typeof getSearchTextareas === 'function'
+      ? getSearchTextareas(rawTextareas)
+      : rawTextareas;
 
     const req = ++reqId;
 
@@ -141,9 +145,9 @@ export function createSearchController({
 
       if (query && transformed.length > 0) {
         const similarityPreview = typeof getSimilarityPreview === 'function'
-          ? getSimilarityPreview(textareas)
+          ? getSimilarityPreview(rawTextareas)
           : null;
-        recentSearches.add(query, transformed.length, resultSet, textareas, similarityPreview);
+        recentSearches.add(query, transformed.length, resultSet, rawTextareas, similarityPreview);
         toasts.success(`🌐 Found ${transformed.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');

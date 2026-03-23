@@ -310,6 +310,28 @@
     return String(similarityStep?.similarityImgId || '').trim() || null;
   }
 
+  function getInlineQueryImagesForURL() {
+    const out = [];
+
+    textareas.forEach((t, idx) => {
+      // Keep inline image state separate from similarity-step semantics.
+      if (String(t?.similarityImgId || '').trim()) return;
+
+      const imagesForStep = Array.isArray(textareaImages[idx]) ? textareaImages[idx] : [];
+      const primaryResultImage = imagesForStep.find((img) => {
+        const imgId = String(img?.imgId || '').trim();
+        return img?.type === 'result' && imgId.length > 0;
+      });
+
+      const imgId = String(primaryResultImage?.imgId || '').trim();
+      if (!imgId) return;
+
+      out.push({ index: idx, imgId });
+    });
+
+    return out;
+  }
+
   function getRecentSimilarityPreview(searchTextareas = textareas) {
     const steps = Array.isArray(searchTextareas) ? searchTextareas : [];
     const similarityIndex = steps.findIndex((t) => {
@@ -360,7 +382,7 @@
           url: tinyFrameUrl(videoId, normalizedImgId),
           name: rawImgId,
           type: 'result',
-          imgId: normalizedImgId
+          imgId: rawImgId
         }
       ];
       changed = true;
@@ -398,12 +420,96 @@
                 url: resolvedUrl,
                 name: String(primary?.name || rawImgId),
                 type: 'result',
-                imgId: normalizedImgId
+                imgId: rawImgId
               }
             ]
           };
         } catch {
           // Keep synthesized fallback URL when metadata lookup fails.
+        }
+      })
+    );
+  }
+
+  async function hydrateInlineTextareaImagesFromState(urlState) {
+    const entries = Array.isArray(urlState?.inlineQueryImages)
+      ? urlState.inlineQueryImages
+      : [];
+    if (entries.length === 0) return;
+
+    const nextTextareaImages = { ...textareaImages };
+    let changed = false;
+
+    for (const entry of entries) {
+      const index = Number(entry?.index);
+      const rawImgId = String(entry?.imgId || '').trim();
+      if (!Number.isInteger(index) || index < 0 || !rawImgId) continue;
+      if (index >= textareas.length) continue;
+
+      // Do not inject inline images into explicit similarity steps (different semantics).
+      if (String(textareas[index]?.similarityImgId || '').trim()) continue;
+
+      const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
+      const currentImages = Array.isArray(nextTextareaImages[index]) ? nextTextareaImages[index] : [];
+      const alreadyThere = currentImages.some(
+        (img) => String(img?.imgId || '').trim().replace(/\.jpg$/i, '') === normalizedImgId
+      );
+      if (alreadyThere) continue;
+
+      nextTextareaImages[index] = [
+        {
+          url: '',
+          name: rawImgId,
+          type: 'result',
+          imgId: rawImgId
+        }
+      ];
+      changed = true;
+    }
+
+    if (changed) textareaImages = nextTextareaImages;
+
+    await Promise.allSettled(
+      entries.map(async (entry) => {
+        const index = Number(entry?.index);
+        const rawImgId = String(entry?.imgId || '').trim();
+        if (!Number.isInteger(index) || index < 0 || !rawImgId) return;
+        if (index >= textareas.length) return;
+        if (String(textareas[index]?.similarityImgId || '').trim()) return;
+
+        const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
+
+        try {
+          let urls = null;
+          try {
+            urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
+          } catch {
+            urls = await visioneAPI.getElementUrls(normalizedImgId, ['thumbnails', 'images']);
+          }
+
+          const resolvedUrl = String(urls?.thumbnails || urls?.images || '').trim();
+          if (!resolvedUrl) return;
+
+          // Guard against stale async updates.
+          if (String(textareas[index]?.similarityImgId || '').trim()) return;
+          const currentImages = Array.isArray(textareaImages[index]) ? textareaImages[index] : [];
+          if (currentImages.length === 0) return;
+
+          const primary = currentImages[0] || {};
+          textareaImages = {
+            ...textareaImages,
+            [index]: [
+              {
+                ...primary,
+                url: resolvedUrl,
+                name: String(primary?.name || rawImgId),
+                type: 'result',
+                imgId: rawImgId
+              }
+            ]
+          };
+        } catch {
+          // Keep placeholder metadata if URL resolution fails.
         }
       })
     );
@@ -419,7 +525,15 @@
 
     urlSyncTimer = setTimeout(() => {
       urlSyncTimer = null;
-      updateURL({ textareas, activeTab: get(uiStore).layoutTab, imageId: getSearchImageIdFromTextareas() }, false);
+      updateURL(
+        {
+          textareas,
+          activeTab: get(uiStore).layoutTab,
+          imageId: getSearchImageIdFromTextareas(),
+          inlineQueryImages: getInlineQueryImagesForURL()
+        },
+        false
+      );
     }, URL_SYNC_DEBOUNCE_MS);
   }
 
@@ -464,6 +578,30 @@
     scheduleURLSync();
   };
 
+  function getTextareasForSearch(rawTextareas = textareas) {
+    const source = Array.isArray(rawTextareas) ? rawTextareas : [];
+    return source.map((t, idx) => {
+      const explicitSimilarity = String(t?.similarityImgId || '').trim();
+      if (explicitSimilarity) return t;
+
+      const attached = Array.isArray(textareaImages[idx]) ? textareaImages[idx] : [];
+      const resultImage = attached.find((img) => {
+        const imgId = String(img?.imgId || '').trim();
+        return img?.type === 'result' && imgId.length > 0;
+      });
+
+      if (!resultImage) return t;
+
+      const imgId = String(resultImage.imgId || '').trim();
+      if (!imgId) return t;
+
+      return {
+        ...t,
+        similarityImgId: imgId
+      };
+    });
+  }
+
   const searchController = createSearchController({
     api: visioneAPI,
     recentSearches,
@@ -472,6 +610,7 @@
     tick,
 
     getTextareas: () => textareas,
+    getSearchTextareas: getTextareasForSearch,
     setTextareas: (t) => { textareas = t; },
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getSubmittedIds,
@@ -632,6 +771,7 @@
         };
       });
     }
+    await hydrateInlineTextareaImagesFromState(urlState);
     await hydrateSimilarityTextareaImagesFromState();
 
     if (urlState.activeTab) {
@@ -641,7 +781,9 @@
     await tick();
 
     const hasTextQuery = (urlState.textareas || []).some((t) => String(t?.value || '').trim());
-    const hasImageQuery = (urlState.textareas || []).some((t) => String(t?.similarityImgId || '').trim());
+    const hasImageQuery =
+      (urlState.textareas || []).some((t) => String(t?.similarityImgId || '').trim()) ||
+      (Array.isArray(urlState.inlineQueryImages) && urlState.inlineQueryImages.length > 0);
 
     if (urlState.textareas?.length > 0 && (hasTextQuery || hasImageQuery)) {
       await runSearchImmediate();
@@ -1081,6 +1223,7 @@ function handleViewSubmitted() {
           model: String(t?.model || '').trim() || fallbackModel
         };
       });
+      await hydrateInlineTextareaImagesFromState(urlState);
       await hydrateSimilarityTextareaImagesFromState();
     }
 
