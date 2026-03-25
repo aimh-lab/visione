@@ -12,6 +12,8 @@
   export let justifyResultRows = false;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let rfPositive = [];
+  export let rfNegative = [];
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -29,6 +31,8 @@
   {justifyResultRows}
   {showSubmitUI}
   {challengeType}
+  {rfPositive}
+  {rfNegative}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

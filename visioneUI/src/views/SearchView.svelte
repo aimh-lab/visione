@@ -320,6 +320,8 @@
             {justifyResultRows}
             {showSubmitUI}
             {challengeType}
+            {rfPositive}
+            {rfNegative}
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}
