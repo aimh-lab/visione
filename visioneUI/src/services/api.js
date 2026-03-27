@@ -432,11 +432,13 @@ export class VisioneAPI {
   #expandTextareaToItems(textarea) {
     const raw = String(textarea?.value || '').trim();
     const similarityImgId = String(textarea?.similarityImgId || '').trim();
-    const model = String(textarea?.model || '').trim();
+    const legacyModel = String(textarea?.model || '').trim();
+    const textModel = String(textarea?.textModel || legacyModel || '').trim();
+    const imageModel = String(textarea?.imageModel || legacyModel || '').trim();
     const out = [];
 
     if (similarityImgId) {
-      out.push({ type: 'image', value: `image:${similarityImgId}`, model });
+      out.push({ type: 'image', value: `image:${similarityImgId}`, model: imageModel });
     }
 
     if (raw) {
@@ -444,12 +446,12 @@ export class VisioneAPI {
       if (lowerRaw.startsWith('similarity:')) {
         const legacyId = raw.slice('similarity:'.length).trim();
         if (legacyId) {
-          out.push({ type: 'image', value: `image:${legacyId}`, model });
+          out.push({ type: 'image', value: `image:${legacyId}`, model: imageModel });
         }
       } else if (lowerRaw.startsWith('image:')) {
-        out.push({ type: 'image', value: raw, model });
+        out.push({ type: 'image', value: raw, model: imageModel });
       } else {
-        out.push({ type: 'text', value: raw, model });
+        out.push({ type: 'text', value: raw, model: textModel });
       }
     }
 

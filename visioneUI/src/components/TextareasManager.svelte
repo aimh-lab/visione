@@ -7,6 +7,8 @@
     value: string;
     enabled: boolean;
     model?: string;
+    textModel?: string;
+    imageModel?: string;
     similarityImgId?: string;
     _disabledBySimilarity?: boolean;
     _wasEnabledBeforeSimilarity?: boolean;
@@ -61,7 +63,7 @@
     remove: { index: number };
     toggle: { index: number };
     update: { index: number; value: string };
-    updateModel: { index: number; model: string };
+    updateModel: { index: number; model: string; kind: 'text' | 'image' };
     search: void;
     swap: { indexA: number; indexB: number; mode?: "swap" | "move" };
     startImageSelection: { textareaIndex: number };
@@ -69,7 +71,6 @@
     updateImages: { index: number; images: AttachedImage[] };
     replaceSimilarityImage: { index: number; imgId: string | null; url: string; name: string };
     closeSimilarityStep: { index: number };
-    restoreDisabledSteps: void;
   };
 
   export let textareas: QueryTextarea[] = [];
@@ -104,14 +105,14 @@
   const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
   let modelOptions: string[] = [];
 
-  function getDefaultModelForStep(textarea: QueryTextarea) {
-    const hasSimilarity = !!String(textarea?.similarityImgId || '').trim();
-    return hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
+  function getTextModelValueForStep(textarea: QueryTextarea) {
+    const legacyModel = String(textarea?.model || '').trim();
+    return String(textarea?.textModel || legacyModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
   }
 
-  function getModelValueForStep(textarea: QueryTextarea) {
-    const explicitModel = String(textarea?.model || '').trim();
-    return explicitModel || getDefaultModelForStep(textarea);
+  function getImageModelValueForStep(textarea: QueryTextarea) {
+    const legacyModel = String(textarea?.model || '').trim();
+    return String(textarea?.imageModel || legacyModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
   }
 
   $: modelOptions = Array.from(
@@ -135,28 +136,10 @@
     };
   }
 
-  function mixHex(colorA: string, colorB: string, t: number) {
-    const a = hexToRgb(colorA);
-    const b = hexToRgb(colorB);
-    const clampT = Math.max(0, Math.min(1, t));
-
-    const r = Math.round(a.r + (b.r - a.r) * clampT);
-    const g = Math.round(a.g + (b.g - a.g) * clampT);
-    const bVal = Math.round(a.b + (b.b - a.b) * clampT);
-
-    return `rgb(${r}, ${g}, ${bVal})`;
-  }
-
   function getStepColor(index: number) {
-    if (textareas.length <= 1) return "rgb(59, 130, 246)";
-
-    const maxPos = TIMELINE_STOPS.length - 1;
-    const progress = (index / (textareas.length - 1)) * maxPos;
-    const left = Math.floor(progress);
-    const right = Math.min(maxPos, left + 1);
-    const localT = progress - left;
-
-    return mixHex(TIMELINE_STOPS[left], TIMELINE_STOPS[right], localT);
+    const paletteColor = TIMELINE_STOPS[index % TIMELINE_STOPS.length] || TIMELINE_STOPS[0];
+    const { r, g, b } = hexToRgb(paletteColor);
+    return `rgb(${r}, ${g}, ${b})`;
   }
 
   function withAlpha(color: string, alpha: number) {
@@ -187,9 +170,27 @@
       .filter((idx) => idx >= 0);
   }
 
+  function getEnabledStepNumber(index: number) {
+    const enabledIndexes = getEnabledIndexes();
+    const enabledPos = enabledIndexes.indexOf(index);
+    return enabledPos >= 0 ? enabledPos + 1 : null;
+  }
+
   function isSimilarityStep(index: number) {
     const simId = String(textareas[index]?.similarityImgId || '').trim();
     return !!simId;
+  }
+
+  function hasImageQueryForStep(index: number) {
+    const step = textareas[index] || {};
+    const similarityImgId = String(step?.similarityImgId || '').trim();
+    if (similarityImgId) return true;
+
+    const raw = String(step?.value || '').trim().toLowerCase();
+    if (raw.startsWith('image:') || raw.startsWith('similarity:')) return true;
+
+    const attached = Array.isArray(textareaImages[index]) ? textareaImages[index] : [];
+    return attached.some((img) => img?.type === 'result' && String(img?.imgId || '').trim().length > 0);
   }
 
   function getPrimarySimilarityImage(index: number) {
@@ -206,8 +207,7 @@
 
   function shouldShowSimilarityTextConstraint(index: number) {
     if (!isSimilarityStep(index)) return true;
-    if (similarityTextConstraintOpen[index]) return true;
-    return !!String(textareas[index]?.value || '').trim();
+    return true;
   }
 
   async function enableSimilarityTextConstraint(index: number) {
@@ -223,14 +223,6 @@
     await tick();
     textareaRefs[index]?.focus();
     autoResizeTextarea(index);
-  }
-
-  function hasDisabledStepsBySimilarity() {
-    return textareas.some((t) => t?._disabledBySimilarity === true);
-  }
-
-  function restoreDisabledStepsBySimilarity() {
-    dispatch('restoreDisabledSteps');
   }
 
   function getStepContextLabel(index: number) {
@@ -666,11 +658,14 @@
 
   function removePrimarySimilarityImage(textareaIndex: number, imageIndex: number) {
     removeImageFromTextarea(textareaIndex, imageIndex);
-    similarityTextConstraintOpen = {
-      ...similarityTextConstraintOpen,
-      [textareaIndex]: false
-    };
-    dispatch('closeSimilarityStep', { index: textareaIndex });
+    const hasText = String(textareas[textareaIndex]?.value || '').trim().length > 0;
+    if (!hasText) {
+      similarityTextConstraintOpen = {
+        ...similarityTextConstraintOpen,
+        [textareaIndex]: false
+      };
+      dispatch('closeSimilarityStep', { index: textareaIndex });
+    }
   }
 
   // Click outside per chiudere menu
@@ -873,7 +868,7 @@
             class="ui-query-step-index absolute -left-8 top-2 z-30 w-6 h-6 rounded-full border-2 bg-slate-950 shadow-[0_0_0_3px_rgba(2,6,23,0.7)] flex items-center justify-center"
             style={`border-color: ${withAlpha(stepColor, 0.95)}; color: ${withAlpha(stepColor, 0.95)};`}
           >
-            <span class="text-[10px] font-semibold leading-none">{i + 1}</span>
+            <span class="text-[10px] font-semibold leading-none">{getEnabledStepNumber(i)}</span>
           </div>
         {/if}
         <div
@@ -906,21 +901,6 @@
                 <span class="px-1.5 py-0.5 rounded-md border border-amber-600/60 bg-amber-900/30 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
                   Disabled by similarity
                 </span>
-              {/if}
-            </div>
-
-            <div class="flex items-center gap-1.5">
-              {#if !!String(textarea.similarityImgId || '').trim() && hasDisabledStepsBySimilarity()}
-                <button
-                  type="button"
-                  on:click|stopPropagation={restoreDisabledStepsBySimilarity}
-                  class="text-[9px] font-semibold rounded-md px-1.5 py-0.5 bg-emerald-900/35 border border-emerald-700/45 text-emerald-200 hover:bg-emerald-800/45 transition-colors"
-                  title="Restore text steps"
-                  aria-label="Restore text steps"
-                >
-                  <svg class="w-3 h-3 inline -mt-px mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0115.55-6.36"/><path d="M21 3v6h-6"/><path d="M21 12a9 9 0 01-15.55 6.36"/><path d="M3 21v-6h6"/></svg>
-                  Restore steps
-                </button>
               {/if}
             </div>
 
@@ -1019,10 +999,6 @@
                         alt={similarityImage.name}
                         class="w-full object-contain bg-slate-950/50 transition-[max-height] duration-150 {shouldShowSimilarityTextConstraint(i) ? 'max-h-20' : 'max-h-40'}"
                       />
-                      <div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-semibold bg-cyan-600/90 text-white leading-none">
-                        <svg class="w-3 h-3 inline -mt-px mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                        Query image
-                      </div>
                       <button
                         type="button"
                         on:click={() => similarityImageIndex >= 0 && removePrimarySimilarityImage(i, similarityImageIndex)}
@@ -1038,40 +1014,80 @@
                         <div class="truncate text-[10px] text-slate-200 font-medium">{similarityImage.name}</div>
                       </div>
                     </div>
+
+                    {#if textarea.enabled && modelOptions.length > 0}
+                      <div class="mt-2 flex items-center gap-2">
+                        <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG model</span>
+                        <select
+                          class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[12rem] truncate"
+                          value={getImageModelValueForStep(textarea)}
+                          title="Image embedding model for this similarity step"
+                          on:change={(e) => {
+                            const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
+                            dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                          }}
+                        >
+                          {#each modelOptions as m}
+                            <option value={m}>{m}</option>
+                          {/each}
+                        </select>
+                      </div>
+                    {/if}
                   </div>
                 {/if}
               {:else}
-                <div class="px-2.5 pt-1.5 pb-1.5 flex flex-wrap gap-2 border-b border-slate-700/45">
-                  {#each textareaImages[i] as image, imgIdx}
-                    <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
-                      <img
-                        src={image.url}
-                        alt={image.name}
-                        class="w-full max-h-20 object-contain bg-slate-950/50"
-                      />
-                      {#if image.type === 'result'}
-                        <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
-                          RESULT
-                        </div>
-                      {/if}
-                      <button
-                        type="button"
-                        on:click={() => removeImageFromTextarea(i, imgIdx)}
-                        aria-label="Remove image"
-                        class="absolute top-1 right-1 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
-                        title="Remove image"
-                      >
-                        <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
+                <div class="px-2.5 pt-1.5 pb-1.5 border-b border-slate-700/45">
+                  <div class="flex flex-wrap gap-2">
+                    {#each textareaImages[i] as image, imgIdx}
+                      <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          class="w-full max-h-20 object-contain bg-slate-950/50"
+                        />
+                        {#if image.type === 'result'}
+                          <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
+                            RESULT
+                          </div>
+                        {/if}
+                        <button
+                          type="button"
+                          on:click={() => removeImageFromTextarea(i, imgIdx)}
+                          aria-label="Remove image"
+                          class="absolute top-1 right-1 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                          title="Remove image"
+                        >
+                          <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
 
-                      <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
-                        <div class="truncate text-[9px] text-slate-300">{image.name}</div>
-                        <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
+                        <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
+                          <div class="truncate text-[9px] text-slate-300">{image.name}</div>
+                          <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
+                        </div>
                       </div>
+                    {/each}
+                  </div>
+
+                  {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && modelOptions.length > 0}
+                    <div class="mt-2 flex items-center gap-2">
+                      <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG model</span>
+                      <select
+                        class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[12rem] truncate"
+                        value={getImageModelValueForStep(textarea)}
+                        title="Image embedding model for this query"
+                        on:change={(e) => {
+                          const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
+                          dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                        }}
+                      >
+                        {#each modelOptions as m}
+                          <option value={m}>{m}</option>
+                        {/each}
+                      </select>
                     </div>
-                  {/each}
+                  {/if}
                 </div>
               {/if}
             {/if}
@@ -1271,17 +1287,18 @@
                 {#if modelOptions.length > 0}
                   <select
                     class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[9rem] truncate"
-                    value={getModelValueForStep(textarea)}
-                    title="Embedding model for this query"
+                    value={getTextModelValueForStep(textarea)}
+                    title="Text embedding model for this query"
                     on:change={(e) => {
                       const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                      dispatch('updateModel', { index: i, model: target.value });
+                      dispatch('updateModel', { index: i, model: target.value, kind: 'text' });
                     }}
                   >
                     {#each modelOptions as m}
-                      <option value={m}>{m}</option>
+                      <option value={m}>TXT {m}</option>
                     {/each}
                   </select>
+
                 {/if}
                 <span class="text-[9px] font-medium text-slate-500">
                   {textarea.value?.length || 0} chars

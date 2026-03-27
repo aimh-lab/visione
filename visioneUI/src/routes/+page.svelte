@@ -269,7 +269,7 @@
   // Query UI
   const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
   const DEFAULT_IMAGE_MODEL = 'dinov2_base';
-  let textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
+  let textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
   let availableModels = [];
   let textareaImages = {};
   $: rfPositive = $sessionStore.rfPositive;
@@ -308,6 +308,18 @@
   function getSearchImageIdFromTextareas() {
     const similarityStep = textareas.find((t) => String(t?.similarityImgId || '').trim());
     return String(similarityStep?.similarityImgId || '').trim() || null;
+  }
+
+  function normalizeTextareaModels(textarea) {
+    const legacyModel = String(textarea?.model || '').trim();
+    const textModel = String(textarea?.textModel || legacyModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
+    const imageModel = String(textarea?.imageModel || legacyModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+
+    return {
+      ...textarea,
+      textModel,
+      imageModel
+    };
   }
 
   function getInlineQueryImagesForURL() {
@@ -762,14 +774,7 @@
   // ---------------------------
   async function restoreFromURLState(urlState) {
     if (urlState.textareas) {
-      textareas = urlState.textareas.map((t) => {
-        const hasSimilarity = !!String(t?.similarityImgId || '').trim();
-        const fallbackModel = hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
-        return {
-          ...t,
-          model: String(t?.model || '').trim() || fallbackModel
-        };
-      });
+      textareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
     }
     await hydrateInlineTextareaImagesFromState(urlState);
     await hydrateSimilarityTextareaImagesFromState();
@@ -885,7 +890,8 @@
       return {
         ...t,
         enabled: true,
-        model: String(t?.model || '').trim() || DEFAULT_IMAGE_MODEL,
+        textModel: String(t?.textModel || t?.model || '').trim() || DEFAULT_TEXT_MODEL,
+        imageModel: String(t?.imageModel || t?.model || '').trim() || DEFAULT_IMAGE_MODEL,
         similarityImgId: String(imgId || t?.similarityImgId || '').trim()
       };
     });
@@ -909,26 +915,67 @@
     const { index } = e.detail || {};
     if (typeof index !== 'number' || index < 0 || index >= textareas.length) return;
 
-    const hadRestorableSteps = textareas.some((t) => t?._disabledBySimilarity);
+    const restoreSimilarityDisabledSteps = (steps) => {
+      return steps.map((t) => {
+        if (t?._disabledBySimilarity) {
+          return {
+            ...t,
+            enabled: t?._wasEnabledBeforeSimilarity === true,
+            _disabledBySimilarity: false,
+            _wasEnabledBeforeSimilarity: false
+          };
+        }
 
-    textareas = textareas.map((t, idx) => {
+        if (t?._wasEnabledBeforeSimilarity) {
+          return {
+            ...t,
+            _disabledBySimilarity: false,
+            _wasEnabledBeforeSimilarity: false
+          };
+        }
+
+        return t;
+      });
+    };
+
+    const shouldSearchFrom = (steps) => {
+      const searchTextareas = getTextareasForSearch(steps);
+      return searchTextareas.some((t) => {
+        if (!t?.enabled) return false;
+        const text = String(t?.value || '').trim();
+        const simId = String(t?.similarityImgId || '').trim();
+        return text.length > 0 || simId.length > 0;
+      });
+    };
+
+    const hasText = String(textareas[index]?.value || '').trim().length > 0;
+
+    if (!hasText) {
+      const result = _removeTextarea(textareas, index, textareaImages);
+      textareas = restoreSimilarityDisabledSteps(result.textareas);
+      textareaImages = result.textareaImages;
+      if (shouldSearchFrom(textareas)) {
+        setTimeout(() => runSearchImmediate(), 0);
+      }
+      return;
+    }
+
+    const nextTextareas = textareas.map((t, idx) => {
       if (idx !== index) return t;
       return {
         ...t,
-        value: '',
         similarityImgId: '',
-        enabled: false,
+        enabled: true,
         _disabledBySimilarity: false,
         _wasEnabledBeforeSimilarity: false
       };
     });
 
-    if (hadRestorableSteps) {
-      restoreDisabledStepsFromSimilarity();
-      return;
-    }
+    textareas = restoreSimilarityDisabledSteps(nextTextareas);
 
-    setTimeout(() => runSearchImmediate(), 0);
+    if (shouldSearchFrom(textareas)) {
+      setTimeout(() => runSearchImmediate(), 0);
+    }
   }
 
   function handleUpdateURLRequest() {
@@ -1215,14 +1262,7 @@ function handleViewSubmitted() {
     const urlState = deserializeFromURL();
 
     if (urlState.textareas && urlState.textareas.length > 0) {
-      textareas = urlState.textareas.map((t) => {
-        const hasSimilarity = !!String(t?.similarityImgId || '').trim();
-        const fallbackModel = hasSimilarity ? DEFAULT_IMAGE_MODEL : DEFAULT_TEXT_MODEL;
-        return {
-          ...t,
-          model: String(t?.model || '').trim() || fallbackModel
-        };
-      });
+      textareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
       await hydrateInlineTextareaImagesFromState(urlState);
       await hydrateSimilarityTextareaImagesFromState();
     }
@@ -1295,7 +1335,8 @@ function handleViewSubmitted() {
             ...t,
             value: "",
             enabled: true,
-            model: DEFAULT_IMAGE_MODEL,
+            textModel: String(t?.textModel || t?.model || '').trim() || DEFAULT_TEXT_MODEL,
+            imageModel: DEFAULT_IMAGE_MODEL,
             similarityImgId: imgId
           };
         }
@@ -1312,7 +1353,8 @@ function handleViewSubmitted() {
       const similarityStep = {
         value: "",
         enabled: true,
-        model: DEFAULT_IMAGE_MODEL,
+        textModel: DEFAULT_TEXT_MODEL,
+        imageModel: DEFAULT_IMAGE_MODEL,
         similarityImgId: imgId
       };
       const disabledExisting = textareas.map((t) => ({
@@ -1353,31 +1395,6 @@ function handleViewSubmitted() {
     setTimeout(() => runSearchImmediate(), 0);
   }
 
-  function restoreDisabledStepsFromSimilarity() {
-    const hadRestorableSteps = textareas.some((t) => t?._disabledBySimilarity);
-    if (!hadRestorableSteps) return;
-
-    textareas = textareas.map((t) => {
-      if (!t?._disabledBySimilarity) {
-        return {
-          ...t,
-          _disabledBySimilarity: false,
-          _wasEnabledBeforeSimilarity: false
-        };
-      }
-      return {
-        ...t,
-        enabled: t?._wasEnabledBeforeSimilarity === true,
-        _disabledBySimilarity: false,
-        _wasEnabledBeforeSimilarity: false
-      };
-    });
-
-    toasts.info("Previously disabled steps restored");
-    setTimeout(() => runSearchImmediate(), 0);
-  }
-
-
   // ---------------------------
   // Textareas ops (delegated to textareaController)
   // ---------------------------
@@ -1387,21 +1404,47 @@ function handleViewSubmitted() {
   }
 
   function removeTextarea(index) {
-    const result = _removeTextarea(textareas, index);
+    const previousTextareas = textareas;
+    const result = _removeTextarea(textareas, index, textareaImages);
     textareas = result.textareas;
+    textareaImages = result.textareaImages;
     if (result.shouldSearch) {
       toasts.info("Query step removed, updating results...");
       setTimeout(() => runSearchImmediate(), 0);
-    } else if (result.textareas !== textareas) {
+    } else if (result.textareas !== previousTextareas) {
       toasts.info("Query step removed");
     }
   }
 
   function toggleTextarea(index) {
+    const wasDisabledBySimilarity = !!textareas[index]?._disabledBySimilarity;
     const next = _toggleTextarea(textareas, index);
     const status = next[index].enabled ? "enabled" : "disabled";
+
+    // If user manually re-enables a step that was disabled by similarity,
+    // clear similarity-only disable markers.
+    if (next[index].enabled && wasDisabledBySimilarity) {
+      next[index] = {
+        ...next[index],
+        _disabledBySimilarity: false,
+        _wasEnabledBeforeSimilarity: false
+      };
+    }
+
     textareas = next;
     toasts.info(`Query step ${index + 1} ${status}`);
+
+    const searchTextareas = getTextareasForSearch(next);
+    const shouldSearch = searchTextareas.some((t) => {
+      if (!t?.enabled) return false;
+      const text = String(t?.value || '').trim();
+      const simId = String(t?.similarityImgId || '').trim();
+      return text.length > 0 || simId.length > 0;
+    });
+
+    if (shouldSearch) {
+      setTimeout(() => runSearchImmediate(), 0);
+    }
   }
 
   function swapTextareas(indexA, indexB, mode = "swap") {
@@ -1459,7 +1502,7 @@ function handleViewSubmitted() {
 
     uiStore.actions.setLayoutTab('View1');
 
-    textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
+    textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
     textareaImages = {};
 
     images = [];
@@ -1521,7 +1564,7 @@ function handleViewSubmitted() {
 
   // Se vuoi auto-run di query esempio
   function loadExampleQuery(queries) {
-    textareas = _loadExampleQuery(queries);
+    textareas = _loadExampleQuery(queries).map((t) => normalizeTextareaModels(t));
     toasts.info("Example loaded! Running search...");
     setTimeout(() => runSearchImmediate(), 300);
   }
@@ -1767,10 +1810,10 @@ function handleViewSubmitted() {
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, value: v } : t));
         }}
         on:updateModel={(e) => {
-          const { index: i, model: m } = e.detail;
-          textareas = textareas.map((t, idx) => (idx === i ? { ...t, model: m } : t));
+          const { index: i, model: m, kind } = e.detail;
+          const targetField = kind === 'image' ? 'imageModel' : 'textModel';
+          textareas = textareas.map((t, idx) => (idx === i ? { ...t, [targetField]: m } : t));
         }}
-        onRestoreDisabledSteps={restoreDisabledStepsFromSimilarity}
         onRunSearch={runSearch}
         onClearResults={() => {
           searchResultSet = null;
@@ -1813,7 +1856,7 @@ function handleViewSubmitted() {
         on:replaceSimilarityImage={handleReplaceSimilarityImage}
         on:closeSimilarityStep={handleCloseSimilarityStep}
         on:clearQueryInputs={() => {
-          textareas = [{ value: "", enabled: true, model: DEFAULT_TEXT_MODEL }];
+          textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
           textareaImages = {};
           toasts.info("Query inputs cleared");
         }}
