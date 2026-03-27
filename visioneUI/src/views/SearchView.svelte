@@ -20,7 +20,6 @@
     closeSimilarityStep: { index: number };
     selectRightTab: unknown;
     clearQueryInputs: void;
-    restoreDisabledSteps: void;
   };
 
   // Stato/props dal genitore
@@ -67,7 +66,6 @@
   export let onRemoveTextarea = (_index: number) => {};
   export let onToggleTextarea = (_index: number) => {};
   export let onUpdateTextarea = (_index: number, _value: string) => {};
-  export let onRestoreDisabledSteps = () => {};
 
   export let rows: Img[][] = [];
 
@@ -171,7 +169,6 @@
   on:toggleTextarea={(e) => onToggleTextarea(e.detail.index)}
   on:updateTextarea={(e) => onUpdateTextarea(e.detail.index, e.detail.value)}
   on:updateModel
-  on:restoreDisabledSteps={onRestoreDisabledSteps}
   on:runSearch={onRunSearch}
   on:clearResults={onClearResults}
   on:clearQueryInputs={() => dispatch('clearQueryInputs')}

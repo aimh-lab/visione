@@ -76,12 +76,17 @@ export function createSearchController({
       .map((t) => {
         const text = String(t?.value || '').trim();
         const simId = String(t?.similarityImgId || '').trim();
-        const model = String(t?.model || '').trim();
+        const legacyModel = String(t?.model || '').trim();
+        const textModel = String(t?.textModel || legacyModel || '').trim();
+        const imageModel = String(t?.imageModel || legacyModel || '').trim();
         let part = '';
         if (simId && text) part = `sim:${simId} text:${text}`;
         else if (simId) part = `sim:${simId}`;
         else part = text;
-        return model ? `${part} model:${model}` : part;
+        // Include separate text/image model fingerprints in cache key so model changes bust cache.
+        const tm = textModel || '__default_text__';
+        const im = imageModel || '__default_image__';
+        return `${part} tm:${tm} im:${im}`;
       })
       .join(' ');
 

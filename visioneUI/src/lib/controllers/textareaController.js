@@ -5,6 +5,7 @@
 // so the caller can assign it back.
 
 const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+const DEFAULT_IMAGE_MODEL = 'dinov2_base';
 
 /**
  * Insert a new empty textarea after `index`.
@@ -13,21 +14,41 @@ const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
 export function addTextarea(textareas, index) {
   return [
     ...textareas.slice(0, index + 1),
-    { value: '', enabled: true, model: DEFAULT_TEXT_MODEL },
+    { value: '', enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL },
     ...textareas.slice(index + 1)
   ];
 }
 
 /**
- * Remove textarea at `index`.
- * @returns {{ textareas: Array, shouldSearch: boolean }}
+ * Remove textarea at `index` and keep `textareaImages` aligned by index.
+ * @returns {{ textareas: Array, textareaImages: Object, shouldSearch: boolean }}
  */
-export function removeTextarea(textareas, index) {
-  if (textareas.length <= 1) return { textareas, shouldSearch: false };
+export function removeTextarea(textareas, index, textareaImages = {}) {
+  if (textareas.length <= 1) {
+    return { textareas, textareaImages, shouldSearch: false };
+  }
 
-  const next = textareas.filter((_, i) => i !== index);
-  const shouldSearch = next.some(t => t.enabled && t.value?.trim());
-  return { textareas: next, shouldSearch };
+  const nextTextareas = textareas.filter((_, i) => i !== index);
+
+  const imageEntries = Array.from(
+    { length: textareas.length },
+    (_, i) => textareaImages[i] ?? []
+  );
+  imageEntries.splice(index, 1);
+
+  const nextTextareaImages = Object.fromEntries(
+    imageEntries.map((imgs, i) => [i, imgs])
+  );
+
+  const shouldSearch = nextTextareas.some((t, i) => {
+    if (!t?.enabled) return false;
+    const text = String(t?.value || '').trim();
+    const similarity = String(t?.similarityImgId || '').trim();
+    const inlineImages = Array.isArray(nextTextareaImages[i]) ? nextTextareaImages[i].length > 0 : false;
+    return text.length > 0 || similarity.length > 0 || inlineImages;
+  });
+
+  return { textareas: nextTextareas, textareaImages: nextTextareaImages, shouldSearch };
 }
 
 /**
@@ -89,5 +110,5 @@ export function swapTextareas(textareas, textareaImages, indexA, indexB, mode = 
  * @returns {Array} New textareas array.
  */
 export function loadExampleQuery(queries) {
-  return queries.map(q => ({ value: q, enabled: true, model: DEFAULT_TEXT_MODEL }));
+  return queries.map(q => ({ value: q, enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }));
 }
