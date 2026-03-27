@@ -138,7 +138,7 @@
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+    <div class="flex-1 overflow-y-auto pt-4 pb-4 pl-5 pr-4 space-y-4 custom-scrollbar">
       {#if activeTab === "RF"}
         <div>
           <RFLists
@@ -311,8 +311,8 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 22px;
-  height: 70px;
+  width: 18px;
+  height: 56px;
   border: 1px solid var(--ui-sidebar-toggle-border);
   background: linear-gradient(180deg, var(--ui-sidebar-toggle-bg-start) 0%, var(--ui-sidebar-toggle-bg-end) 100%);
   color: var(--ui-sidebar-toggle-text);
@@ -338,8 +338,8 @@
 }
 
 .sidebar-toggle-tab-right {
-  left: -10px;
-  border-radius: 10px 0 0 10px;
+  left: -8px;
+  border-radius: 8px 0 0 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
