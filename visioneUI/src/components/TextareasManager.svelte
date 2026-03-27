@@ -826,10 +826,10 @@
 
 <svelte:window on:click={handleClickOutside} on:keydown={handleWindowKeydown} />
 
-<div class="space-y-4">
+<div class="space-y-1.5">
   <!-- Query cards -->
   <div
-    class="relative space-y-4 {showSequenceChrome ? 'pl-8' : ''}"
+    class="relative space-y-1.5 {showSequenceChrome ? 'pl-8' : ''}"
     role="list"
     aria-label="Query steps"
     on:dragover={handleStepsListDragOver}
@@ -885,7 +885,7 @@
           on:dragleave={(e) => handleTextareaDragLeave(i, e)}
         >
           <div
-            class="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
+            class="flex items-center justify-between gap-1.5 px-1.5 py-1 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
             draggable={showSequenceChrome && textareas.length > 1}
             on:dragstart={(e) => startStepDrag(i, e)}
             on:dragend={handleStepDragEnd}
@@ -992,7 +992,7 @@
                 {@const similarityImage = getPrimarySimilarityImage(i)}
                 {@const similarityImageIndex = getPrimarySimilarityImageIndex(i)}
                 {#if similarityImage}
-                  <div class="px-2 pt-1.5 pb-1.5 border-b border-slate-700/45">
+                  <div class="px-1.5 pt-1 pb-1 border-b border-slate-700/45">
                     <div class="relative rounded-lg overflow-hidden bg-slate-900/80 border border-cyan-700/45">
                       <img
                         src={similarityImage.url}
@@ -1016,10 +1016,10 @@
                     </div>
 
                     {#if textarea.enabled && modelOptions.length > 0}
-                      <div class="mt-2 flex items-center gap-2">
-                        <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG model</span>
+                      <div class="mt-2 flex items-center gap-1">
+                        <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG</span>
                         <select
-                          class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[12rem] truncate"
+                          class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
                           value={getImageModelValueForStep(textarea)}
                           title="Image embedding model for this similarity step"
                           on:change={(e) => {
@@ -1036,7 +1036,7 @@
                   </div>
                 {/if}
               {:else}
-                <div class="px-2 py-1 border-b border-slate-700/45">
+                <div class="px-1.5 py-0.5 border-b border-slate-700/45">
                   <div class="flex flex-wrap gap-2">
                     {#each textareaImages[i] as image, imgIdx}
                       <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
@@ -1071,10 +1071,10 @@
                   </div>
 
                   {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && modelOptions.length > 0}
-                    <div class="mt-2 flex items-center gap-2">
-                      <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG model</span>
+                    <div class="mt-2 flex items-center gap-1">
+                      <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG</span>
                       <select
-                        class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[12rem] truncate"
+                        class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
                         value={getImageModelValueForStep(textarea)}
                         title="Image embedding model for this query"
                         on:change={(e) => {
@@ -1097,7 +1097,7 @@
                 <textarea
                   bind:this={textareaRefs[i]}
                   use:autoResizeAction={textarea.value}
-                  class="ui-query-textarea w-full p-2 pr-7 pb-2 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                  class="ui-query-textarea w-full p-1.5 pr-6 pb-1.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
                   rows="1"
                   bind:value={textarea.value}
@@ -1114,11 +1114,11 @@
                   <button
                     type="button"
                     on:click={() => clearTextareaValue(i)}
-                    class="ui-textarea-clear-btn absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                    class="ui-textarea-clear-btn absolute top-1 right-1 z-10 w-4 h-4 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
                     title="Clear text"
                     aria-label="Clear textarea text"
                   >
-                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M18 6L6 18M6 6l12 12"/>
                     </svg>
 </button>
@@ -1129,7 +1129,7 @@
           </div>
 
           <!-- Footer toolbar -->
-          <div class="flex items-center justify-between px-2 py-1">
+          <div class="flex items-center justify-between px-1.5 py-0.5">
             <div class="menu-container z-40">
               <div class="relative">
                 <button
@@ -1283,10 +1283,11 @@
             </div>
 
             {#if textarea.enabled}
-              <div class="flex items-center gap-2">
+              <div class="ml-2 flex items-center gap-1">
                 {#if modelOptions.length > 0}
+                  <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">TXT</span>
                   <select
-                    class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer max-w-[9rem] truncate"
+                    class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
                     value={getTextModelValueForStep(textarea)}
                     title="Text embedding model for this query"
                     on:change={(e) => {
@@ -1295,7 +1296,7 @@
                     }}
                   >
                     {#each modelOptions as m}
-                      <option value={m}>TXT {m}</option>
+                      <option value={m}>{m}</option>
                     {/each}
                   </select>
 

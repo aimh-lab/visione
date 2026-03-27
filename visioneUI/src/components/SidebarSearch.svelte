@@ -161,10 +161,10 @@
   
   {#if isSidebarOpen}
     <!-- Content Area -->
-    <div class="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+    <div class="flex-1 overflow-y-auto pt-1.5 pb-1.5 pl-1.5 pr-2.5 space-y-2 custom-scrollbar">
         <!-- Query Builder -->
-        <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700 shadow-lg">
-          <div class="flex items-center space-x-2 mb-2">
+        <div class="bg-gray-800/50 rounded-lg p-1.5 border border-gray-700 shadow-lg">
+          <div class="flex items-center space-x-2 mb-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="9"/>
               <path d="M12 7v5l3 2"/>
@@ -233,7 +233,7 @@
             </div>
           {/if}
           
-          <div class="mt-3 pl-8 flex items-center gap-2">
+          <div class="mt-1.5 pl-8 flex items-center gap-2">
             <button
               on:click={doSearch}
               disabled={searchLoading}
@@ -299,7 +299,7 @@
 
         <!-- Recent + Templates compact row -->
         {#if !searchLoading}
-          <div class="pt-3 border-t border-gray-700/50 space-y-2 utility-panel-container">
+          <div class="pt-1.5 border-t border-gray-700/50 space-y-1.5 utility-panel-container">
             <div class="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -484,8 +484,8 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 22px;
-  height: 70px;
+  width: 18px;
+  height: 56px;
   border: 1px solid var(--ui-sidebar-toggle-border);
   background: linear-gradient(180deg, var(--ui-sidebar-toggle-bg-start) 0%, var(--ui-sidebar-toggle-bg-end) 100%);
   color: var(--ui-sidebar-toggle-text);
@@ -511,8 +511,8 @@
 }
 
 .sidebar-toggle-tab-left {
-  right: -10px;
-  border-radius: 0 10px 10px 0;
+  right: -8px;
+  border-radius: 0 8px 8px 0;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
