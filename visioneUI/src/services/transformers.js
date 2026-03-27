@@ -58,7 +58,8 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
       ? item
       : (item?.imgId || item?.id || item?.content || item);
 
-    const normalizedImgId = String(imgId || '').replace(/\.jpg$/i, '');
+    const rawImgId = String(imgId || '').trim();
+    const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
     const itemVideoId = typeof item === 'object' && item
       ? String(item.videoId || videoId || '').trim().replace(/\.mp4$/i, '')
       : String(videoId || '').trim().replace(/\.mp4$/i, '');
@@ -67,18 +68,18 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
     const explicitThumb = typeof item === 'object' && item
       ? String(item.thumbnailUrl || item.imageUrl || item.url || '').trim()
       : '';
-    const url = explicitThumb || tinyFrameUrl(vid, normalizedImgId);
+    const url = explicitThumb || tinyFrameUrl(vid, rawImgId);
 
     const rawTs = typeof item === 'object' && item ? Number(item.timestamp) : NaN;
     const timestamp = Number.isFinite(rawTs) ? rawTs : null;
 
     return {
       index,
-      imgId: normalizedImgId,
+      imgId: rawImgId,
       videoId: vid,
       url,
-      title: normalizedImgId,
-      submitted: submittedIds.has(normalizedImgId),
+      title: rawImgId,
+      submitted: submittedIds.has(rawImgId) || submittedIds.has(normalizedImgId),
       timestamp,
       date: timestamp,
       // Timecodes are resolved per-frame via getMiddleTimestamp API in ResultsGrid.

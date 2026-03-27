@@ -885,7 +885,7 @@
           on:dragleave={(e) => handleTextareaDragLeave(i, e)}
         >
           <div
-            class="flex items-center justify-between gap-2 px-2.5 pt-2 pb-1.5 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
+            class="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
             draggable={showSequenceChrome && textareas.length > 1}
             on:dragstart={(e) => startStepDrag(i, e)}
             on:dragend={handleStepDragEnd}
@@ -992,7 +992,7 @@
                 {@const similarityImage = getPrimarySimilarityImage(i)}
                 {@const similarityImageIndex = getPrimarySimilarityImageIndex(i)}
                 {#if similarityImage}
-                  <div class="px-2.5 pt-2 pb-2 border-b border-slate-700/45">
+                  <div class="px-2 pt-1.5 pb-1.5 border-b border-slate-700/45">
                     <div class="relative rounded-lg overflow-hidden bg-slate-900/80 border border-cyan-700/45">
                       <img
                         src={similarityImage.url}
@@ -1036,7 +1036,7 @@
                   </div>
                 {/if}
               {:else}
-                <div class="px-2.5 pt-1.5 pb-1.5 border-b border-slate-700/45">
+                <div class="px-2 py-1 border-b border-slate-700/45">
                   <div class="flex flex-wrap gap-2">
                     {#each textareaImages[i] as image, imgIdx}
                       <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
@@ -1097,7 +1097,7 @@
                 <textarea
                   bind:this={textareaRefs[i]}
                   use:autoResizeAction={textarea.value}
-                  class="ui-query-textarea w-full p-2.5 pr-8 pb-2.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
+                  class="ui-query-textarea w-full p-2 pr-7 pb-2 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
                   rows="1"
                   bind:value={textarea.value}
@@ -1114,7 +1114,7 @@
                   <button
                     type="button"
                     on:click={() => clearTextareaValue(i)}
-                    class="ui-textarea-clear-btn absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
+                    class="ui-textarea-clear-btn absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
                     title="Clear text"
                     aria-label="Clear textarea text"
                   >
@@ -1129,7 +1129,7 @@
           </div>
 
           <!-- Footer toolbar -->
-          <div class="flex items-center justify-between px-2.5 py-1.5">
+          <div class="flex items-center justify-between px-2 py-1">
             <div class="menu-container z-40">
               <div class="relative">
                 <button
@@ -1300,12 +1300,6 @@
                   </select>
 
                 {/if}
-                <span class="text-[9px] font-medium text-slate-500">
-                  {textarea.value?.length || 0} chars
-                  {#if textareaImages[i]?.length > 0}
-                    · {textareaImages[i].length} img
-                  {/if}
-                </span>
               </div>
             {/if}
           </div>
