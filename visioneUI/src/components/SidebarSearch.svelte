@@ -262,17 +262,16 @@
                 <button
                   type="button"
                   on:click={toggleResetMenu}
-                  class="inline-flex items-center justify-center px-2.5 py-2.5 bg-gray-700/50 hover:bg-red-900/35 text-gray-200 hover:text-red-100 text-sm rounded-lg border border-gray-600/60 hover:border-red-700/50 transition-all"
+                  class="inline-flex items-center justify-center px-2.5 py-2.5 bg-red-900/30 hover:bg-red-900/45 text-red-200 hover:text-red-100 text-sm rounded-lg border border-red-700/45 hover:border-red-600/60 transition-all"
                   title="Reset query"
                   aria-label="Reset query"
                   aria-haspopup="menu"
                   aria-expanded={isResetMenuOpen}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 12a9 9 0 0115.55-6.36"/>
-                    <path d="M21 3v6h-6"/>
-                    <path d="M21 12a9 9 0 01-15.55 6.36"/>
-                    <path d="M3 21v-6h6"/>
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/>
+                    <path d="M19 6l-1 13a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                   </svg>
                 </button>
 
@@ -284,11 +283,10 @@
                       class="w-full text-left px-2.5 py-2 rounded-md text-sm text-red-200 hover:text-red-100 hover:bg-red-900/30 transition-colors inline-flex items-center gap-2"
                       role="menuitem"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 12a9 9 0 0115.55-6.36"/>
-                        <path d="M21 3v6h-6"/>
-                        <path d="M21 12a9 9 0 01-15.55 6.36"/>
-                        <path d="M3 21v-6h6"/>
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"/>
+                        <path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/>
+                        <path d="M19 6l-1 13a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                       </svg>
                       Reset query
                     </button>

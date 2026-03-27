@@ -329,7 +329,10 @@
               registerContainer={registerGridContainer}
               on:open={(e: any) => onOpenFrame(e.detail.frame)}
               on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
-              on:similarity={(e: any) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
+              on:similarity={(e: any) => {
+                onClose();
+                onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null);
+              }}
               on:rfPositive={(e: any) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
               on:rfNegative={(e: any) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
               on:submit={(e: any) => submitByImgId(e.detail.img.imgId, e.detail.img)}
