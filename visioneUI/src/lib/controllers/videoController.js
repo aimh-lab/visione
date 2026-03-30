@@ -76,7 +76,9 @@ export function createVideoController({
     const req = ++reqId;
 
     const padded = normalizeVideoId(videoId);
-    const selectedImgId = highlightImgId ? String(highlightImgId).replace(/\.jpg$/i, "") : null;
+    // Preserve raw imgId (including extensions) to keep selection/anchor
+    // aligned with transformed keyframe ids.
+    const selectedImgId = highlightImgId ? String(highlightImgId).trim() : null;
 
     setVideoState({
       loading: true,

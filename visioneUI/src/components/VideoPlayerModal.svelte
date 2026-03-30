@@ -250,7 +250,7 @@
           ? entry.timestamp
           : (index / Math.max(1, entries.length)) * fallbackDuration,
         thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, vid)
-          || tinyFrameUrl(vid, String(entry.imgId).replace(/\.jpg$/i, ''))
+          || tinyFrameUrl(vid, String(entry.imgId))
       }));
 
       // Show timeline immediately with positions from epochs.

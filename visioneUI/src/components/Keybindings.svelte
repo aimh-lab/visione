@@ -155,15 +155,18 @@
       return;
     }
 
-    // 1/2/3: Switch tabs
-    if (['1', '2', '3'].includes(e.key) && !isTypingTarget(e.target)) {
+    // 1: Return to main search view
+    if (e.key === '1' && !isTypingTarget(e.target)) {
       e.preventDefault();
-      /** @type {Record<'1' | '2' | '3', LayoutTab>} */
-      const tabs = { '1': 'View1', '2': 'View2', '3': 'Similarity' };
-      /** @type {Record<'1' | '2' | '3', string>} */
-      const tabNames = { '1': 'Search', '2': 'Video Summary', '3': 'Image Similarity' };
-      onSwitchTab(tabs[/** @type {'1' | '2' | '3'} */ (e.key)]);
-      showActionFeedback(`Switched to ${tabNames[/** @type {'1' | '2' | '3'} */ (e.key)]}`);
+      onSwitchTab('View1');
+      showActionFeedback('Switched to Search');
+      return;
+    }
+
+    // Deprecated tab shortcuts are intentionally disabled.
+    if (['2', '3'].includes(e.key) && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      showActionFeedback('Tab shortcut disabled');
       return;
     }
 
@@ -337,14 +340,6 @@
             <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
               <span class="text-gray-700">Switch to Search</span>
               <kbd class="kbd">1</kbd>
-            </div>
-            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
-              <span class="text-gray-700">Switch to Video Summary</span>
-              <kbd class="kbd">2</kbd>
-            </div>
-            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
-              <span class="text-gray-700">Switch to Similarity</span>
-              <kbd class="kbd">3</kbd>
             </div>
             <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
               <span class="text-gray-700">Move selection</span>
