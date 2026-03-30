@@ -235,13 +235,14 @@
     if (!textareas[index]?.enabled) return 'Enable this step to edit';
 
     if (isSimilarityStep(index)) {
-      return 'Optional text constraint for this visual query';
+      return 'Optional: refine similarity with text...';
     }
 
     const enabledIndexes = getEnabledIndexes();
+    const hasImg = (textareaImages[index] || []).length > 0;
 
     if (enabledIndexes.length <= 1) {
-      return 'Describe what happens in the scene';
+      return hasImg ? 'Describe what happens in the scene (image attached)' : 'Describe what happens in the scene';
     }
 
     const enabledPos = enabledIndexes.indexOf(index);
@@ -639,10 +640,8 @@
 
   // ✅ MODIFICATO: addImageToTextarea ora accetta imgId opzionale
   function addImageToTextarea(index: number, url: string, name: string, type: AttachedImage["type"], imgId: string | null = null) {
-    if (!textareaImages[index]) {
-      textareaImages[index] = [];
-    }
-    textareaImages[index] = [...textareaImages[index], { url, name, type, imgId }];
+    // Keep only one image per textarea: newest selection replaces previous one.
+    textareaImages[index] = [{ url, name, type, imgId }];
     
     // ✅ Notifica il padre del cambiamento
     dispatch('updateImages', { index, images: textareaImages[index] });
@@ -877,7 +876,7 @@
             : textarea.enabled
               ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]'
               : 'bg-slate-900/45 border-slate-700/55 opacity-90'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
-          style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${isDisabledBySimilarity ? 'rgba(245, 158, 11, 0.85)' : withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
+          style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${isDisabledBySimilarity ? 'rgba(245, 158, 11, 0.85)' : isVisualQueryStep ? 'rgba(251, 191, 36, 0.7)' : withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
           role="group"
           aria-label={`Drop frame on step ${i + 1}`}
           on:dragover={(e) => handleTextareaDragOver(i, e)}
@@ -897,6 +896,12 @@
               <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
                 {getStepContextLabel(i)}
               </div>
+              {#if isVisualQueryStep}
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-[9px] font-medium text-amber-300/90" title="Image set by Similarity — next click replaces it">
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  Similarity
+                </span>
+              {/if}
               {#if isDisabledBySimilarity}
                 <span class="px-1.5 py-0.5 rounded-md border border-amber-600/60 bg-amber-900/30 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
                   Disabled by similarity
@@ -992,26 +997,30 @@
                 {@const similarityImage = getPrimarySimilarityImage(i)}
                 {@const similarityImageIndex = getPrimarySimilarityImageIndex(i)}
                 {#if similarityImage}
-                  <div class="px-1.5 pt-1 pb-1 border-b border-slate-700/45">
-                    <div class="relative rounded-lg overflow-hidden bg-slate-900/80 border border-cyan-700/45">
-                      <img
-                        src={similarityImage.url}
-                        alt={similarityImage.name}
-                        class="w-full object-contain bg-slate-950/50 transition-[max-height] duration-150 {shouldShowSimilarityTextConstraint(i) ? 'max-h-20' : 'max-h-40'}"
-                      />
-                      <button
-                        type="button"
-                        on:click={() => similarityImageIndex >= 0 && removePrimarySimilarityImage(i, similarityImageIndex)}
-                        aria-label="Remove similarity image"
-                        class="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
-                        title="Remove image"
-                      >
-                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                      <div class="px-2 py-1.5 bg-slate-950/70 border-t border-slate-700/60">
-                        <div class="truncate text-[10px] text-slate-200 font-medium">{similarityImage.name}</div>
+                  <div class="px-1.5 py-0.5 border-b border-slate-700/45">
+                    <div class="flex flex-wrap gap-2">
+                      <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                        <img
+                          src={similarityImage.url}
+                          alt={similarityImage.name}
+                          class="w-full max-h-20 object-contain bg-slate-950/50"
+                        />
+                        <button
+                          type="button"
+                          on:click={() => similarityImageIndex >= 0 && removePrimarySimilarityImage(i, similarityImageIndex)}
+                          aria-label="Remove image"
+                          class="absolute top-1 right-1 inline-flex items-center justify-center w-5 h-5 rounded-full border border-red-700/45 bg-red-900/75 text-red-100 hover:bg-red-800 transition-colors"
+                          title="Remove image"
+                        >
+                          <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
+
+                        <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
+                          <div class="truncate text-[9px] text-slate-300">{similarityImage.name}</div>
+                          <div class="text-[8px] text-amber-400/70">similarity</div>
+                        </div>
                       </div>
                     </div>
 
@@ -1064,7 +1073,7 @@
 
                         <div class="px-1.5 py-1 bg-slate-950/70 border-t border-slate-700/60">
                           <div class="truncate text-[9px] text-slate-300">{image.name}</div>
-                          <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · 1 attached</div>
+                          <div class="text-[8px] text-slate-500">{image.type === 'result' ? 'img' : image.type} · attached manually</div>
                         </div>
                       </div>
                     {/each}
