@@ -998,7 +998,7 @@
                 {@const similarityImageIndex = getPrimarySimilarityImageIndex(i)}
                 {#if similarityImage}
                   <div class="px-1.5 py-0.5 border-b border-slate-700/45">
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-start gap-2">
                       <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
                         <img
                           src={similarityImage.url}
@@ -1022,31 +1022,31 @@
                           <div class="text-[8px] text-amber-400/70">similarity</div>
                         </div>
                       </div>
-                    </div>
 
-                    {#if textarea.enabled && modelOptions.length > 0}
-                      <div class="mt-2 flex items-center gap-1">
-                        <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG</span>
-                        <select
-                          class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
-                          value={getImageModelValueForStep(textarea)}
-                          title="Image embedding model for this similarity step"
-                          on:change={(e) => {
-                            const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                            dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
-                          }}
-                        >
-                          {#each modelOptions as m}
-                            <option value={m}>{m}</option>
-                          {/each}
-                        </select>
-                      </div>
-                    {/if}
+                      {#if textarea.enabled && modelOptions.length > 0}
+                        <div class="w-[9.5rem] shrink-0 pt-0.5">
+                          <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
+                          <select
+                            class="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
+                            value={getImageModelValueForStep(textarea)}
+                            title="Image embedding model for this similarity step"
+                            on:change={(e) => {
+                              const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
+                              dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                            }}
+                          >
+                            {#each modelOptions as m}
+                              <option value={m}>{m}</option>
+                            {/each}
+                          </select>
+                        </div>
+                      {/if}
+                    </div>
                   </div>
                 {/if}
               {:else}
                 <div class="px-1.5 py-0.5 border-b border-slate-700/45">
-                  <div class="flex flex-wrap gap-2">
+                  <div class="flex flex-wrap items-start gap-2">
                     {#each textareaImages[i] as image, imgIdx}
                       <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
                         <img
@@ -1077,26 +1077,26 @@
                         </div>
                       </div>
                     {/each}
-                  </div>
 
-                  {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && modelOptions.length > 0}
-                    <div class="mt-2 flex items-center gap-1">
-                      <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">IMG</span>
-                      <select
-                        class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
-                        value={getImageModelValueForStep(textarea)}
-                        title="Image embedding model for this query"
-                        on:change={(e) => {
-                          const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                          dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
-                        }}
-                      >
-                        {#each modelOptions as m}
-                          <option value={m}>{m}</option>
-                        {/each}
-                      </select>
-                    </div>
-                  {/if}
+                    {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && modelOptions.length > 0}
+                      <div class="w-[9.5rem] shrink-0 pt-0.5">
+                        <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
+                        <select
+                          class="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
+                          value={getImageModelValueForStep(textarea)}
+                          title="Image embedding model for this query"
+                          on:change={(e) => {
+                            const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
+                            dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                          }}
+                        >
+                          {#each modelOptions as m}
+                            <option value={m}>{m}</option>
+                          {/each}
+                        </select>
+                      </div>
+                    {/if}
+                  </div>
                 </div>
               {/if}
             {/if}
