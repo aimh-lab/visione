@@ -76,6 +76,7 @@
   };
 
   const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
+  $: hasTabs = Array.isArray(tabs) && tabs.length > 0;
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
   
@@ -98,41 +99,57 @@
   <div class="w-full px-4 flex items-end justify-between relative">
     <!-- Tab buttons (left) -->
     <div class="ml-8 flex items-end gap-2">
-      <div class="ui-main-tab-strip flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-        {#each tabs as view, idx}
-          {@const config = getConfig(view)}
-          <button
-            on:click={() => dispatch('change', { tab: view })}
-            class="ui-main-tab group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2 border
-                  {active === view 
-                    ? 'ui-main-tab-active bg-white text-blue-700 border-blue-500 shadow-[0_-1px_0_rgba(255,255,255,0.8),0_6px_14px_rgba(37,99,235,0.18)] -mb-px' 
-                    : 'ui-main-tab-inactive bg-transparent text-gray-700 border-transparent hover:bg-white/70 hover:text-gray-900 hover:border-gray-300'}"
-            aria-current={active === view ? 'page' : undefined}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" 
-                class="w-4 h-4 transition-colors {active === view ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round">
-              {@html config.icon}
-            </svg>
-            <span class="text-sm whitespace-nowrap">{config.label}</span>
-            
-            {#if active === view}
-              <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+      {#if hasTabs}
+        <div class="ui-main-tab-strip flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+          {#each tabs as view, idx}
+            {@const config = getConfig(view)}
+            <button
+              on:click={() => dispatch('change', { tab: view })}
+              class="ui-main-tab group relative px-3 py-1.5 rounded-t-lg font-medium transition-all duration-200 flex items-center space-x-2 border
+                    {active === view 
+                      ? 'ui-main-tab-active bg-white text-blue-700 border-blue-500 shadow-[0_-1px_0_rgba(255,255,255,0.8),0_6px_14px_rgba(37,99,235,0.18)] -mb-px' 
+                      : 'ui-main-tab-inactive bg-transparent text-gray-700 border-transparent hover:bg-white/70 hover:text-gray-900 hover:border-gray-300'}"
+              aria-current={active === view ? 'page' : undefined}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                  class="w-4 h-4 transition-colors {active === view ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  stroke-width="2" 
+                  stroke-linecap="round" 
+                  stroke-linejoin="round">
+                {@html config.icon}
+              </svg>
+              <span class="text-sm whitespace-nowrap">{config.label}</span>
+              
+              {#if active === view}
+                <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+              {/if}
+            </button>
+
+            {#if idx < tabs.length - 1 && active !== tabs[idx] && active !== tabs[idx + 1]}
+              <div class="ui-main-tab-divider self-center h-4 w-px bg-gray-400/70 mb-0.5"></div>
             {/if}
-          </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
-          {#if idx < tabs.length - 1 && active !== tabs[idx] && active !== tabs[idx + 1]}
-            <div class="ui-main-tab-divider self-center h-4 w-px bg-gray-400/70 mb-0.5"></div>
-          {/if}
-        {/each}
-      </div>
+    <!-- Logo + Label al centro -->
+    <div class="absolute left-1/2 -translate-x-1/2 pb-1 flex items-center">
+      <button 
+        on:click={() => dispatch('reset')}
+        class="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
+        title="Clear current search session"
+      >
+        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
+      </button>
+    </div>
 
-      <div class="relative pinned-dropdown-container pb-1">
+    <!-- Right side: controls -->
+    <div class="flex items-center space-x-3 pb-0">
+      <div class="relative pinned-dropdown-container">
         <button
           type="button"
           aria-label="Pinned video summaries"
@@ -151,7 +168,7 @@
         </button>
 
         {#if isPinnedDropdownOpen}
-          <div class="ui-sort-dropdown-menu absolute left-0 top-full mt-2 w-64 rounded-lg shadow-xl border py-1 z-50">
+          <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 rounded-lg shadow-xl border py-1 z-50">
             <div class="ui-position-menu-header px-3 py-2 border-b flex items-center justify-between">
               <span class="text-xs font-semibold">Pinned summaries</span>
               {#if pinnedSummaries.length > 0}
@@ -196,21 +213,7 @@
           </div>
         {/if}
       </div>
-    </div>
 
-    <!-- Logo + Label al centro -->
-    <div class="absolute left-1/2 -translate-x-1/2 pb-1 flex items-center">
-      <button 
-        on:click={() => dispatch('reset')}
-        class="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
-        title="Clear current search session"
-      >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
-      </button>
-    </div>
-
-    <!-- Right side: controls -->
-    <div class="flex items-center space-x-3 pb-0">
       <!-- Sort by dropdown -->
       {#if showViewModeRadios}
         <div class="flex items-center space-x-2">

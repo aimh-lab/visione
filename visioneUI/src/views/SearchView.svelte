@@ -368,8 +368,14 @@
   on:prev={onPrev}
   on:next={onNext}
   on:submit={(e) => submitByImgId(e.detail.img.imgId)}
-  on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
-  on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.img ?? null)}
+  on:videoSummary={(e) => {
+    onCloseModal();
+    onVideoSummary(e.detail.img.videoId, e.detail.img.imgId);
+  }}
+  on:similarity={(e) => {
+    onCloseModal();
+    onSimilarity(e.detail.imgId, e.detail.img ?? null);
+  }}
   on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
   on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}

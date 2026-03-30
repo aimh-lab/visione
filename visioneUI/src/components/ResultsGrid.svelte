@@ -19,9 +19,9 @@
   export let rfPositive = [];
   export let rfNegative = [];
 
-  const normalizeImgId = (value) => String(value || '').trim().replace(/\.jpg$/i, '');
-  $: rfPositiveIds = new Set((Array.isArray(rfPositive) ? rfPositive : []).map((item) => normalizeImgId(item?.imgId)));
-  $: rfNegativeIds = new Set((Array.isArray(rfNegative) ? rfNegative : []).map((item) => normalizeImgId(item?.imgId)));
+  const safeImgId = (value) => String(value || '').trim();
+  $: rfPositiveIds = new Set((Array.isArray(rfPositive) ? rfPositive : []).map((item) => safeImgId(item?.imgId)));
+  $: rfNegativeIds = new Set((Array.isArray(rfNegative) ? rfNegative : []).map((item) => safeImgId(item?.imgId)));
 
   let preview = { imgId: null, videoUrl: null, start: 0, end: 0 };
 
@@ -871,18 +871,18 @@
                 </div>
               {/if}
 
-              {#if rfPositiveIds.has(normalizeImgId(getId(item))) || rfNegativeIds.has(normalizeImgId(getId(item)))}
+              {#if rfPositiveIds.has(safeImgId(getId(item))) || rfNegativeIds.has(safeImgId(getId(item)))}
                 <div
                   class="absolute top-1 right-1 z-30 flex flex-col items-end gap-0.5 pointer-events-none"
                 >
-                  {#if rfPositiveIds.has(normalizeImgId(getId(item)))}
+                  {#if rfPositiveIds.has(safeImgId(getId(item)))}
                     <div class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-100/70 bg-emerald-600 text-white shadow-md" title="Positive feedback">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor" aria-hidden="true">
                         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
                       </svg>
                     </div>
                   {/if}
-                  {#if rfNegativeIds.has(normalizeImgId(getId(item)))}
+                  {#if rfNegativeIds.has(safeImgId(getId(item)))}
                     <div class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-100/70 bg-rose-600 text-white shadow-md" title="Negative feedback">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor" aria-hidden="true">
                         <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>

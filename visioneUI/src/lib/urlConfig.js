@@ -31,6 +31,6 @@ export const VISIONE_VIDEOS_URL =
 export function tinyFrameUrl(videoId, imgId) {
   const rawVideoId = String(videoId || '').trim();
   const rawImgId = String(imgId || '').trim();
-  const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
-  return `${VISIONE_BASE_URL}/frames/tiny/${rawVideoId}/${normalizedImgId}.jpg`;
+  const fileName = /\.jpg$/i.test(rawImgId) ? rawImgId : `${rawImgId}.jpg`;
+  return `${VISIONE_BASE_URL}/frames/tiny/${rawVideoId}/${fileName}`;
 }

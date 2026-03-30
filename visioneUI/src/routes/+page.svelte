@@ -377,28 +377,27 @@
     textareas.forEach((t, idx) => {
       const rawImgId = String(t?.similarityImgId || '').trim();
       if (!rawImgId) return;
-      const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
 
       const currentImages = nextTextareaImages[idx] || [];
       const alreadyHasQueryImage = currentImages.some(
-        (img) => String(img?.imgId || '').trim().replace(/\.jpg$/i, '') === normalizedImgId
+        (img) => String(img?.imgId || '').trim() === rawImgId
       );
       if (alreadyHasQueryImage) return;
 
-      const hourMatch = normalizedImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}$/i);
-      const videoId = hourMatch?.[1] || normalizedImgId.split('-')[0]?.padStart(5, '0') || '';
+      const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+      const videoId = hourMatch?.[1] || rawImgId.split('-')[0]?.padStart(5, '0') || '';
       if (!videoId) return;
 
       nextTextareaImages[idx] = [
         {
-          url: tinyFrameUrl(videoId, normalizedImgId),
+          url: tinyFrameUrl(videoId, rawImgId),
           name: rawImgId,
           type: 'result',
           imgId: rawImgId
         }
       ];
       changed = true;
-      pendingResolves.push({ idx, rawImgId, normalizedImgId });
+      pendingResolves.push({ idx, rawImgId });
     });
 
     if (changed) {
@@ -406,20 +405,15 @@
     }
 
     await Promise.allSettled(
-      pendingResolves.map(async ({ idx, rawImgId, normalizedImgId }) => {
+      pendingResolves.map(async ({ idx, rawImgId }) => {
         try {
-          let urls = null;
-          try {
-            urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
-          } catch {
-            urls = await visioneAPI.getElementUrls(normalizedImgId, ['thumbnails', 'images']);
-          }
+          const urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
 
           const resolvedUrl = String(urls?.thumbnails || urls?.images || '').trim();
           if (!resolvedUrl) return;
 
-          const activeSimilarity = String(textareas[idx]?.similarityImgId || '').trim().replace(/\.jpg$/i, '');
-          if (activeSimilarity !== normalizedImgId) return;
+          const activeSimilarity = String(textareas[idx]?.similarityImgId || '').trim();
+          if (activeSimilarity !== rawImgId) return;
 
           const currentImages = Array.isArray(textareaImages[idx]) ? textareaImages[idx] : [];
           const primary = currentImages[0] || {};
@@ -461,10 +455,9 @@
       // Do not inject inline images into explicit similarity steps (different semantics).
       if (String(textareas[index]?.similarityImgId || '').trim()) continue;
 
-      const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
       const currentImages = Array.isArray(nextTextareaImages[index]) ? nextTextareaImages[index] : [];
       const alreadyThere = currentImages.some(
-        (img) => String(img?.imgId || '').trim().replace(/\.jpg$/i, '') === normalizedImgId
+        (img) => String(img?.imgId || '').trim() === rawImgId
       );
       if (alreadyThere) continue;
 
@@ -489,15 +482,8 @@
         if (index >= textareas.length) return;
         if (String(textareas[index]?.similarityImgId || '').trim()) return;
 
-        const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
-
         try {
-          let urls = null;
-          try {
-            urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
-          } catch {
-            urls = await visioneAPI.getElementUrls(normalizedImgId, ['thumbnails', 'images']);
-          }
+          const urls = await visioneAPI.getElementUrls(rawImgId, ['thumbnails', 'images']);
 
           const resolvedUrl = String(urls?.thumbnails || urls?.images || '').trim();
           if (!resolvedUrl) return;
@@ -1595,7 +1581,10 @@ function handleViewSubmitted() {
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen}
   isVideoPlayerOpen={isVideoPlayerOpen}
   onFocusSearch={focusSearchBox}
-  onSwitchTab={(tab) => uiStore.actions.setLayoutTab(tab)}
+  onSwitchTab={(tab) => {
+    if (tab !== 'View1') return;
+    uiStore.actions.setLayoutTab(tab);
+  }}
   onSubmitSelected={() => {
     if ($uiStore.dresChallengeType === 'Q&A') {
       toasts.info('Q&A mode: submit a text answer from the Submitted panel.');
@@ -1717,7 +1706,7 @@ function handleViewSubmitted() {
 
 <AdaptiveTabLayout
   active={$uiStore.layoutTab}
-  tabs={["View1","View2","Similarity"]}
+  tabs={[]}
   isSidebarOpen={$uiStore.isSidebarOpen}
   isSidebarRightOpen={$uiStore.isSidebarRightOpen}
   viewMode={$uiStore.viewMode}
