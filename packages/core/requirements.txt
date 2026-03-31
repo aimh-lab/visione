@@ -10,3 +10,4 @@ uvicorn
 langchain-ollama
 langgraph>=0.2.0
 lark>=1.1.5
+scikit-learn==1.5.1

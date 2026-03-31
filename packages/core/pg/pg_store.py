@@ -903,6 +903,36 @@ class PGVectorStore(VectorStore):
         """Get documents by ids."""
         return self._engine._run_as_sync(self.__vs.aget_by_ids(ids=ids, columns_override=columns_override))
 
+    async def aget_random_documents(
+        self,
+        limit: int,
+        columns_override=None,
+        exclude_ids: Optional[Sequence[str]] = None,
+    ) -> list[Document]:
+        """Get a random sample of documents."""
+        return await self._engine._run_as_async(
+            self.__vs.aget_random_documents(
+                limit=limit,
+                columns_override=columns_override,
+                exclude_ids=exclude_ids,
+            )
+        )
+
+    def get_random_documents(
+        self,
+        limit: int,
+        columns_override=None,
+        exclude_ids: Optional[Sequence[str]] = None,
+    ) -> list[Document]:
+        """Get a random sample of documents."""
+        return self._engine._run_as_sync(
+            self.__vs.aget_random_documents(
+                limit=limit,
+                columns_override=columns_override,
+                exclude_ids=exclude_ids,
+            )
+        )
+
     async def aget_by_field_value(
         self,
         *,

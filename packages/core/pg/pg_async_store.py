@@ -1226,6 +1226,34 @@ class AsyncPGVectorStore(VectorStore):
         root_cte = await _build_cte({"item": query_payload, **query})
         params["final_limit"] = dense_limit
 
+        reorder_clause = "score DESC"
+        reorder_join_clause = ""
+        reorder_by = query.get("reorder_by")
+        if isinstance(reorder_by, dict) and reorder_by.get("embedding") is not None:
+            reorder_model = reorder_by.get("model")
+            reorder_embedding_column = reorder_by.get("embedding_column")
+            selected_reorder_column, _ = self._resolve_embedding_backend(
+                model=reorder_model,
+                embedding_column=reorder_embedding_column,
+            )
+
+            raw_reorder_embedding = reorder_by.get("embedding")
+            if isinstance(raw_reorder_embedding, np.ndarray):
+                reorder_embedding = raw_reorder_embedding.astype(float).ravel().tolist()
+            elif isinstance(raw_reorder_embedding, str):
+                reorder_embedding = json.loads(raw_reorder_embedding)
+            else:
+                reorder_embedding = list(raw_reorder_embedding)
+
+            if not isinstance(reorder_embedding, list) or len(reorder_embedding) == 0:
+                raise ValueError("reorder_by.embedding must be a non-empty vector.")
+
+            params["reorder_query_embedding"] = f"{[float(dimension) for dimension in reorder_embedding]}"
+            reorder_join_clause = (
+                f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
+            )
+            reorder_clause = f'b_reorder."{selected_reorder_column}" {operator} :reorder_query_embedding'
+
         joined_statements = ",\n".join(cte_statements)
         sql = text(
             f"""
@@ -1237,9 +1265,10 @@ class AsyncPGVectorStore(VectorStore):
                 FROM {root_cte}
                 ORDER BY "{self.id_column}", score DESC, end_time DESC, start_time ASC
             )
-            SELECT *
-            FROM deduped
-            ORDER BY score DESC
+            SELECT d.*
+            FROM deduped d
+            {reorder_join_clause}
+            ORDER BY {reorder_clause}
             LIMIT :final_limit
             """
         )
@@ -1651,6 +1680,73 @@ class AsyncPGVectorStore(VectorStore):
                         metadata=metadata,
                         id=str(row[self.id_column]),
                     )
+                )
+            )
+
+        return documents
+
+    async def aget_random_documents(
+        self,
+        limit: int,
+        columns_override=None,
+        exclude_ids: Optional[Sequence[str]] = None,
+    ) -> list[Document]:
+        """Get a random sample of documents."""
+
+        if limit <= 0:
+            return []
+
+        if columns_override is not None:
+            columns = columns_override + [
+                self.id_column,
+                self.content_column,
+            ]
+        else:
+            columns = self.metadata_columns + [
+                self.id_column,
+                self.content_column,
+            ]
+            if self.metadata_json_column:
+                columns.append(self.metadata_json_column)
+
+        column_names = ", ".join(f'"{col}"' for col in columns)
+        param_dict: dict[str, Any] = {"limit": limit}
+
+        where_clause = ""
+        if exclude_ids:
+            placeholders = ", ".join(f":exclude_id_{i}" for i in range(len(exclude_ids)))
+            where_clause = f'WHERE "{self.id_column}" NOT IN ({placeholders}) '
+            param_dict.update(
+                {f"exclude_id_{i}": doc_id for i, doc_id in enumerate(exclude_ids)}
+            )
+
+        query = (
+            f'SELECT {column_names} FROM "{self.schema_name}"."{self.table_name}" '
+            f"{where_clause}ORDER BY RANDOM() LIMIT :limit;"
+        )
+
+        async with self.engine.connect() as conn:
+            result = await conn.execute(text(query), param_dict)
+            result_map = result.mappings()
+            results = result_map.fetchall()
+
+        documents = []
+        for row in results:
+            if columns_override is not None:
+                metadata = {col: row[col] for col in columns_override}
+            else:
+                metadata = (
+                    row[self.metadata_json_column]
+                    if self.metadata_json_column and row[self.metadata_json_column]
+                    else {}
+                )
+                for col in self.metadata_columns:
+                    metadata[col] = row[col]
+            documents.append(
+                Document(
+                    page_content=row[self.content_column],
+                    metadata=metadata,
+                    id=str(row[self.id_column]),
                 )
             )
 
