@@ -1,4 +1,5 @@
 import time
+import json
 from typing import List
 from fastapi import APIRouter, HTTPException, Request
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -6,6 +7,10 @@ from langchain_classic.chains.query_constructor.ir import StructuredQuery
 from langchain_core.structured_query import Comparator, Comparison, Operation, Operator
 from langchain_postgres.translator import PGVectorTranslator
 from pydantic import BaseModel, Field
+import numpy as np
+from sklearn.svm import SVC
+
+from utils import generate_doc_id
 
 
 class TemporalQueryNode(BaseModel):
@@ -39,6 +44,27 @@ class TemporalQueryNode(BaseModel):
         description="Aggregation strategy for list items: 'temporal' (default) or 'rrf'.",
     )
 
+class RelevanceFeedback(BaseModel):
+    positive_ids: List[str] = Field(
+        default_factory=list,
+        description="List of document IDs marked as relevant by the user.",
+    )
+    negative_ids: List[str] = Field(
+        default_factory=list,
+        description="List of document IDs marked as irrelevant by the user.",
+    )
+    model: str = Field(
+        description="Optional embedding model to use for relevance feedback processing.",
+    )
+    method: Optional[Literal["rocchio", "svm"]] = Field(
+        default="rocchio",
+        description="Method to use for incorporating relevance feedback (e.g., 'rocchio', 'svm').",
+    )
+    num_additional_negatives: Optional[int] = Field(
+        default=0,
+        ge=0,
+        description="Number of random negatives sampled from the vector store, excluding labeled positive/negative IDs.",
+    )
 
 class SearchRequest(BaseModel):
     query: TemporalQueryNode = Field(..., description="Structured query with 'items' and optional filters.")
@@ -50,13 +76,15 @@ class SearchRequest(BaseModel):
         default=None,
         description="List of metadata fields to include in results (e.g., ['month', 'city']). If None, only default metadata is included.",
     )
-
     fetch_k: Optional[int] = Field(
         default=None,
         ge=1,
         description="Override for the number of candidates to fetch before re-ranking (default is 10x final k, capped at 1000).",
     )
-
+    relevance_feedback: Optional[RelevanceFeedback] = Field(
+        default=None,
+        description="User-provided relevance feedback for improving search results.",
+    )
 
 class SearchResult(BaseModel):
     metadata: Dict[str, Any]
@@ -114,6 +142,74 @@ def convert_filters_to_pg(node: Dict[str, Any]) -> Dict[str, Any]:
     return converted
 
 
+def _decode_embedding(raw_embedding: Any):
+    if raw_embedding is None:
+        return None
+    if isinstance(raw_embedding, str):
+        return json.loads(raw_embedding)
+    return raw_embedding
+
+def collect_features(request, rf: RelevanceFeedback, num_additional_negatives: int = 0):
+    embedding_column = request.app.state.model_column_map.get(rf.get("model"))
+    if rf["positive_ids"]:
+        positive_features = request.app.state.vector_store.get_by_ids(ids=[generate_doc_id(pid) for pid in rf["positive_ids"]], columns_override=[embedding_column])
+        positive_features = [_decode_embedding(feat.metadata.get(embedding_column)) for feat in positive_features]
+        positive_features = [feature for feature in positive_features if feature is not None]
+        positive_features = np.array(positive_features) if positive_features else None
+    else:
+        positive_features = None
+
+    negative_features = []
+    excluded_ids = {generate_doc_id(pid) for pid in rf["positive_ids"]}
+    excluded_ids.update(generate_doc_id(nid) for nid in rf["negative_ids"])
+
+    if rf["negative_ids"]:
+        explicit_neg_docs = request.app.state.vector_store.get_by_ids(ids=[generate_doc_id(nid) for nid in rf["negative_ids"]], columns_override=[embedding_column])
+        negative_features.extend(_decode_embedding(feat.metadata.get(embedding_column)) for feat in explicit_neg_docs)
+    
+    if num_additional_negatives > 0:
+        random_neg_docs = request.app.state.vector_store.get_random_documents(
+            limit=num_additional_negatives,
+            columns_override=[embedding_column],
+            exclude_ids=list(excluded_ids),
+        )
+        negative_features.extend(_decode_embedding(feat.metadata.get(embedding_column)) for feat in random_neg_docs)
+
+    negative_features = [feature for feature in negative_features if feature is not None]
+    negative_features = np.array(negative_features) if negative_features else None
+
+    return positive_features, negative_features
+
+def rocchio_relevance_feedback(positive_features, negative_features, alpha=1.0, beta=0.75, gamma=0.25):
+    if positive_features is None and negative_features is None:
+        raise ValueError("At least one of positive_features or negative_features must be provided.")
+    
+    if positive_features is not None:
+        centroid_pos = np.mean(positive_features, axis=0)
+    else:
+        centroid_pos = 0
+
+    if negative_features is not None:
+        centroid_neg = np.mean(negative_features, axis=0)
+    else:
+        centroid_neg = 0
+
+    modified_query = alpha * centroid_pos - beta * centroid_neg
+    return modified_query
+
+def svm_relevance_feedback(positive_features, negative_features):
+    if positive_features is None or negative_features is None:
+        raise ValueError("Both positive_features and negative_features must be provided for SVM relevance feedback.")
+    
+    X = np.vstack((positive_features, negative_features))
+    y = np.hstack((np.ones(len(positive_features)), np.zeros(len(negative_features))))
+    
+    model = SVC(kernel='linear')
+    model.fit(X, y)
+    
+    return model.coef_[0]
+
+
 if hasattr(TemporalQueryNode, "model_rebuild"):
     TemporalQueryNode.model_rebuild()
 else:
@@ -142,6 +238,26 @@ async def search_endpoint(payload: SearchRequest, request: Request):
     default_k = int(getattr(request.app.state.config, "default_k", 100))
     final_k = int(payload.query.k or default_k)
     metadata_to_retrieve = payload.metadata_to_retrieve or []
+
+    # Handle relevance feedback if provided
+    if payload.relevance_feedback:
+        rf = query_dict.pop("relevance_feedback")
+        positive_features, negative_features = collect_features(
+            request,
+            rf,
+            num_additional_negatives=rf.get("num_additional_negatives", 0),
+        )
+        if rf["method"] == "rocchio":
+            rf_method = rocchio_relevance_feedback
+        elif rf["method"] == "svm":
+            rf_method = svm_relevance_feedback
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported relevance feedback method: {rf['method']}")
+        
+        rf_feature = rf_method(positive_features, negative_features)
+        actual_query["reorder_by"] = {"embedding": rf_feature, "model": rf.get("model")}
+    else:
+        actual_query["reorder_by"] = None
 
     try:
         docs = request.app.state.vector_store.similarity_search(

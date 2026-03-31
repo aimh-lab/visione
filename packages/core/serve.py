@@ -75,6 +75,7 @@ async def lifespan(app: FastAPI):
         temporal_column=loader.get_temporal_column(),
     )
     app.state.available_models = sorted(available_model_names)
+    app.state.model_column_map = model_column_map
 
     print(f"Ready. Available models: {app.state.available_models}")
     yield

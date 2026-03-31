@@ -18,6 +18,9 @@ embedding:
     - name: "openclip_clip_vit_l_14"
       dim: 768
       mrl_dim: null
+    - name: "openclip_clip_vit_h_14"
+      dim: 1024
+      mrl_dim: null
     - name: "dinov2_base"
       dim: 768
       mrl_dim: null
