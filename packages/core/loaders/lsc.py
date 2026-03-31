@@ -221,7 +221,7 @@ class LSCLoader:
             "altitude": "Altitude associated with the image, as a numeric value.",
             # "semantic_name": "Original semantic place or scene label.",
             "heart_rate_bpm": "Heart rate in beats per minute.",
-            "now_playing": "Audio track or media title playing at capture time.",
+            # "now_playing": "Audio track playing at capture time on my mp3 player.",
             "sleep_level": "Sleep stage annotation associated with the moment.",
             "time_in_bed": "Time spent in bed, expressed as a numeric duration.",
             "new_position": "Refined geographic coordinates stored as a point.",
