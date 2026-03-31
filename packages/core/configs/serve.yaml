@@ -6,3 +6,9 @@ defaults:
 host: localhost
 port: 8000
 default_k: 100
+
+index_query_options:
+  ef_search: 1000
+  iterative_scan: "relaxed_order"
+  max_scan_tuples: 150000
+  random_page_cost: 0.2

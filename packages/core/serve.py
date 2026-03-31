@@ -16,6 +16,30 @@ from endpoints.qa import router as qa_router
 from endpoints.search import router as search_router
 from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
+from langchain_postgres.v2.indexes import QueryOptions
+
+class PGVectorQueryOptions(QueryOptions):
+    """Base class for index query options."""
+
+    def __init__(self, ef_search: int = 1000, iterative_scan: str = "relaxed_order",
+                 max_scan_tuples: int = 150000, random_page_cost: float = 0.2):
+        self.ef_search = ef_search
+        self.iterative_scan = iterative_scan
+        self.max_scan_tuples = max_scan_tuples
+        self.random_page_cost = random_page_cost
+
+    def to_parameter(self) -> list[str]:
+        """Convert index attributes to list of configurations."""
+        return [
+            f"hnsw.ef_search = {self.ef_search}",
+            f"hnsw.iterative_scan = {self.iterative_scan}",
+            f"hnsw.max_scan_tuples = {self.max_scan_tuples}",
+            f"random_page_cost = {self.random_page_cost}",
+        ]
+    
+    def to_string(self) -> str:
+        """Convert index attributes to string."""
+        return f"(ef_search = {self.ef_search}, iterative_scan = {self.iterative_scan}, max_scan_tuples = {self.max_scan_tuples}, random_page_cost = {self.random_page_cost})"
 
 # --- Lifecycle Manager ---
 @asynccontextmanager
@@ -64,6 +88,13 @@ async def lifespan(app: FastAPI):
         available_model_names.add(model_name)
         # available_model_names.add(embedding_column_name)
 
+    index_options = PGVectorQueryOptions(
+        ef_search=cfg.index_query_options.ef_search,
+        iterative_scan=cfg.index_query_options.iterative_scan,
+        max_scan_tuples=cfg.index_query_options.max_scan_tuples,
+        random_page_cost=cfg.index_query_options.random_page_cost,
+    )
+
     app.state.vector_store = PGVectorStore.create_sync(
         engine=engine,
         table_name=table_name,
@@ -73,6 +104,7 @@ async def lifespan(app: FastAPI):
         metadata_columns=app.state.loader.get_retrieved_metadata_columns(),
         groupby_column=loader.get_temporal_groupby_column(),
         temporal_column=loader.get_temporal_column(),
+        index_query_options=index_options,
     )
     app.state.available_models = sorted(available_model_names)
     app.state.model_column_map = model_column_map

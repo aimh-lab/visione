@@ -264,7 +264,6 @@ async def search_endpoint(payload: SearchRequest, request: Request):
             actual_query,
             k=final_k,
             filter=None,
-            fetch_k=payload.fetch_k if payload.fetch_k else min(final_k * 10, 1000),
             metadata_to_retrieve=metadata_to_retrieve,
         )
 

@@ -29,7 +29,6 @@ router = APIRouter()
 
 # ── Defaults ────────────────────────────────────────────────────────────────
 DEFAULT_LLM_MODEL = "ministral-3:8b"
-DEFAULT_LLM_BASE_URL = "http://edge-nd1.isti.cnr.it:11435"
 DEFAULT_EMBEDDING_MODEL = "openclip_clip_vit_b_32"
 MAX_AGENT_ITERATIONS = 5
 MAX_TOTAL_IMAGES = 10
@@ -74,7 +73,7 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
 
     return {
         "model": _pick("model", DEFAULT_LLM_MODEL),
-        "base_url": _pick("base_url", DEFAULT_LLM_BASE_URL),
+        "base_url": _pick("base_url", None),
         "temperature": float(_pick("temperature", 0)),
         "max_iterations": int(_pick("max_iterations", MAX_AGENT_ITERATIONS)),
         "max_total_images": int(_pick("max_total_images", MAX_TOTAL_IMAGES)),
@@ -141,19 +140,30 @@ You have ONE tool: **search_frames**.
 ### Tool parameters
 | param | type | description |
 |-------|------|-------------|
-| `query` | string | Short semantic description of the visual scene to find (e.g. "conference presentation hall"). |
-| `k` | int | Number of metadata results to return. Default 20; use 50-100 for counting / aggregation. |
-| `num_images` | int | How many of the TOP results should include the actual image for you to see (0-2). Budget: ~{MAX_TOTAL_IMAGES} images total across the whole conversation. Set 0 when metadata alone suffices. |
+| `query` | string | Short semantic description of the visual scene to find (e.g. "conference presentation hall"). Can be "" if only filters should be applied. |
+| `k` | int | Number of metadata results to return. Default 50. |
+| `num_images` | int | How many of the TOP results should include the actual image for you to see. Budget: ~{MAX_TOTAL_IMAGES} images total across the whole conversation. Set 0 when metadata alone suffices. |
 | `filters` | object or null | Optional metadata filter. See examples below. |
+| `metadata_to_retrieve` | list of strings | List of metadata fields to include in the results. |
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
-Comparators: eq, ne, gt, lt, lt, like.
+Comparators: eq, ne, gt, lt, like.
 Operators: and, or, not.
+NOT ALLOWED: lte, gte (use lt or gt instead).
 
 **Single filter:**
 ```json
 {{"comparator": "like", "attribute": "city", "value": "%Dublin%"}}
+```
+
+**Search by year, month, day:**
+```json
+{{"operator": "and", "arguments": [
+    {{"comparator": "eq", "attribute": "year", "value": 2019}},
+    {{"comparator": "eq", "attribute": "month", "value": 1}},
+    {{"comparator": "eq", "attribute": "day", "value": 10}}
+]}}
 ```
 
 **Combined filters:**
@@ -172,26 +182,41 @@ Operators: and, or, not.
 ]}}
 ```
 
+**Look at a specific image (in this case, do not specify the textual query)**
+```
+{{"comparator": "eq", "attribute": "image_name", "value": "20190110_101531_000.jpg"}}
+```
+
 ### Available metadata fields
 {attrs}
 
 ### Reasoning strategies
-1. **Start broad**: search with a semantic query, moderate k (40-50), 0-1 images.
+1. **Start broad**: search with a semantic query, moderate k (40-50), 1-2 images.
 2. **Temporal succession**: to find what happened AFTER a result, issue a new search \
-with epoch filters: gte(epoch, prev_epoch) and lte(epoch, prev_epoch + window). \
+with epoch filters: gt(epoch, prev_epoch) and lt(epoch, prev_epoch + window). \
+Same for a query including what happened BEFORE, but using lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window).
 A reasonable window is 60-3600 s depending on context.
-3. **Counting & aggregation**: large k (50-150), 0 images. Then group by `hour_id` or \
+3. **Counting & aggregation**: large k (1000). Then group by `hour_id` or \
 by day (same year+month+day from epoch). Consecutive frames within the same hour belong \
 to the same moment. For multi-day events (conferences, trips), group contiguous days as \
 ONE event.
 4. **Deduplication**: same `hour_id` → same moment. Epoch gap < 3600 s → likely same \
-event. A conference spanning Mon-Wed counts as 1 conference, not 3.
-5. **Visual verification**: only request images (num_images=1-2) when you genuinely need \
-to see the scene. Most reasoning works with metadata alone.
-6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.).
+event.
+5. **Visual verification**: request large number of images (num_images=5-8) when you need \
+to see the scenes. You can also request image by their ids. Important: rather than trying to infer results by using different queries, \
+use a broader query and then visually verify the top results.
+(filter on `image_name`) by leaving the query empty to verify specific moments.
+6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.) and start again with a narrower query.
 
-Do not ask questions back to the user. Use the tools and metadata to infer the answer.
-Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly."""
+Also:
+- Notice that you can use "filters" alone to use only conditions on metadata. 
+- Do not ask questions back to the user. Use the tools, the images and the metadata to infer the answer.
+- If not sure about the answer, do not surrender. Try to call again the tool with a refined query or filters, also asking for images. Do not hallucinate, \
+find evidence in the data or declare that the output is not reliable. Do not infer activities based on biases, instead LOOK at the images first.
+- Before saying that metadata cannot confirm an hypothesis, ask for images to verify.
+- Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). If the results are empty, try to reformulate the query or ask for images to verify.
+- Do not say things like "I will now search...". Just continue calling the tool without explicitly saying so.
+- Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly."""
 
 
 # ── Agent builder ───────────────────────────────────────────────────────────
@@ -216,16 +241,18 @@ def _build_agent(request: Request, max_iterations: int):
     @tool
     def search_frames(
         query: str,
-        k: int = 20,
+        k: int = 50,
         num_images: int = 0,
         filters: Optional[Dict[str, Any]] = None,
+        metadata_to_retrieve: Optional[List[str]] = [],
     ) -> str:
         """Search the lifelog for frames matching a semantic query.
 
         Args:
             query: Short semantic description of the visual scene to find.
-            k: Number of metadata results to return. Use 50-100 for counting.
-            num_images: How many top results to include images for (0-2).
+            k: Number of metadata results to return.
+            num_images: How many top results to include images for.
+            metadata_to_retrieve: List of metadata fields to include in the results
             filters: Optional metadata filter object (comparator/operator).
 
         Returns:
@@ -241,6 +268,7 @@ def _build_agent(request: Request, max_iterations: int):
         try:
             docs = request.app.state.vector_store.similarity_search(
                 node_pg, k=k, filter=None, fetch_k=min(k * 10, 1000),
+                metadata_to_retrieve=metadata_to_retrieve,
             )
         except Exception as exc:
             return json.dumps({"error": str(exc)})
@@ -250,7 +278,7 @@ def _build_agent(request: Request, max_iterations: int):
             meta = {mk: mv for mk, mv in doc.metadata.items() if mk != "score"}
             entry: Dict[str, Any] = {
                 "id": doc.page_content,
-                "score": round(float(doc.metadata.get("score", 0)), 4),
+                # "score": round(float(doc.metadata.get("score", 0)), 4),
                 "metadata": meta,
             }
             if idx < num_img:

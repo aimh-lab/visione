@@ -805,9 +805,6 @@ class AsyncPGVectorStore(VectorStore):
                 dense_results = result_map.fetchall()
         else:
             async with self.engine.connect() as conn:
-                fetch_k = kwargs.get("fetch_k")
-                await conn.execute(text("SET LOCAL random_page_cost = 0.2;")) # SET LOCAL random_page_cost = 1.1;
-                await conn.execute(text(f"SET LOCAL hnsw.ef_search = {fetch_k};"))
                 result = await conn.execute(text(dense_query_stmt), param_dict)
                 result_map = result.mappings()
                 dense_results = result_map.fetchall()
@@ -1275,12 +1272,11 @@ class AsyncPGVectorStore(VectorStore):
 
         results: list[Document] = []
         async with self.engine.connect() as conn:
+            if self.index_query_options is not None:
+                for query_option in self.index_query_options.to_parameter():
+                    query_options_stmt = f"SET LOCAL {query_option};"
+                    await conn.execute(text(query_options_stmt))
             # conn.execute(text("SET enable_indexscan = off;"))
-            await conn.execute(text("SET hnsw.iterative_scan = relaxed_order;"))
-            await conn.execute(text("SET hnsw.max_scan_tuples = 150000;"))
-            await conn.execute(text("SET LOCAL random_page_cost = 0.2;")) # SET LOCAL random_page_cost = 1.1;
-            fetch_k = kwargs.get("fetch_k", self.fetch_k)
-            await conn.execute(text(f"SET LOCAL hnsw.ef_search = {fetch_k};"))
 
             if kwargs.get("explain_analyze", False):
                 explain_sql = text(
