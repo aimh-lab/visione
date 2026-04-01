@@ -7,6 +7,8 @@
   export let activeTab = "RF";
   export let rfPositive = [];
   export let rfNegative = [];
+  export let rfEnabled = true;
+  export let rfMethod = 'svm';
   export let submittedImages = [];
   export let submittedAnswers = [];
   export let showSubmittedTab = false;
@@ -141,6 +143,43 @@
     <div class="flex-1 overflow-y-auto pt-4 pb-4 pl-5 pr-4 space-y-4 custom-scrollbar">
       {#if activeTab === "RF"}
         <div>
+          <div class="mb-3 px-2 py-2 rounded-lg border border-gray-700/80 bg-gray-900/35 flex items-center justify-between gap-3">
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-gray-400">Relevance Feedback</p>
+              <p class="text-[10px] text-gray-500 mt-0.5">Enable or disable RF in next searches</p>
+            </div>
+            <button
+              type="button"
+              class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors {rfEnabled ? 'bg-blue-600' : 'bg-gray-600'}"
+              aria-label="Toggle relevance feedback"
+              aria-pressed={rfEnabled}
+              on:click={() => {
+                rfEnabled = !rfEnabled;
+                dispatch('updateRFEnabled', { enabled: rfEnabled });
+              }}
+            >
+              <span
+                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {rfEnabled ? 'translate-x-5' : 'translate-x-1'}"
+              ></span>
+            </button>
+          </div>
+
+          <div class="mb-3 p-2 rounded-lg border border-gray-700/80 bg-gray-900/35">
+            <label class="block text-[10px] uppercase tracking-wide text-gray-400 mb-1" for="rf-method-select">
+              Relevance Method
+            </label>
+            <select
+              id="rf-method-select"
+              class="w-full text-xs font-medium bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              bind:value={rfMethod}
+              disabled={!rfEnabled}
+              on:change={() => dispatch('updateRFMethod', { method: rfMethod })}
+            >
+              <option value="svm">svm</option>
+              <option value="rocchio">rocchio</option>
+            </select>
+          </div>
+
           <RFLists
             {rfPositive}
             {rfNegative}

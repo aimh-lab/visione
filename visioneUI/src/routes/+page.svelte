@@ -269,11 +269,14 @@
   // Query UI
   const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
   const DEFAULT_IMAGE_MODEL = 'dinov2_base';
+  const DEFAULT_RF_MODEL = 'qwen_embedding_8B';
   let textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
   let availableModels = [];
   let textareaImages = {};
   $: rfPositive = $sessionStore.rfPositive;
   $: rfNegative = $sessionStore.rfNegative;
+  let rfEnabled = true;
+  let rfMethod = 'svm';
   let selectedIndex = 0;
 
   // View2 stato
@@ -613,6 +616,26 @@
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getSubmittedIds,
     getSimilarityPreview: getRecentSimilarityPreview,
+    getRelevanceFeedback: () => {
+      if (!rfEnabled) {
+        return null;
+      }
+
+      const positiveIds = (rfPositive || []).map((r) => String(r?.imgId || '').trim()).filter(Boolean);
+      const negativeIds = (rfNegative || []).map((r) => String(r?.imgId || '').trim()).filter(Boolean);
+
+      if (positiveIds.length === 0 && negativeIds.length === 0) {
+        return null;
+      }
+
+      return {
+        positiveIds,
+        negativeIds,
+        method: rfMethod,
+        model: DEFAULT_RF_MODEL,
+        numAdditionalNegatives: negativeIds.length === 0 ? 4 : 0
+      };
+    },
 
     setSearchState: ({ loading, error, resultSet, searchTime: st }) => {
       if (loading !== undefined) searchLoading = loading;
@@ -1751,6 +1774,8 @@ function handleViewSubmitted() {
         {searchResultSet}
         {rfPositive}
         {rfNegative}
+        {rfEnabled}
+        {rfMethod}
         {submittedImages}
         {submittedAnswers}
         viewMode={$uiStore.viewMode}
@@ -1813,6 +1838,13 @@ function handleViewSubmitted() {
 
         onRemovePositive={handleRemovePositive}
         onRemoveNegative={handleRemoveNegative}
+        on:updateRFEnabled={(e) => {
+          rfEnabled = !!e?.detail?.enabled;
+        }}
+        on:updateRFMethod={(e) => {
+          const next = String(e?.detail?.method || '').trim().toLowerCase();
+          rfMethod = next === 'rocchio' ? 'rocchio' : 'svm';
+        }}
 
         onOpenFromRF={(idx) => {
           uiStore.actions.setLayoutTab("View1");

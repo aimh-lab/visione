@@ -20,6 +20,8 @@
     closeSimilarityStep: { index: number };
     selectRightTab: unknown;
     clearQueryInputs: void;
+    updateRFEnabled: { enabled: boolean };
+    updateRFMethod: { method: string };
   };
 
   // Stato/props dal genitore
@@ -39,6 +41,8 @@
   export let searchResultSet: unknown = null;
   export let rfPositive: Img[] = [];
   export let rfNegative: Img[] = [];
+  export let rfEnabled = true;
+  export let rfMethod = 'svm';
   export let submittedImages: Img[] = [];
   export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";
@@ -342,6 +346,8 @@
     width={sidebarRightWidth}
     {rfPositive}
     {rfNegative}
+    {rfEnabled}
+    {rfMethod}
     {submittedImages}
     {submittedAnswers}
     {challengeType}
@@ -354,6 +360,8 @@
     on:resize={(e) => onResizeRightSidebar(e.detail.width)}
     on:toggleRightSidebar={onToggleRightSidebar}
     on:selectTab={(e) => dispatch('selectRightTab', e.detail)}
+    on:updateRFEnabled={(e) => dispatch('updateRFEnabled', e.detail)}
+    on:updateRFMethod={(e) => dispatch('updateRFMethod', e.detail)}
   />
 </div>
 
