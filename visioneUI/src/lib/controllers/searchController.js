@@ -13,6 +13,7 @@ export function createSearchController({
   getFramesPerRow,        // () => number
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
+  getRelevanceFeedback,   // () => { positiveIds, negativeIds, method, model?, numAdditionalNegatives? } | null
 
   // state sinks
   setSearchState,         // ({ loading?, error?, resultSet?, searchTime? }) => void
@@ -90,11 +91,21 @@ export function createSearchController({
       })
       .join(' ');
 
+    const relevanceFeedback = typeof getRelevanceFeedback === 'function'
+      ? (getRelevanceFeedback() || null)
+      : null;
+
+    const rfFingerprint = relevanceFeedback
+      ? ` rf:method=${String(relevanceFeedback.method || 'svm')} pos=${(relevanceFeedback.positiveIds || []).join(',')} neg=${(relevanceFeedback.negativeIds || []).join(',')} model=${String(relevanceFeedback.model || '')} addNeg=${Number.isFinite(Number(relevanceFeedback.numAdditionalNegatives)) ? Number(relevanceFeedback.numAdditionalNegatives) : ''}`
+      : '';
+
+    const cacheKey = `${query}${rfFingerprint}`;
+
     const start = Date.now();
 
     // 1) Cache
     try {
-      const cached = recentSearches.find(query);
+      const cached = recentSearches.find(cacheKey);
       if (cached?.results) {
         if (req !== reqId) return;
 
@@ -127,6 +138,7 @@ export function createSearchController({
 
       const resultSet = await api.search({
         textareas,
+        relevanceFeedback,
         simReorder: false,
         framesPerRow
       });
@@ -148,11 +160,11 @@ export function createSearchController({
       await tick();
       if (!isRestoringFromHistory()) syncURL();
 
-      if (query && transformed.length > 0) {
+      if (cacheKey && transformed.length > 0) {
         const similarityPreview = typeof getSimilarityPreview === 'function'
           ? getSimilarityPreview(rawTextareas)
           : null;
-        recentSearches.add(query, transformed.length, resultSet, rawTextareas, similarityPreview);
+        recentSearches.add(cacheKey, transformed.length, resultSet, rawTextareas, similarityPreview);
         toasts.success(`🌐 Found ${transformed.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');

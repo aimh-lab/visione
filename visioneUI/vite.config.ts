@@ -13,7 +13,8 @@ export default defineConfig({
   ],
   server: { 
     https: true,
-    host: true  // o '0.0.0.0' per accettare connessioni da tutti gli indirizzi
+    host: true,  // o '0.0.0.0' per accettare connessioni da tutti gli indirizzi
+    port: 8080
   },
   resolve: {
     alias: {

@@ -28,6 +28,7 @@ export class VisioneAPI {
     this.defaultSingleK = 1000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
+    this.defaultRelevanceFeedbackModel = 'qwen_embedding_8B';
     this.defaultMetadataToRetrieve = ['hour_id'];
     this.elementUrlCache = new Map();
     this.elementUrlInFlight = new Map();
@@ -180,7 +181,7 @@ export class VisioneAPI {
   }
 
   // Search API
-  async search({ textareas, simReorder = false, framesPerRow = 5 }) {
+  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5 }) {
     void simReorder;
     void framesPerRow;
 
@@ -195,6 +196,10 @@ export class VisioneAPI {
     }
 
     const payload = this.#buildSearchPayload(activeTextareas);
+    const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
+    if (normalizedRF) {
+      payload.relevance_feedback = normalizedRF;
+    }
     const payloadText = JSON.stringify(payload);
 
     console.info('[VisioneAPI] POST /search payload', payload);
@@ -391,20 +396,27 @@ export class VisioneAPI {
   }
 
   #buildSearchPayload(activeTextareas) {
-    const queryItems = activeTextareas.flatMap((t) => this.#expandTextareaToItems(t));
-    if (queryItems.length === 0) {
+    const textareaNodes = activeTextareas
+      .map((t) => this.#buildTextareaQueryNode(t, this.defaultSubqueryK, this.defaultSubqueryK))
+      .filter(Boolean);
+
+    if (textareaNodes.length === 0) {
       throw new APIError('No valid query items', 400);
     }
 
-    if (queryItems.length === 1) {
-      const item = queryItems[0];
-      const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
+    if (textareaNodes.length === 1) {
+      const singleTextareaNode = this.#buildTextareaQueryNode(
+        activeTextareas[0],
+        this.defaultSingleK,
+        this.defaultSingleK
+      );
+
+      if (!singleTextareaNode) {
+        throw new APIError('No valid query items', 400);
+      }
+
       return {
-        query: {
-          item: item.value,
-          model: item.model || defaultModel,
-          k: this.defaultSingleK
-        },
+        query: singleTextareaNode,
         urls_to_retrieve: ['images', 'thumbnails', 'videos'],
         metadata_to_retrieve: this.defaultMetadataToRetrieve
       };
@@ -412,20 +424,37 @@ export class VisioneAPI {
 
     return {
       query: {
-        item: queryItems.map((item) => {
-          const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
-          return {
-            item: item.value,
-            model: item.model || defaultModel,
-            k: this.defaultSubqueryK
-          };
-        }),
+        item: textareaNodes,
         aggregation_type: 'temporal',
         window_seconds: this.defaultTemporalWindowSeconds,
         k: this.defaultAggregatedK
       },
       urls_to_retrieve: ['images', 'thumbnails', 'videos'],
       metadata_to_retrieve: this.defaultMetadataToRetrieve
+    };
+  }
+
+  #buildTextareaQueryNode(textarea, leafK, groupK) {
+    const queryItems = this.#expandTextareaToItems(textarea);
+    if (queryItems.length === 0) return null;
+
+    const subqueries = queryItems.map((item) => {
+      const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
+      return {
+        item: item.value,
+        model: item.model || defaultModel,
+        k: leafK
+      };
+    });
+
+    if (subqueries.length === 1) {
+      return subqueries[0];
+    }
+
+    return {
+      item: subqueries,
+      aggregation_type: 'rrf',
+      k: groupK
     };
   }
 
@@ -453,6 +482,53 @@ export class VisioneAPI {
       } else {
         out.push({ type: 'text', value: raw, model: textModel });
       }
+    }
+
+    return out;
+  }
+
+  #buildRelevanceFeedback(config) {
+    if (!config || typeof config !== 'object') return null;
+
+    const positiveIds = Array.from(new Set(
+      (Array.isArray(config.positiveIds) ? config.positiveIds : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)
+    ));
+
+    const negativeIds = Array.from(new Set(
+      (Array.isArray(config.negativeIds) ? config.negativeIds : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)
+    ));
+
+    if (positiveIds.length === 0 && negativeIds.length === 0) return null;
+
+    const method = String(config.method || '').trim().toLowerCase() === 'rocchio'
+      ? 'rocchio'
+      : 'svm';
+
+    const model = String(config.model || this.defaultRelevanceFeedbackModel).trim()
+      || this.defaultRelevanceFeedbackModel;
+
+    const explicitAdditional = Number(config.numAdditionalNegatives);
+    const hasExplicitAdditional = Number.isFinite(explicitAdditional) && explicitAdditional >= 0;
+    const fallbackAdditional = negativeIds.length === 0 ? 4 : 0;
+
+    const out = {
+      positive_ids: positiveIds,
+      model,
+      method
+    };
+
+    if (negativeIds.length > 0) {
+      out.negative_ids = negativeIds;
+    }
+
+    if (hasExplicitAdditional) {
+      out.num_additional_negatives = Math.floor(explicitAdditional);
+    } else if (fallbackAdditional > 0) {
+      out.num_additional_negatives = fallbackAdditional;
     }
 
     return out;
