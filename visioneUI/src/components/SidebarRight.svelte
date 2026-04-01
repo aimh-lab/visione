@@ -123,6 +123,11 @@
           <div class="flex items-center gap-1">
             <span class="text-[10px]">{tab.label}</span>
             {#if tab.id === "RF"}
+              {#if !rfEnabled}
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-gray-700/70 border border-gray-500/50 text-gray-200">
+                  OFF
+                </span>
+              {/if}
               <span class="ui-feedback-count-badge ui-feedback-count-positive px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-green-900/25 border border-green-700/40">
                 {rfPositive.length}
               </span>
@@ -143,14 +148,10 @@
     <div class="flex-1 overflow-y-auto pt-4 pb-4 pl-5 pr-4 space-y-4 custom-scrollbar">
       {#if activeTab === "RF"}
         <div>
-          <div class="mb-3 px-2 py-2 rounded-lg border border-gray-700/80 bg-gray-900/35 flex items-center justify-between gap-3">
-            <div>
-              <p class="text-[10px] uppercase tracking-wide text-gray-400">Relevance Feedback</p>
-              <p class="text-[10px] text-gray-500 mt-0.5">Enable or disable RF in next searches</p>
-            </div>
+          <div class="mb-3 p-2 rounded-lg border border-gray-700/80 bg-gray-900/35 flex items-center gap-2">
             <button
               type="button"
-              class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors {rfEnabled ? 'bg-blue-600' : 'bg-gray-600'}"
+              class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors shrink-0 {rfEnabled ? 'bg-blue-600' : 'bg-gray-600'}"
               aria-label="Toggle relevance feedback"
               aria-pressed={rfEnabled}
               on:click={() => {
@@ -162,15 +163,14 @@
                 class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {rfEnabled ? 'translate-x-5' : 'translate-x-1'}"
               ></span>
             </button>
-          </div>
 
-          <div class="mb-3 p-2 rounded-lg border border-gray-700/80 bg-gray-900/35">
-            <label class="block text-[10px] uppercase tracking-wide text-gray-400 mb-1" for="rf-method-select">
-              Relevance Method
+            <label class="text-[10px] uppercase tracking-wide text-gray-400 shrink-0" for="rf-method-select">
+              Method
             </label>
+
             <select
               id="rf-method-select"
-              class="w-full text-xs font-medium bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              class="flex-1 min-w-0 text-xs font-medium bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
               bind:value={rfMethod}
               disabled={!rfEnabled}
               on:change={() => dispatch('updateRFMethod', { method: rfMethod })}
@@ -180,13 +180,23 @@
             </select>
           </div>
 
-          <RFLists
-            {rfPositive}
-            {rfNegative}
-            on:openFromRF={handleOpenFromRF}
-            on:removePositive={handleRemovePositive}
-            on:removeNegative={handleRemoveNegative}
-          />
+          <div class="relative">
+            <div class={!rfEnabled ? 'opacity-50 pointer-events-none select-none' : ''}>
+              <RFLists
+                {rfPositive}
+                {rfNegative}
+                on:openFromRF={handleOpenFromRF}
+                on:removePositive={handleRemovePositive}
+                on:removeNegative={handleRemoveNegative}
+              />
+            </div>
+
+            {#if !rfEnabled}
+              <div class="absolute top-2 right-2 px-2 py-1 rounded-md border border-gray-500/60 bg-gray-900/85 text-[10px] font-semibold uppercase tracking-wide text-gray-200 pointer-events-none">
+                RF disabled
+              </div>
+            {/if}
+          </div>
         </div>
 
       {:else if activeTab === "Submitted"}
