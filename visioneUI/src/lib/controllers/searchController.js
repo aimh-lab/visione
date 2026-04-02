@@ -11,6 +11,7 @@ export function createSearchController({
   getSearchTextareas,
   setTextareas,
   getFramesPerRow,        // () => number
+  getCacheEnabled,        // () => boolean
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
   getRelevanceFeedback,   // () => { positiveIds, negativeIds, method, model?, numAdditionalNegatives? } | null
@@ -100,13 +101,14 @@ export function createSearchController({
       : '';
 
     const cacheKey = `${query}${rfFingerprint}`;
+    const cacheEnabled = typeof getCacheEnabled === 'function' ? !!getCacheEnabled() : true;
 
     const start = Date.now();
 
     // 1) Cache
     try {
-      const cached = recentSearches.find(cacheKey);
-      if (cached?.results) {
+      const cached = cacheEnabled ? recentSearches.find(cacheKey) : null;
+      if (cacheEnabled && cached?.results) {
         if (req !== reqId) return;
 
         if (cached.textareas?.length && isRestoringFromHistory()) {
@@ -160,11 +162,13 @@ export function createSearchController({
       await tick();
       if (!isRestoringFromHistory()) syncURL();
 
-      if (cacheKey && transformed.length > 0) {
-        const similarityPreview = typeof getSimilarityPreview === 'function'
-          ? getSimilarityPreview(rawTextareas)
-          : null;
-        recentSearches.add(cacheKey, transformed.length, resultSet, rawTextareas, similarityPreview);
+      if (transformed.length > 0) {
+        if (cacheEnabled && cacheKey) {
+          const similarityPreview = typeof getSimilarityPreview === 'function'
+            ? getSimilarityPreview(rawTextareas)
+            : null;
+          recentSearches.add(cacheKey, transformed.length, resultSet, rawTextareas, similarityPreview);
+        }
         toasts.success(`🌐 Found ${transformed.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');
