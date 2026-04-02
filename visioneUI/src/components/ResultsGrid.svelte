@@ -768,7 +768,7 @@
 
               <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
-              <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div class="absolute inset-0 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <button
                     class="w-12 h-12 rounded-full bg-slate-200/85 text-slate-900 shadow-xl flex items-center justify-center border border-slate-300/80 ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-slate-100 active:scale-95 pointer-events-auto"
@@ -849,7 +849,7 @@
                   <div
                     role="button"
                     tabindex="0"
-                    class="absolute top-2 right-2 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
+                    class="absolute top-2 right-2 z-40 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
                     title="Submit"
                     on:click={(e) => handleSubmit(item, e)}
                     on:keydown={(e) => e.key === 'Enter' && handleSubmit(item, e)}
@@ -873,7 +873,7 @@
 
               {#if rfPositiveIds.has(safeImgId(getId(item))) || rfNegativeIds.has(safeImgId(getId(item)))}
                 <div
-                  class="absolute top-1 right-1 z-30 flex flex-col items-end gap-0.5 pointer-events-none"
+                  class="absolute top-1 right-1 z-20 flex flex-col items-end gap-0.5 pointer-events-none"
                 >
                   {#if rfPositiveIds.has(safeImgId(getId(item)))}
                     <div class="inline-flex items-center justify-center w-5 h-5 rounded-full border border-slate-100/70 bg-emerald-600 text-white shadow-md" title="Positive feedback">
