@@ -180,7 +180,7 @@ def collect_features(request, rf: RelevanceFeedback, num_additional_negatives: i
 
     return positive_features, negative_features
 
-def rocchio_relevance_feedback(positive_features, negative_features, alpha=1.0, beta=0.75, gamma=0.25):
+def rocchio_relevance_feedback(positive_features, negative_features, alpha=1.0, beta=0.75, gamma=0.5):
     if positive_features is None and negative_features is None:
         raise ValueError("At least one of positive_features or negative_features must be provided.")
     
@@ -194,7 +194,7 @@ def rocchio_relevance_feedback(positive_features, negative_features, alpha=1.0, 
     else:
         centroid_neg = 0
 
-    modified_query = alpha * centroid_pos - beta * centroid_neg
+    modified_query = beta * centroid_pos - gamma * centroid_neg
     return modified_query
 
 def svm_relevance_feedback(positive_features, negative_features):
@@ -290,6 +290,9 @@ async def search_endpoint(payload: SearchRequest, request: Request):
 
         duration = time.time() - start_time
         print(f"Query: '{query_dict}' | Time: {duration:.4f}s")
+        if payload.relevance_feedback:
+            print(f"Relevance Feedback Method: {rf['method']} | Positives: {len(rf['positive_ids'])} | Negatives: {len(rf['negative_ids'])} | Additional Negatives: {rf.get('num_additional_negatives', 0)}")
+
         return results
     except Exception as exc:
         print(f"Search Error: {exc}")

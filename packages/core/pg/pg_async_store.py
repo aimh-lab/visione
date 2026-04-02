@@ -854,75 +854,22 @@ class AsyncPGVectorStore(VectorStore):
         """Return docs selected by similarity search on query."""
 
         if isinstance(query, str):
-            query = {"query": query}
+            query = {"item": query}
 
         if not isinstance(query, dict):
             raise ValueError("Query must be a dictionary.")
-
-        query_payload = query.get("item", query.get("items", query.get("text")))
-        if isinstance(query_payload, list) and len(query_payload) >= 2:
-            return await self._atemporal_join_search(
-                query=query,
-                k=k,
-                filter=filter,
-                **kwargs,
-            )
-
-        # Empty/missing item means "no semantic query": rely on metadata filters only.
-        if query_payload is None or (
-            isinstance(query_payload, str) and not query_payload.strip()
+        if (
+            "item" not in query
+            and "items" not in query
+            and "text" not in query
+            and "query" in query
         ):
-            return await self._atemporal_join_search(
-                query=query,
-                k=k,
-                filter=filter,
-                **kwargs,
-            )
+            query = {**query, "item": query.get("query")}
 
-        if isinstance(query_payload, list):
-            if len(query_payload) != 1 or not isinstance(query_payload[0], str):
-                raise ValueError(
-                    "Leaf query with list payload must contain exactly one string."
-                )
-            query_payload = query_payload[0]
-
-        if not isinstance(query_payload, str) or not query_payload.strip():
-            raise ValueError("Leaf query must be a non-empty string.")
-
-        model = query.get("model")
-        embedding_column = query.get("embedding_column")
-        selected_model, selected_embedder = self._resolve_embedding_backend(
-            model=model,
-            embedding_column=embedding_column,
-        )
-
-        merged_filter = filter
-        if query.get("filters") is not None:
-            leaf_filter = query.get("filters")
-            merged_filter = (
-                {"$and": [filter, leaf_filter]} if filter and leaf_filter else (leaf_filter or filter)
-            )
-
-        inline_embed_func = getattr(selected_embedder, "embed_query_inline", None)
-        embedding = (
-            []
-            if callable(inline_embed_func)
-            else await selected_embedder.aembed_query(text=query_payload)
-        )
-        kwargs["query"] = query_payload
-        kwargs["model"] = selected_model
-
-        hybrid_search_config = kwargs.get(
-            "hybrid_search_config", self.hybrid_search_config
-        )
-        if hybrid_search_config and not hybrid_search_config.fts_query:
-            hybrid_search_config.fts_query = query_payload
-            kwargs["hybrid_search_config"] = hybrid_search_config
-
-        return await self.asimilarity_search_by_vector(
-            embedding=embedding,
+        return await self._atemporal_join_search(
+            query=query,
             k=k,
-            filter=merged_filter,
+            filter=filter,
             **kwargs,
         )
 
@@ -933,14 +880,9 @@ class AsyncPGVectorStore(VectorStore):
         filter: Optional[dict] = None,
         **kwargs: Any,
     ) -> list[Document]:
-        query_payload = query.get("item", query.get("items", query.get("text")))
-        root_filter_only = query_payload is None or (
-            isinstance(query_payload, str) and not query_payload.strip()
+        query_payload = query.get(
+            "item", query.get("items", query.get("text", query.get("query")))
         )
-        if not root_filter_only and (
-            not isinstance(query_payload, list) or len(query_payload) < 2
-        ):
-            raise ValueError("Temporal query must contain a 'item' list with at least two items.")
 
         groupby_column = self.groupby_column
         temporal_column = self.temporal_column
@@ -961,6 +903,7 @@ class AsyncPGVectorStore(VectorStore):
         )
 
         operator = self.distance_strategy.operator
+        search_function = self.distance_strategy.search_function
         full_table_name = f'"{self.schema_name}"."{self.table_name}"'
 
         additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
@@ -986,8 +929,13 @@ class AsyncPGVectorStore(VectorStore):
             node_copy = dict(node_like)
             node_copy["item"] = node_copy.get(
                 "item",
-                node_copy.get("items", node_copy.get("text")),
+                node_copy.get("items", node_copy.get("text", node_copy.get("query"))),
             )
+            if isinstance(node_copy["item"], list):
+                if len(node_copy["item"]) == 1 and isinstance(node_copy["item"][0], str):
+                    node_copy["item"] = node_copy["item"][0]
+                elif len(node_copy["item"]) == 0:
+                    node_copy["item"] = None
             return node_copy
 
         def _normalize_windows(raw_window: Any, count: int) -> list[float]:
@@ -1018,7 +966,7 @@ class AsyncPGVectorStore(VectorStore):
                 return {"$and": [global_filter, normalized_leaf]}
             return normalized_leaf or global_filter
 
-        async def _build_cte(node_like: Any) -> str:
+        async def _build_cte(node_like: Any, *, is_root: bool = False) -> str:
             nonlocal node_counter
             node = _as_node(node_like)
             payload = node.get("item")
@@ -1081,6 +1029,20 @@ class AsyncPGVectorStore(VectorStore):
                     else "NULL AS groupby_value"
                 )
 
+                if is_root:
+                    if search_function == "cosine_distance":
+                        score_expr = (
+                            f"(1.0 - {search_function}(b.\"{selected_model}\", {embedding_expr}))"
+                        )
+                    else:
+                        score_expr = (
+                            f"(1.0 / (1.0 + {search_function}(b.\"{selected_model}\", {embedding_expr})))"
+                        )
+                else:
+                    score_expr = (
+                        f'(100.0 / (ROW_NUMBER() OVER (ORDER BY b.\"{selected_model}\" {operator} {embedding_expr}) + 100.0))'
+                    )
+
                 cte_statements.append(
                     f"""
                     {node_name} AS (
@@ -1089,7 +1051,7 @@ class AsyncPGVectorStore(VectorStore):
                             b."{temporal_column}" AS start_time,
                             b."{temporal_column}" AS end_time,
                             {groupby_select},
-                            (1.0 / NULLIF(ROW_NUMBER() OVER (ORDER BY b.\"{selected_model}\" {operator} {embedding_expr}), 0)) AS score
+                            {score_expr} AS score
                         FROM {full_table_name} b
                         {safe_filter}
                         ORDER BY b."{selected_model}" {operator} {embedding_expr}
@@ -1220,7 +1182,7 @@ class AsyncPGVectorStore(VectorStore):
 
             return current
 
-        root_cte = await _build_cte({"item": query_payload, **query})
+        root_cte = await _build_cte({"item": query_payload, **query}, is_root=True)
         params["final_limit"] = dense_limit
 
         reorder_clause = "score DESC"
