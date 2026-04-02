@@ -9,6 +9,7 @@
   export let keyframeSize = 130;
   export let resultsPerRow = 8;
   export let justifyResultRows = false;
+  export let cacheEnabled = true;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
@@ -29,6 +30,7 @@
     keyframeSize,
     resultsPerRow,
     resultsAutoFit,
+    cacheEnabled,
     justifyResultRows,
     videoBadgeOrientation,
     virtualizationEnabled,
@@ -51,6 +53,7 @@
       keyframeSize,
       resultsPerRow,
       resultsAutoFit,
+      cacheEnabled,
       justifyResultRows,
       videoBadgeOrientation,
       virtualizationEnabled,
@@ -93,6 +96,7 @@
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
+      cacheEnabled: !!local.cacheEnabled,
       justifyResultRows: !!local.justifyResultRows,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
@@ -283,6 +287,17 @@
               type="checkbox"
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               bind:checked={local.justifyResultRows}
+              on:change={() => save()}
+            />
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-cache-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable search cache</label>
+            <input
+              id="settings-cache-enabled"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              bind:checked={local.cacheEnabled}
               on:change={() => save()}
             />
           </div>

@@ -106,6 +106,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   keyframeSize: 130,        // ✅ AGGIUNGI
   resultsPerRow: 8,          // ✅ AGGIUNGI
   resultsAutoFit: true,     // ✅ AGGIUNGI
+  cacheEnabled: true,
   justifyResultRows: false,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,

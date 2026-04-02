@@ -614,6 +614,7 @@
     getSearchTextareas: getTextareasForSearch,
     setTextareas: (t) => { textareas = t; },
     getFramesPerRow: () => get(uiStore).resultsPerRow,
+    getCacheEnabled: () => get(uiStore).cacheEnabled,
     getSubmittedIds,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -1712,6 +1713,7 @@ function handleViewSubmitted() {
   keyframeSize={$uiStore.keyframeSize}
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}
+  cacheEnabled={$uiStore.cacheEnabled}
   justifyResultRows={$uiStore.justifyResultRows}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}

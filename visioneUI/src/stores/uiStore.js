@@ -19,6 +19,7 @@ const DEFAULT = {
   keyframeSize: 130,
   resultsPerRow: 8,
   resultsAutoFit: true,
+  cacheEnabled: true,
   justifyResultRows: false,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
@@ -79,6 +80,7 @@ function createUIStore() {
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
         resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
+        cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
@@ -108,6 +110,7 @@ function createUIStore() {
         keyframeSize: DEFAULT.keyframeSize,
         resultsPerRow: DEFAULT.resultsPerRow,
         resultsAutoFit: DEFAULT.resultsAutoFit,
+        cacheEnabled: DEFAULT.cacheEnabled,
         justifyResultRows: DEFAULT.justifyResultRows,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
@@ -188,7 +191,7 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
@@ -198,6 +201,7 @@ function createUIStore() {
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
+        cacheEnabled: !!cacheEnabled,
         justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
@@ -214,6 +218,7 @@ function createUIStore() {
         keyframeSize,
         resultsPerRow,
         resultsAutoFit,
+        cacheEnabled: !!cacheEnabled,
         justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,

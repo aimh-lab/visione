@@ -149,6 +149,8 @@
       {#if activeTab === "RF"}
         <div>
           <div class="mb-3 p-2 rounded-lg border border-gray-700/80 bg-gray-900/35 flex items-center gap-2">
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-300 shrink-0">RF</span>
+
             <button
               type="button"
               class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors shrink-0 {rfEnabled ? 'bg-blue-600' : 'bg-gray-600'}"
@@ -163,6 +165,12 @@
                 class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {rfEnabled ? 'translate-x-5' : 'translate-x-1'}"
               ></span>
             </button>
+
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none shrink-0 {rfEnabled ? 'bg-blue-900/35 border border-blue-600/50 text-blue-200' : 'bg-gray-700/70 border border-gray-500/60 text-gray-200'}">
+              {rfEnabled ? 'ON' : 'OFF'}
+            </span>
+
+            <span class="w-px h-4 bg-gray-600/70 shrink-0"></span>
 
             <label class="text-[10px] uppercase tracking-wide text-gray-400 shrink-0" for="rf-method-select">
               Method
