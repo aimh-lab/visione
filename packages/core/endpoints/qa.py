@@ -27,22 +27,14 @@ from endpoints.search import convert_filters_to_pg
 
 router = APIRouter()
 
-# ── Defaults ────────────────────────────────────────────────────────────────
-DEFAULT_LLM_MODEL = "ministral-3:8b"
-DEFAULT_EMBEDDING_MODEL = "openclip_clip_vit_b_32"
-MAX_AGENT_ITERATIONS = 5
-MAX_TOTAL_IMAGES = 10
-MAX_IMAGES_PER_CALL = 2
-
-
 # ── Request / Response models ──────────────────────────────────────────────
 class QARequest(BaseModel):
     question: str = Field(..., description="Natural-language question about the lifelog.")
     max_iterations: Optional[int] = Field(
-        default=MAX_AGENT_ITERATIONS,
+        default=None,
         ge=1,
         le=10,
-        description="Maximum number of search iterations the agent may perform.",
+        description="Optional override for max search iterations; defaults to config value.",
     )
 
 
@@ -64,23 +56,53 @@ class AgentState(TypedDict):
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 def _get_qa_config(request: Request) -> Dict[str, Any]:
-    """Read QA-specific config from the ``qa`` section, falling back to defaults."""
+    """Read required QA config from the ``qa`` section; fail if missing/invalid."""
     qa_cfg = getattr(getattr(request.app.state, "config", None), "qa", None)
+    print(f"[QA DEBUG] Loaded QA config: {qa_cfg}")
 
-    def _pick(attr: str, default):
-        val = getattr(qa_cfg, attr, None) if qa_cfg else None
-        return val if val is not None else default
+    if qa_cfg is None:
+        raise HTTPException(status_code=500, detail="Missing required 'qa' configuration section.")
 
-    return {
-        "model": _pick("model", DEFAULT_LLM_MODEL),
-        "base_url": _pick("base_url", None),
-        "temperature": float(_pick("temperature", 0)),
-        "max_iterations": int(_pick("max_iterations", MAX_AGENT_ITERATIONS)),
-        "max_total_images": int(_pick("max_total_images", MAX_TOTAL_IMAGES)),
-        "max_images_per_call": int(_pick("max_images_per_call", MAX_IMAGES_PER_CALL)),
-        "default_embedding_model": _pick("default_model", DEFAULT_EMBEDDING_MODEL),
-        "debug": bool(_pick("debug", False)),
-    }
+    def _require(attr: str) -> Any:
+        val = getattr(qa_cfg, attr, None)
+        if val is None:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Missing required 'qa.{attr}' configuration value.",
+            )
+        return val
+
+    try:
+        cfg = {
+            "model": str(_require("model")),
+            "base_url": str(_require("base_url")),
+            "temperature": float(_require("temperature")),
+            "max_iterations": int(_require("max_iterations")),
+            "max_total_images": int(_require("max_total_images")),
+            "max_images_per_call": int(_require("max_images_per_call")),
+            "default_embedding_model": str(_require("default_model")),
+            "debug": bool(_require("debug")),
+        }
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=f"Invalid 'qa' configuration value: {exc}") from exc
+
+    if cfg["max_iterations"] < 1 or cfg["max_iterations"] > 10:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid 'qa.max_iterations': must be between 1 and 10.",
+        )
+    if cfg["max_total_images"] < 0:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid 'qa.max_total_images': must be >= 0.",
+        )
+    if cfg["max_images_per_call"] < 0:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid 'qa.max_images_per_call': must be >= 0.",
+        )
+
+    return cfg
 
 
 async def _fetch_image_b64(url: str, timeout: float = 10.0) -> Optional[str]:
@@ -127,7 +149,7 @@ def _debug_print_message(label: str, msg) -> None:
     print("─" * 80)
 
 
-def _build_system_prompt(attribute_info: list) -> str:
+def _build_system_prompt(attribute_info: list, max_total_images: int, max_images_per_call: int) -> str:
     attrs = "\n".join(
         f"  - **{a.name}** ({a.type}): {a.description}" for a in attribute_info
     )
@@ -140,9 +162,9 @@ You have ONE tool: **search_frames**.
 ### Tool parameters
 | param | type | description |
 |-------|------|-------------|
-| `query` | string | Short semantic description of the visual scene to find (e.g. "conference presentation hall"). Can be "" if only filters should be applied. |
+| `query` | string | Possibly rich semantic description of the visual scene to find, which carefully includes all the details asked in the query. Can be "" if only filters should be applied. |
 | `k` | int | Number of metadata results to return. Default 50. |
-| `num_images` | int | How many of the TOP results should include the actual image for you to see. Budget: ~{MAX_TOTAL_IMAGES} images total across the whole conversation. Set 0 when metadata alone suffices. |
+| `num_images` | int | How many of the TOP results should include the actual image for you to see. Max per call: {max_images_per_call}. Budget: ~{max_total_images} images total across the whole conversation. Set 0 when metadata alone suffices. |
 | `filters` | object or null | Optional metadata filter. See examples below. |
 | `metadata_to_retrieve` | list of strings | List of metadata fields to include in the results. |
 
@@ -220,45 +242,51 @@ find evidence in the data or declare that the output is not reliable. Do not inf
 
 
 # ── Agent builder ───────────────────────────────────────────────────────────
-def _build_agent(request: Request, max_iterations: int):
+def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
     """Return ``(compiled_graph, system_prompt)``."""
-    qa_cfg = _get_qa_config(request)
     debug = qa_cfg["debug"]
 
     # Resolve default embedding model
     default_model = qa_cfg["default_embedding_model"]
     available = getattr(request.app.state, "available_models", [])
     if default_model not in available:
-        if available:
-            default_model = available[0]
-        else:
-            raise HTTPException(status_code=500, detail="No embedding models available.")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Configured qa.default_model '{default_model}' is not available. "
+                f"Available models: {available}"
+            ),
+        )
 
     attribute_info = request.app.state.loader.get_attribute_info()
-    system_prompt = _build_system_prompt(attribute_info)
+    system_prompt = _build_system_prompt(
+        attribute_info,
+        max_total_images=qa_cfg["max_total_images"],
+        max_images_per_call=qa_cfg["max_images_per_call"],
+    )
 
     # ── Search tool (closure over *request* and *default_model*) ────────
     @tool
     def search_frames(
         query: str,
+        metadata_to_retrieve: List[str],
         k: int = 50,
         num_images: int = 0,
         filters: Optional[Dict[str, Any]] = None,
-        metadata_to_retrieve: Optional[List[str]] = [],
     ) -> str:
         """Search the lifelog for frames matching a semantic query.
 
         Args:
-            query: Short semantic description of the visual scene to find.
+            query: Possibly rich semantic description of the visual scene to find, which carefully includes all the details asked in the query.
+            metadata_to_retrieve: List of metadata fields to include in the results
             k: Number of metadata results to return.
             num_images: How many top results to include images for.
-            metadata_to_retrieve: List of metadata fields to include in the results
             filters: Optional metadata filter object (comparator/operator).
 
         Returns:
             JSON array of results with id, score, and metadata.
         """
-        num_img = min(max(num_images, 0), MAX_IMAGES_PER_CALL)
+        num_img = min(max(num_images, 0), qa_cfg["max_images_per_call"])
 
         node: Dict[str, Any] = {"item": query, "model": default_model, "k": k}
         if filters:
@@ -315,7 +343,10 @@ def _build_agent(request: Request, max_iterations: int):
             _debug_print_message("agent → LLM response", response)
         return {"messages": [response]}
 
-    async def custom_tool_node(state: AgentState) -> Dict[str, Any]:
+    async def custom_tool_node(
+        state: AgentState,
+        handle_tool_errors: bool = True,
+    ) -> Dict[str, Any]:
         """Execute tool calls, optionally fetch images, return ToolMessages."""
         last_msg = state["messages"][-1]
         total_images = state.get("total_images_sent", 0)
@@ -323,7 +354,14 @@ def _build_agent(request: Request, max_iterations: int):
         new_messages: list = []
 
         for tc in last_msg.tool_calls:
-            result_str = await search_frames.ainvoke(tc["args"])
+            try:
+                result_str = await search_frames.ainvoke(tc["args"])
+            except Exception as exc:
+                if not handle_tool_errors:
+                    raise
+                error_text = f"{type(exc).__name__}: {exc}"
+                new_messages.append(ToolMessage(content=error_text, tool_call_id=tc["id"]))
+                continue
 
             try:
                 results = json.loads(result_str)
@@ -338,7 +376,7 @@ def _build_agent(request: Request, max_iterations: int):
             if isinstance(results, list):
                 for r in results:
                     img_url = r.get("image_url")
-                    if img_url and total_images < MAX_TOTAL_IMAGES:
+                    if img_url and total_images < qa_cfg["max_total_images"]:
                         b64 = await _fetch_image_b64(img_url)
                         if b64:
                             image_parts.append({
@@ -428,11 +466,10 @@ def _build_agent(request: Request, max_iterations: int):
 @router.post("/qa", response_model=QAResponse)
 async def qa_endpoint(payload: QARequest, request: Request):
     """Answer a natural-language question about the lifelog using an agentic search chain."""
-    max_iter = payload.max_iterations or MAX_AGENT_ITERATIONS
-    agent, system_prompt = _build_agent(request, max_iter)
-
     qa_cfg = _get_qa_config(request)
     debug = qa_cfg["debug"]
+    max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
+    agent, system_prompt = _build_agent(request, qa_cfg, max_iter)
 
     initial_state: AgentState = {
         "messages": [

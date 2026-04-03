@@ -42,6 +42,6 @@ qa:
   temperature: 0
   max_iterations: 5
   max_total_images: 10
-  max_images_per_call: 2
-  default_model: "openclip_clip_vit_b_32"
+  max_images_per_call: 5
+  default_model: "qwen_embedding_8B"
   debug: true
