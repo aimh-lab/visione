@@ -7,18 +7,108 @@ from tqdm import tqdm
 from langchain_core.documents import Document 
 from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
+from pathlib import Path
 
 class LSCLoader:
-    def __init__(self, name, data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv):
+    def __init__(
+            self, 
+            name, 
+            data_server_url, 
+            metadata_file, 
+            collection_paths, 
+            old_new_file_mapping_csv, 
+            hour_video_msb_path, 
+            day_video_msb_path):
         self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
         self.collection_paths = collection_paths
+        self.hour_video_msb_path = hour_video_msb_path
+        self.day_video_msb_path = day_video_msb_path
         with open(old_new_file_mapping_csv, mode='r') as f:
-            reader = csv.DictReader(f)
-            self.old_to_new_id_map = {row['Original Filename']: row['New Filename'] for row in reader}
+            rows = list(csv.DictReader(f))
+            self.old_to_new_id_map = {row['Original Filename']: row['New Filename'] for row in rows}
+            self.new_to_old_id_map = {row['New Filename']: row['Original Filename'] for row in rows}
 
-    def generate_docs(self):
+    def _read_hour_video_msbs(self):
+        """
+        Reads tsv files contained in the self.hour_video_msb_path folder in a single pandas DataFrame.
+        The folder contains files named like "20191231_13.tsv", which contain 
+        "startframe", "starttime", "endframe", "endtime", "middleframe", "middletime" columns, 
+        where the times are in seconds (float) from the start of the hour.
+        It also creates a new column "image_name" by taking the csv base name (e.g., "20191231_13") and appending "-{id}",
+        then converting the obtained name using the new_to_old_id_map to get the original image name.
+        """
+        hour_video_msb_path = Path(self.hour_video_msb_path)
+        all_files = list(hour_video_msb_path.glob("*.tsv"))
+
+        df_list = []
+        for file_path in tqdm(all_files, desc="Reading hour video MSBs"):
+            hour_id = file_path.stem  # filename without .tsv
+            temp_df = pd.read_csv(
+                file_path, sep="\t", 
+                usecols=['startframe', 'starttime', 'endframe', 'endtime', 'middleframe', 'middletime', 'id'],
+                dtype={
+                    'startframe': int,
+                    'starttime': float,
+                    'endframe': int,
+                    'endtime': float,
+                    'middleframe': int,
+                    'middletime': float,
+                    "id": str
+                }
+            )
+
+            temp_df["image_name"] = temp_df.apply(
+                lambda row: self.new_to_old_id_map[f"{hour_id}-{row['id']}.jpg"],
+                axis=1,
+            )
+            df_list.append(temp_df)
+
+        final_df = pd.concat(df_list, ignore_index=True)
+        # remove id column as it's no longer needed
+        final_df.drop(columns=["id"], inplace=True)
+        # rename all columns to have a prefix "hour_msb_" to avoid confusion with metadata columns
+        final_df.rename(columns=lambda x: f"hour_msb_{x}" if x != "image_name" else x, inplace=True)
+
+        return final_df
+    
+    def read_day_video_msbs(self):
+        """
+        Reads tsv files contained in the self.day_video_msb_path folder in a single pandas DataFrame.
+        The folder contains files named like "20191231.tsv", which contain 
+        "startframe", "starttime", "endframe", "endtime", "middleframe", "middletime" columns, 
+        where the times are in seconds (float) from the start of the day.
+        """
+        day_video_msb_path = Path(self.day_video_msb_path)
+        all_files = list(day_video_msb_path.glob("*.tsv"))
+
+        df_list = []
+        for file_path in tqdm(all_files, desc="Reading day video MSBs"):
+            temp_df = pd.read_csv(
+                file_path, sep="\t", 
+                usecols=['startframe', 'starttime', 'endframe', 'endtime', 'middleframe', 'middletime', 'idLSC'],
+                dtype={
+                    'startframe': int,
+                    'starttime': float,
+                    'endframe': int,
+                    'endtime': float,
+                    'middleframe': int,
+                    'middletime': float,
+                    "idLSC": str
+                }
+            )
+            df_list.append(temp_df)
+
+        final_df = pd.concat(df_list, ignore_index=True)
+        # rename idLSC to image_name
+        final_df.rename(columns={"idLSC": "image_name"}, inplace=True)
+        # rename all columns to have a prefix "day_msb_" to avoid confusion with metadata
+        final_df.rename(columns=lambda x: f"day_msb_{x}" if x != "image_name" else x, inplace=True)
+
+        return final_df
+
+    def _generate_metadata(self):
         # 1. Read the CSV
         df = pd.read_csv(self.metadata_file, dtype={
             'minute_id': str, 
@@ -110,20 +200,30 @@ class LSCLoader:
         # 6. Handle NaNs: Replace NaN with Python's None 
         # (Crucial because Vector Stores often crash on NaN floats in metadata)
         df = df.where(pd.notnull(df), None)
+        return df
+    
+    def generate_docs(self):
+        day_video_msbs = self.read_day_video_msbs()
+        hour_video_msbs = self._read_hour_video_msbs()
+        metadata_records = self._generate_metadata()
 
-        # 7. Bulk Convert to Dictionary
+        # Merge metadata with MSB data on image_name, using left join to keep all metadata records
+        final_data = pd.merge(metadata_records, hour_video_msbs, on='image_name', how='left')
+        final_data = pd.merge(final_data, day_video_msbs, on='image_name', how='left')
+
+        # Bulk Convert to Dictionary
         # 'records' produces: [{'minute_id': '...', 'city': '...'}, {...}]
-        metadata_records = df.to_dict(orient='records')
+        final_records = final_data.to_dict(orient='records')
 
-        # 8. Generate Documents
+        # Generate Documents
         # List comprehensions are significantly faster than appending in a loop
         documents = [
             Document(page_content=record['image_name'], metadata=record)
-            for record in tqdm(metadata_records)
+            for record in tqdm(final_records)
         ]
         
         # Extract IDs directly
-        ids = [record['image_name'] for record in metadata_records]
+        ids = [record['image_name'] for record in final_records]
 
         return documents, ids
     
@@ -177,11 +277,16 @@ class LSCLoader:
     def get_temporal_groupby_column(self):
         # Return the name of the column to group by for temporal queries (e.g., hourly)
         return "hour_id"
+    
+    def get_video_time_reference_columns(self):
+        # Return the names of the columns that provide time references for video frames
+        return ["hour_msb_starttime", "day_msb_starttime"]
 
     def get_column_schema(self):
         # --- Define Metadata Schema ---
         # This matches the dictionary keys produced by LSCLoader
         metadata_columns = [
+            # Metadata columns
             Column(name="minute_id", data_type="text"),
             Column(name="hour_id", data_type="text"),
             Column(name="year", data_type="integer"),
@@ -205,6 +310,20 @@ class LSCLoader:
             Column(name="country", data_type="text"),
             Column(name="new_timezone", data_type="text"),
             Column(name="image_name", data_type="text"),
+            # Hour MSB columns
+            Column(name="hour_msb_startframe", data_type="integer"),
+            Column(name="hour_msb_starttime", data_type="float"),
+            Column(name="hour_msb_endframe", data_type="integer"),
+            Column(name="hour_msb_endtime", data_type="float"),
+            Column(name="hour_msb_middleframe", data_type="integer"),
+            Column(name="hour_msb_middletime", data_type="float"),
+            # Day MSB columns
+            Column(name="day_msb_startframe", data_type="integer"),
+            Column(name="day_msb_starttime", data_type="float"),
+            Column(name="day_msb_endframe", data_type="integer"),
+            Column(name="day_msb_endtime", data_type="float"),
+            Column(name="day_msb_middleframe", data_type="integer"),
+            Column(name="day_msb_middletime", data_type="float"),
         ]
         return metadata_columns
 
@@ -254,6 +373,8 @@ if __name__ == "__main__":
     data_server_url = "http://localhost:8000"
     metadata_file = "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
     old_new_file_mapping_csv = "/data1/lsc-collection/mapping.csv"
+    hour_video_msb_path = "/data1/lsc-collection/msb"
+    day_video_msb_path = "/data1/lsc-collection/full-day-msb"
 
     collection_paths = {
         "images": "selected-frames",
@@ -264,12 +385,12 @@ if __name__ == "__main__":
         "thumbnails": "thumbnails"
     }
     
-    lsc = LSCLoader(data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv)
+    lsc = LSCLoader("lsc", data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv, hour_video_msb_path, day_video_msb_path)
     url = lsc.get_collection_element_url_from_id("20190101_121948_000.jpg")
     print(url)
 
-    # docs, ids = lsc.generate_docs()
+    docs, ids = lsc.generate_docs()
     
-    # print(f"Generated {len(docs)} documents.")
-    # if len(docs) > 0:
-    #     print("Sample Doc Metadata:", docs[0].metadata)
+    print(f"Generated {len(docs)} documents.")
+    if len(docs) > 0:
+        print("Sample Doc Metadata:", docs[0].metadata)

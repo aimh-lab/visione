@@ -116,9 +116,11 @@ class AsyncPGVectorStore(VectorStore):
         self.table_name = table_name
         self.schema_name = schema_name
         self.content_column = content_column
-        if isinstance(embedding_column, list):
-            if len(embedding_column) == 0:
-                raise ValueError("embedding_column list must not be empty.")
+        # Handle embedding_column: can be None, empty list, single string, or list of strings
+        if embedding_column is None or (isinstance(embedding_column, list) and len(embedding_column) == 0):
+            self.embedding_columns = []
+            self.embedding_column = None
+        elif isinstance(embedding_column, list):
             self.embedding_columns = embedding_column
             self.embedding_column = embedding_column[0]
         else:
@@ -234,10 +236,9 @@ class AsyncPGVectorStore(VectorStore):
                 # mark tsv_column as empty because there is no TSV column in table
                 hybrid_search_config.tsv_column = ""
         normalized_embedding_columns = (
-            [embedding_column] if isinstance(embedding_column, str) else embedding_column
+            [embedding_column] if isinstance(embedding_column, str) else (embedding_column or [])
         )
-        if len(normalized_embedding_columns) == 0:
-            raise ValueError("At least one embedding column is required.")
+        # Allow empty embedding columns for metadata-only updates
 
         for emb_col in normalized_embedding_columns:
             if emb_col not in columns:
@@ -357,11 +358,14 @@ class AsyncPGVectorStore(VectorStore):
         if not metadatas:
             metadatas = [{} for _ in range(num_texts)]
 
+        # --- Check if embeddings are configured ---
+        has_embedding_columns = self.embedding_columns and len(self.embedding_columns) > 0
+
         # --- 1. Normalize & Initialize Embeddings ---
         # We want a List[Dict[str, Any]] structure.
         
-        if embeddings is None:
-            # Start empty, we will fill it below
+        if not has_embedding_columns or embeddings is None:
+            # Start empty, we will fill it below if needed
             normalized_embeddings = [{} for _ in range(num_texts)]
         elif len(embeddings) > 0 and isinstance(embeddings[0], list):
             # Legacy: List[float] provided -> Map to default column
@@ -372,8 +376,9 @@ class AsyncPGVectorStore(VectorStore):
 
         # --- 2. Generate Missing Embeddings (Batch Processing) ---
         # We do this OUTSIDE the DB loop for performance (batching).
+        # Skip if no embedding columns are configured.
         
-        if isinstance(self.embedding_service, dict):
+        if has_embedding_columns and isinstance(self.embedding_service, dict):
             for col_name, embedder in self.embedding_service.items():
                 
                 # A. Check if this column is already provided in the input
@@ -394,7 +399,7 @@ class AsyncPGVectorStore(VectorStore):
                     normalized_embeddings[i][col_name] = vector
 
         # Legacy fallback (if embedding_service is just a single object)
-        elif self.embedding_service and not normalized_embeddings[0].get(self.embedding_column):
+        elif has_embedding_columns and self.embedding_service and not normalized_embeddings[0].get(self.embedding_column):
              if not callable(getattr(self.embedding_service, "embed_query_inline", None)):
                  vecs = await self.embedding_service.aembed_documents(text_list)
                  for i, v in enumerate(vecs):
@@ -423,14 +428,15 @@ class AsyncPGVectorStore(VectorStore):
             # 3b. Handle Inline Embeddings (SQL-side generation)
             # We look at the service definition again to see if anything is still missing
             # which might be an inline embedder.
-            if isinstance(self.embedding_service, dict):
+            # Skip if no embedding columns are configured.
+            if has_embedding_columns and isinstance(self.embedding_service, dict):
                 for col_name, embedder in self.embedding_service.items():
                     if col_name not in embedding_dict:
                         inline_func = getattr(embedder, "embed_query_inline", None)
                         if callable(inline_func):
                             embedding_col_names_str += f', "{col_name}"'
                             embedding_placeholders_str += f", {inline_func(content)}"
-            else:
+            elif has_embedding_columns and self.embedding_service:
                 # Legacy single service inline check
                 inline_func = getattr(self.embedding_service, "embed_query_inline", None)
                 if self.embedding_column not in embedding_dict and callable(inline_func):
@@ -493,15 +499,17 @@ class AsyncPGVectorStore(VectorStore):
             # Update existing columns (both computed and inline)
             # We iterate the SERVICE config to ensure we cover everything, 
             # regardless of whether it came from python or SQL inline.
-            if isinstance(self.embedding_service, dict):
-                 for col_name in self.embedding_service.keys():
-                      # Only upsert columns that were actually part of the insert logic
-                      # (i.e., either in embedding_dict OR handled by inline check)
-                      # A simple way is to just blindly add them if they exist in schema,
-                      # but here we can assume if they are in service, they are in schema.
-                      upsert_stmt += f', "{col_name}" = EXCLUDED."{col_name}"'
-            else:
-                 upsert_stmt += f', "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
+            # Skip embedding columns if none are configured.
+            if has_embedding_columns:
+                if isinstance(self.embedding_service, dict):
+                    for col_name in self.embedding_service.keys():
+                        # Only upsert columns that were actually part of the insert logic
+                        # (i.e., either in embedding_dict OR handled by inline check)
+                        # A simple way is to just blindly add them if they exist in schema,
+                        # but here we can assume if they are in service, they are in schema.
+                        upsert_stmt += f', "{col_name}" = EXCLUDED."{col_name}"'
+                elif self.embedding_column:
+                    upsert_stmt += f', "{self.embedding_column}" = EXCLUDED."{self.embedding_column}"'
 
             if self.hybrid_search_config and self.hybrid_search_config.tsv_column:
                 upsert_stmt += f', "{self.hybrid_search_config.tsv_column}" = EXCLUDED."{self.hybrid_search_config.tsv_column}"'

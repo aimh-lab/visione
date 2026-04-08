@@ -8,6 +8,7 @@ class DiscoveryResponse(BaseModel):
     name: str
     metadata: List[str]
     groupby_attribute: str
+    video_time_reference_attribute: List[str]
     collection_items: List[str]
     available_models: List[str]
 
@@ -30,12 +31,14 @@ def discovery(request: Request):
         name = loader.name
         metadata = [column.name for column in loader.get_column_schema()]
         groupby_attribute = loader.get_temporal_groupby_column()
+        video_time_reference_attribute = loader.get_video_time_reference_columns()
         collection_items = list(loader.collection_paths.keys())
 
         return DiscoveryResponse(
             name = name,
             metadata=metadata,
             groupby_attribute=groupby_attribute,
+            video_time_reference_attribute=video_time_reference_attribute,
             collection_items=collection_items,
             available_models=request.app.state.available_models,
         )
