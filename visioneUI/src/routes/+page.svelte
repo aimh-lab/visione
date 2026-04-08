@@ -1829,6 +1829,7 @@ function handleViewSubmitted() {
           const { index: i, model: m, kind } = e.detail;
           const targetField = kind === 'image' ? 'imageModel' : 'textModel';
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, [targetField]: m } : t));
+          setTimeout(() => runSearchImmediate(), 0);
         }}
         onRunSearch={runSearch}
         onClearResults={() => {
@@ -1842,10 +1843,12 @@ function handleViewSubmitted() {
         onRemoveNegative={handleRemoveNegative}
         on:updateRFEnabled={(e) => {
           rfEnabled = !!e?.detail?.enabled;
+          setTimeout(() => runSearchImmediate(), 0);
         }}
         on:updateRFMethod={(e) => {
           const next = String(e?.detail?.method || '').trim().toLowerCase();
           rfMethod = next === 'rocchio' ? 'rocchio' : 'svm';
+          setTimeout(() => runSearchImmediate(), 0);
         }}
 
         onOpenFromRF={(idx) => {
