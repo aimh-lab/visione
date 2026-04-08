@@ -187,27 +187,31 @@ class PGEngineWithMultiVector(PGEngine):
     async def _aupdate_vectorstore_table(
         self,
         table_name: str,
-        vector_size: Union[int, Dict[str, int]],
+        vector_size: Optional[Union[int, Dict[str, int]]] = None,
         *,
         metadata_columns: Optional[list[Union[Column, ColumnDict]]] = None,
         schema_name: str = "public",
         embedding_column: str = "embedding",
     ) -> None:
         """
-        Add new vector column(s) to an existing table.
+        Add new vector and/or metadata column(s) to an existing table.
         
         Args:
-            vector_size: Single integer (uses embedding_column name) OR 
-                         Dictionary mapping column names to vector sizes.
+            vector_size: Optional single integer (uses embedding_column name) OR
+                         dictionary mapping column names to vector sizes.
         """
         # 1. Normalize Vector Columns Configuration
         vector_columns_map = {}
-        if isinstance(vector_size, int):
+        if vector_size is None:
+            vector_columns_map = {}
+        elif isinstance(vector_size, int):
             vector_columns_map[embedding_column] = vector_size
         elif isinstance(vector_size, dict):
             vector_columns_map = vector_size
         else:
-            raise ValueError("vector_size must be an integer or a dictionary of {column_name: size}")
+            raise ValueError(
+                "vector_size must be None, an integer, or a dictionary of {column_name: size}"
+            )
 
         # Escape Table/Schema Identifiers
         safe_schema = self._escape_postgres_identifier(schema_name)
@@ -260,20 +264,21 @@ class PGEngineWithMultiVector(PGEngine):
     async def aupdate_vectorstore_table(
         self,
         table_name: str,
-        vector_size: Union[int, Dict[str, int]],
+        vector_size: Optional[Union[int, Dict[str, int]]] = None,
         metadata_columns: Optional[list[Union[Column, ColumnDict]]] = None,
         *,
         schema_name: str = "public",
         embedding_column: str = "embedding",
     ) -> None:
         """
-        Add new vector column(s) to an existing table.
+        Add new vector and/or metadata column(s) to an existing table.
 
         Args:
             table_name (str): The database table name.
-            vector_size (Union[int, Dict[str, int]]): 
+            vector_size (Optional[Union[int, Dict[str, int]]]):
                 - If int: Adds a single column named `embedding_column`.
                 - If dict: Adds multiple columns based on keys/values.
+                - If None: no vector columns are added (metadata-only update).
             schema_name (str): The schema name. Default: "public".
             embedding_column (str): Name used only if vector_size is an int. Default: "embedding".
         """

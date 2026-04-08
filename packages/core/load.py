@@ -26,8 +26,9 @@ async def run_pipeline(cfg: DictConfig):
 
     # --- 2. Setup Embeddings ---
     # Convert OmegaConf Dict to standard Python Dict for iteration
-    models_config = list(cfg.embedding.models)
-    model_names = [m['name'] for m in cfg.embedding.models]
+    models = cfg.embedding.models if cfg.embedding.models else []
+    models_config = list(models)
+    model_names = [m['name'] for m in models]
     
     embedders = {
         name: RemoteEmbeddings(
@@ -85,33 +86,38 @@ async def run_pipeline(cfg: DictConfig):
         f"@{cfg.database.host}/{cfg.database.dbname}"
     )
     
-    try:
-        conn = await asyncpg.connect(raw_conn_string)
-        
-        # Build query to check if ID exists AND all specific vector columns are not null
-        query = f'SELECT id FROM "{table_name}" WHERE id = ANY($1)'
-        
-        # Note: Assuming your custom engine uses 'id' or 'langchain_id' as primary key.
-        # Standard LangChain PG uses 'id'. Adjust 'id' below if your custom engine uses 'langchain_id'.
-        # Based on your previous snippet, it seemed to be 'langchain_id'.
-        pk_column = "langchain_id" # or "id" depending on your implementation
-        
-        query = f'SELECT {pk_column} FROM "{table_name}" WHERE {pk_column} = ANY($1)'
-        
-        # Add checks for specific vector columns to ensure we only skip if THESE embeddings exist
-        for model in model_names:
-           query += f' AND "{model}" IS NOT NULL'
-           
-        results = await conn.fetch(query, all_hashed_ids)
-        existing_ids_set = {str(row[pk_column]).replace('-', '') for row in results}
-        print(f"Found {len(existing_ids_set)} existing documents in DB.")
-    except Exception as e:
-        print(f"Warning during ID check: {e}")
-        # If check fails (e.g. table empty), assume 0 existing
-        existing_ids_set = set()
-    finally:
-        if 'conn' in locals() and conn:
-            await conn.close()
+    if len(models) > 0:
+        print("Checking for existing documents in DB...")
+        try:
+            conn = await asyncpg.connect(raw_conn_string)
+            
+            # Build query to check if ID exists AND all specific vector columns are not null
+            query = f'SELECT id FROM "{table_name}" WHERE id = ANY($1)'
+            
+            # Note: Assuming your custom engine uses 'id' or 'langchain_id' as primary key.
+            # Standard LangChain PG uses 'id'. Adjust 'id' below if your custom engine uses 'langchain_id'.
+            # Based on your previous snippet, it seemed to be 'langchain_id'.
+            pk_column = "langchain_id" # or "id" depending on your implementation
+            
+            query = f'SELECT {pk_column} FROM "{table_name}" WHERE {pk_column} = ANY($1)'
+            
+            # Add checks for specific vector columns to ensure we only skip if THESE embeddings exist
+            for model in model_names:
+                query += f' AND "{model}" IS NOT NULL'
+            
+            results = await conn.fetch(query, all_hashed_ids)
+            existing_ids_set = {str(row[pk_column]).replace('-', '') for row in results}
+            print(f"Found {len(existing_ids_set)} existing documents in DB.")
+        except Exception as e:
+            print(f"Warning during ID check: {e}")
+            # If check fails (e.g. table empty), assume 0 existing
+            existing_ids_set = set()
+        finally:
+            if 'conn' in locals() and conn:
+                await conn.close()
+    else:
+        print("No embedding models configured, skipping existing document check.")
+        existing_ids_set = set()  # Treat all as new if no models configured
 
     # Filter documents
     # Zip docs and hashed_ids to filter together
