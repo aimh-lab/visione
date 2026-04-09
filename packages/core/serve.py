@@ -14,6 +14,7 @@ from endpoints.field import router as field_router
 from endpoints.llm_query import router as llm_query_router
 from endpoints.qa import router as qa_router
 from endpoints.search import router as search_router
+from endpoints.translate import router as translate_router
 from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
 from langchain_postgres.v2.indexes import QueryOptions
@@ -122,6 +123,7 @@ app.include_router(qa_router)
 app.include_router(element_url_router)
 app.include_router(field_router)
 app.include_router(discovery_router)
+app.include_router(translate_router)
 
 @hydra.main(version_base=None, config_path="configs", config_name="serve")
 def main(cfg: DictConfig):

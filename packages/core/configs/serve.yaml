@@ -12,3 +12,7 @@ index_query_options:
   iterative_scan: "relaxed_order"
   max_scan_tuples: 150000
   random_page_cost: 0.2
+
+translate:
+  model: "ministral-3:8b"
+  base_url: ???
