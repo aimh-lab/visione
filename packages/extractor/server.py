@@ -63,15 +63,26 @@ class ModelRouter:
                 data = request
             
             if "image" in data and "text" in data:
-                return {
-                    "error": "Non possono essere presenti sia image che text nella richiesta"
-                }
+                if "image+text" not in self.models_config[model_endpoint]["modalities"]:
+                    return {
+                        "error": "Non possono essere presenti sia image che text nella richiesta"
+                    }
+                model_handle = self.model_handles[model_endpoint]
+                result = await model_handle.extract_image_text.remote(data)
             
             elif "image" in data:
+                if "image" not in self.models_config[model_endpoint]["modalities"]:
+                    return {
+                        "error": f"Il modello '{model_endpoint}' non supporta l'estrazione da immagini"
+                    }
                 model_handle = self.model_handles[model_endpoint]
                 result = await model_handle.extract_image.remote(data)
 
             elif "text" in data:
+                if "text" not in self.models_config[model_endpoint]["modalities"]:
+                    return {
+                        "error": f"Il modello '{model_endpoint}' non supporta l'estrazione da testo"
+                    }
                 model_handle = self.model_handles[model_endpoint]
                 result = await model_handle.extract_text.remote(data)
 
@@ -99,9 +110,9 @@ class ModelRouter:
             # Informazioni sui modelli configurati
             model_status = {}
             
-            for endpoint_name, model_name in self.models_config.items():
+            for endpoint_name, model_infos in self.models_config.items():
                 model_status[endpoint_name] = {
-                    "model_name": model_name,
+                    "model_infos": model_infos,
                     "endpoint": f"/{endpoint_name}",
                     "autoscaling": "min_replicas=0 (lazy loading enabled)"
                 }
@@ -119,13 +130,13 @@ class ModelRouter:
 
 # Configurazione dei modelli disponibili
 MODELS_CONFIG = {
-    "clip_base": "openai/clip-vit-base-patch32",
-    "clip_large": "openai/clip-vit-large-patch14",
-    "openclip_clip_vit_b_32": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
-    "openclip_clip_vit_l_14": "hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
-    "qwen_embedding_8B": "Qwen/Qwen3-VL-Embedding-8B",
-    "qwen_embedding_2B": "Qwen/Qwen3-VL-Embedding-2B",
-    "dinov2_base": "facebook/dinov2-base"
+    "clip_base": {"name": "openai/clip-vit-base-patch32", "modalities": ["image", "text"]},
+    "clip_large": {"name": "openai/clip-vit-large-patch14", "modalities": ["image", "text"]},
+    "openclip_clip_vit_b_32": {"name": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K", "modalities": ["image", "text"]},
+    "openclip_clip_vit_l_14": {"name": "hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K", "modalities": ["image", "text"]},
+    "qwen_embedding_8B": {"name": "Qwen/Qwen3-VL-Embedding-8B", "modalities": ["image", "text", "image+text"]},
+    "qwen_embedding_2B": {"name": "Qwen/Qwen3-VL-Embedding-2B", "modalities": ["image", "text", "image+text"]},
+    "dinov2_base": {"name": "facebook/dinov2-base", "modalities": ["image"]}
     # "base16": "openai/clip-vit-base-patch16",
     # "large14": "openai/clip-vit-large-patch14-336"
 }
@@ -154,7 +165,8 @@ if __name__ == "__main__":
     model_handles = {}
         
     # Crea handle per ogni modello
-    for endpoint_name, model_name in selected_models.items():
+    for endpoint_name, model_info in selected_models.items():
+        model_name = model_info["name"]
         if "openclip" in endpoint_name.lower():
             model_handles[endpoint_name] = OpenCLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         elif "clip" in endpoint_name.lower():

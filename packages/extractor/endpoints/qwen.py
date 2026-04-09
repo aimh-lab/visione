@@ -373,7 +373,7 @@ class QwenFeatureExtractor:
         load_time = time.time() - self.startup_time
         logger.info(f"✅ READY: Servizio Qwen3-VL attivo ({load_time:.2f}s)")
 
-    @serve.batch(max_batch_size=32, batch_wait_timeout_s=0.1)
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
     async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Endpoint per immagini.
@@ -465,6 +465,53 @@ class QwenFeatureExtractor:
                     results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
 
         # Fill errori residui
+        for i in range(batch_size):
+            if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
+            
+        return results
+    
+    @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    async def extract_image_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Endpoint per input multimodali (immagine + testo).
+        Args: requests = [{"image": "url_or_base64", "text": "query string"}, ...]
+        """
+        batch_size = len(requests)
+        logger.info(f"🔗 Processing image+text batch: {batch_size}")
+        
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            if "image" not in req or "text" not in req:
+                results[i] = {"success": False, "error": "Missing 'image' or 'text' field"}
+                continue
+            
+            try:
+                source = decode_image_data(req["image"])
+                inputs.append({"image": source, "text": req["text"]})
+                indices_map.append(i)
+            except Exception as e:
+                results[i] = {"success": False, "error": f"Preprocessing error: {str(e)}"}
+
+        if inputs:
+            try:
+                embeddings = self.embedder.process(inputs)
+                
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name
+                    }
+            except Exception as e:
+                logger.error(f"Inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
+
         for i in range(batch_size):
             if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
             
