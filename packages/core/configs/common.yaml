@@ -27,21 +27,3 @@ embedding:
 
 data:
   server_url: "http://visione-dev.isti.cnr.it:3333"
-
-llm_query:
-  model: "ministral-3:8b" #"qwen3.5:9b"
-  base_url: ???
-  temperature: 0
-  default_model: "openclip_clip_vit_b_32"
-  leaf_k: 100000
-  final_k: 1000
-
-qa:
-  model: "ministral-3:8b"
-  base_url: ???
-  temperature: 0
-  max_iterations: 5
-  max_total_images: 10
-  max_images_per_call: 5
-  default_model: "qwen_embedding_8B"
-  debug: true

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ class DiscoveryResponse(BaseModel):
     groupby_attribute: str
     video_time_reference_attribute: List[str]
     collection_items: List[str]
-    available_models: List[str]
+    available_models: List[Dict]
 
 
 router = APIRouter()
