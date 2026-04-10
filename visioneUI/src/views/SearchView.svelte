@@ -9,6 +9,7 @@
 
   type QueryTextarea = { value: string; enabled: boolean };
   type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
+  type AvailableModel = string | { name?: string; modalities?: string[] };
 
   type DispatchEvents = {
     loadCachedResults: { cachedResults: unknown };
@@ -33,7 +34,7 @@
   export let onResizeLeftSidebar = (_width: number) => {};
   export let onResizeRightSidebar = (_width: number) => {};
   export let textareas: QueryTextarea[] = [];
-  export let availableModels: string[] = [];
+  export let availableModels: AvailableModel[] = [];
   export let textareaImages: Record<number, unknown[]> = {};
 
   export let searchLoading = false;
@@ -53,6 +54,7 @@
   export let justifyResultRows = false;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
   export let submittedAnswers: Array<Record<string, unknown>> = [];
   export let submitTextAnswer = (_text: string) => {};
 
@@ -321,6 +323,7 @@
             {justifyResultRows}
             {showSubmitUI}
             {challengeType}
+            {runtimeProfile}
             {rfPositive}
             {rfNegative}
             registerContainer={registerContainer}

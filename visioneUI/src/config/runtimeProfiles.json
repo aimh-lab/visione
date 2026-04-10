@@ -1,0 +1,36 @@
+{
+  "defaults": {
+    "timeBadge": {
+      "source": "hour_msb_middletime",
+      "format": "mm:ss",
+      "epochUnit": "auto",
+      "timezone": "local"
+    },
+    "videoPlayer": {
+      "startSource": "hour_msb_middletime"
+    },
+    "fieldAliases": {
+      "epoch": "epoch",
+      "middleTime": "hour_msb_middletime"
+    }
+  },
+  "collections": {
+    "lsc": {
+      "timeBadge": {
+        "source": "epoch",
+        "format": "HH:mm",
+        "epochUnit": "seconds",
+        "timezone": "local"
+      },
+      "videoPlayer": {
+        "startSource": "hour_msb_middletime"
+      }
+    }
+  },
+  "competitions": {
+    "default": {},
+    "KIS": {},
+    "AVS": {},
+    "Q&A": {}
+  }
+}

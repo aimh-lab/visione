@@ -14,6 +14,7 @@
   export let challengeType = "KIS";
   export let rfPositive = [];
   export let rfNegative = [];
+  export let runtimeProfile = {};
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -33,6 +34,7 @@
   {challengeType}
   {rfPositive}
   {rfNegative}
+  {runtimeProfile}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

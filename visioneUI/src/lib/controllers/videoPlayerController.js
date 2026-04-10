@@ -25,6 +25,38 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
     return raw.split('-')[0] || '';
   };
 
+  const toFiniteNumber = (value) => {
+    if (value == null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const pickMiddleTimeSeconds = (matched) => {
+    if (!matched || typeof matched !== 'object') return null;
+    const metadata = matched?.raw?.metadata && typeof matched.raw.metadata === 'object'
+      ? matched.raw.metadata
+      : {};
+
+    const middle = toFiniteNumber(
+      matched?.hour_msb_middletime
+      ?? matched?.raw?.hour_msb_middletime
+      ?? metadata?.hour_msb_middletime
+    );
+    if (middle != null && middle >= 0) return middle;
+
+    const offset = toFiniteNumber(
+      matched?.middle_timestamp
+      ?? matched?.middleTimestamp
+      ?? matched?.middle_time
+      ?? matched?.frame_time
+      ?? matched?.frameTime
+      ?? matched?.raw?.video_offset_seconds
+      ?? metadata?.video_offset_seconds
+    );
+    return offset != null && offset >= 0 ? offset : null;
+  };
+
 
   /**
    * Collect imgIds from search + similarity results that belong to `videoId`.
@@ -71,6 +103,37 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
         videoId: vid,
         highlightedKeyframes: highlighted
       };
+    }
+
+    const fromMatchedMiddle = pickMiddleTimeSeconds(matched);
+    if (Number.isFinite(fromMatchedMiddle) && fromMatchedMiddle >= 0) {
+      return {
+        url: resolvedVideoUrl,
+        startTime: Math.max(0, fromMatchedMiddle),
+        title: `${vid} @ ${fromMatchedMiddle.toFixed(2)}s`,
+        videoId: vid,
+        highlightedKeyframes: highlighted
+      };
+    }
+
+    if (imgId) {
+      try {
+        const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
+        const middle = toFiniteNumber(metadata?.hour_msb_middletime);
+        const offset = toFiniteNumber(metadata?.video_offset_seconds);
+        const resolved = middle != null && middle >= 0 ? middle : (offset != null && offset >= 0 ? offset : null);
+        if (resolved != null) {
+          return {
+            url: resolvedVideoUrl,
+            startTime: Math.max(0, resolved),
+            title: `${vid} @ ${resolved.toFixed(2)}s`,
+            videoId: vid,
+            highlightedKeyframes: highlighted
+          };
+        }
+      } catch {
+        // Ignore and continue with fallback chain.
+      }
     }
 
     if (hasResultsetTimestamp) {

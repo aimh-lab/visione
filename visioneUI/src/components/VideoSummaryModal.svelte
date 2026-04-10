@@ -23,6 +23,7 @@
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
@@ -323,8 +324,9 @@
               {videoBadgeOrientation}
               {showSubmitUI}
               {challengeType}
+              {runtimeProfile}
               {justifyResultRows}
-              virtualizeRows={false}
+              virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
               registerContainer={registerGridContainer}
               on:open={(e: any) => onOpenFrame(e.detail.frame)}

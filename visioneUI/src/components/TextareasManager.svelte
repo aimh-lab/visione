@@ -73,8 +73,20 @@
     closeSimilarityStep: { index: number };
   };
 
+  type AvailableModelInput =
+    | string
+    | {
+        name?: string;
+        modalities?: string[];
+      };
+
+  type ModelDescriptor = {
+    name: string;
+    modalities: string[];
+  };
+
   export let textareas: QueryTextarea[] = [];
-  export let availableModels: string[] = [];
+  export let availableModels: AvailableModelInput[] = [];
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
 
@@ -103,7 +115,10 @@
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
   const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
-  let modelOptions: string[] = [];
+  let normalizedModelEntries: ModelDescriptor[] = [];
+  let textModelOptions: string[] = [];
+  let imageModelOptions: string[] = [];
+  let multiModalModelOptions: string[] = [];
 
   function getTextModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
@@ -115,13 +130,56 @@
     return String(textarea?.imageModel || legacyModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
   }
 
-  $: modelOptions = Array.from(
-    new Set([
-      DEFAULT_TEXT_MODEL,
-      DEFAULT_IMAGE_MODEL,
-      ...availableModels.map((m) => String(m || '').trim()).filter(Boolean)
-    ])
-  );
+  function normalizeAvailableModelEntry(input: AvailableModelInput): ModelDescriptor | null {
+    if (typeof input === 'string') {
+      const name = input.trim();
+      if (!name) return null;
+      // Backward compatibility: legacy string entries were usable for both text/image.
+      return { name, modalities: ['text', 'image'] };
+    }
+
+    if (!input || typeof input !== 'object') return null;
+
+    const name = String(input?.name || '').trim();
+    if (!name) return null;
+
+    const modalities = Array.isArray(input?.modalities)
+      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    return {
+      name,
+      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
+    };
+  }
+
+  function supportsTextModel(entry: ModelDescriptor) {
+    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
+  }
+
+  function supportsImageModel(entry: ModelDescriptor) {
+    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
+  }
+
+  $: normalizedModelEntries = (Array.isArray(availableModels) ? availableModels : [])
+    .map((m) => normalizeAvailableModelEntry(m))
+    .filter((m): m is ModelDescriptor => !!m);
+
+  $: textModelOptions = Array.from(new Set([
+    DEFAULT_TEXT_MODEL,
+    ...normalizedModelEntries.filter(supportsTextModel).map((m) => m.name)
+  ]));
+
+  $: imageModelOptions = Array.from(new Set([
+    DEFAULT_IMAGE_MODEL,
+    ...normalizedModelEntries.filter(supportsImageModel).map((m) => m.name)
+  ]));
+
+  $: multiModalModelOptions = Array.from(new Set(
+    normalizedModelEntries
+      .filter((m) => m.modalities.includes('image+text'))
+      .map((m) => m.name)
+  ));
 
   function hexToRgb(hex: string) {
     const clean = hex.replace("#", "");
@@ -1023,7 +1081,7 @@
                         </div>
                       </div>
 
-                      {#if textarea.enabled && modelOptions.length > 0}
+                      {#if textarea.enabled && imageModelOptions.length > 0}
                         <div class="w-[9.5rem] shrink-0 pt-0.5">
                           <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
                           <select
@@ -1035,7 +1093,7 @@
                               dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
                             }}
                           >
-                            {#each modelOptions as m}
+                            {#each imageModelOptions as m}
                               <option value={m}>{m}</option>
                             {/each}
                           </select>
@@ -1078,7 +1136,7 @@
                       </div>
                     {/each}
 
-                    {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && modelOptions.length > 0}
+                    {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && imageModelOptions.length > 0}
                       <div class="w-[9.5rem] shrink-0 pt-0.5">
                         <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
                         <select
@@ -1090,7 +1148,7 @@
                             dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
                           }}
                         >
-                          {#each modelOptions as m}
+                          {#each imageModelOptions as m}
                             <option value={m}>{m}</option>
                           {/each}
                         </select>
@@ -1293,7 +1351,7 @@
 
             {#if textarea.enabled}
               <div class="ml-2 flex items-center gap-1">
-                {#if modelOptions.length > 0}
+                {#if textModelOptions.length > 0}
                   <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">TXT</span>
                   <select
                     class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
@@ -1304,7 +1362,7 @@
                       dispatch('updateModel', { index: i, model: target.value, kind: 'text' });
                     }}
                   >
-                    {#each modelOptions as m}
+                    {#each textModelOptions as m}
                       <option value={m}>{m}</option>
                     {/each}
                   </select>

@@ -29,6 +29,7 @@
   import { createDresController } from '$lib/controllers/dresController.js';
   import { createScrollManager } from '$lib/controllers/scrollManager.js';
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
+  import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
@@ -210,6 +211,8 @@
   let pinnedVideoSummaries = [];
   let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
   let activePinnedSummaryKey = '';
+  let activeCollectionName = 'default';
+  let runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
 
   // Back/forward
   let isRestoringFromHistory = false;
@@ -233,6 +236,7 @@
   $: ({ isOpen: isModalOpen, selected: selectedImage } = $searchModal);
   $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
+  $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
 
   // ---------------------------
   // CSS vars (solo da uiStore)
@@ -831,6 +835,10 @@
         if (Array.isArray(data?.available_models)) {
           availableModels = data.available_models;
         }
+        if (typeof data?.name === 'string' && data.name.trim()) {
+          activeCollectionName = data.name.trim().toLowerCase();
+        }
+        configureSearchMetadataFromDiscovery(data);
       }).catch(() => {});
 
       const urlState = deserializeFromURL();
@@ -1000,6 +1008,23 @@
   function handleZoomOut() {
     const { contentScale } = get(uiStore);
     uiStore.actions.setContentScale(Math.max(0.5, +(contentScale - 0.1).toFixed(2)));
+  }
+
+  function configureSearchMetadataFromDiscovery(data) {
+    const available = Array.isArray(data?.metadata)
+      ? data.metadata.map((v) => String(v || '').trim()).filter(Boolean)
+      : [];
+    const availableSet = new Set(available);
+
+    const groupingField = String(data?.groupby_attribute || 'hour_id').trim() || 'hour_id';
+    const requested = [groupingField];
+
+    const optionalFields = ['epoch', 'video_offset_seconds', 'hour_msb_middletime'];
+    for (const field of optionalFields) {
+      if (availableSet.has(field)) requested.push(field);
+    }
+
+    visioneAPI.defaultMetadataToRetrieve = Array.from(new Set(requested));
   }
 
   function applySettings(e) {
@@ -1691,6 +1716,7 @@ function handleViewSubmitted() {
   {activePinnedSummaryKey}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  {runtimeProfile}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -1793,6 +1819,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        {runtimeProfile}
         submitTextAnswer={submitTextAnswer}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
@@ -1903,6 +1930,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        {runtimeProfile}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -1937,6 +1965,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        {runtimeProfile}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
