@@ -231,7 +231,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
     actual_query = query_dict.get("query")
     actual_query = convert_filters_to_pg(actual_query)
     requested_models = collect_models(payload.query)
-    unknown_models = [m for m in requested_models if m not in request.app.state.available_models]
+    unknown_models = [m for m in requested_models if m not in [m["name"] for m in request.app.state.available_models]]
     if unknown_models:
         raise HTTPException(status_code=400, detail=f"Unknown model(s): {sorted(set(unknown_models))}")
 

@@ -1,6 +1,7 @@
 import asyncio
 import urllib
 import urllib.parse
+import re
 import requests
 import aiohttp
 from typing import List, Optional, Union
@@ -89,7 +90,7 @@ class RemoteEmbeddings(Embeddings):
         # Available models mapping
         self.available_models = self._get_available_models()
         
-        if model not in self.available_models:
+        if model not in [m['name'] for m in self.available_models]:
             raise ValueError(
                 f"Model '{model}' not available. "
                 # f"Available models: {list(self.available_models.keys())}"
@@ -101,7 +102,7 @@ class RemoteEmbeddings(Embeddings):
             response = requests.get(f"{self.embedding_server_url}/status", timeout=10)
             response.raise_for_status()
             data = response.json()
-            models = list(data['models'].keys())
+            models = [{"name": k, "modalities": v['model_infos']['modalities']} for k, v in data['models'].items()]
             return models
         except requests.RequestException as e:
             print(f"Error while loading available models: {str(e)}")
@@ -118,20 +119,23 @@ class RemoteEmbeddings(Embeddings):
         return image_data
     
     def _extract_features_sync(self, image_data: str = None, text_data: str = None) -> List[float]:
-        assert (image_data is not None) != (text_data is not None), "Provide either image_data or text_data"
         """Extract features from a single image synchronously."""
         try:
+            payload = {}
             if image_data is not None:
                 validated_input = self._validate_image_input(image_data)
                 if image_data.startswith("data:image"):
                     # it's a base64 image
-                    payload = {"image": validated_input}
+                    payload.update({"image": validated_input})
                 else:
-                    # it's a URL, construct it
-                    relative_path = self.data_loader.get_relative_path_from_id(validated_input)
-                    payload = {"image": urllib.urljoint(self.data_server_url, relative_path)}
-            else:
-                payload = {"text": text_data}
+                    # should be a URL, construct it
+                    try:
+                        url = self.data_loader.get_collection_element_url_from_id(validated_input)
+                    except Exception as e:
+                        url = validated_input  # fallback to original input if URL construction fails
+                    payload.update({"image": url})
+            if text_data is not None:
+                payload.update({"text": text_data})
 
             response = requests.post(
                 self.endpoint_url,
@@ -188,26 +192,34 @@ class RemoteEmbeddings(Embeddings):
                 
         return embeddings
     
-    def embed_query(self, text: str = None) -> List[float]:
+    def embed_query(self, input_data: str = None) -> List[float]:
         """Embed a single image (URL or base64).
         
         Args:
-            text: Image data (URL or base64 string) if text is starting with "image:" or a sentence if text is starting with "text:"
+            input_data: Image data (URL or base64 string) if input_data is starting with "image:" or a sentence if input_data is starting with "text:"
             
         Returns:
             Embedding vector as list of floats
         """
-        if text is None or not text.strip():
-            raise ValueError("Input text cannot be empty")
+        if input_data is None or not input_data.strip():
+            raise ValueError("Input data cannot be empty")
         
-        if text.startswith("image:"):
-            image_data = text[len("image:"):].strip()
+        if "image:" in input_data and "text:" in input_data:
+            image_match = re.search(r'image:\s*(.*?)(?=;text:|$)', input_data)
+            text_match = re.search(r'text:\s*(.*?)(?=;image:|$)', input_data)
+            image_data = image_match.group(1).strip() if image_match else None
+            text_data = text_match.group(1).strip() if text_match else None
+            # print(f"Image data: {image_data}")  # Log start of image data for debugging
+            # print(f"Text data: {text_data}")    # Log start of text data for debugging
+            return self._extract_features_sync(image_data=image_data, text_data=text_data)
+        if input_data.startswith("image:"):
+            image_data = input_data[len("image:"):].strip()
             return self._extract_features_sync(image_data=image_data)
-        elif text.startswith("text:"):
-            text_data = text[len("text:"):].strip()
+        elif input_data.startswith("text:"):
+            text_data = input_data[len("text:"):].strip()
             return self._extract_features_sync(text_data=text_data)
         else:
-            return self._extract_features_sync(text_data=text)
+            return self._extract_features_sync(text_data=input_data)
         
     async def aembed_documents(self, images: List[str]) -> List[List[float]]:
         """Embed multiple images asynchronously (URLs or base64).
@@ -246,48 +258,54 @@ class RemoteEmbeddings(Embeddings):
         
         return embeddings
 
-    async def aembed_query(self, text: str = None) -> List[float]:
+    async def aembed_query(self, input_data: str = None) -> List[float]:
         """Embed a single image or text asynchronously.
         
         Args:
-            text: Image data (URL or base64 string) if text starts with "image:" 
-                or a sentence if text starts with "text:", or plain text
+            input_data: Image data (URL or base64 string) if input_data starts with "image:" 
+                or a sentence if input_data starts with "text:", or plain text
             
         Returns:
             Embedding vector as list of floats
         """
-        if text is None or not text.strip():
-            raise ValueError("Input text cannot be empty")
+        if input_data is None or not input_data.strip():
+            raise ValueError("Input data cannot be empty")
         
-        if text.startswith("image:"):
-            image_data = text[len("image:"):].strip()
+        if "image:" in input_data and "text:" in input_data:
+            image_match = re.search(r'image:\s*(.*?)(?=;text:|$)', input_data)
+            text_match = re.search(r'text:\s*(.*?)(?=;image:|$)', input_data)
+            image_data = image_match.group(1).strip() if image_match else None
+            text_data = text_match.group(1).strip() if text_match else None
+            return await self._extract_features_async(image_data=image_data, text_data=text_data)
+        if input_data.startswith("image:"):
+            image_data = input_data[len("image:"):].strip()
             return await self._extract_features_async(image_data=image_data)
-        elif text.startswith("text:"):
-            text_data = text[len("text:"):].strip()
+        elif input_data.startswith("text:"):
+            text_data = input_data[len("text:"):].strip()
             return await self._extract_features_async(text_data=text_data)
         else:
             # Assume it's plain text
-            return await self._extract_features_async(text_data=text)
+            return await self._extract_features_async(text_data=input_data)
 
     async def _extract_features_async(self, image_data: str = None, text_data: str = None) -> List[float]:
         """Extract features from a single image or text asynchronously."""
-        assert (image_data is not None) != (text_data is not None), "Provide either image_data or text_data"
         
         try:
+            payload = {}
             if image_data is not None:
                 validated_input = self._validate_image_input(image_data)
                 if image_data.startswith("data:image"):
                     # it's a base64 image
-                    payload = {"image": validated_input}
+                    payload.update({"image": validated_input})
                 else:
                     # should be a URL, construct it
                     try:
                         url = self.data_loader.get_collection_element_url_from_id(validated_input)
                     except Exception as e:
                         url = validated_input  # fallback to original input if URL construction fails
-                    payload = {"image": url}
-            else:
-                payload = {"text": text_data}
+                    payload.update({"image": url})
+            if text_data is not None:
+                payload.update({"text": text_data})
                 
             timeout = aiohttp.ClientTimeout(total=self.timeout)
             
@@ -326,13 +344,38 @@ class RemoteEmbeddings(Embeddings):
             return response.json()
         except Exception as e:
             return {"error": f"Failed to get server status: {str(e)}"}
+        
+
+if __name__ == "__main__":
+    # Example usage
+    embed = RemoteEmbeddings(
+        embedding_server_url="http://localhost:3457",
+        data_server_url="",
+        model="dinov2_base"
+    )
     
-    @property 
-    def model_info(self) -> dict:
-        """Get information about the current model."""
-        return {
-            "endpoint": self.model,
-            "model_name": self.available_models[self.model],
-            "server_url": self.embedding_server_url,
-            "endpoint_url": self.endpoint_url
-        }
+    print("Testing sync embedding...")
+    # Test embedding a single image URL
+    text = "A person sitting on a windowsill."
+    image = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"
+    embedding = embed.embed_query(f"image:{image};text:{text}")
+    print(f"Embedding: {embedding[:5]}... (dimension: {len(embedding)})")
+    
+    # Test embedding multiple images
+    image_urls = [
+        "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
+        "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"
+    ]
+    embeddings = embed.embed_documents([f"{url}" for url in image_urls])
+    print(f"Embeddings: {[e[:5] for e in embeddings]}... (dimension: {len(embeddings[0]) if embeddings else 0})")
+
+    # Test async embedding
+    print("Testing async embedding...")
+    async def test_async_embedding():
+        embedding = await embed.aembed_query(text)
+        print(f"Async Embedding: {embedding[:5]}... (dimension: {len(embedding)})")
+        
+        embeddings = await embed.aembed_documents([f"{url}" for url in image_urls])
+        print(f"Async Embeddings: {[e[:5] for e in embeddings]}... (dimension: {len(embeddings[0]) if embeddings else 0})")
+
+    asyncio.run(test_async_embedding())

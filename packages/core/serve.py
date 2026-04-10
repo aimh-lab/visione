@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
     embedders = {}
     model_names = []
     model_column_map = {}
-    available_model_names = set()
+    available_model_infos = []
     for model_conf in cfg.embedding.models:
         mrl_dim = model_conf.get("mrl_dim")
         if mrl_dim is None:
@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
         model_name = model_conf.name
         embedding_column_name = f"{model_name}_MRL{mrl_dim}" if mrl_dim else model_name
 
-        embedders[embedding_column_name] = RemoteEmbeddings(
+        embedder = RemoteEmbeddings(
             embedding_server_url=cfg.embedding.server_url,
             data_server_url=cfg.data.server_url,
             data_loader=loader,
@@ -84,9 +84,18 @@ async def lifespan(app: FastAPI):
             timeout=cfg.embedding.timeout,
             mrl_dimension=mrl_dim if mrl_dim else None,
         )
+        embedder_models = embedder.available_models
+        entry = [m for m in embedder_models if m["name"] == model_name]
+        if len(entry) == 0:
+            print(f"Warning: Model '{model_name}' not available in embedding server. Available models: {[m['name'] for m in embedder_models]}")
+            continue
+
+        entry = entry[0]
+        embedders[embedding_column_name] = embedder
         model_names.append(embedding_column_name)
         model_column_map[model_name] = embedding_column_name
-        available_model_names.add(model_name)
+    
+        available_model_infos.append(entry)
         # available_model_names.add(embedding_column_name)
 
     index_options = PGVectorQueryOptions(
@@ -107,7 +116,7 @@ async def lifespan(app: FastAPI):
         temporal_column=loader.get_temporal_column(),
         index_query_options=index_options,
     )
-    app.state.available_models = sorted(available_model_names)
+    app.state.available_models = available_model_infos
     app.state.model_column_map = model_column_map
 
     print(f"Ready. Available models: {app.state.available_models}")
