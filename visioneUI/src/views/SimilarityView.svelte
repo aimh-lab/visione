@@ -22,6 +22,7 @@
   export let justifyResultRows = false;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
 
   export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
   export let searchError: string | null = null;
@@ -156,6 +157,7 @@
             {justifyResultRows}
             {showSubmitUI}
             {challengeType}
+            {runtimeProfile}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}

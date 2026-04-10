@@ -19,6 +19,7 @@
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
 
   export let registerContainer = (_el: Element | null) => {};
 
@@ -122,6 +123,7 @@
               {videoBadgeOrientation}
               {showSubmitUI}
               {challengeType}
+              {runtimeProfile}
               {justifyResultRows}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}

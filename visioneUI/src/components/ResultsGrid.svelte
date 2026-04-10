@@ -18,6 +18,7 @@
   export let challengeType = "KIS";
   export let rfPositive = [];
   export let rfNegative = [];
+  export let runtimeProfile = {};
 
   const safeImgId = (value) => String(value || '').trim();
   $: rfPositiveIds = new Set((Array.isArray(rfPositive) ? rfPositive : []).map((item) => safeImgId(item?.imgId)));
@@ -131,6 +132,51 @@
     return Math.floor(seconds);
   }
 
+  function getMiddleTimeSeconds(item) {
+    if (!item || typeof item !== 'object') return null;
+
+    const value = toSecondsValue(
+      item?.hour_msb_middletime
+      ?? item?.raw?.hour_msb_middletime
+      ?? item?.raw?.metadata?.hour_msb_middletime
+    );
+
+    if (value == null || value < 0) return null;
+    return value;
+  }
+
+  function getRawMetadata(item) {
+    if (!item || typeof item !== 'object') return {};
+    const metadata = item?.raw?.metadata;
+    return metadata && typeof metadata === 'object' ? metadata : {};
+  }
+
+  function getVideoPlayerStartFromProfile(item) {
+    if (!item || typeof item !== 'object') return null;
+
+    const metadata = getRawMetadata(item);
+    const source = String(runtimeProfile?.videoPlayer?.startSource || 'hour_msb_middletime').trim();
+
+    if (source === 'epoch') {
+      const epoch = toFiniteNumber(
+        metadata?.epoch
+        ?? item?.raw?.epoch
+        ?? item?.epoch
+        ?? item?.timestamp
+      );
+      if (epoch == null || epoch < 0) return null;
+      return epoch > 1e11 ? epoch / 1000 : epoch;
+    }
+
+    if (source === 'hour_msb_middletime') {
+      return getMiddleTimeSeconds(item);
+    }
+
+    // Default/fallback: classic frame-time based flow
+    const frame = getFrameSeconds(item);
+    return frame != null && frame >= 0 ? frame : null;
+  }
+
   async function resolveTimecodeByItem(item) {
     const imgId = getId(item);
     if (!imgId) return;
@@ -191,6 +237,8 @@
     if (!imgId) return;
     if (fetchedTimecodes.has(imgId)) return;
     if (requestedTimecodeIds.has(imgId)) return;
+    const badgeSource = String(runtimeProfile?.timeBadge?.source || 'epoch').trim().toLowerCase();
+    if (badgeSource === 'epoch') return;
     const inlineSeconds = getFrameSeconds(item);
     if (inlineSeconds != null && inlineSeconds >= 0) return;
 
@@ -203,6 +251,61 @@
     const minutes = Math.floor(safe / 60);
     const seconds = safe % 60;
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function getEpochSeconds(item) {
+    if (!item || typeof item !== 'object') return null;
+    const metadata = getRawMetadata(item);
+    const epochField = String(runtimeProfile?.fieldAliases?.epoch || 'epoch').trim() || 'epoch';
+    const epochUnit = String(runtimeProfile?.timeBadge?.epochUnit || 'auto').trim().toLowerCase();
+
+    const rawEpoch =
+      metadata?.[epochField]
+      ?? item?.raw?.[epochField]
+      ?? item?.[epochField]
+      ?? metadata?.epoch
+      ?? item?.raw?.epoch
+      ?? item?.epoch;
+
+    const parsed = toFiniteNumber(rawEpoch);
+    if (parsed == null || parsed < 0) return null;
+
+    if (epochUnit === 'seconds') return parsed;
+    if (epochUnit === 'milliseconds') return parsed / 1000;
+    // auto
+    return parsed > 1e11 ? parsed / 1000 : parsed;
+  }
+
+  function formatEpochHHmm(epochSeconds) {
+    if (!Number.isFinite(epochSeconds)) return null;
+    const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+    const date = new Date(Math.max(0, epochSeconds) * 1000);
+
+    if (timezone === 'utc') {
+      return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+    }
+
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function getBadgeLabel(item, tcMap = fetchedTimecodes) {
+    const badgeSource = String(runtimeProfile?.timeBadge?.source || 'epoch').trim().toLowerCase();
+    const badgeFormat = String(runtimeProfile?.timeBadge?.format || 'HH:mm').trim();
+
+    if (badgeSource === 'epoch') {
+      const epochSeconds = getEpochSeconds(item);
+      if (epochSeconds == null) return null;
+      if (badgeFormat === 'HH:mm') return formatEpochHHmm(epochSeconds);
+      return formatTimecode(epochSeconds);
+    }
+
+    if (badgeSource === 'hour_msb_middletime') {
+      const middle = getMiddleTimeSeconds(item);
+      if (middle == null) return null;
+      return formatTimecode(middle);
+    }
+
+    return getTimecodeLabel(item, tcMap);
   }
 
   function getTimecodeLabel(item, tcMap = fetchedTimecodes) {
@@ -236,7 +339,8 @@
     e.stopPropagation();
     const imgId = getId(item);
     const videoId = getVideoId(item);
-    dispatch("openVideoPlayer", { img: item, imgId, videoId });
+    const startAt = getVideoPlayerStartFromProfile(item);
+    dispatch("openVideoPlayer", { img: item, imgId, videoId, startAt });
   }
 
   function handleOpenVideoPlayerFromStart(e, item) {
@@ -346,7 +450,31 @@
     try {
       const imgId = getId(item);
       const videoId = getVideoId(item);
-      const timestamp = getFrameSeconds(item) ?? 0;
+      let timestamp = getVideoPlayerStartFromProfile(item);
+      if (timestamp == null && imgId) {
+        try {
+          const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
+          const middle = toSecondsValue(metadata?.hour_msb_middletime);
+          const offset = toSecondsValue(metadata?.video_offset_seconds);
+          if (middle != null && middle >= 0) timestamp = middle;
+          else if (offset != null && offset >= 0) timestamp = offset;
+        } catch {
+          // Ignore and keep fallback chain below.
+        }
+      }
+      if (timestamp == null && imgId) {
+        try {
+          const middle = await visioneAPI.getMiddleTimestamp(imgId);
+          if (Number.isFinite(middle) && middle >= 0) {
+            timestamp = middle;
+          }
+        } catch {
+          // Ignore and keep fallback chain below.
+        }
+      }
+      if (timestamp == null) {
+        timestamp = getFrameSeconds(item) ?? 0;
+      }
       const start = Math.max(0, timestamp - 2);
       const end = timestamp + 2;
       const explicitVideoUrl = item?.videoUrl || item?.raw?.metadata?.videos || null;
@@ -482,22 +610,18 @@
     enqueueTimecodeForVisibleRows();
   }
 
-  // Reactive timecode labels map — recomputes whenever fetchedTimecodes or items change.
+  // Reactive badge labels map — driven by runtimeProfile.
   // Using a $: block guarantees Svelte tracks it as a template dependency.
   $: _tcLabels = (() => {
     const labels = new Map();
-    for (const [imgId, seconds] of fetchedTimecodes.entries()) {
-      if (seconds != null) labels.set(imgId, formatTimecode(seconds));
-    }
-    // Also include inline timestamp data from items
     for (const row of items) {
       if (!Array.isArray(row)) continue;
       for (const item of row) {
         const imgId = getId(item);
-        if (imgId && !labels.has(imgId)) {
-          const secs = getFrameSeconds(item);
-          if (secs != null && secs >= 0) labels.set(imgId, formatTimecode(secs));
-        }
+        if (!imgId) continue;
+
+        const label = getBadgeLabel(item, fetchedTimecodes);
+        if (label) labels.set(imgId, label);
       }
     }
     return labels;

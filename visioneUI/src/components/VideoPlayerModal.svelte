@@ -33,6 +33,9 @@
   let isScrolling = false;
   let scrollPreviewTimeout: ReturnType<typeof setTimeout> | undefined;
   let keyframesLoadToken = 0;
+  let pendingSeekSeconds: number | null = null;
+  let pendingTimelineSeekPercent: number | null = null;
+  let seekVerifyTimer: ReturnType<typeof setTimeout> | undefined;
   const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
 
   // Advanced controls state
@@ -102,6 +105,7 @@
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", onKeyDown);
       if (scrollPreviewTimeout) clearTimeout(scrollPreviewTimeout);
+      if (seekVerifyTimer) clearTimeout(seekVerifyTimer);
       stopFrameStep();
     }
   });
@@ -109,17 +113,95 @@
   function onLoaded() {
     if (!videoEl) return;
     try { 
-      videoEl.currentTime = startTime ?? 0;
-      videoDuration = videoEl.duration;
+      videoDuration = Number.isFinite(videoEl.duration) ? videoEl.duration : 0;
       videoEl.playbackRate = playbackSpeed;
+      // Do not override a user click made before metadata was ready.
+      if (pendingSeekSeconds == null && pendingTimelineSeekPercent == null) {
+        seekVideoTo(startTime ?? 0, true);
+      }
       currentTime = videoEl.currentTime || 0;
     } catch {}
     videoEl.play().catch(() => {});
     loadKeyframes();
+    applyPendingSeek();
+  }
+
+  function onCanPlay() {
+    if (!videoEl) return;
+    if (Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+      videoDuration = videoEl.duration;
+    }
+    applyPendingSeek();
+  }
+
+  function onDurationChange() {
+    if (!videoEl) return;
+    if (Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+      videoDuration = videoEl.duration;
+      applyPendingSeek();
+    }
+  }
+
+  function getEffectiveDuration() {
+    if (Number.isFinite(videoDuration) && videoDuration > 0) return videoDuration;
+    if (Number.isFinite(videoEl?.duration) && (videoEl?.duration || 0) > 0) return Number(videoEl?.duration);
+    return 0;
+  }
+
+  function seekVideoTo(seconds: number, allowDefer = true, verifyAttemptsLeft = 6) {
+    if (!videoEl) return;
+    const target = Number(seconds);
+    if (!Number.isFinite(target) || target < 0) return;
+
+    const duration = getEffectiveDuration();
+    const clamped = duration > 0 ? Math.max(0, Math.min(target, duration)) : Math.max(0, target);
+
+    try {
+      videoEl.currentTime = clamped;
+      currentTime = videoEl.currentTime || clamped || 0;
+      pendingSeekSeconds = null;
+
+      // Verify the seek actually stuck (some browsers/media states can ignore first seek).
+      if (seekVerifyTimer) clearTimeout(seekVerifyTimer);
+      if (verifyAttemptsLeft > 0) {
+        seekVerifyTimer = setTimeout(() => {
+          if (!videoEl) return;
+          const actual = Number(videoEl.currentTime) || 0;
+          if (Math.abs(actual - clamped) > 0.35) {
+            seekVideoTo(clamped, true, verifyAttemptsLeft - 1);
+          }
+        }, 80);
+      }
+    } catch {
+      if (allowDefer) {
+        pendingSeekSeconds = clamped;
+      }
+    }
+  }
+
+  function applyPendingSeek() {
+    if (pendingTimelineSeekPercent != null) {
+      const duration = getEffectiveDuration();
+      if (!duration) return;
+      const percentage = Math.max(0, Math.min(1, pendingTimelineSeekPercent));
+      pendingTimelineSeekPercent = null;
+      seekVideoTo(percentage * duration, false);
+      return;
+    }
+
+    if (pendingSeekSeconds != null) {
+      const target = pendingSeekSeconds;
+      pendingSeekSeconds = null;
+      seekVideoTo(target, false);
+    }
   }
 
   function onVideoTimeUpdate() {
     if (!videoEl) return;
+    if (!videoDuration && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+      videoDuration = videoEl.duration;
+      applyPendingSeek();
+    }
     currentTime = videoEl.currentTime || 0;
     isVideoPaused = videoEl.paused;
   }
@@ -329,42 +411,30 @@
   }
 
   function handleTimelineClick(e: MouseEvent) {
-    if (!timelineContainer || !videoDuration || !videoEl) return;
+    if (!timelineContainer || !videoEl) return;
     
     const rect = timelineContainer.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const newTime = percentage * videoDuration;
-    
-    const timeDiff = Math.abs(newTime - videoEl.currentTime);
-    if (timeDiff < 5) {
-      const steps = 10;
-      const stepTime = 30;
-      const increment = (newTime - videoEl.currentTime) / steps;
-      
-      for (let i = 0; i <= steps; i++) {
-        setTimeout(() => {
-          if (videoEl) {
-            videoEl.currentTime = videoEl.currentTime + increment;
-            currentTime = videoEl.currentTime || 0;
-          }
-        }, i * stepTime);
-      }
-    } else {
-      videoEl.currentTime = newTime;
-      currentTime = videoEl.currentTime || 0;
+    const duration = getEffectiveDuration();
+    if (!duration) {
+      pendingTimelineSeekPercent = percentage;
+      return;
     }
+
+    seekVideoTo(percentage * duration, false);
   }
 
   // ✅ NUOVO: Salta al keyframe cliccato
   function jumpToKeyframe(timestamp: number) {
-    if (!videoEl || !videoDuration) return;
-    videoEl.currentTime = timestamp;
-    currentTime = videoEl.currentTime || 0;
+    seekVideoTo(timestamp);
   }
 
   function handleWheel(e: WheelEvent) {
-    if (!videoEl || !videoDuration || !timelineContainer) return;
+    if (!videoEl || !timelineContainer) return;
+
+    const duration = getEffectiveDuration();
+    if (!duration) return;
     
     e.preventDefault();
     
@@ -377,9 +447,8 @@
       delta = e.deltaY > 0 ? 5 : -5;
     }
     
-    const newTime = Math.max(0, Math.min(videoDuration, videoEl.currentTime + delta));
-    videoEl.currentTime = newTime;
-    currentTime = videoEl.currentTime || 0;
+    const newTime = Math.max(0, Math.min(duration, videoEl.currentTime + delta));
+    seekVideoTo(newTime, false);
     
     if (keyframes.length > 0) {
       isScrolling = true;
@@ -574,6 +643,8 @@
           preload="metadata"
           crossOrigin="anonymous"
           on:loadedmetadata={onLoaded}
+          on:canplay={onCanPlay}
+          on:durationchange={onDurationChange}
           on:play={onVideoTimeUpdate}
           on:pause={onVideoTimeUpdate}
           on:timeupdate={onVideoTimeUpdate}
@@ -857,7 +928,10 @@
                   class="flex-shrink-0 rounded overflow-hidden border-2 transition-all duration-150 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400
                     {isActive ? 'border-blue-500 ring-1 ring-blue-400/50' : isHighlighted ? 'border-opacity-80' : 'border-transparent opacity-60 hover:opacity-100'}"
                   style={isHighlighted && !isActive ? `border-color: ${getRankColor(frame.imgId)}` : ''}
-                  on:click={() => jumpToKeyframe(frame.timestamp)}
+                  on:click|stopPropagation={(e) => {
+                    e.preventDefault();
+                    jumpToKeyframe(frame.timestamp);
+                  }}
                   title="{formatTime(frame.timestamp)}{isHighlighted ? ' — ' + getRankLabel(frame.imgId) : ''}"
                   aria-label="Jump to keyframe at {formatTime(frame.timestamp)}"
                 >

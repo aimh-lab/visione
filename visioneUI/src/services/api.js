@@ -86,11 +86,14 @@ export class VisioneAPI {
     const run = (async () => {
       let num = null;
 
-      // New API contract: /field?id=...&field=video_offset_seconds
+      // Preferred metadata: hour_msb_middletime, fallback to video_offset_seconds.
       try {
-        const metadata = await this.getField(imgId, ['video_offset_seconds']);
+        const metadata = await this.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
+        const middle = Number(metadata?.hour_msb_middletime);
         const offset = Number(metadata?.video_offset_seconds);
-        if (Number.isFinite(offset) && offset >= 0) {
+        if (Number.isFinite(middle) && middle >= 0) {
+          num = middle;
+        } else if (Number.isFinite(offset) && offset >= 0) {
           num = offset;
         }
       } catch {
@@ -337,12 +340,13 @@ export class VisioneAPI {
 
     const normalizedVideoId = this.#normalizeVideoId(videoId);
 
-    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=video_offset_seconds
+    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=hour_msb_middletime
     try {
       const params = new URLSearchParams();
       params.set('select_field', 'hour_id');
       params.set('select_value', normalizedVideoId);
       params.append('field', 'content');
+      params.append('field', 'hour_msb_middletime');
       params.append('field', 'video_offset_seconds');
 
       const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
@@ -355,10 +359,13 @@ export class VisioneAPI {
         return data
           .filter((item) => item?.content)
           .map((item) => {
+            const middle = Number(item.hour_msb_middletime);
             const offset = Number(item.video_offset_seconds);
             return {
               imgId: String(item.content),
-              timestamp: Number.isFinite(offset) && offset >= 0 ? offset : null
+              timestamp: Number.isFinite(middle) && middle >= 0
+                ? middle
+                : (Number.isFinite(offset) && offset >= 0 ? offset : null)
             };
           });
       }
