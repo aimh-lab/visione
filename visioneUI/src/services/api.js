@@ -36,6 +36,10 @@ export class VisioneAPI {
     this.elementUrlTtlMs = 10 * 60 * 1000;
     this.discoveryCache = null;
     this.discoveryInFlight = null;
+    this.translationCache = new Map();
+    this.translationInFlight = new Map();
+    this.translationCacheMax = 1000;
+    this.translationCacheTtlMs = 30 * 60 * 1000;
   }
 
   /** Fetch /discovery once and cache the result for the session. */
@@ -400,6 +404,105 @@ export class VisioneAPI {
     } catch (error) {
       return { status: 'error', error: error.message, timestamp: new Date().toISOString() };
     }
+  }
+
+  async translateText(text, { target = 'en', source = 'auto' } = {}) {
+    const raw = String(text || '').trim();
+    if (!raw) return raw;
+
+    const cacheKey = `${source}|${target}|${raw}`;
+    const now = Date.now();
+    const cached = this.translationCache.get(cacheKey);
+    if (cached && now - cached.ts < this.translationCacheTtlMs) {
+      this.translationCache.delete(cacheKey);
+      this.translationCache.set(cacheKey, cached);
+      return cached.value;
+    }
+
+    if (this.translationInFlight.has(cacheKey)) {
+      return this.translationInFlight.get(cacheKey);
+    }
+
+    const run = (async () => {
+      const translated = await this.#translateTextRequest(raw, { target, source });
+      this.translationCache.set(cacheKey, { value: translated, ts: Date.now() });
+      while (this.translationCache.size > this.translationCacheMax) {
+        const oldestKey = this.translationCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        this.translationCache.delete(oldestKey);
+      }
+      return translated;
+    })();
+
+    this.translationInFlight.set(cacheKey, run);
+    try {
+      return await run;
+    } finally {
+      this.translationInFlight.delete(cacheKey);
+    }
+  }
+
+  async #translateTextRequest(raw, { target, source }) {
+    const endpoint = `${this.baseUrl}/translate`;
+
+    const response = await this.#makeRequest(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: raw,
+        source_language: source,
+        target_language: target
+      }),
+      retries: 1,
+      timeout: 10000
+    });
+
+    return await this.#extractTranslatedText(response, raw);
+  }
+
+  async #extractTranslatedText(response, fallbackRaw) {
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('application/json')) {
+      const plain = String(await response.text() || '').trim();
+      return plain || fallbackRaw;
+    }
+
+    const data = await response.json();
+    const translated = this.#readTranslatedTextFromPayload(data, fallbackRaw);
+    return translated || fallbackRaw;
+  }
+
+  #readTranslatedTextFromPayload(payload, fallbackRaw) {
+    if (typeof payload === 'string') {
+      const direct = payload.trim();
+      return direct || fallbackRaw;
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      return fallbackRaw;
+    }
+
+    const candidates = [
+      payload.translated_text,
+      payload.translatedText,
+      payload.translation,
+      payload.translated,
+      payload.english,
+      payload.result,
+      payload.text
+    ];
+
+    for (const value of candidates) {
+      const normalized = String(value || '').trim();
+      if (normalized) return normalized;
+    }
+
+    const nested = payload.data;
+    if (nested && typeof nested === 'object') {
+      return this.#readTranslatedTextFromPayload(nested, fallbackRaw);
+    }
+
+    return fallbackRaw;
   }
 
   #buildSearchPayload(activeTextareas) {

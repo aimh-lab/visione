@@ -308,7 +308,43 @@
   let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
+  let translatedQueryHints = {};
   let logCount = 0;
+    function normalizeTranslationHints(rawHints, steps) {
+      const source = rawHints && typeof rawHints === 'object' ? rawHints : {};
+      const out = {};
+
+      Object.entries(source).forEach(([key, hint]) => {
+        const idx = Number(key);
+        if (!Number.isInteger(idx) || idx < 0) return;
+
+        const from = String(hint?.from || '').trim();
+        const to = String(hint?.to || '').trim();
+        if (!from || !to || from === to) return;
+
+        const current = String(steps?.[idx]?.value || '').trim();
+        if (!current) return;
+        if (current !== from && current !== to) return;
+
+        out[idx] = { from, to };
+      });
+
+      return out;
+    }
+
+    function hintsEqual(a, b) {
+      const aa = JSON.stringify(a || {});
+      const bb = JSON.stringify(b || {});
+      return aa === bb;
+    }
+
+    $: {
+      const normalized = normalizeTranslationHints(translatedQueryHints, textareas);
+      if (!hintsEqual(normalized, translatedQueryHints)) {
+        translatedQueryHints = normalized;
+      }
+    }
+
   let logUserFolder = 'unknown-user';
   let isExportingLogs = false;
   let isDeletingLogs = false;
@@ -672,6 +708,7 @@
     setTextareas: (t) => { textareas = t; },
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getCacheEnabled: () => get(uiStore).cacheEnabled,
+    getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
     getSubmittedIds,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -716,7 +753,46 @@
       selectedIndex = 0;
     },
 
-    onSearchSnapshot: ({ source, textareas: queryTextareas, relevanceFeedback, resultSet, searchTime: elapsed }) => {
+    onTranslatedTextareas: ({ textareas: translatedTextareas }) => {
+      const translated = Array.isArray(translatedTextareas) ? translatedTextareas : [];
+      const nextHints = { ...translatedQueryHints };
+
+      textareas = textareas.map((t, idx) => {
+        const candidate = translated[idx];
+        const from = String(candidate?.translatedFrom || '').trim();
+        const to = String(candidate?.value || '').trim();
+        const current = String(t?.value || '').trim();
+
+        if (!from || !to || from === to) {
+          return t;
+        }
+
+        nextHints[idx] = { from, to };
+
+        if (current !== from) {
+          return t;
+        }
+
+        return {
+          ...t,
+          value: to
+        };
+      });
+
+      translatedQueryHints = normalizeTranslationHints(nextHints, textareas);
+    },
+
+    onSearchSnapshot: ({ source, textareas: queryTextareas, relevanceFeedback, resultSet, searchTime: elapsed, translation }) => {
+      const hints = { ...translatedQueryHints };
+      (Array.isArray(queryTextareas) ? queryTextareas : []).forEach((t, idx) => {
+        const from = String(t?.translatedFrom || '').trim();
+        const to = String(t?.value || '').trim();
+        if (from && to && from !== to) {
+          hints[idx] = { from, to };
+        }
+      });
+      translatedQueryHints = normalizeTranslationHints(hints, textareas);
+
       vbsLogger.logResultSet({
         textareas: queryTextareas,
         relevanceFeedback,
@@ -728,7 +804,9 @@
         metadata: {
           elapsedMs: Number(elapsed) || 0,
           activeTab: get(uiStore).layoutTab,
-          viewMode: get(uiStore).viewMode
+          viewMode: get(uiStore).viewMode,
+          translationEnabled: !!translation?.enabled,
+          translatedSteps: Number(translation?.translatedCount) || 0
         }
       }).then(refreshLogCount).catch(() => {});
     },
@@ -1134,7 +1212,7 @@
     vbsLogger.logInteractionEvent({
       category: 'OTHER',
       type: 'settingsUpdate',
-      value: `challenge:${String(detail.dresChallengeType || get(uiStore).dresChallengeType || 'KIS')} dresEnabled:${detail.dresEnabled ? 'true' : 'false'}`
+      value: `challenge:${String(detail.dresChallengeType || get(uiStore).dresChallengeType || 'KIS')} dresEnabled:${detail.dresEnabled ? 'true' : 'false'} autoTranslate:${detail.autoTranslateQueries ? 'true' : 'false'}`
     }).then(refreshLogCount).catch(() => {});
   }
 
@@ -1977,6 +2055,7 @@ function handleViewSubmitted() {
   dresUsername={$uiStore.dresUsername}
   dresPassword={$uiStore.dresPassword}
   dresMemberId={$uiStore.dresMemberId}
+  autoTranslateQueries={$uiStore.autoTranslateQueries}
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}
   on:testDres={handleTestDresConnection}
@@ -2022,6 +2101,7 @@ function handleViewSubmitted() {
         isSidebarRightOpen={$uiStore.isSidebarRightOpen}
         sidebarRightTab={$uiStore.sidebarRightTab}
         {textareas}
+        {translatedQueryHints}
         {availableModels}
         {textareaImages}
         {searchLoading}

@@ -86,6 +86,7 @@
   };
 
   export let textareas: QueryTextarea[] = [];
+  export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModelInput[] = [];
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
@@ -287,6 +288,20 @@
     const phase = getStepPhaseLabel(index);
     if (phase) return phase;
     return '';
+  }
+
+  function getTranslationHint(index: number) {
+    const hint = translatedQueryHints?.[index];
+    if (!hint || typeof hint !== 'object') return null;
+    const from = String(hint.from || '').trim();
+    const to = String(hint.to || '').trim();
+    if (!from || !to || from === to) return null;
+
+    const current = String(textareas[index]?.value || '').trim();
+    if (!current) return null;
+    if (current !== from && current !== to) return null;
+
+    return { from, to };
   }
 
   function getStepPlaceholder(index: number) {
@@ -601,9 +616,32 @@
 
   // ✅ Gestione menu dropdown
   let openMenuIndex: number | null = null;
+  let openTranslationHintIndex: number | null = null;
   let menuTriggerRefs: Array<HTMLButtonElement | null> = [];
   let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
   let fileInput: HTMLInputElement | null = null;
+
+  function toggleTranslationHint(index: number) {
+    if (!getTranslationHint(index)) {
+      openTranslationHintIndex = null;
+      return;
+    }
+    openTranslationHintIndex = openTranslationHintIndex === index ? null : index;
+  }
+
+  function closeTranslationHint() {
+    openTranslationHintIndex = null;
+  }
+
+  function applyTranslationVariant(index: number, variant: 'original' | 'english') {
+    const hint = getTranslationHint(index);
+    if (!hint) return;
+
+    const nextValue = variant === 'original' ? hint.from : hint.to;
+    update(index, nextValue);
+    closeTranslationHint();
+    setTimeout(() => autoResizeTextarea(index), 0);
+  }
 
   async function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
@@ -616,6 +654,10 @@
 
   function closeMenu() {
     openMenuIndex = null;
+  }
+
+  $: if (openTranslationHintIndex !== null && !getTranslationHint(openTranslationHintIndex)) {
+    openTranslationHintIndex = null;
   }
 
   function updateMenuPlacement(index: number) {
@@ -735,12 +777,16 @@
     if (openStepActionsIndex !== null && !target.closest('.step-actions-menu')) {
       closeStepActions();
     }
+    if (openTranslationHintIndex !== null && !target.closest('.translation-hint-popover')) {
+      closeTranslationHint();
+    }
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
     closeMenu();
     closeStepActions();
+    closeTranslationHint();
   }
 
   function openDateFilterModal(index: number) {
@@ -900,6 +946,7 @@
       {@const stepColor = getStepColor(i)}
       {@const isVisualQueryStep = isSimilarityStep(i)}
       {@const isDisabledBySimilarity = !textarea.enabled && textarea?._disabledBySimilarity === true}
+      {@const translationHint = getTranslationHint(i)}
       <div
         bind:this={stepRefs[i]}
         class="group relative transition-all rounded-xl {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
@@ -954,6 +1001,58 @@
               <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
                 {getStepContextLabel(i)}
               </div>
+              {#if translationHint}
+                <div class="relative translation-hint-popover">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-emerald-500/45 bg-emerald-900/25 text-[9px] font-semibold text-emerald-200 hover:bg-emerald-800/40 transition-colors"
+                    title="Show original and translated query"
+                    aria-label="Show translation details"
+                    aria-expanded={openTranslationHintIndex === i}
+                    on:click|stopPropagation={() => toggleTranslationHint(i)}
+                  >
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3.5" y="4" width="11" height="11" rx="1.8"/>
+                      <path d="M6.5 8.2h5"/>
+                      <path d="M9 7v1.2"/>
+                      <path d="M7.3 8.2c.2 1.8 1 3.2 2.6 4.4"/>
+                      <rect x="10.5" y="9" width="10" height="10" rx="1.8"/>
+                      <path d="M14.2 14.8h2.8"/>
+                      <path d="M15.6 13.4v2.8"/>
+                    </svg>
+                  </button>
+
+                  {#if openTranslationHintIndex === i}
+                    <div class="absolute left-0 top-full mt-1 w-72 max-w-[75vw] rounded-lg border border-emerald-500/40 bg-slate-900/95 shadow-xl z-50 p-2">
+                      <div class="text-[9px] uppercase tracking-[0.14em] text-emerald-300/80 mb-1">Auto Translation</div>
+                      <div class="mb-1.5 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded border border-slate-500/60 bg-slate-800/80 text-[9px] text-slate-200 hover:bg-slate-700/80 transition-colors"
+                          on:click|stopPropagation={() => applyTranslationVariant(i, 'original')}
+                        >
+                          Use Original
+                        </button>
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded border border-emerald-600/70 bg-emerald-900/30 text-[9px] text-emerald-100 hover:bg-emerald-800/40 transition-colors"
+                          on:click|stopPropagation={() => applyTranslationVariant(i, 'english')}
+                        >
+                          Use English
+                        </button>
+                      </div>
+                      <div class="text-[10px] text-slate-300 mb-1">
+                        <span class="text-slate-400">Original:</span>
+                        <span class="ml-1 break-words">{translationHint.from}</span>
+                      </div>
+                      <div class="text-[10px] text-emerald-100">
+                        <span class="text-emerald-300/80">English:</span>
+                        <span class="ml-1 break-words">{translationHint.to}</span>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
               {#if isVisualQueryStep}
                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-[9px] font-medium text-amber-300/90" title="Image set by Similarity — next click replaces it">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>

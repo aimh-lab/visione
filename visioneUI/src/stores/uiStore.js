@@ -30,7 +30,8 @@ const DEFAULT = {
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
-  dresMemberId: ''
+  dresMemberId: '',
+  autoTranslateQueries: true
 };
 
 function clampSidebarWidthVw(value, fallback = 18) {
@@ -91,7 +92,8 @@ function createUIStore() {
         dresSubmitServer: s.dresSubmitServer ?? u.dresSubmitServer,
         dresUsername: s.dresUsername ?? u.dresUsername,
         dresPassword: s.dresPassword ?? u.dresPassword,
-        dresMemberId: s.dresMemberId ?? u.dresMemberId
+        dresMemberId: s.dresMemberId ?? u.dresMemberId,
+        autoTranslateQueries: s.autoTranslateQueries ?? u.autoTranslateQueries
       }));
     },
 
@@ -120,7 +122,8 @@ function createUIStore() {
         dresSubmitServer: DEFAULT.dresSubmitServer,
         dresUsername: DEFAULT.dresUsername,
         dresPassword: DEFAULT.dresPassword,
-        dresMemberId: DEFAULT.dresMemberId
+        dresMemberId: DEFAULT.dresMemberId,
+        autoTranslateQueries: DEFAULT.autoTranslateQueries
       });
     },
 
@@ -191,7 +194,7 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
@@ -211,7 +214,8 @@ function createUIStore() {
         dresSubmitServer: (dresSubmitServer ?? '').trim(),
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',
-        dresMemberId: (dresMemberId ?? '').trim()
+        dresMemberId: (dresMemberId ?? '').trim(),
+        autoTranslateQueries: !!autoTranslateQueries
       }));
       persist({
         theme: safeTheme,
@@ -228,7 +232,8 @@ function createUIStore() {
         dresSubmitServer: (dresSubmitServer ?? '').trim(),
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',
-        dresMemberId: (dresMemberId ?? '').trim()
+        dresMemberId: (dresMemberId ?? '').trim(),
+        autoTranslateQueries: !!autoTranslateQueries
       });
     }
   };
