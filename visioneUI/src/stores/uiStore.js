@@ -150,6 +150,12 @@ function createUIStore() {
       persist({ dresChallengeType: safe });
     },
 
+    setAutoTranslateQueries(enabled) {
+      const safe = !!enabled;
+      update((u) => ({ ...u, autoTranslateQueries: safe }));
+      persist({ autoTranslateQueries: safe });
+    },
+
     setKeyframeSize(keyframeSize) {
       const safe = Math.min(400, Math.max(80, Number(keyframeSize) || DEFAULT.keyframeSize));
       update(u => ({ ...u, keyframeSize: safe }));

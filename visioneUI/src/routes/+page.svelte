@@ -1229,6 +1229,20 @@
     }).catch(() => {});
   }
 
+  function handleToggleAutoTranslate() {
+    const current = !!get(uiStore).autoTranslateQueries;
+    const next = !current;
+    uiStore.actions.setAutoTranslateQueries(next);
+
+    toasts.info(next ? 'Auto-translate enabled.' : 'Auto-translate disabled.');
+
+    vbsLogger.logInteractionEvent({
+      category: 'OTHER',
+      type: 'autoTranslateToggle',
+      value: next ? 'enabled' : 'disabled'
+    }).then(refreshLogCount).catch(() => {});
+  }
+
   async function handleExportLogs() {
     isExportingLogs = true;
     try {
@@ -2304,6 +2318,7 @@ function handleViewSubmitted() {
     showSubmitted={$uiStore.dresEnabled}
     dresEnabled={$uiStore.dresEnabled}
     dresUsername={$uiStore.dresUsername}
+    autoTranslateEnabled={$uiStore.autoTranslateQueries}
     {logCount}
     {logUserFolder}
     {logResultsLimit}
@@ -2312,6 +2327,7 @@ function handleViewSubmitted() {
     onExportLogs={handleExportLogs}
     onDeleteLogs={handleDeleteLogs}
     onChangeLogResultsLimit={handleChangeLogResultsLimit}
+    onToggleAutoTranslate={handleToggleAutoTranslate}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />

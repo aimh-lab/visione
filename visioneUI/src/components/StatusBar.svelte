@@ -20,6 +20,8 @@
   export let onDeleteLogs = () => {};
   export let logResultsLimit = 10000;
   export let onChangeLogResultsLimit = () => {};
+  export let autoTranslateEnabled = true;
+  export let onToggleAutoTranslate = () => {};
   
   // ✅ BONUS: Eventi per azioni rapide
   export let onViewSubmitted = () => {};
@@ -170,6 +172,28 @@
           <span>Sort:</span>
           <span class="text-white font-semibold">{sortLabel}</span>
         </div>
+
+        <span class="text-gray-700">•</span>
+
+        <button
+          type="button"
+          on:click={onToggleAutoTranslate}
+          class="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded border transition-all {autoTranslateEnabled
+            ? 'border-emerald-500/60 bg-emerald-900/30 text-emerald-200 hover:bg-emerald-900/45'
+            : 'border-gray-600/70 bg-gray-800/50 text-gray-300 hover:bg-gray-700/70'}"
+          title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3.5" y="4" width="11" height="11" rx="1.8"/>
+            <path d="M6.5 8.2h5"/>
+            <path d="M9 7v1.2"/>
+            <path d="M7.3 8.2c.2 1.8 1 3.2 2.6 4.4"/>
+            <rect x="10.5" y="9" width="10" height="10" rx="1.8"/>
+            <path d="M14.2 14.8h2.8"/>
+            <path d="M15.6 13.4v2.8"/>
+          </svg>
+          <span>{autoTranslateEnabled ? 'Translate ON' : 'Translate OFF'}</span>
+        </button>
         
         <span class="text-gray-700">•</span>
 
