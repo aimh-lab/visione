@@ -208,13 +208,19 @@
 
   function togglePlayPause() {
     if (!videoEl) return;
-    if (videoEl.paused) videoEl.play().catch(() => {});
-    else videoEl.pause();
+    if (videoEl.paused) {
+      videoEl.play().catch(() => {});
+      dispatch('playerAction', { action: 'play', currentTime: videoEl.currentTime || 0 });
+    } else {
+      videoEl.pause();
+      dispatch('playerAction', { action: 'pause', currentTime: videoEl.currentTime || 0 });
+    }
   }
 
   function setPlaybackSpeed(speed: number) {
     playbackSpeed = speed;
     if (videoEl) videoEl.playbackRate = speed;
+    dispatch('playerAction', { action: 'speedChange', playbackRate: speed, currentTime: videoEl?.currentTime || 0 });
     showSpeedMenu = false;
   }
 
@@ -422,12 +428,23 @@
       return;
     }
 
-    seekVideoTo(percentage * duration, false);
+    const targetTime = percentage * duration;
+    seekVideoTo(targetTime, false);
+    dispatch('playerAction', {
+      action: 'seekTimeline',
+      targetTime,
+      currentTime: videoEl.currentTime || targetTime
+    });
   }
 
   // ✅ NUOVO: Salta al keyframe cliccato
   function jumpToKeyframe(timestamp: number) {
     seekVideoTo(timestamp);
+    dispatch('playerAction', {
+      action: 'seekKeyframe',
+      targetTime: timestamp,
+      currentTime: videoEl?.currentTime || timestamp
+    });
   }
 
   function handleWheel(e: WheelEvent) {
@@ -449,6 +466,11 @@
     
     const newTime = Math.max(0, Math.min(duration, videoEl.currentTime + delta));
     seekVideoTo(newTime, false);
+    dispatch('playerAction', {
+      action: 'seekWheel',
+      targetTime: newTime,
+      currentTime: videoEl.currentTime || newTime
+    });
     
     if (keyframes.length > 0) {
       isScrolling = true;

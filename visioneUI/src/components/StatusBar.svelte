@@ -12,10 +12,27 @@
   export let showSubmitted = false;
   export let dresEnabled = false;
   export let dresUsername = '';
+  export let logCount = 0;
+  export let logUserFolder = 'unknown-user';
+  export let isExportingLogs = false;
+  export let onExportLogs = () => {};
+  export let isDeletingLogs = false;
+  export let onDeleteLogs = () => {};
+  export let logResultsLimit = 10000;
+  export let onChangeLogResultsLimit = () => {};
   
   // ✅ BONUS: Eventi per azioni rapide
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
+
+  let isLogsDropdownOpen = false;
+
+  function handleWindowClick(event) {
+    if (!isLogsDropdownOpen) return;
+    const target = event.target;
+    if (target && target.closest && target.closest('.logs-dropdown-container')) return;
+    isLogsDropdownOpen = false;
+  }
   
   const viewLabels = tabLabels;
   
@@ -28,6 +45,8 @@
   $: viewLabel = viewLabels[currentView] || currentView;
   $: sortLabel = sortLabels[viewMode] || viewMode;
 </script>
+
+<svelte:window on:click={handleWindowClick} />
 
 <div class="ui-statusbar fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 via-gray-800/98 to-gray-900/98 backdrop-blur-md border-t border-gray-700/50 shadow-2xl z-[100]">
   <div class="px-4 py-1">
@@ -152,6 +171,71 @@
           <span class="text-white font-semibold">{sortLabel}</span>
         </div>
         
+        <span class="text-gray-700">•</span>
+
+        <div class="relative logs-dropdown-container">
+          <button
+            on:click|stopPropagation={() => (isLogsDropdownOpen = !isLogsDropdownOpen)}
+            class="px-2 py-0.5 rounded border border-amber-500/60 bg-amber-900/25 text-amber-200 hover:bg-amber-900/45 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Logging actions"
+            disabled={isExportingLogs || isDeletingLogs}
+          >
+            {#if isExportingLogs}
+              Exporting logs...
+            {:else if isDeletingLogs}
+              Deleting logs...
+            {:else}
+              Logs ({logCount})
+            {/if}
+          </button>
+
+          {#if isLogsDropdownOpen}
+            <div class="absolute right-0 bottom-full mb-2 w-56 rounded-lg border border-gray-700 bg-gray-900/98 shadow-2xl p-2 z-[120]">
+              <div class="px-2 py-1 text-[10px] uppercase tracking-wide text-gray-400">VBS Logging</div>
+              <div class="px-2 pb-1 text-[10px] text-gray-400 truncate" title={logUserFolder}>
+                User folder: <span class="text-gray-300">{logUserFolder}</span>
+              </div>
+
+              <button
+                type="button"
+                class="w-full text-left px-2 py-1.5 rounded text-cyan-200 hover:bg-cyan-900/35 transition-colors"
+                title="Cycle logged result depth: 100, 1000, 10000"
+                on:click={() => {
+                  onChangeLogResultsLimit();
+                }}
+              >
+                ⚙ Top Results: {logResultsLimit}
+              </button>
+
+              <button
+                type="button"
+                class="w-full text-left px-2 py-1.5 rounded text-amber-200 hover:bg-amber-900/35 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export VBS logs"
+                disabled={isExportingLogs || isDeletingLogs}
+                on:click={() => {
+                  isLogsDropdownOpen = false;
+                  onExportLogs();
+                }}
+              >
+                ⬇ Download Logs
+              </button>
+
+              <button
+                type="button"
+                class="w-full text-left px-2 py-1.5 rounded text-red-200 hover:bg-red-900/35 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete local VBS logs (safe mode)"
+                disabled={isDeletingLogs || isExportingLogs || logCount <= 0}
+                on:click={() => {
+                  isLogsDropdownOpen = false;
+                  onDeleteLogs();
+                }}
+              >
+                🗑 Delete Logs (Safe)
+              </button>
+            </div>
+          {/if}
+        </div>
+
         <span class="text-gray-700">•</span>
         
         <span class="text-gray-600 font-mono text-[10px]">v1.0.0</span>

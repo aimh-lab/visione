@@ -22,7 +22,8 @@ export function createSearchController({
 
   // URL sync
   isRestoringFromHistory, // () => boolean
-  syncURL                 // () => void
+  syncURL,                // () => void
+  onSearchSnapshot        // ({ source, textareas, relevanceFeedback, resultSet, searchTime }) => void
 }) {
   let reqId = 0;
   let debounceTimer = null;
@@ -126,6 +127,14 @@ export function createSearchController({
           error: null
         });
 
+        onSearchSnapshot?.({
+          source: 'cache',
+          textareas,
+          relevanceFeedback,
+          resultSet: cached.results,
+          searchTime: Date.now() - start
+        });
+
         setImages(transformed);
 
         await tick();
@@ -152,6 +161,14 @@ export function createSearchController({
         searchTime: Date.now() - start,
         loading: false,
         error: null
+      });
+
+      onSearchSnapshot?.({
+        source: 'api',
+        textareas,
+        relevanceFeedback,
+        resultSet,
+        searchTime: Date.now() - start
       });
 
       const submittedIds = getSubmittedIds();
