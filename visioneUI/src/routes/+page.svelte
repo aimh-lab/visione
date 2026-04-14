@@ -29,6 +29,7 @@
   import { createDresController } from '$lib/controllers/dresController.js';
   import { createScrollManager } from '$lib/controllers/scrollManager.js';
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
+  import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
@@ -307,6 +308,11 @@
   let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
+  let logCount = 0;
+  let logUserFolder = 'unknown-user';
+  let isExportingLogs = false;
+  let isDeletingLogs = false;
+  let logResultsLimit = 10000;
   const STATUS_BAR_HEIGHT_PX = 34;
   const URL_SYNC_DEBOUNCE_MS = 180;
   let urlSyncTimer = null;
@@ -607,6 +613,53 @@
     });
   }
 
+  const vbsLogger = createVbsLogger();
+
+  $: vbsLogger.setOptions({ resultLimit: logResultsLimit });
+
+  function getLoggerContext() {
+    const ui = get(uiStore);
+    const username = String(ui?.dresUsername || '').trim();
+    const memberId = String(ui?.dresMemberId || '').trim();
+    return {
+      sessionId: `visione-${Date.now()}`,
+      username,
+      memberId,
+      challengeType: ui?.dresChallengeType || 'KIS',
+      teamId: '',
+      userFolder: username || memberId || 'unknown-user'
+    };
+  }
+
+  async function refreshLogCount() {
+    logUserFolder = String(vbsLogger.getUserFolder() || 'unknown-user');
+    try {
+      logCount = await vbsLogger.countForCurrentUser();
+    } catch {
+      logCount = 0;
+    }
+  }
+
+  function logBrowsingLight(type, value) {
+    vbsLogger.logInteractionEvent({
+      category: 'BROWSING',
+      type,
+      value
+    }).catch(() => {});
+  }
+
+  function logRankedList(action, payload = '') {
+    const view = String(get(uiStore)?.layoutTab || 'View1');
+    const value = `view:${view} action:${action}${payload ? ` ${payload}` : ''}`;
+    logBrowsingLight('rankedList', value);
+  }
+
+  function logVideoPlayer(action, payload = '') {
+    const vid = String(videoPlayer?.videoId || '').trim();
+    const value = `action:${action}${vid ? ` video:${vid}` : ''}${payload ? ` ${payload}` : ''}`;
+    logBrowsingLight('videoPlayer', value);
+  }
+
   const searchController = createSearchController({
     api: visioneAPI,
     recentSearches,
@@ -661,6 +714,23 @@
     setImages: (transformed) => {
       images = appendSubmittedFrames(transformed);
       selectedIndex = 0;
+    },
+
+    onSearchSnapshot: ({ source, textareas: queryTextareas, relevanceFeedback, resultSet, searchTime: elapsed }) => {
+      vbsLogger.logResultSet({
+        textareas: queryTextareas,
+        relevanceFeedback,
+        resultSet,
+        source: source === 'cache' ? 'displayModel' : 'rankingModel',
+        sortType: 'feedbackModel',
+        resultSetAvailability: 'all',
+        maxResults: logResultsLimit,
+        metadata: {
+          elapsedMs: Number(elapsed) || 0,
+          activeTab: get(uiStore).layoutTab,
+          viewMode: get(uiStore).viewMode
+        }
+      }).then(refreshLogCount).catch(() => {});
     },
 
     isRestoringFromHistory: () => isRestoringFromHistory,
@@ -765,6 +835,35 @@
         images[gIdx] = { ...images[gIdx], submitted: true };
         images = [...images];
       }
+    },
+    onFrameSubmitEvent: ({ imgId, challengeType, accepted, verdict, description, reason }) => {
+      const payload = [
+        `imgId:${String(imgId || '')}`,
+        `challenge:${String(challengeType || get(uiStore).dresChallengeType || 'KIS')}`,
+        `accepted:${accepted ? 'true' : 'false'}`,
+        `verdict:${String(verdict || '')}`,
+        `reason:${String(reason || '')}`,
+        `desc:${String(description || '')}`
+      ].join(' | ');
+      vbsLogger.logInteractionEvent({
+        category: 'COOPERATION',
+        type: 'submitFrame',
+        value: payload
+      }).then(refreshLogCount).catch(() => {});
+    },
+    onTextSubmitEvent: ({ text, challengeType, accepted, verdict, description }) => {
+      const payload = [
+        `challenge:${String(challengeType || 'Q&A')}`,
+        `accepted:${accepted ? 'true' : 'false'}`,
+        `verdict:${String(verdict || '')}`,
+        `desc:${String(description || '')}`,
+        `text:${String(text || '')}`
+      ].join(' | ');
+      vbsLogger.logInteractionEvent({
+        category: 'COOPERATION',
+        type: 'submitText',
+        value: payload
+      }).then(refreshLogCount).catch(() => {});
     }
   });
 
@@ -826,6 +925,8 @@
 
     const init = async () => {
       uiStore.actions.hydrateFromSettings();
+      await vbsLogger.initSession(getLoggerContext());
+      await refreshLogCount();
       uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
       await tick();
       clearInitialSidebarBootstrap();
@@ -1029,6 +1130,94 @@
 
   function applySettings(e) {
     uiStore.actions.applySettings(e.detail);
+    const detail = e?.detail || {};
+    vbsLogger.logInteractionEvent({
+      category: 'OTHER',
+      type: 'settingsUpdate',
+      value: `challenge:${String(detail.dresChallengeType || get(uiStore).dresChallengeType || 'KIS')} dresEnabled:${detail.dresEnabled ? 'true' : 'false'}`
+    }).then(refreshLogCount).catch(() => {});
+  }
+
+  function handleChangeChallengeType(e) {
+    const nextType = String(e?.detail?.type || 'KIS');
+    uiStore.actions.setDresChallengeType(nextType);
+    vbsLogger.initSession(getLoggerContext()).then(async () => {
+      await vbsLogger.logInteractionEvent({
+        category: 'OTHER',
+        type: 'challengeType',
+        value: nextType
+      });
+      await refreshLogCount();
+    }).catch(() => {});
+  }
+
+  async function handleExportLogs() {
+    isExportingLogs = true;
+    try {
+      const result = await vbsLogger.exportForCurrentUser();
+      await refreshLogCount();
+      if (!result?.exported) {
+        if (result?.mode === 'cancelled') {
+          toasts.info('Log export cancelled.');
+          return;
+        }
+        toasts.info('No local logs available to export.');
+        return;
+      }
+      if (result.mode === 'directory') {
+        toasts.success(`Exported ${result.exported} log files in folder ${result.userFolder}`);
+      } else {
+        toasts.warning(`Directory export unavailable. Downloaded fallback file with ${result.exported} logs.`);
+      }
+    } catch (error) {
+      toasts.error(`Log export failed: ${error?.message || String(error)}`);
+    } finally {
+      isExportingLogs = false;
+    }
+  }
+
+  async function handleDeleteLogs() {
+    if (logCount <= 0) {
+      toasts.info('No local logs to delete.');
+      return;
+    }
+
+    const userFolder = String(vbsLogger.getUserFolder() || 'unknown-user');
+    const firstConfirm = window.confirm(
+      `Delete ${logCount} local logs for user folder "${userFolder}"? This cannot be undone.`
+    );
+    if (!firstConfirm) return;
+
+    const safetyCode = `DELETE-${logCount}`;
+    const typed = window.prompt(
+      `Safe mode: type ${safetyCode} to confirm permanent deletion.`
+    );
+    if (typed !== safetyCode) {
+      toasts.warning('Deletion cancelled: safety code mismatch.');
+      return;
+    }
+
+    isDeletingLogs = true;
+    try {
+      const result = await vbsLogger.deleteForCurrentUser();
+      await refreshLogCount();
+      toasts.success(`Deleted ${result?.deleted || 0} local logs.`);
+    } catch (error) {
+      toasts.error(`Log deletion failed: ${error?.message || String(error)}`);
+    } finally {
+      isDeletingLogs = false;
+    }
+  }
+
+  function handleChangeLogResultsLimit() {
+    if (logResultsLimit === 100) {
+      logResultsLimit = 1000;
+    } else if (logResultsLimit === 1000) {
+      logResultsLimit = 10000;
+    } else {
+      logResultsLimit = 100;
+    }
+    toasts.info(`VBS logging depth set to top ${logResultsLimit} results.`);
   }
 
   // ---------------------------
@@ -1037,10 +1226,12 @@
   async function openVideoPlayerBy(imgId, videoId, startAt) {
     videoPlayer = await videoPlayerCtrl.buildPlayerData(imgId, videoId, startAt);
     isVideoPlayerOpen = true;
+    logVideoPlayer('open', `imgId:${String(imgId || '')} start:${Number(startAt || 0)}`);
   }
 
   function handleSubmitFrameFromPlayer(e) {
     const { imgId, videoId, dataUrl, currentTime } = e.detail || {};
+    logVideoPlayer('submitFrame', `imgId:${String(imgId || '')} t:${Number(currentTime || 0).toFixed(3)}`);
     submitByImgId(imgId, {
       imgId,
       videoId,
@@ -1058,11 +1249,15 @@
     if (item) {
       searchModal.open(item);
       lastViewedSearchIndex = index;
+      logRankedList('openResult', `index:${index} imgId:${String(item?.imgId || '')}`);
       tick().then(() => ui.scrollToImage(imagesContainer, index));
     }
   }
 
-  const closeModal = () => searchModal.close({ keepSelection: true });
+  const closeModal = () => {
+    logRankedList('closeResult');
+    searchModal.close({ keepSelection: true });
+  };
 
   function navigateImage(offset, toFirstOfRow = false) {
     const currentIndex = $searchModal.selected?.index ?? lastViewedSearchIndex ?? -1;
@@ -1085,6 +1280,7 @@
       const targetItem = images[targetIndex];
       searchModal.select(targetItem);
       lastViewedSearchIndex = targetIndex;
+      logRankedList('navigate', `from:${currentIndex} to:${targetIndex} mode:${toFirstOfRow ? 'row' : 'linear'}`);
       tick().then(() => ui.scrollToImage(imagesContainer, targetIndex));
     }
   }
@@ -1092,9 +1288,11 @@
   function openSimilarityModalByImg(img) {
     similarityModal.open(img);
     lastViewedSimilarityIndex = img.index ?? 0;
+    logRankedList('openSimilarityResult', `index:${lastViewedSimilarityIndex} imgId:${String(img?.imgId || '')}`);
   }
 
   function closeSimilarityModal() {
+    logRankedList('closeSimilarityResult');
     similarityModal.close({ keepSelection: true });
   }
 
@@ -1120,6 +1318,7 @@
       const targetItem = similarityImages[targetIndex];
       similarityModal.select(targetItem);
       lastViewedSimilarityIndex = targetIndex;
+      logRankedList('navigateSimilarity', `from:${currentIndex} to:${targetIndex} mode:${toFirstOfRow ? 'row' : 'linear'}`);
       tick().then(() => ui.scrollToImage(similarityContainer, targetIndex));
     }
   }
@@ -1129,10 +1328,12 @@
     videoModal.open(frame);
     view2SelectedImgId = frame.imgId;
     lastViewedVideoIndex = frame.index ?? 0;
+    logRankedList('openFrame', `index:${lastViewedVideoIndex} imgId:${String(frame?.imgId || '')}`);
     tick().then(() => ui.scrollToImage(view2Container, frame.imgId));
   }
 
   function closeFrameModal() {
+    logRankedList('closeFrame');
     videoModal.close({ keepSelection: true });
   }
 
@@ -1158,6 +1359,7 @@
       videoModal.select(targetFrame);
       view2SelectedImgId = targetFrame.imgId;
       lastViewedVideoIndex = targetIndex;
+      logRankedList('navigateFrame', `from:${currentIndex} to:${targetIndex} mode:${toFirstOfRow ? 'row' : 'linear'}`);
       tick().then(() => ui.scrollToImage(view2Container, targetFrame.imgId));
     }
   }
@@ -1334,6 +1536,11 @@ function handleViewSubmitted() {
     if (!highlightImgId) lastViewedVideoIndex = 0;
 
     await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight);
+    vbsLogger.logInteractionEvent({
+      category: 'BROWSING',
+      type: 'videoSummary',
+      value: `${normalizedVideoId}${normalizedHighlight ? `;${normalizedHighlight}` : ''}`
+    }).then(refreshLogCount).catch(() => {});
   }
 
 
@@ -1353,6 +1560,11 @@ function handleViewSubmitted() {
 
     await runSimilaritySearch(baseImgId);
     tick().then(() => similarityContainer?.scrollTo?.({ top: 0 }));
+    vbsLogger.logInteractionEvent({
+      category: 'BROWSING',
+      type: 'exploration',
+      value: `similarity:${String(baseImgId || '')}`
+    }).then(refreshLogCount).catch(() => {});
   }
 
   function addSimilarityAsSearchStep(baseImgId, frame = null) {
@@ -1697,12 +1909,27 @@ function handleViewSubmitted() {
   highlightedKeyframes={videoPlayer.highlightedKeyframes || []}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  on:playerAction={(e) => {
+    const d = e?.detail || {};
+    const action = String(d.action || 'unknown');
+    const t = Number(d.currentTime || 0);
+    const extra = [
+      d.targetTime != null ? `target:${Number(d.targetTime).toFixed(3)}` : '',
+      d.playbackRate != null ? `speed:${Number(d.playbackRate)}` : ''
+    ].filter(Boolean).join(' ');
+    logVideoPlayer(action, `t:${t.toFixed(3)} ${extra}`.trim());
+  }}
   on:submitFrame={handleSubmitFrameFromPlayer}
   on:captureForSimilarity={(e) => {
+    const t = Number(e?.detail?.currentTime || 0);
+    logVideoPlayer('captureForSimilarity', `t:${t.toFixed(3)}`);
     isVideoPlayerOpen = false;
     addSimilarityAsSearchStep(e.detail.imgId);
   }}
-  on:close={() => { isVideoPlayerOpen = false; }}
+  on:close={() => {
+    logVideoPlayer('close');
+    isVideoPlayerOpen = false;
+  }}
 />
 
 <VideoSummaryModal
@@ -1778,7 +2005,7 @@ function handleViewSubmitted() {
     uiStore.actions.setKeyframeSize(safe);
   }}
   on:openSettings={() => (isSettingsOpen = true)}
-  on:changeChallengeType={(e) => uiStore.actions.setDresChallengeType(e.detail.type)}
+  on:changeChallengeType={handleChangeChallengeType}
   on:reset={resetApp}
   on:openPinnedVideoSummary={(e) => openPinnedVideoSummary(e.detail.item)}
   on:unpinVideoSummary={(e) => unpinVideoSummary(e.detail.item)}
@@ -1997,6 +2224,14 @@ function handleViewSubmitted() {
     showSubmitted={$uiStore.dresEnabled}
     dresEnabled={$uiStore.dresEnabled}
     dresUsername={$uiStore.dresUsername}
+    {logCount}
+    {logUserFolder}
+    {logResultsLimit}
+    isExportingLogs={isExportingLogs}
+    isDeletingLogs={isDeletingLogs}
+    onExportLogs={handleExportLogs}
+    onDeleteLogs={handleDeleteLogs}
+    onChangeLogResultsLimit={handleChangeLogResultsLimit}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />

@@ -15,8 +15,10 @@ import { get } from 'svelte/store';
  * @param {() => Object|null} deps.findFrame        - (imgId, fallback) => frameObj | null
  * @param {(id: string, verdict: string) => void} deps.updateVerdictInViews
  * @param {(id: string) => void} deps.markSubmittedInViews
+ * @param {(data: any) => void} [deps.onFrameSubmitEvent]
+ * @param {(data: any) => void} [deps.onTextSubmitEvent]
  */
-export function createDresController({ sessionStore, findFrame, updateVerdictInViews, markSubmittedInViews }) {
+export function createDresController({ sessionStore, findFrame, updateVerdictInViews, markSubmittedInViews, onFrameSubmitEvent, onTextSubmitEvent }) {
   let clientInstance = null;
   let clientSignature = '';
 
@@ -132,25 +134,46 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     const settings = get(uiStore);
     if (!settings?.dresEnabled) {
       toasts.info('Enable DRES submit in settings to submit frames.');
-      return;
+      onFrameSubmitEvent?.({ imgId, accepted: false, reason: 'dres-disabled' });
+      return { accepted: false, verdict: '', description: 'DRES disabled' };
     }
 
     const challengeType = normalizeChallengeType(settings?.dresChallengeType);
     if (challengeType === 'Q&A') {
       toasts.info('Q&A challenge accepts only text answers. Use the submit panel on the right.');
-      return;
+      onFrameSubmitEvent?.({ imgId, accepted: false, reason: 'wrong-challenge-type', challengeType });
+      return { accepted: false, verdict: '', description: 'Q&A mode accepts text answers only' };
     }
 
     if (challengeType === 'KIS' && typeof window !== 'undefined') {
       const ok = window.confirm('Are you sure you want to submit this frame?');
-      if (!ok) return;
+      if (!ok) {
+        onFrameSubmitEvent?.({ imgId, accepted: false, reason: 'cancelled-by-user', challengeType });
+        return { accepted: false, verdict: '', description: 'Cancelled by user' };
+      }
     }
 
     const frameObj = findFrame(imgId, fallback);
-    if (!frameObj) return;
+    if (!frameObj) {
+      onFrameSubmitEvent?.({ imgId, accepted: false, reason: 'frame-not-found', challengeType });
+      return { accepted: false, verdict: '', description: 'Frame not found' };
+    }
 
     const dresResult = await submitFrameToDres(frameObj);
-    if (!dresResult?.accepted) return;
+    if (!dresResult?.accepted) {
+      onFrameSubmitEvent?.({
+        imgId,
+        challengeType,
+        accepted: false,
+        verdict: normalizeVerdict(dresResult?.verdict),
+        description: dresResult?.description ?? ''
+      });
+      return {
+        accepted: false,
+        verdict: normalizeVerdict(dresResult?.verdict),
+        description: dresResult?.description ?? 'Submission rejected'
+      };
+    }
 
     const verdictForStore = challengeType === 'AVS'
       ? 'PENDING'
@@ -166,30 +189,45 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
     if (challengeType === 'AVS') {
       toasts.warning('DRES submission queued: waiting for async verdict.');
-      return;
+      const response = {
+        accepted: true,
+        verdict: verdictForStore,
+        description: dresResult?.description ?? 'queued'
+      };
+      onFrameSubmitEvent?.({ imgId, challengeType, ...response });
+      return response;
     }
 
     const description = dresResult?.description ?? 'sent';
     notifyVerdict(verdictForStore, description, 'DRES submission');
+    const response = { accepted: true, verdict: verdictForStore, description };
+    onFrameSubmitEvent?.({ imgId, challengeType, ...response });
+    return response;
   }
 
   async function submitTextAnswer(text) {
     const value = String(text ?? '').trim();
     if (!value) {
       toasts.warning('Please type an answer before submitting.');
-      return { accepted: false, verdict: '', description: 'Empty answer' };
+      const response = { accepted: false, verdict: '', description: 'Empty answer' };
+      onTextSubmitEvent?.({ text: value, challengeType: 'Q&A', ...response });
+      return response;
     }
 
     const settings = get(uiStore);
     if (!settings?.dresEnabled) {
       toasts.info('Enable DRES submit in settings to submit answers.');
-      return { accepted: false, verdict: '', description: 'DRES disabled' };
+      const response = { accepted: false, verdict: '', description: 'DRES disabled' };
+      onTextSubmitEvent?.({ text: value, challengeType: 'Q&A', ...response });
+      return response;
     }
 
     const challengeType = normalizeChallengeType(settings?.dresChallengeType);
     if (challengeType !== 'Q&A') {
       toasts.info('Text answer submission is available only in Q&A mode.');
-      return { accepted: false, verdict: '', description: 'Wrong challenge type' };
+      const response = { accepted: false, verdict: '', description: 'Wrong challenge type' };
+      onTextSubmitEvent?.({ text: value, challengeType, ...response });
+      return response;
     }
 
     try {
@@ -216,7 +254,9 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       if (result?.status === false) {
         toasts.error(`DRES answer rejected: ${description}`);
         sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict, description });
-        return { accepted: false, verdict, description };
+        const response = { accepted: false, verdict, description };
+        onTextSubmitEvent?.({ text: value, challengeType, ...response });
+        return response;
       }
 
       sessionStore.actions.submitAnswer({ text: value, status: 'SUBMITTED', verdict, description });
@@ -228,14 +268,18 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
         toasts.success(`DRES answer submitted: ${description}`);
       }
 
-      return { accepted: true, verdict, description };
+      const response = { accepted: true, verdict, description };
+      onTextSubmitEvent?.({ text: value, challengeType, ...response });
+      return response;
     } catch (error) {
       const message = error instanceof DresClientError || error instanceof Error
         ? error.message
         : 'Unknown error during DRES text submission';
       toasts.error(`DRES answer failed: ${message}`);
       sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict: '', description: message });
-      return { accepted: false, verdict: '', description: message };
+      const response = { accepted: false, verdict: '', description: message };
+      onTextSubmitEvent?.({ text: value, challengeType, ...response });
+      return response;
     }
   }
 
