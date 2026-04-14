@@ -12,6 +12,7 @@ export function createSearchController({
   setTextareas,
   getFramesPerRow,        // () => number
   getCacheEnabled,        // () => boolean
+  getAutoTranslateEnabled,// () => boolean
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
   getRelevanceFeedback,   // () => { positiveIds, negativeIds, method, model?, numAdditionalNegatives? } | null
@@ -23,11 +24,60 @@ export function createSearchController({
   // URL sync
   isRestoringFromHistory, // () => boolean
   syncURL,                // () => void
+  onTranslatedTextareas,   // ({ textareas, translatedCount }) => void
   onSearchSnapshot        // ({ source, textareas, relevanceFeedback, resultSet, searchTime }) => void
 }) {
   let reqId = 0;
   let debounceTimer = null;
   const DEBOUNCE_MS = 250;
+
+  async function maybeTranslateTextareas(rawTextareas) {
+    const source = Array.isArray(rawTextareas) ? rawTextareas : [];
+    const autoTranslateEnabled = typeof getAutoTranslateEnabled === 'function'
+      ? !!getAutoTranslateEnabled()
+      : false;
+
+    if (!autoTranslateEnabled) {
+      return {
+        translatedTextareas: source,
+        translatedCount: 0,
+        failedCount: 0
+      };
+    }
+
+    let translatedCount = 0;
+    let failedCount = 0;
+    const translatedTextareas = await Promise.all(source.map(async (t) => {
+      const rawValue = String(t?.value || '').trim();
+      if (!rawValue) return t;
+
+      const lowerRaw = rawValue.toLowerCase();
+      if (lowerRaw.startsWith('image:') || lowerRaw.startsWith('similarity:')) {
+        return t;
+      }
+
+      try {
+        const translated = await api.translateText(rawValue, { target: 'en', source: 'auto' });
+        const normalized = String(translated || '').trim();
+        if (!normalized || normalized === rawValue) {
+          return t;
+        }
+
+        translatedCount += 1;
+        return {
+          ...t,
+          value: normalized,
+          translatedFrom: rawValue
+        };
+      } catch {
+        failedCount += 1;
+        // Non-blocking fallback to original query text.
+        return t;
+      }
+    }));
+
+    return { translatedTextareas, translatedCount, failedCount };
+  }
 
   function assertUniqueImageIds(items) {
     if (!Array.isArray(items) || items.length === 0) return;
@@ -62,9 +112,23 @@ export function createSearchController({
   async function _doSearch() {
     const rawTextareas = getTextareas();
     if (!rawTextareas?.length) return;
-    const textareas = typeof getSearchTextareas === 'function'
+    const preparedTextareas = typeof getSearchTextareas === 'function'
       ? getSearchTextareas(rawTextareas)
       : rawTextareas;
+    const {
+      translatedTextareas: textareas,
+      translatedCount,
+      failedCount
+    } = await maybeTranslateTextareas(preparedTextareas);
+
+    if (translatedCount > 0) {
+      onTranslatedTextareas?.({
+        textareas,
+        translatedCount
+      });
+    } else if (failedCount > 0) {
+      toasts.warning('Auto-translation unavailable. Using original query text.');
+    }
 
     const req = ++reqId;
 
@@ -132,8 +196,16 @@ export function createSearchController({
           textareas,
           relevanceFeedback,
           resultSet: cached.results,
-          searchTime: Date.now() - start
+          searchTime: Date.now() - start,
+          translation: {
+            enabled: typeof getAutoTranslateEnabled === 'function' ? !!getAutoTranslateEnabled() : false,
+            translatedCount
+          }
         });
+
+        if (translatedCount > 0) {
+          toasts.info(`Translated ${translatedCount} query step${translatedCount > 1 ? 's' : ''} to English.`);
+        }
 
         setImages(transformed);
 
@@ -168,8 +240,16 @@ export function createSearchController({
         textareas,
         relevanceFeedback,
         resultSet,
-        searchTime: Date.now() - start
+        searchTime: Date.now() - start,
+        translation: {
+          enabled: typeof getAutoTranslateEnabled === 'function' ? !!getAutoTranslateEnabled() : false,
+          translatedCount
+        }
       });
+
+      if (translatedCount > 0) {
+        toasts.info(`Translated ${translatedCount} query step${translatedCount > 1 ? 's' : ''} to English.`);
+      }
 
       const submittedIds = getSubmittedIds();
       const transformed = transformSearchResults(resultSet, submittedIds);

@@ -10,6 +10,7 @@
 
   export let isSidebarOpen = true;
   export let textareas = [];
+  export let translatedQueryHints = {};
   export let availableModels = [];
   export let searchLoading = false;
   export let searchError = null;
@@ -190,6 +191,7 @@
           <TextareasManager
             bind:this={textareasManagerRef}
             {textareas}
+            {translatedQueryHints}
             {availableModels}
             availableImages={images}
             {textareaImages}

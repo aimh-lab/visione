@@ -116,7 +116,8 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
-  dresMemberId: ''
+  dresMemberId: '',
+  autoTranslateQueries: true
 });
 
 // Utility functions

@@ -34,6 +34,7 @@
   export let onResizeLeftSidebar = (_width: number) => {};
   export let onResizeRightSidebar = (_width: number) => {};
   export let textareas: QueryTextarea[] = [];
+  export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModel[] = [];
   export let textareaImages: Record<number, unknown[]> = {};
 
@@ -164,6 +165,7 @@
   {isSidebarOpen}
   width={sidebarLeftWidth}
   {textareas}
+  {translatedQueryHints}
   {availableModels}
   {textareaImages}
   {searchLoading}

@@ -18,6 +18,7 @@
   export let dresUsername = '';
   export let dresPassword = '';
   export let dresMemberId = '';
+  export let autoTranslateQueries = true;
   export let videoBadgeOrientation = 'vertical';
   export let futureOptionA = "";
   export let futureOptionB = false;
@@ -41,6 +42,7 @@
     dresUsername,
     dresPassword,
     dresMemberId,
+    autoTranslateQueries,
     futureOptionA,
     futureOptionB
   };
@@ -64,6 +66,7 @@
       dresUsername,
       dresPassword,
       dresMemberId,
+      autoTranslateQueries,
       futureOptionA,
       futureOptionB
     };
@@ -106,6 +109,7 @@
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',
       dresMemberId: (local.dresMemberId ?? '').trim(),
+      autoTranslateQueries: !!local.autoTranslateQueries,
       futureOptionA: local.futureOptionA,
       futureOptionB: !!local.futureOptionB
     };
@@ -340,6 +344,17 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-auto-translate" class="ui-settings-label text-sm font-medium text-gray-700">Auto-translate queries to English</label>
+            <input
+              id="settings-auto-translate"
+              type="checkbox"
+              bind:checked={local.autoTranslateQueries}
+              on:change={() => save()}
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
           </div>
         </div>
 
