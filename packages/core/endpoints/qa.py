@@ -1,9 +1,20 @@
 """/qa endpoint – Agentic QA over lifelog data.
 
-Uses LangGraph to orchestrate a ReAct-style loop: the agent calls a
-``search_frames`` tool that queries the same vector-store used by ``/search``.
-Images are fetched on-demand and injected into the LLM context sparingly
-(~1-2 per iteration, ~10 total) while metadata results can be much larger.
+Uses LangGraph to orchestrate a plan-then-execute loop: the agent first
+creates a plan, then iterates with a ``search_frames`` tool that queries the
+same vector-store used by ``/search``.  Results are streamed to the client
+as Server-Sent Events (SSE) with typed tags so the UI can separate reasoning,
+tool output, and the final answer.
+
+SSE event types
+---------------
+- ``thinking``    – chain-of-thought / reasoning text from the LLM
+- ``plan``        – the initial plan produced by the planning step
+- ``tool_call``   – JSON with tool name + arguments the agent is about to invoke
+- ``tool_result`` – JSON array of search results returned by the tool
+- ``answer``      – the final natural-language answer
+- ``sources``     – deduplicated source list (sent once, after ``answer``)
+- ``error``       – an error message if something goes wrong
 """
 
 from __future__ import annotations
@@ -15,6 +26,7 @@ from typing import Any, Dict, List, Literal, Optional, Annotated
 
 import aiohttp
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
@@ -49,6 +61,7 @@ class QAResponse(BaseModel):
 # ── Agent state ─────────────────────────────────────────────────────────────
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
+    plan: str
     total_images_sent: int
     iteration_count: int
     all_sources: Annotated[list, operator.add]
@@ -173,6 +186,7 @@ Filters use comparator/operator JSON objects.
 Comparators: eq, ne, gt, lt, like.
 Operators: and, or, not.
 NOT ALLOWED: lte, gte (use lt or gt instead).
+TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields.
 
 **Single filter:**
 ```json
@@ -238,7 +252,20 @@ find evidence in the data or declare that the output is not reliable. Do not inf
 - Before saying that metadata cannot confirm an hypothesis, ask for images to verify.
 - Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). If the results are empty, try to reformulate the query or ask for images to verify.
 - Do not say things like "I will now search...". Just continue calling the tool without explicitly saying so.
-- Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly."""
+- Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly.
+- When providing the final answer, DO NOT repeat the full list of results or metadata. Summarise the evidence briefly."""
+
+
+def _build_planning_prompt() -> str:
+    return """\
+Based on the user's question and the system instructions above, create a brief \
+step-by-step plan for how you will answer this question. Consider:
+1. What searches you need to perform (queries, filters, number of results).
+2. Whether you need images or metadata is sufficient.
+3. How you might refine or verify results.
+4. Any temporal reasoning or counting strategies required.
+
+Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
 
 
 # ── Agent builder ───────────────────────────────────────────────────────────
@@ -248,7 +275,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
 
     # Resolve default embedding model
     default_model = qa_cfg["default_embedding_model"]
-    available = getattr(request.app.state, "available_models", [])
+    available = [m["name"] for m in getattr(request.app.state, "available_models", [])]
     if default_model not in available:
         raise HTTPException(
             status_code=500,
@@ -337,6 +364,23 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
     )
 
     # ── Graph nodes ────────────────────────────────────────────────────
+    async def plan_node(state: AgentState) -> Dict[str, Any]:
+        """Ask the LLM to produce a plan before executing any tool calls."""
+        planning_messages = list(state["messages"]) + [
+            HumanMessage(content=_build_planning_prompt()),
+        ]
+        response = await llm_no_tools.ainvoke(planning_messages)
+        plan_text = response.content if isinstance(response.content, str) else str(response.content)
+        if debug:
+            _debug_print_message("plan → LLM response", response)
+        # Inject the plan into the conversation so the agent can follow it
+        return {
+            "messages": [
+                AIMessage(content=f"**Plan:**\n{plan_text}"),
+            ],
+            "plan": plan_text,
+        }
+
     async def agent_node(state: AgentState) -> Dict[str, Any]:
         response = await llm.ainvoke(state["messages"])
         if debug:
@@ -447,10 +491,12 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
 
     # ── Compile graph ──────────────────────────────────────────────────
     graph = StateGraph(AgentState)
+    graph.add_node("plan", plan_node)
     graph.add_node("agent", agent_node)
     graph.add_node("tools", custom_tool_node)
     graph.add_node("final_answer", final_answer_node)
-    graph.add_edge(START, "agent")
+    graph.add_edge(START, "plan")
+    graph.add_edge("plan", "agent")
     graph.add_conditional_edges(
         "agent",
         should_continue,
@@ -462,10 +508,169 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
     return graph.compile(), system_prompt
 
 
-# ── Endpoint ────────────────────────────────────────────────────────────────
-@router.post("/qa", response_model=QAResponse)
+# ── SSE helpers ─────────────────────────────────────────────────────────────
+def _sse_event(event: str, data: Any) -> str:
+    """Format a single Server-Sent Event."""
+    payload = json.dumps(data, default=str) if not isinstance(data, str) else data
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _extract_tool_result_text(content: Any) -> Any:
+    """Return only the JSON-parseable text portion of a ToolMessage content."""
+    if isinstance(content, str):
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return content
+    if isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                try:
+                    return json.loads(part["text"])
+                except json.JSONDecodeError:
+                    return part["text"]
+    return content
+
+
+# ── Streaming endpoint ──────────────────────────────────────────────────────
+@router.post("/qa")
 async def qa_endpoint(payload: QARequest, request: Request):
-    """Answer a natural-language question about the lifelog using an agentic search chain."""
+    """Stream the QA agent reasoning as Server-Sent Events.
+
+    Each SSE carries an ``event`` tag (``plan``, ``thinking``, ``tool_call``,
+    ``tool_result``, ``answer``, ``sources``, ``error``) and a JSON ``data``
+    payload so the client can render them separately.
+    """
+    try:
+        qa_cfg = _get_qa_config(request)
+    except HTTPException as exc:
+        # Can't stream yet – return plain error
+        raise exc
+
+    debug = qa_cfg["debug"]
+    max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
+
+    try:
+        agent, system_prompt = _build_agent(request, qa_cfg, max_iter)
+    except HTTPException as exc:
+        raise exc
+
+    initial_state: AgentState = {
+        "messages": [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=payload.question),
+        ],
+        "plan": "",
+        "total_images_sent": 0,
+        "iteration_count": 0,
+        "all_sources": [],
+    }
+
+    if debug:
+        print("=" * 80)
+        print(f"[QA DEBUG] Starting QA agent  |  question: {payload.question}")
+        print(f"[QA DEBUG] max_iterations={max_iter}")
+        print("=" * 80)
+        for msg in initial_state["messages"]:
+            _debug_print_message("initial", msg)
+
+    async def _event_generator():
+        """Yield SSE strings as the agent graph executes."""
+        try:
+            all_sources: List[Dict[str, Any]] = []
+            final_answer: Optional[str] = None
+            last_agent_text: Optional[str] = None
+
+            async for event in agent.astream(initial_state, stream_mode="updates"):
+                # *event* is a dict mapping node-name → state-update produced by that node
+                for node_name, update in event.items():
+                    messages = update.get("messages", [])
+
+                    # -- Plan node -------------------------------------------------
+                    if node_name == "plan":
+                        plan_text = update.get("plan", "")
+                        if plan_text:
+                            yield _sse_event("plan", {"plan": plan_text})
+
+                    # -- Agent node (LLM reasoning / tool-call decisions) ----------
+                    elif node_name == "agent":
+                        for msg in messages:
+                            if isinstance(msg, AIMessage):
+                                has_tool_calls = bool(getattr(msg, "tool_calls", None))
+                                text = msg.content
+                                text_str = (text if isinstance(text, str) else str(text)) if text else ""
+
+                                if has_tool_calls:
+                                    # Agent is requesting tool calls – emit thinking
+                                    if text_str.strip():
+                                        yield _sse_event("thinking", {"content": text_str})
+                                    for tc in msg.tool_calls:
+                                        yield _sse_event("tool_call", {
+                                            "tool": tc.get("name", "search_frames"),
+                                            "arguments": tc.get("args", {}),
+                                        })
+                                    last_agent_text = None
+                                else:
+                                    # No tool calls – this is either intermediate
+                                    # reasoning or the final answer.
+                                    if text_str.strip():
+                                        yield _sse_event("thinking", {"content": text_str})
+                                        last_agent_text = text_str
+
+                    # -- Tool node (search results) --------------------------------
+                    elif node_name == "tools":
+                        new_sources = update.get("all_sources", [])
+                        all_sources.extend(new_sources)
+
+                        # Stream the full sources (with image_url) rather than
+                        # the compact ToolMessage content (which strips them).
+                        if new_sources:
+                            yield _sse_event("tool_result", {"results": new_sources})
+
+                    # -- Final-answer node -----------------------------------------
+                    elif node_name == "final_answer":
+                        for msg in messages:
+                            if isinstance(msg, AIMessage):
+                                text = msg.content
+                                if text:
+                                    final_answer = text if isinstance(text, str) else str(text)
+
+            # If the agent ended naturally (no final_answer node), the last
+            # AIMessage without tool_calls is the answer.
+            if final_answer is None and last_agent_text:
+                final_answer = last_agent_text
+
+            if final_answer:
+                yield _sse_event("answer", {"content": final_answer})
+
+            # Deduplicate and emit sources
+            seen: set = set()
+            unique: List[Dict[str, Any]] = []
+            for src in all_sources:
+                sid = src.get("id")
+                if sid and sid not in seen:
+                    seen.add(sid)
+                    unique.append(src)
+            yield _sse_event("sources", {"sources": unique[:100]})
+
+        except Exception as exc:
+            yield _sse_event("error", {"detail": str(exc)})
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── Non-streaming endpoint (kept for backward compatibility) ────────────────
+@router.post("/qa/sync", response_model=QAResponse)
+async def qa_sync_endpoint(payload: QARequest, request: Request):
+    """Answer a natural-language question (non-streaming, returns full JSON)."""
     qa_cfg = _get_qa_config(request)
     debug = qa_cfg["debug"]
     max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
@@ -476,6 +681,7 @@ async def qa_endpoint(payload: QARequest, request: Request):
             SystemMessage(content=system_prompt),
             HumanMessage(content=payload.question),
         ],
+        "plan": "",
         "total_images_sent": 0,
         "iteration_count": 0,
         "all_sources": [],
