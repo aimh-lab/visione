@@ -8,10 +8,14 @@ tool output, and the final answer.
 
 SSE event types
 ---------------
-- ``thinking``    – chain-of-thought / reasoning text from the LLM
 - ``plan``        – the initial plan produced by the planning step
+- ``plan_review`` – critical review / correction of the plan
+- ``thinking``    – chain-of-thought / reasoning text from the LLM
 - ``tool_call``   – JSON with tool name + arguments the agent is about to invoke
 - ``tool_result`` – JSON array of search results returned by the tool
+- ``evaluation``  – plausibility assessment of current conclusionst to invoke
+- ``tool_result`` – JSON array of search results returned by the tool
+- ``evaluation``  – plausibility assessment of current conclusions
 - ``answer``      – the final natural-language answer
 - ``sources``     – deduplicated source list (sent once, after ``answer``)
 - ``error``       – an error message if something goes wrong
@@ -64,6 +68,7 @@ class AgentState(TypedDict):
     plan: str
     total_images_sent: int
     iteration_count: int
+    plan_count: int
     all_sources: Annotated[list, operator.add]
 
 
@@ -180,13 +185,14 @@ You have ONE tool: **search_frames**.
 | `num_images` | int | How many of the TOP results should include the actual image for you to see. Max per call: {max_images_per_call}. Budget: ~{max_total_images} images total across the whole conversation. Set 0 when metadata alone suffices. |
 | `filters` | object or null | Optional metadata filter. See examples below. |
 | `metadata_to_retrieve` | list of strings | List of metadata fields to include in the results. |
+| `reorder_by` | list of strings or null | Optional list of metadata fields to reorder results by (e.g., ["epoch", "day"]). If null, results are returned in default relevance order. To be used with empty semantic queries. |
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
 Comparators: eq, ne, gt, lt, like.
 Operators: and, or, not.
 NOT ALLOWED: lte, gte (use lt or gt instead).
-TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields.
+TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields. Notice that ilike is not supported but you can achieve case-insensitive matching by searching both upper and lower case variants with an "or" operator.
 
 **Single filter:**
 ```json
@@ -199,6 +205,20 @@ TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use
     {{"comparator": "eq", "attribute": "year", "value": 2019}},
     {{"comparator": "eq", "attribute": "month", "value": 1}},
     {{"comparator": "eq", "attribute": "day", "value": 10}}
+]}}
+```
+
+**Search across months (e.g., from 15 Jan to 7 Feb):**
+```json
+{{"operator": "or", "arguments": [
+    {{"operator": "and", "arguments": [
+        {{"comparator": "eq", "attribute": "month", "value": 1}},
+        {{"comparator": "gt", "attribute": "day", "value": 15}}
+    ]}},
+    {{"operator": "and", "arguments": [
+        {{"comparator": "eq", "attribute": "month", "value": 2}},
+        {{"comparator": "lt", "attribute": "day", "value": 7}}
+    ]}}
 ]}}
 ```
 
@@ -232,7 +252,7 @@ TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use
 with epoch filters: gt(epoch, prev_epoch) and lt(epoch, prev_epoch + window). \
 Same for a query including what happened BEFORE, but using lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window).
 A reasonable window is 60-3600 s depending on context.
-3. **Counting & aggregation**: large k (1000). Then group by `hour_id` or \
+3. **Counting & aggregation**: large k (in the order of 400-600). Then group by `hour_id` or \
 by day (same year+month+day from epoch). Consecutive frames within the same hour belong \
 to the same moment. For multi-day events (conferences, trips), group contiguous days as \
 ONE event.
@@ -247,10 +267,12 @@ use a broader query and then visually verify the top results.
 Also:
 - Notice that you can use "filters" alone to use only conditions on metadata. 
 - Do not ask questions back to the user. Use the tools, the images and the metadata to infer the answer.
+- If using only filter without a semantic query, use the reorder_by parameter to order results by a specific attribute (e.g., epoch if you want results returned in chronological order). Otherwise, results will be likely returned in a random order.
 - If not sure about the answer, do not surrender. Try to call again the tool with a refined query or filters, also asking for images. Do not hallucinate, \
 find evidence in the data or declare that the output is not reliable. Do not infer activities based on biases, instead LOOK at the images first.
 - Before saying that metadata cannot confirm an hypothesis, ask for images to verify.
 - Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). If the results are empty, try to reformulate the query or ask for images to verify.
+- In the semantic query, do not use logic operators or keyword-like terms. Instead, write detailed natural language descriptions.
 - Do not say things like "I will now search...". Just continue calling the tool without explicitly saying so.
 - Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly.
 - When providing the final answer, DO NOT repeat the full list of results or metadata. Summarise the evidence briefly."""
@@ -266,6 +288,38 @@ step-by-step plan for how you will answer this question. Consider:
 4. Any temporal reasoning or counting strategies required.
 
 Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
+
+
+def _build_plan_review_prompt() -> str:
+    return """\
+Critically review the original plan. Check for:
+1. **Feasibility**: Can each step actually be performed with the search_frames tool?
+2. **Completeness**: Are there steps missing that are needed to answer the question?
+3. **Correctness**: Are the proposed filters, queries, and strategies appropriate?
+
+If the plan is sound, output it unchanged with a brief "Plan approved." prefix.
+If there are problems, output a corrected plan as a numbered list, prefixed with \
+"Revised plan:" and a brief note on what was wrong.
+
+Do NOT execute any tool calls yet."""
+
+
+def _build_evaluation_prompt() -> str:
+    return """\
+Evaluate the conclusions reached so far. Consider:
+1. **Evidence strength**: Are the conclusions well-supported by the search results and images?
+2. **Consistency**: Do the results agree with each other, or are there contradictions?
+3. **Completeness**: Has enough evidence been gathered to answer the question confidently?
+4. **Plausibility**: Are the conclusions reasonable given the context?
+
+Respond with a JSON object (and nothing else) with exactly two keys:
+- "verdict": one of "confident", "uncertain", or "implausible"
+- "reasoning": a brief explanation of your assessment
+
+Examples:
+{"verdict": "confident", "reasoning": "Multiple results consistently show the same location and time."}
+{"verdict": "uncertain", "reasoning": "Only one result found and metadata is ambiguous; need images to verify."}
+{"verdict": "implausible", "reasoning": "The top results contradict each other and none match the query well."}"""
 
 
 # ── Agent builder ───────────────────────────────────────────────────────────
@@ -300,6 +354,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         k: int = 50,
         num_images: int = 0,
         filters: Optional[Dict[str, Any]] = None,
+        reorder_by: Optional[List[str]] = None,
     ) -> str:
         """Search the lifelog for frames matching a semantic query.
 
@@ -309,6 +364,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             k: Number of metadata results to return.
             num_images: How many top results to include images for.
             filters: Optional metadata filter object (comparator/operator).
+            reorder_by: Optional list of metadata fields to reorder results by (e.g., ["epoch", "day"]). To be used with empty semantic queries.
 
         Returns:
             JSON array of results with id, score, and metadata.
@@ -319,6 +375,8 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         if filters:
             node["filters"] = filters
         node_pg = convert_filters_to_pg(node)
+        if reorder_by and (not query or not query.strip()):
+            node_pg["reorder_by"] = reorder_by
 
         try:
             docs = request.app.state.vector_store.similarity_search(
@@ -364,6 +422,8 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
     )
 
     # ── Graph nodes ────────────────────────────────────────────────────
+    MAX_PLAN_CYCLES = 3  # hard cap to avoid infinite replanning loops
+
     async def plan_node(state: AgentState) -> Dict[str, Any]:
         """Ask the LLM to produce a plan before executing any tool calls."""
         planning_messages = list(state["messages"]) + [
@@ -373,7 +433,6 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         plan_text = response.content if isinstance(response.content, str) else str(response.content)
         if debug:
             _debug_print_message("plan → LLM response", response)
-        # Inject the plan into the conversation so the agent can follow it
         return {
             "messages": [
                 AIMessage(content=f"**Plan:**\n{plan_text}"),
@@ -381,11 +440,60 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             "plan": plan_text,
         }
 
+    async def plan_review_node(state: AgentState) -> Dict[str, Any]:
+        """Critically review the plan and correct inconsistencies."""
+        review_messages = list(state["messages"]) + [
+            HumanMessage(content=_build_plan_review_prompt()),
+        ]
+        response = await llm_no_tools.ainvoke(review_messages)
+        review_text = response.content if isinstance(response.content, str) else str(response.content)
+        if debug:
+            _debug_print_message("plan_review → LLM response", response)
+        return {
+            "messages": [
+                AIMessage(content=f"**Plan Review:**\n{review_text}"),
+            ],
+            "plan": review_text,
+            "plan_count": state.get("plan_count", 0) + 1,
+        }
+
     async def agent_node(state: AgentState) -> Dict[str, Any]:
         response = await llm.ainvoke(state["messages"])
         if debug:
             _debug_print_message("agent → LLM response", response)
         return {"messages": [response]}
+
+    async def evaluate_node(state: AgentState) -> Dict[str, Any]:
+        """Evaluate the plausibility of current conclusions."""
+        eval_messages = list(state["messages"]) + [
+            HumanMessage(content=_build_evaluation_prompt()),
+        ]
+        response = await llm_no_tools.ainvoke(eval_messages)
+        eval_text = response.content if isinstance(response.content, str) else str(response.content)
+        if debug:
+            _debug_print_message("evaluate → LLM response", response)
+
+        # Parse the verdict
+        verdict = "confident"
+        reasoning = eval_text
+        try:
+            parsed = json.loads(eval_text)
+            if isinstance(parsed, dict):
+                verdict = parsed.get("verdict", "confident")
+                reasoning = parsed.get("reasoning", eval_text)
+        except json.JSONDecodeError:
+            # If LLM didn't produce valid JSON, treat as uncertain
+            lower = eval_text.lower()
+            if "implausible" in lower:
+                verdict = "implausible"
+            elif "uncertain" in lower:
+                verdict = "uncertain"
+
+        return {
+            "messages": [
+                AIMessage(content=f"**Evaluation ({verdict}):** {reasoning}"),
+            ],
+        }
 
     async def custom_tool_node(
         state: AgentState,
@@ -481,28 +589,51 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             _debug_print_message("final_answer → LLM response", response)
         return {"messages": [response]}
 
-    def should_continue(state: AgentState) -> Literal["tools", "final_answer", "__end__"]:
+    def should_continue(state: AgentState) -> Literal["tools", "final_answer", "evaluate"]:
         last_msg = state["messages"][-1]
         if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
             if state.get("iteration_count", 0) >= max_iterations:
                 return "final_answer"
             return "tools"
+        # Agent finished reasoning – go to evaluation
+        return "evaluate"
+
+    def should_continue_after_eval(state: AgentState) -> Literal["plan", "__end__"]:
+        """After evaluation, replan if uncertain/implausible (within budget)."""
+        last_msg = state["messages"][-1]
+        text = ""
+        if isinstance(last_msg, AIMessage):
+            text = last_msg.content if isinstance(last_msg.content, str) else str(last_msg.content)
+
+        needs_replan = "(uncertain)" in text.lower() or "(implausible)" in text.lower()
+        can_replan = state.get("plan_count", 1) < MAX_PLAN_CYCLES
+
+        if needs_replan and can_replan:
+            return "plan"
         return "__end__"
 
     # ── Compile graph ──────────────────────────────────────────────────
     graph = StateGraph(AgentState)
     graph.add_node("plan", plan_node)
+    graph.add_node("plan_review", plan_review_node)
     graph.add_node("agent", agent_node)
     graph.add_node("tools", custom_tool_node)
+    graph.add_node("evaluate", evaluate_node)
     graph.add_node("final_answer", final_answer_node)
     graph.add_edge(START, "plan")
+    graph.add_edge("plan_review", "agent")
     graph.add_edge("plan", "agent")
     graph.add_conditional_edges(
         "agent",
         should_continue,
-        {"tools": "tools", "final_answer": "final_answer", "__end__": END},
+        {"tools": "tools", "final_answer": "final_answer", "evaluate": "evaluate"},
     )
     graph.add_edge("tools", "agent")
+    graph.add_conditional_edges(
+        "evaluate",
+        should_continue_after_eval,
+        {"plan": "plan_review", "__end__": END},
+    )
     graph.add_edge("final_answer", END)
 
     return graph.compile(), system_prompt
@@ -537,9 +668,10 @@ def _extract_tool_result_text(content: Any) -> Any:
 async def qa_endpoint(payload: QARequest, request: Request):
     """Stream the QA agent reasoning as Server-Sent Events.
 
-    Each SSE carries an ``event`` tag (``plan``, ``thinking``, ``tool_call``,
-    ``tool_result``, ``answer``, ``sources``, ``error``) and a JSON ``data``
-    payload so the client can render them separately.
+    Each SSE carries an ``event`` tag (``plan``, ``plan_review``, ``thinking``,
+    ``tool_call``, ``tool_result``, ``evaluation``, ``answer``, ``sources``,
+    ``error``) and a JSON ``data`` payload so the client can render them
+    separately.
     """
     try:
         qa_cfg = _get_qa_config(request)
@@ -563,6 +695,7 @@ async def qa_endpoint(payload: QARequest, request: Request):
         "plan": "",
         "total_images_sent": 0,
         "iteration_count": 0,
+        "plan_count": 0,
         "all_sources": [],
     }
 
@@ -591,6 +724,12 @@ async def qa_endpoint(payload: QARequest, request: Request):
                         plan_text = update.get("plan", "")
                         if plan_text:
                             yield _sse_event("plan", {"plan": plan_text})
+
+                    # -- Plan review node ------------------------------------------
+                    elif node_name == "plan_review":
+                        plan_text = update.get("plan", "")
+                        if plan_text:
+                            yield _sse_event("plan_review", {"review": plan_text})
 
                     # -- Agent node (LLM reasoning / tool-call decisions) ----------
                     elif node_name == "agent":
@@ -634,6 +773,15 @@ async def qa_endpoint(payload: QARequest, request: Request):
                                 text = msg.content
                                 if text:
                                     final_answer = text if isinstance(text, str) else str(text)
+
+                    # -- Evaluate node ---------------------------------------------
+                    elif node_name == "evaluate":
+                        for msg in messages:
+                            if isinstance(msg, AIMessage):
+                                text = msg.content
+                                text_str = (text if isinstance(text, str) else str(text)) if text else ""
+                                if text_str.strip():
+                                    yield _sse_event("evaluation", {"content": text_str})
 
             # If the agent ended naturally (no final_answer node), the last
             # AIMessage without tool_calls is the answer.
@@ -684,6 +832,7 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
         "plan": "",
         "total_images_sent": 0,
         "iteration_count": 0,
+        "plan_count": 0,
         "all_sources": [],
     }
 
