@@ -4,14 +4,13 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Request
 from typing import Any, Dict, List, Literal, Optional, Union
 from langchain_classic.chains.query_constructor.ir import StructuredQuery
-from langchain_core.structured_query import Comparator, Comparison, Operation, Operator
-from langchain_postgres.translator import PGVectorTranslator
+from langchain_core.structured_query import Operation, Operator
 from pydantic import BaseModel, Field
 import numpy as np
 from sklearn.svm import SVC
 
 from utils import generate_doc_id
-
+from pg.extended_comparator import ExtendedComparator, ExtendedComparison, ExtendedPGVectorTranslator
 
 class TemporalQueryNode(BaseModel):
     item: Union[str, List["TemporalQueryNode"]] = Field(
@@ -105,8 +104,8 @@ def _parse_dict_to_ir(node: dict):
             operator=Operator(node["operator"]),
             arguments=[_parse_dict_to_ir(argument) for argument in node["arguments"]],
         )
-    return Comparison(
-        comparator=Comparator(node["comparator"]),
+    return ExtendedComparison(
+        comparator=ExtendedComparator(node["comparator"]),
         attribute=node["attribute"],
         value=node["value"],
     )
@@ -117,7 +116,7 @@ def build_pg_filter(filter_dict: dict):
         query="",
         filter=_parse_dict_to_ir(filter_dict),
     )
-    translator = PGVectorTranslator()
+    translator = ExtendedPGVectorTranslator()
     _, pg_kwargs = translator.visit_structured_query(structured_query)
     return pg_kwargs["filter"]
 
