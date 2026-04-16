@@ -1196,30 +1196,57 @@ class AsyncPGVectorStore(VectorStore):
         reorder_clause = "score DESC"
         reorder_join_clause = ""
         reorder_by = query.get("reorder_by")
-        if isinstance(reorder_by, dict) and reorder_by.get("embedding") is not None:
-            reorder_model = reorder_by.get("model")
-            reorder_embedding_column = reorder_by.get("embedding_column")
-            selected_reorder_column, _ = self._resolve_embedding_backend(
-                model=reorder_model,
-                embedding_column=reorder_embedding_column,
-            )
+        if isinstance(reorder_by, dict):
+            has_embedding = reorder_by.get("embedding") is not None
+            has_columns = reorder_by.get("columns") is not None
+            if has_embedding and has_columns:
+                raise ValueError(
+                    "reorder_by cannot contain both 'embedding' and 'columns'; they are mutually exclusive."
+                )
 
-            raw_reorder_embedding = reorder_by.get("embedding")
-            if isinstance(raw_reorder_embedding, np.ndarray):
-                reorder_embedding = raw_reorder_embedding.astype(float).ravel().tolist()
-            elif isinstance(raw_reorder_embedding, str):
-                reorder_embedding = json.loads(raw_reorder_embedding)
-            else:
-                reorder_embedding = list(raw_reorder_embedding)
+            if has_embedding:
+                reorder_model = reorder_by.get("model")
+                reorder_embedding_column = reorder_by.get("embedding_column")
+                selected_reorder_column, _ = self._resolve_embedding_backend(
+                    model=reorder_model,
+                    embedding_column=reorder_embedding_column,
+                )
 
-            if not isinstance(reorder_embedding, list) or len(reorder_embedding) == 0:
-                raise ValueError("reorder_by.embedding must be a non-empty vector.")
+                raw_reorder_embedding = reorder_by.get("embedding")
+                if isinstance(raw_reorder_embedding, np.ndarray):
+                    reorder_embedding = raw_reorder_embedding.astype(float).ravel().tolist()
+                elif isinstance(raw_reorder_embedding, str):
+                    reorder_embedding = json.loads(raw_reorder_embedding)
+                else:
+                    reorder_embedding = list(raw_reorder_embedding)
 
-            params["reorder_query_embedding"] = f"{[float(dimension) for dimension in reorder_embedding]}"
-            reorder_join_clause = (
-                f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
-            )
-            reorder_clause = f'b_reorder."{selected_reorder_column}" {operator} :reorder_query_embedding'
+                if not isinstance(reorder_embedding, list) or len(reorder_embedding) == 0:
+                    raise ValueError("reorder_by.embedding must be a non-empty vector.")
+
+                params["reorder_query_embedding"] = f"{[float(dimension) for dimension in reorder_embedding]}"
+                reorder_join_clause = (
+                    f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
+                )
+                reorder_clause = f'b_reorder."{selected_reorder_column}" {operator} :reorder_query_embedding'
+
+            elif has_columns:
+                reorder_columns = reorder_by["columns"]
+                if not isinstance(reorder_columns, list) or len(reorder_columns) == 0:
+                    raise ValueError("reorder_by.columns must be a non-empty list of column names.")
+                for col in reorder_columns:
+                    if not isinstance(col, str) or not col.isidentifier():
+                        raise ValueError(
+                            f"Invalid column name in reorder_by.columns: '{col}'. "
+                            "Must be a valid SQL identifier."
+                        )
+                # Sorting is hierarchical from right to left: the last column in
+                # the list is the primary sort key, preceding columns break ties.
+                reorder_join_clause = (
+                    f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
+                )
+                reorder_clause = ", ".join(
+                    f'b_reorder."{col}"' for col in reversed(reorder_columns)
+                )
 
         joined_statements = ",\n".join(cte_statements)
         sql = text(
