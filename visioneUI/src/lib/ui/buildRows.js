@@ -9,7 +9,7 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
   };
 
   const mode = viewMode;
-  const perRow = resultsPerRow ?? 5;
+  const perRow = Math.max(1, Number(resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
   const sortByDateDesc = (arr) =>
@@ -29,7 +29,15 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
         if (!byVideo.has(vid)) byVideo.set(vid, []);
         byVideo.get(vid).push(img);
       }
-      return Array.from(byVideo.values());
+
+      const rows = [];
+      for (const group of byVideo.values()) {
+        for (let i = 0; i < group.length; i += perRow) {
+          rows.push(group.slice(i, i + perRow));
+        }
+      }
+
+      return rows;
     }
 
     if (mode === "bydate") {

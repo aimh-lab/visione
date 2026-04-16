@@ -19,11 +19,67 @@
   export let dresPassword = '';
   export let dresMemberId = '';
   export let autoTranslateQueries = true;
+  export let temporalWindowSeconds = 50;
+  export let modelSelectionPerStepEnabled = true;
+  export let defaultTextModel = 'openclip_clip_vit_b_32';
+  export let defaultImageModel = 'dinov2_base';
+  export let availableModels = [];
   export let videoBadgeOrientation = 'vertical';
   export let futureOptionA = "";
   export let futureOptionB = false;
 
   const dispatch = createEventDispatcher();
+  const FALLBACK_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const FALLBACK_IMAGE_MODEL = 'dinov2_base';
+
+  function normalizeAvailableModelEntry(input) {
+    if (typeof input === 'string') {
+      const name = input.trim();
+      if (!name) return null;
+      return { name, modalities: ['text', 'image'] };
+    }
+
+    if (!input || typeof input !== 'object') return null;
+    const name = String(input?.name || '').trim();
+    if (!name) return null;
+
+    const modalities = Array.isArray(input?.modalities)
+      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    return {
+      name,
+      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
+    };
+  }
+
+  function supportsTextModel(entry) {
+    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
+  }
+
+  function supportsImageModel(entry) {
+    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
+  }
+
+  let normalizedModelEntries = [];
+  let textModelOptions = [];
+  let imageModelOptions = [];
+
+  $: normalizedModelEntries = (Array.isArray(availableModels) ? availableModels : [])
+    .map((m) => normalizeAvailableModelEntry(m))
+    .filter((m) => !!m);
+
+  $: textModelOptions = Array.from(new Set([
+    FALLBACK_TEXT_MODEL,
+    String(defaultTextModel || '').trim(),
+    ...normalizedModelEntries.filter(supportsTextModel).map((m) => m.name)
+  ].filter(Boolean)));
+
+  $: imageModelOptions = Array.from(new Set([
+    FALLBACK_IMAGE_MODEL,
+    String(defaultImageModel || '').trim(),
+    ...normalizedModelEntries.filter(supportsImageModel).map((m) => m.name)
+  ].filter(Boolean)));
   
   // ✅ Copia locale dei valori
   let local = {
@@ -43,6 +99,10 @@
     dresPassword,
     dresMemberId,
     autoTranslateQueries,
+    temporalWindowSeconds,
+    modelSelectionPerStepEnabled,
+    defaultTextModel,
+    defaultImageModel,
     futureOptionA,
     futureOptionB
   };
@@ -67,6 +127,10 @@
       dresPassword,
       dresMemberId,
       autoTranslateQueries,
+      temporalWindowSeconds,
+      modelSelectionPerStepEnabled,
+      defaultTextModel,
+      defaultImageModel,
       futureOptionA,
       futureOptionB
     };
@@ -93,6 +157,13 @@
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
     const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
+    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 50));
+    const safeDefaultTextModel = textModelOptions.includes(String(local.defaultTextModel || '').trim())
+      ? String(local.defaultTextModel || '').trim()
+      : FALLBACK_TEXT_MODEL;
+    const safeDefaultImageModel = imageModelOptions.includes(String(local.defaultImageModel || '').trim())
+      ? String(local.defaultImageModel || '').trim()
+      : FALLBACK_IMAGE_MODEL;
     
     const newSettings = {
       theme: ['default', 'dark', 'light'].includes(local.theme) ? local.theme : 'default',
@@ -110,6 +181,10 @@
       dresPassword: local.dresPassword ?? '',
       dresMemberId: (local.dresMemberId ?? '').trim(),
       autoTranslateQueries: !!local.autoTranslateQueries,
+      temporalWindowSeconds: safeTemporalWindowSeconds,
+      modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
+      defaultTextModel: safeDefaultTextModel,
+      defaultImageModel: safeDefaultImageModel,
       futureOptionA: local.futureOptionA,
       futureOptionB: !!local.futureOptionB
     };
@@ -140,6 +215,60 @@
       document.documentElement.style.setProperty('--min-card-w', `${Math.round(next * 1.1)}px`);
     }
 
+    save();
+  }
+
+  function handleTemporalWindowInput(event) {
+    const raw = String(event?.currentTarget?.value ?? '');
+    if (raw.trim() === '') {
+      // Allow clearing the field while typing; commit happens on blur.
+      local.temporalWindowSeconds = '';
+      return;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+
+    local.temporalWindowSeconds = Math.min(99999, Math.max(1, Math.trunc(parsed)));
+    save();
+  }
+
+  function commitTemporalWindowInput() {
+    const parsed = Number(local.temporalWindowSeconds);
+    local.temporalWindowSeconds = Number.isFinite(parsed)
+      ? Math.min(99999, Math.max(1, Math.trunc(parsed)))
+      : 50;
+    save();
+  }
+
+  function handleKeyframeSizeInput(event) {
+    const raw = String(event?.currentTarget?.value ?? '');
+    if (raw.trim() === '') {
+      local.keyframeSize = '';
+      return;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+
+    local.keyframeSize = Math.min(400, Math.trunc(parsed));
+
+    // Keep live preview responsive only when value is in a sensible visual range.
+    if (local.keyframeSize >= 80 && local.keyframeSize <= 400) {
+      document.documentElement.style.setProperty('--kf-size', `${local.keyframeSize}px`);
+      document.documentElement.style.setProperty('--min-card-w', `${Math.round(local.keyframeSize * 1.1)}px`);
+    }
+  }
+
+  function commitKeyframeSizeInput() {
+    const parsed = Number(local.keyframeSize);
+    const safe = Number.isFinite(parsed)
+      ? Math.min(400, Math.max(80, Math.trunc(parsed)))
+      : 130;
+
+    local.keyframeSize = safe;
+    document.documentElement.style.setProperty('--kf-size', `${safe}px`);
+    document.documentElement.style.setProperty('--min-card-w', `${Math.round(safe * 1.1)}px`);
     save();
   }
 </script>
@@ -205,13 +334,8 @@
                   step="10"
                   class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.keyframeSize}
-                  on:input={(e) => {
-                    const val = Math.min(400, Math.max(80, Number(e.currentTarget.value)||130));
-                    local.keyframeSize = val;
-                    document.documentElement.style.setProperty('--kf-size', `${val}px`);
-                    document.documentElement.style.setProperty('--min-card-w', `${Math.round(val * 1.1)}px`);
-                    save();
-                  }}
+                  on:input={handleKeyframeSizeInput}
+                  on:blur={commitKeyframeSizeInput}
                 />
                 <div class="ui-settings-stepper">
                   <button type="button" class="ui-settings-stepper-btn" aria-label="Increase keyframe size" on:click={() => adjustNumber('keyframeSize', 10, 80, 400)}>
@@ -270,6 +394,10 @@
               </div>
             </div>
           </div>
+
+          <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+            In by video mode, rows are still capped by Results per row even when Auto-fit is enabled.
+          </p>
 
           <div class="flex items-center justify-between py-2">
             <label for="settings-video-badge-orientation" class="ui-settings-label text-sm font-medium text-gray-700">Video badge</label>
@@ -355,6 +483,70 @@
               on:change={() => save()}
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-temporal-window-seconds" class="ui-settings-label text-sm font-medium text-gray-700">Temporal window (seconds)</label>
+            <div class="relative">
+              <input
+                id="settings-temporal-window-seconds"
+                type="number"
+                min="1"
+                max="99999"
+                step="1"
+                class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.temporalWindowSeconds}
+                on:input={handleTemporalWindowInput}
+                on:blur={commitTemporalWindowInput}
+              />
+              <div class="ui-settings-stepper">
+                <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
+                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                </button>
+                <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
+                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-model-selection-per-step" class="ui-settings-label text-sm font-medium text-gray-700">Enable model selection per step</label>
+            <input
+              id="settings-model-selection-per-step"
+              type="checkbox"
+              bind:checked={local.modelSelectionPerStepEnabled}
+              on:change={() => save()}
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-default-text-model" class="ui-settings-label text-sm font-medium text-gray-700">Default text model</label>
+            <select
+              id="settings-default-text-model"
+              class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+              bind:value={local.defaultTextModel}
+              on:change={() => save()}
+            >
+              {#each textModelOptions as m}
+                <option value={m}>{m}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <label for="settings-default-image-model" class="ui-settings-label text-sm font-medium text-gray-700">Default image model</label>
+            <select
+              id="settings-default-image-model"
+              class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+              bind:value={local.defaultImageModel}
+              on:change={() => save()}
+            >
+              {#each imageModelOptions as m}
+                <option value={m}>{m}</option>
+              {/each}
+            </select>
           </div>
         </div>
 

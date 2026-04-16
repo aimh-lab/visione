@@ -12,30 +12,11 @@
   export let showSubmitted = false;
   export let dresEnabled = false;
   export let dresUsername = '';
-  export let logCount = 0;
-  export let logUserFolder = 'unknown-user';
-  export let isExportingLogs = false;
-  export let onExportLogs = () => {};
-  export let isDeletingLogs = false;
-  export let onDeleteLogs = () => {};
-  export let logResultsLimit = 10000;
-  export let onChangeLogResultsLimit = () => {};
-  export let autoTranslateEnabled = true;
-  export let onToggleAutoTranslate = () => {};
   
   // ✅ BONUS: Eventi per azioni rapide
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
 
-  let isLogsDropdownOpen = false;
-
-  function handleWindowClick(event) {
-    if (!isLogsDropdownOpen) return;
-    const target = event.target;
-    if (target && target.closest && target.closest('.logs-dropdown-container')) return;
-    isLogsDropdownOpen = false;
-  }
-  
   const viewLabels = tabLabels;
   
   const sortLabels = {
@@ -47,8 +28,6 @@
   $: viewLabel = viewLabels[currentView] || currentView;
   $: sortLabel = sortLabels[viewMode] || viewMode;
 </script>
-
-<svelte:window on:click={handleWindowClick} />
 
 <div class="ui-statusbar fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 via-gray-800/98 to-gray-900/98 backdrop-blur-md border-t border-gray-700/50 shadow-2xl z-[100]">
   <div class="px-4 py-1">
@@ -171,93 +150,6 @@
           </svg>
           <span>Sort:</span>
           <span class="text-white font-semibold">{sortLabel}</span>
-        </div>
-
-        <span class="text-gray-700">•</span>
-
-        <button
-          type="button"
-          on:click={onToggleAutoTranslate}
-          class="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded border transition-all {autoTranslateEnabled
-            ? 'border-emerald-500/60 bg-emerald-900/30 text-emerald-200 hover:bg-emerald-900/45'
-            : 'border-gray-600/70 bg-gray-800/50 text-gray-300 hover:bg-gray-700/70'}"
-          title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3.5" y="4" width="11" height="11" rx="1.8"/>
-            <path d="M6.5 8.2h5"/>
-            <path d="M9 7v1.2"/>
-            <path d="M7.3 8.2c.2 1.8 1 3.2 2.6 4.4"/>
-            <rect x="10.5" y="9" width="10" height="10" rx="1.8"/>
-            <path d="M14.2 14.8h2.8"/>
-            <path d="M15.6 13.4v2.8"/>
-          </svg>
-          <span>{autoTranslateEnabled ? 'Translate ON' : 'Translate OFF'}</span>
-        </button>
-        
-        <span class="text-gray-700">•</span>
-
-        <div class="relative logs-dropdown-container">
-          <button
-            on:click|stopPropagation={() => (isLogsDropdownOpen = !isLogsDropdownOpen)}
-            class="px-2 py-0.5 rounded border border-amber-500/60 bg-amber-900/25 text-amber-200 hover:bg-amber-900/45 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Logging actions"
-            disabled={isExportingLogs || isDeletingLogs}
-          >
-            {#if isExportingLogs}
-              Exporting logs...
-            {:else if isDeletingLogs}
-              Deleting logs...
-            {:else}
-              Logs ({logCount})
-            {/if}
-          </button>
-
-          {#if isLogsDropdownOpen}
-            <div class="absolute right-0 bottom-full mb-2 w-56 rounded-lg border border-gray-700 bg-gray-900/98 shadow-2xl p-2 z-[120]">
-              <div class="px-2 py-1 text-[10px] uppercase tracking-wide text-gray-400">VBS Logging</div>
-              <div class="px-2 pb-1 text-[10px] text-gray-400 truncate" title={logUserFolder}>
-                User folder: <span class="text-gray-300">{logUserFolder}</span>
-              </div>
-
-              <button
-                type="button"
-                class="w-full text-left px-2 py-1.5 rounded text-cyan-200 hover:bg-cyan-900/35 transition-colors"
-                title="Cycle logged result depth: 100, 1000, 10000"
-                on:click={() => {
-                  onChangeLogResultsLimit();
-                }}
-              >
-                ⚙ Top Results: {logResultsLimit}
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-2 py-1.5 rounded text-amber-200 hover:bg-amber-900/35 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Export VBS logs"
-                disabled={isExportingLogs || isDeletingLogs}
-                on:click={() => {
-                  isLogsDropdownOpen = false;
-                  onExportLogs();
-                }}
-              >
-                ⬇ Download Logs
-              </button>
-
-              <button
-                type="button"
-                class="w-full text-left px-2 py-1.5 rounded text-red-200 hover:bg-red-900/35 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Delete local VBS logs (safe mode)"
-                disabled={isDeletingLogs || isExportingLogs || logCount <= 0}
-                on:click={() => {
-                  isLogsDropdownOpen = false;
-                  onDeleteLogs();
-                }}
-              >
-                🗑 Delete Logs (Safe)
-              </button>
-            </div>
-          {/if}
         </div>
 
         <span class="text-gray-700">•</span>

@@ -12,6 +12,9 @@
   export let textareas = [];
   export let translatedQueryHints = {};
   export let availableModels = [];
+  export let modelSelectionPerStepEnabled = true;
+  export let autoTranslateEnabled = true;
+  export let onToggleAutoTranslate = () => {};
   export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
@@ -165,27 +168,57 @@
     <div class="flex-1 overflow-y-auto pt-1.5 pb-1.5 pl-1.5 pr-2.5 space-y-2 custom-scrollbar">
         <!-- Query Builder -->
         <div class="bg-gray-800/50 rounded-lg p-1.5 border border-gray-700 shadow-lg">
-          <div class="flex items-center space-x-2 mb-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M12 7v5l3 2"/>
-              <path d="M3 12h2M19 12h2"/>
-            </svg>
-            <h3 class="text-xs font-bold text-white uppercase tracking-wide">Temporal Query</h3>
-            <div class="relative group/info ml-0.5">
-              <button
-                type="button"
-                class="w-4 h-4 rounded-full border border-slate-500/70 text-slate-300 text-[10px] font-bold inline-flex items-center justify-center hover:bg-slate-600/20 transition-colors"
-                aria-label="Temporal sequence search info"
-                title="Temporal Sequence Search"
-              >
-                i
-              </button>
-              <div class="absolute right-0 top-full mt-1 hidden group-hover/info:block z-40 w-36 max-w-[calc(100vw-3rem)] rounded-md border border-gray-700 bg-gray-900 px-2.5 py-2 text-[10px] leading-snug text-gray-200 shadow-xl">
-                <p class="font-semibold text-slate-200 mb-0.5">Temporal Sequence Search</p>
-                <p>Find videos where scenes appear in order over time.</p>
+          <div class="mb-1 flex items-center justify-between gap-2 pr-0.5">
+            <div class="flex min-w-0 items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 2"/>
+                <path d="M3 12h2M19 12h2"/>
+              </svg>
+              <h3 class="text-xs font-bold text-white uppercase tracking-wide">Temporal Query</h3>
+              <div class="relative group/info ml-0.5">
+                <button
+                  type="button"
+                  class="w-4 h-4 rounded-full border border-slate-500/70 text-slate-300 text-[10px] font-bold inline-flex items-center justify-center hover:bg-slate-600/20 transition-colors"
+                  aria-label="Temporal sequence search info"
+                  title="Temporal Sequence Search"
+                >
+                  i
+                </button>
+                <div class="absolute right-0 top-full mt-1 hidden group-hover/info:block z-40 w-36 max-w-[calc(100vw-3rem)] rounded-md border border-gray-700 bg-gray-900 px-2.5 py-2 text-[10px] leading-snug text-gray-200 shadow-xl">
+                  <p class="font-semibold text-slate-200 mb-0.5">Temporal Sequence Search</p>
+                  <p>Find videos where scenes appear in order over time.</p>
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-slate-700/35"
+              title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
+              aria-label={autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
+              aria-pressed={autoTranslateEnabled}
+              on:click={onToggleAutoTranslate}
+            >
+              <img
+                src="/icons/translate.svg"
+                alt=""
+                aria-hidden="true"
+                class="w-3.5 h-3.5 object-contain transition-opacity {autoTranslateEnabled ? 'opacity-100 saturate-125' : 'opacity-55 grayscale'}"
+                loading="lazy"
+              />
+              <span
+                class="relative inline-flex h-3.5 w-6 items-center rounded-full border transition-colors {autoTranslateEnabled
+                  ? 'border-emerald-400/70 bg-emerald-500/35'
+                  : 'border-slate-500/70 bg-slate-700/70'}"
+              >
+                <span
+                  class="inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform {autoTranslateEnabled
+                    ? 'translate-x-3'
+                    : 'translate-x-0.5'}"
+                ></span>
+              </span>
+            </button>
           </div>
           
           <TextareasManager
@@ -193,6 +226,7 @@
             {textareas}
             {translatedQueryHints}
             {availableModels}
+            {modelSelectionPerStepEnabled}
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}
