@@ -189,14 +189,12 @@ You have ONE tool: **search_frames**.
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
-Comparators: eq, ne, gt, lt, like.
+Comparators: eq, ne, gt, gte lt, lte, ilike.
 Operators: and, or, not.
-NOT ALLOWED: lte, gte (use lt or gt instead).
-TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields. Notice that ilike is not supported but you can achieve case-insensitive matching by searching both upper and lower case variants with an "or" operator.
 
 **Single filter:**
 ```json
-{{"comparator": "like", "attribute": "city", "value": "%Dublin%"}}
+{{"comparator": "ilike", "attribute": "city", "value": "%Dublin%"}}
 ```
 
 **Search by year, month, day:**
@@ -213,7 +211,7 @@ TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use
 {{"operator": "or", "arguments": [
     {{"operator": "and", "arguments": [
         {{"comparator": "eq", "attribute": "month", "value": 1}},
-        {{"comparator": "gt", "attribute": "day", "value": 15}}
+        {{"comparator": "gte", "attribute": "day", "value": 15}}
     ]}},
     {{"operator": "and", "arguments": [
         {{"comparator": "eq", "attribute": "month", "value": 2}},
@@ -225,7 +223,7 @@ TIPS: always use "like" with wildcards (e.g., "%Text%") for string matching. Use
 **Combined filters:**
 ```json
 {{"operator": "and", "arguments": [
-    {{"comparator": "like", "attribute": "city", "value": "%Dublin%"}},
+    {{"comparator": "ilike", "attribute": "city", "value": "%Dublin%"}},
     {{"comparator": "gt", "attribute": "epoch", "value": 1570000000}}
 ]}}
 ```
@@ -264,16 +262,17 @@ use a broader query and then visually verify the top results.
 (filter on `image_name`) by leaving the query empty to verify specific moments.
 6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.) and start again with a narrower query.
 
-Also:
+Important:
 - Notice that you can use "filters" alone to use only conditions on metadata. 
 - Do not ask questions back to the user. Use the tools, the images and the metadata to infer the answer.
 - If using only filter without a semantic query, use the reorder_by parameter to order results by a specific attribute (e.g., epoch if you want results returned in chronological order). Otherwise, results will be likely returned in a random order.
 - If not sure about the answer, do not surrender. Try to call again the tool with a refined query or filters, also asking for images. Do not hallucinate, \
 find evidence in the data or declare that the output is not reliable. Do not infer activities based on biases, instead LOOK at the images first.
 - Before saying that metadata cannot confirm an hypothesis, ask for images to verify.
-- Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). If the results are empty, try to reformulate the query or ask for images to verify.
-- In the semantic query, do not use logic operators or keyword-like terms. Instead, write detailed natural language descriptions.
-- Do not say things like "I will now search...". Just continue calling the tool without explicitly saying so.
+- Always use "ilike" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields.
+- Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). 
+- If the results are empty, try to reformulate the query by checking if you are using the right operator (most likely you are using eq instead of ilike or filtering on the wrong metadata) or ask for images to verify.
+- In the semantic query, do not use logic operators or keyword-like terms. Instead, write natural language descriptions.
 - Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly.
 - When providing the final answer, DO NOT repeat the full list of results or metadata. Summarise the evidence briefly."""
 
