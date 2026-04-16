@@ -85,6 +85,10 @@ class SearchRequest(BaseModel):
         default=None,
         description="User-provided relevance feedback for improving search results.",
     )
+    reorder_by: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional reordering instructions, e.g., {'columns': ['epoch', 'day']}",
+    )
 
 class SearchResult(BaseModel):
     metadata: Dict[str, Any]
@@ -257,7 +261,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
         rf_feature = rf_method(positive_features, negative_features)
         actual_query["reorder_by"] = {"embedding": rf_feature, "model": rf.get("model")}
     else:
-        actual_query["reorder_by"] = None
+        actual_query["reorder_by"] = query_dict.get("reorder_by", None)
 
     try:
         docs = request.app.state.vector_store.similarity_search(
