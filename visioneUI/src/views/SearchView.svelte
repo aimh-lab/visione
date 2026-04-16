@@ -36,6 +36,9 @@
   export let textareas: QueryTextarea[] = [];
   export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModel[] = [];
+  export let modelSelectionPerStepEnabled = true;
+  export let autoTranslateEnabled = true;
+  export let onToggleAutoTranslate = () => {};
   export let textareaImages: Record<number, unknown[]> = {};
 
   export let searchLoading = false;
@@ -167,6 +170,9 @@
   {textareas}
   {translatedQueryHints}
   {availableModels}
+  {modelSelectionPerStepEnabled}
+  {autoTranslateEnabled}
+  {onToggleAutoTranslate}
   {textareaImages}
   {searchLoading}
   searchError={searchError as any}

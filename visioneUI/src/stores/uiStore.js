@@ -31,7 +31,11 @@ const DEFAULT = {
   dresUsername: '',
   dresPassword: '',
   dresMemberId: '',
-  autoTranslateQueries: true
+  autoTranslateQueries: true,
+  temporalWindowSeconds: 50,
+  modelSelectionPerStepEnabled: true,
+  defaultTextModel: 'openclip_clip_vit_b_32',
+  defaultImageModel: 'dinov2_base'
 };
 
 function clampSidebarWidthVw(value, fallback = 18) {
@@ -93,7 +97,13 @@ function createUIStore() {
         dresUsername: s.dresUsername ?? u.dresUsername,
         dresPassword: s.dresPassword ?? u.dresPassword,
         dresMemberId: s.dresMemberId ?? u.dresMemberId,
-        autoTranslateQueries: s.autoTranslateQueries ?? u.autoTranslateQueries
+        autoTranslateQueries: s.autoTranslateQueries ?? u.autoTranslateQueries,
+        temporalWindowSeconds: Number.isFinite(Number(s.temporalWindowSeconds))
+          ? Math.min(99999, Math.max(1, Number(s.temporalWindowSeconds)))
+          : u.temporalWindowSeconds,
+        modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
+        defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
+        defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
       }));
     },
 
@@ -123,7 +133,11 @@ function createUIStore() {
         dresUsername: DEFAULT.dresUsername,
         dresPassword: DEFAULT.dresPassword,
         dresMemberId: DEFAULT.dresMemberId,
-        autoTranslateQueries: DEFAULT.autoTranslateQueries
+        autoTranslateQueries: DEFAULT.autoTranslateQueries,
+        temporalWindowSeconds: DEFAULT.temporalWindowSeconds,
+        modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
+        defaultTextModel: DEFAULT.defaultTextModel,
+        defaultImageModel: DEFAULT.defaultImageModel
       });
     },
 
@@ -200,10 +214,13 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, temporalWindowSeconds, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
+      const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(temporalWindowSeconds) || DEFAULT.temporalWindowSeconds));
+      const safeDefaultTextModel = String(defaultTextModel || '').trim() || DEFAULT.defaultTextModel;
+      const safeDefaultImageModel = String(defaultImageModel || '').trim() || DEFAULT.defaultImageModel;
       update(u => ({
         ...u,
         theme: safeTheme,
@@ -221,7 +238,11 @@ function createUIStore() {
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',
         dresMemberId: (dresMemberId ?? '').trim(),
-        autoTranslateQueries: !!autoTranslateQueries
+        autoTranslateQueries: !!autoTranslateQueries,
+        temporalWindowSeconds: safeTemporalWindowSeconds,
+        modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
+        defaultTextModel: safeDefaultTextModel,
+        defaultImageModel: safeDefaultImageModel
       }));
       persist({
         theme: safeTheme,
@@ -239,7 +260,11 @@ function createUIStore() {
         dresUsername: (dresUsername ?? '').trim(),
         dresPassword: dresPassword ?? '',
         dresMemberId: (dresMemberId ?? '').trim(),
-        autoTranslateQueries: !!autoTranslateQueries
+        autoTranslateQueries: !!autoTranslateQueries,
+        temporalWindowSeconds: safeTemporalWindowSeconds,
+        modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
+        defaultTextModel: safeDefaultTextModel,
+        defaultImageModel: safeDefaultImageModel
       });
     }
   };

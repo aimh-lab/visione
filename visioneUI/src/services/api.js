@@ -188,7 +188,7 @@ export class VisioneAPI {
   }
 
   // Search API
-  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5 }) {
+  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5, temporalWindowSeconds = undefined }) {
     void simReorder;
     void framesPerRow;
 
@@ -202,7 +202,7 @@ export class VisioneAPI {
       throw new APIError('At least one textarea must be enabled and contain text or image similarity', 400);
     }
 
-    const payload = this.#buildSearchPayload(activeTextareas);
+    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds);
     const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
     if (normalizedRF) {
       payload.relevance_feedback = normalizedRF;
@@ -505,7 +505,7 @@ export class VisioneAPI {
     return fallbackRaw;
   }
 
-  #buildSearchPayload(activeTextareas) {
+  #buildSearchPayload(activeTextareas, temporalWindowSeconds = undefined) {
     const textareaNodes = activeTextareas
       .map((t) => this.#buildTextareaQueryNode(t, this.defaultSubqueryK, this.defaultSubqueryK))
       .filter(Boolean);
@@ -532,11 +532,15 @@ export class VisioneAPI {
       };
     }
 
+    const safeTemporalWindowSeconds = Number.isFinite(Number(temporalWindowSeconds))
+      ? Math.min(99999, Math.max(1, Number(temporalWindowSeconds)))
+      : this.defaultTemporalWindowSeconds;
+
     return {
       query: {
         item: textareaNodes,
         aggregation_type: 'temporal',
-        window_seconds: this.defaultTemporalWindowSeconds,
+        window_seconds: safeTemporalWindowSeconds,
         k: this.defaultAggregatedK
       },
       urls_to_retrieve: ['images', 'thumbnails', 'videos'],

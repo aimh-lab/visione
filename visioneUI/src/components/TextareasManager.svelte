@@ -88,6 +88,7 @@
   export let textareas: QueryTextarea[] = [];
   export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModelInput[] = [];
+  export let modelSelectionPerStepEnabled = true;
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
 
@@ -1011,15 +1012,13 @@
                     aria-expanded={openTranslationHintIndex === i}
                     on:click|stopPropagation={() => toggleTranslationHint(i)}
                   >
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <rect x="3.5" y="4" width="11" height="11" rx="1.8"/>
-                      <path d="M6.5 8.2h5"/>
-                      <path d="M9 7v1.2"/>
-                      <path d="M7.3 8.2c.2 1.8 1 3.2 2.6 4.4"/>
-                      <rect x="10.5" y="9" width="10" height="10" rx="1.8"/>
-                      <path d="M14.2 14.8h2.8"/>
-                      <path d="M15.6 13.4v2.8"/>
-                    </svg>
+                    <img
+                      src="/icons/translate.svg"
+                      alt=""
+                      aria-hidden="true"
+                      class="w-3.5 h-3.5 object-contain"
+                      loading="lazy"
+                    />
                   </button>
 
                   {#if openTranslationHintIndex === i}
@@ -1180,7 +1179,7 @@
                         </div>
                       </div>
 
-                      {#if textarea.enabled && imageModelOptions.length > 0}
+                      {#if modelSelectionPerStepEnabled && textarea.enabled && imageModelOptions.length > 0}
                         <div class="w-[9.5rem] shrink-0 pt-0.5">
                           <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
                           <select
@@ -1235,7 +1234,7 @@
                       </div>
                     {/each}
 
-                    {#if textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && imageModelOptions.length > 0}
+                    {#if modelSelectionPerStepEnabled && textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && imageModelOptions.length > 0}
                       <div class="w-[9.5rem] shrink-0 pt-0.5">
                         <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
                         <select
@@ -1450,7 +1449,7 @@
 
             {#if textarea.enabled}
               <div class="ml-2 flex items-center gap-1">
-                {#if textModelOptions.length > 0}
+                {#if modelSelectionPerStepEnabled && textModelOptions.length > 0}
                   <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">TXT</span>
                   <select
                     class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"

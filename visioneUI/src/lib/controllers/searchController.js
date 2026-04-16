@@ -13,6 +13,7 @@ export function createSearchController({
   getFramesPerRow,        // () => number
   getCacheEnabled,        // () => boolean
   getAutoTranslateEnabled,// () => boolean
+  getTemporalWindowSeconds, // () => number
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
   getRelevanceFeedback,   // () => { positiveIds, negativeIds, method, model?, numAdditionalNegatives? } | null
@@ -218,12 +219,16 @@ export function createSearchController({
 
       // 2) API
       const framesPerRow = getFramesPerRow();
+      const temporalWindowSeconds = typeof getTemporalWindowSeconds === 'function'
+        ? Number(getTemporalWindowSeconds())
+        : undefined;
 
       const resultSet = await api.search({
         textareas,
         relevanceFeedback,
         simReorder: false,
-        framesPerRow
+        framesPerRow,
+        temporalWindowSeconds
       });
 
       if (req !== reqId) return;

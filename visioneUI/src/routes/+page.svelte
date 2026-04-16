@@ -238,6 +238,8 @@
   $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
+  $: visioneAPI.defaultTextModel = String($uiStore.defaultTextModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
+  $: visioneAPI.defaultImageModel = String($uiStore.defaultImageModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
 
   // ---------------------------
   // CSS vars (solo da uiStore)
@@ -359,10 +361,18 @@
     return String(similarityStep?.similarityImgId || '').trim() || null;
   }
 
+  function getGlobalDefaultTextModel() {
+    return String(get(uiStore).defaultTextModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
+  }
+
+  function getGlobalDefaultImageModel() {
+    return String(get(uiStore).defaultImageModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+  }
+
   function normalizeTextareaModels(textarea) {
     const legacyModel = String(textarea?.model || '').trim();
-    const textModel = String(textarea?.textModel || legacyModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
-    const imageModel = String(textarea?.imageModel || legacyModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+    const textModel = String(textarea?.textModel || legacyModel || getGlobalDefaultTextModel()).trim() || getGlobalDefaultTextModel();
+    const imageModel = String(textarea?.imageModel || legacyModel || getGlobalDefaultImageModel()).trim() || getGlobalDefaultImageModel();
 
     return {
       ...textarea,
@@ -627,9 +637,21 @@
 
   function getTextareasForSearch(rawTextareas = textareas) {
     const source = Array.isArray(rawTextareas) ? rawTextareas : [];
+    const modelSelectionPerStepEnabled = !!get(uiStore).modelSelectionPerStepEnabled;
+    const globalTextModel = getGlobalDefaultTextModel();
+    const globalImageModel = getGlobalDefaultImageModel();
+
     return source.map((t, idx) => {
       const explicitSimilarity = String(t?.similarityImgId || '').trim();
-      if (explicitSimilarity) return t;
+      const baseStep = modelSelectionPerStepEnabled
+        ? t
+        : {
+            ...t,
+            textModel: globalTextModel,
+            imageModel: globalImageModel
+          };
+
+      if (explicitSimilarity) return baseStep;
 
       const attached = Array.isArray(textareaImages[idx]) ? textareaImages[idx] : [];
       const resultImage = attached.find((img) => {
@@ -637,13 +659,13 @@
         return img?.type === 'result' && imgId.length > 0;
       });
 
-      if (!resultImage) return t;
+      if (!resultImage) return baseStep;
 
       const imgId = String(resultImage.imgId || '').trim();
-      if (!imgId) return t;
+      if (!imgId) return baseStep;
 
       return {
-        ...t,
+        ...baseStep,
         similarityImgId: imgId
       };
     });
@@ -709,6 +731,7 @@
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getCacheEnabled: () => get(uiStore).cacheEnabled,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
+    getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 50,
     getSubmittedIds,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -1082,13 +1105,16 @@
     const { index, imgId, url, name } = e.detail || {};
     if (typeof index !== 'number' || index < 0 || index >= textareas.length) return;
 
+    const defaultTextModel = getGlobalDefaultTextModel();
+    const defaultImageModel = getGlobalDefaultImageModel();
+
     textareas = textareas.map((t, idx) => {
       if (idx !== index) return t;
       return {
         ...t,
         enabled: true,
-        textModel: String(t?.textModel || t?.model || '').trim() || DEFAULT_TEXT_MODEL,
-        imageModel: String(t?.imageModel || t?.model || '').trim() || DEFAULT_IMAGE_MODEL,
+        textModel: String(t?.textModel || t?.model || '').trim() || defaultTextModel,
+        imageModel: String(t?.imageModel || t?.model || '').trim() || defaultImageModel,
         similarityImgId: String(imgId || t?.similarityImgId || '').trim()
       };
     });
@@ -1244,6 +1270,11 @@
   }
 
   async function handleExportLogs() {
+    if (!get(uiStore).dresEnabled) {
+      toasts.info('Enable DRES submit in Settings to export logs.');
+      return;
+    }
+
     isExportingLogs = true;
     try {
       const result = await vbsLogger.exportForCurrentUser();
@@ -1269,6 +1300,11 @@
   }
 
   async function handleDeleteLogs() {
+    if (!get(uiStore).dresEnabled) {
+      toasts.info('Enable DRES submit in Settings to manage logs.');
+      return;
+    }
+
     if (logCount <= 0) {
       toasts.info('No local logs to delete.');
       return;
@@ -1302,6 +1338,11 @@
   }
 
   function handleChangeLogResultsLimit() {
+    if (!get(uiStore).dresEnabled) {
+      toasts.info('Enable DRES submit in Settings to configure logs.');
+      return;
+    }
+
     if (logResultsLimit === 100) {
       logResultsLimit = 1000;
     } else if (logResultsLimit === 1000) {
@@ -1663,6 +1704,9 @@ function handleViewSubmitted() {
     const imgId = String(baseImgId || "").trim();
     if (!imgId) return;
 
+    const defaultTextModel = getGlobalDefaultTextModel();
+    const defaultImageModel = getGlobalDefaultImageModel();
+
     const existingSimilarityIndex = textareas.findIndex((t) => String(t?.similarityImgId || "").trim());
     let targetIndex = existingSimilarityIndex;
     let nextTextareas;
@@ -1674,8 +1718,8 @@ function handleViewSubmitted() {
             ...t,
             value: "",
             enabled: true,
-            textModel: String(t?.textModel || t?.model || '').trim() || DEFAULT_TEXT_MODEL,
-            imageModel: DEFAULT_IMAGE_MODEL,
+            textModel: String(t?.textModel || t?.model || '').trim() || defaultTextModel,
+            imageModel: defaultImageModel,
             similarityImgId: imgId
           };
         }
@@ -1692,8 +1736,8 @@ function handleViewSubmitted() {
       const similarityStep = {
         value: "",
         enabled: true,
-        textModel: DEFAULT_TEXT_MODEL,
-        imageModel: DEFAULT_IMAGE_MODEL,
+        textModel: defaultTextModel,
+        imageModel: defaultImageModel,
         similarityImgId: imgId
       };
       const disabledExisting = textareas.map((t) => ({
@@ -1738,7 +1782,7 @@ function handleViewSubmitted() {
   // Textareas ops (delegated to textareaController)
   // ---------------------------
   function addTextarea(index) {
-    textareas = _addTextarea(textareas, index);
+    textareas = _addTextarea(textareas, index).map((t) => normalizeTextareaModels(t));
     toasts.info("New query step added");
   }
 
@@ -1841,7 +1885,7 @@ function handleViewSubmitted() {
 
     uiStore.actions.setLayoutTab('View1');
 
-    textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
+    textareas = [{ value: "", enabled: true, textModel: getGlobalDefaultTextModel(), imageModel: getGlobalDefaultImageModel() }];
     textareaImages = {};
 
     images = [];
@@ -2070,6 +2114,11 @@ function handleViewSubmitted() {
   dresPassword={$uiStore.dresPassword}
   dresMemberId={$uiStore.dresMemberId}
   autoTranslateQueries={$uiStore.autoTranslateQueries}
+  temporalWindowSeconds={$uiStore.temporalWindowSeconds}
+  modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
+  defaultTextModel={$uiStore.defaultTextModel}
+  defaultImageModel={$uiStore.defaultImageModel}
+  {availableModels}
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}
   on:testDres={handleTestDresConnection}
@@ -2117,6 +2166,9 @@ function handleViewSubmitted() {
         {textareas}
         {translatedQueryHints}
         {availableModels}
+        modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
+        autoTranslateEnabled={$uiStore.autoTranslateQueries}
+        onToggleAutoTranslate={handleToggleAutoTranslate}
         {textareaImages}
         {searchLoading}
         {searchError}
@@ -2174,6 +2226,7 @@ function handleViewSubmitted() {
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, value: v } : t));
         }}
         on:updateModel={(e) => {
+          if (!$uiStore.modelSelectionPerStepEnabled) return;
           const { index: i, model: m, kind } = e.detail;
           const targetField = kind === 'image' ? 'imageModel' : 'textModel';
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, [targetField]: m } : t));
@@ -2230,7 +2283,7 @@ function handleViewSubmitted() {
         on:replaceSimilarityImage={handleReplaceSimilarityImage}
         on:closeSimilarityStep={handleCloseSimilarityStep}
         on:clearQueryInputs={() => {
-          textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
+          textareas = [{ value: "", enabled: true, textModel: getGlobalDefaultTextModel(), imageModel: getGlobalDefaultImageModel() }];
           textareaImages = {};
           toasts.info("Query inputs cleared");
         }}
@@ -2318,16 +2371,6 @@ function handleViewSubmitted() {
     showSubmitted={$uiStore.dresEnabled}
     dresEnabled={$uiStore.dresEnabled}
     dresUsername={$uiStore.dresUsername}
-    autoTranslateEnabled={$uiStore.autoTranslateQueries}
-    {logCount}
-    {logUserFolder}
-    {logResultsLimit}
-    isExportingLogs={isExportingLogs}
-    isDeletingLogs={isDeletingLogs}
-    onExportLogs={handleExportLogs}
-    onDeleteLogs={handleDeleteLogs}
-    onChangeLogResultsLimit={handleChangeLogResultsLimit}
-    onToggleAutoTranslate={handleToggleAutoTranslate}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />
