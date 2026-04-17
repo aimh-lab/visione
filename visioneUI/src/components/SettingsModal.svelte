@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { focusTrap } from "../utils/ui";
-  import { appSettingsStore } from "../stores/persistentState.js"; // ✅ Importa store
+  import { appSettingsStore } from "../stores/persistentState.js";
   
   export let isOpen = false;
   export let theme = 'default';
@@ -82,7 +82,6 @@
     ...normalizedModelEntries.filter(supportsImageModel).map((m) => m.name)
   ].filter(Boolean)));
   
-  // ✅ Copia locale dei valori
   let local = {
     theme,
     keyframeSize,
@@ -117,7 +116,6 @@
     { id: 'dres', label: 'DRES' }
   ];
   
-  // ✅ Aggiorna local quando modal si apre
   $: if (isOpen) {
     local = {
       theme,
@@ -162,7 +160,6 @@
     });
   }
 
-  // ✅ Salva in localStorage ogni volta che cambia qualcosa
   function save() {
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
     const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
@@ -211,7 +208,6 @@
   // Verifica cosa c'è in localStorage
   
     
-    // ✅ Dispatch evento per aggiornare UI (opzionale, se vuoi mantenerlo)
     dispatch('save', newSettings);
   }
 
@@ -295,7 +291,7 @@
       aria-label="Close settings"
     ></button>
     
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg h-[88vh] max-h-[88vh] flex flex-col overflow-hidden">
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg h-[66vh] max-h-[36rem] min-h-[24rem] flex flex-col overflow-hidden">
       <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center space-x-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

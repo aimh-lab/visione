@@ -44,7 +44,7 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
       // Timecodes are resolved per-frame via getMiddleTimestamp API
       // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
       
-      // ✅ SIMILARITY SCORE (se disponibile)
+      // Similarity score (se disponibile)
       similarityScore: item.score || item.similarity || item.distance || 0,
       
       raw: item

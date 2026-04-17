@@ -15,7 +15,7 @@
   const prev = () => dispatch("prev");
   const next = () => dispatch("next");
 
-  // Handler per le azioni
+  // Action handlers
   const handleSubmit = (e) => { e?.stopPropagation(); dispatch("submit", { img: image }); };
   const handleVideoSummary = (e) => { e?.stopPropagation(); dispatch("videoSummary", { img: image }); };
   const handleSimilarity = (e) => { e?.stopPropagation(); dispatch("similarity", { imgId: image?.imgId, img: image }); };
@@ -224,7 +224,7 @@
 
       <!-- Content: grid 2 colonne -->
       <div class="flex-grow overflow-auto grid md:grid-cols-2 gap-6 p-6">
-        <!-- ✅ Box immagine con overlay buttons (stile ResultsGrid) -->
+        <!-- Box immagine con overlay buttons (stile ResultsGrid) -->
         <div 
           bind:this={imageContainer}
           class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden min-h-[400px]"
@@ -236,7 +236,7 @@
               class="w-full h-full object-contain"
             />
 
-            <!-- ✅ OVERLAY LAYER con trasparenza -->
+            <!-- Overlay layer con trasparenza -->
             <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
             <!-- Navigation arrows overlay (Instagram-like) -->
@@ -264,7 +264,7 @@
               </svg>
             </button>
 
-            <!-- ✅ OVERLAY BUTTONS (identici a ResultsGrid) -->
+            <!-- Overlay buttons (identici a ResultsGrid) -->
             <div class="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <button
@@ -356,7 +356,7 @@
               {/if}
             </div>
 
-            <!-- ✅ Submit Badge (sempre visibile se submitted) -->
+            <!-- Submit badge (sempre visibile se submitted) -->
             {#if allowFrameSubmit}
               <SubmitBadge submitted={!!image?.submitted} verdict={image?.submissionVerdict} />
             {/if}

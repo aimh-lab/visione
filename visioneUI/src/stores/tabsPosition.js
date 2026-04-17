@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 const STORAGE_KEY = 'visione_tabs_position';
 
 function createTabsPositionStore() {
-  // Carica dalla localStorage
+  // Load from localStorage
   const storedPos = typeof window !== 'undefined' 
     ? localStorage.getItem(STORAGE_KEY) 
     : null;

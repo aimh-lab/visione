@@ -229,6 +229,8 @@
 
   function toComparatorSymbol(comparator: string, fallback: string) {
     const normalized = String(comparator || '').trim().toLowerCase();
+    if (normalized === 'egt') return '>=';
+    if (normalized === 'elt') return '<=';
     if (normalized === 'gt') return '>';
     if (normalized === 'lt') return '<';
     if (normalized === 'eq') return '=';
@@ -236,6 +238,8 @@
     if (normalized === 'like' || normalized === 'ilike') return '~';
 
     const normalizedFallback = String(fallback || '').trim().toLowerCase();
+    if (normalizedFallback === 'egt') return '>=';
+    if (normalizedFallback === 'elt') return '<=';
     if (normalizedFallback === 'gt') return '>';
     if (normalizedFallback === 'lt') return '<';
     if (normalizedFallback === 'ne') return '!=';
@@ -675,7 +679,7 @@
     update(index, "");
   }
 
-  // ✅ Gestione menu dropdown
+  // Gestione menu dropdown
   let openMenuIndex: number | null = null;
   let openMetadataSubmenuIndex: number | null = null;
   let openTranslationHintIndex: number | null = null;
@@ -745,7 +749,7 @@
       spaceAbove >= estimatedMenuHeight || spaceAbove >= spaceBelow ? "top" : "bottom";
   }
 
-  // ✅ NUOVO: Gestione immagini
+  // Gestione immagini
 
   function insertShortcut(index: number, shortcut: string) {
     const currentValue = textareas[index].value || '';
@@ -786,7 +790,7 @@
   function openImagePicker(index: number) {
     isSelectingImageFor = index;
     closeMenu();
-    // ✅ Dispatch evento per attivare modalità selezione
+    // Dispatch event to activate selection mode
     dispatch('startImageSelection', { textareaIndex: index });
   }
 
@@ -810,12 +814,12 @@
   }
 
 
-  // ✅ MODIFICATO: addImageToTextarea ora accetta imgId opzionale
+  // addImageToTextarea accetta imgId opzionale
   function addImageToTextarea(index: number, url: string, name: string, type: AttachedImage["type"], imgId: string | null = null) {
     // Keep only one image per textarea: newest selection replaces previous one.
     textareaImages[index] = [{ url, name, type, imgId }];
     
-    // ✅ Notifica il padre del cambiamento
+    // Notifica il padre del cambiamento
     dispatch('updateImages', { index, images: textareaImages[index] });
   }
 
@@ -823,7 +827,7 @@
     textareaImages[textareaIndex] = textareaImages[textareaIndex].filter((_, i) => i !== imageIndex);
 
     
-    // ✅ Notifica il padre
+    // Notifica il padre
     dispatch('updateImages', { index: textareaIndex, images: textareaImages[textareaIndex] });
   }
 
@@ -839,7 +843,7 @@
     }
   }
 
-  // Click outside per chiudere menu
+  // Click outside to close menus
   function handleClickOutside(event: MouseEvent) {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -974,6 +978,8 @@
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
+            { value: 'egt', label: '>= (equal greater than)' },
+            { value: 'elt', label: '<= (equal less than)' },
             { value: 'lt', label: '< (less than)' },
             { value: 'gt', label: '> (greater than)' },
             { value: 'like', label: '~ (like)' },
@@ -1475,7 +1481,7 @@
                         <div class="my-1 h-px bg-gray-700"></div>
                       {/if}
 
-                      <!-- ✅ Image from Results -->
+                      <!-- Image from Results -->
                       <button
                         type="button"
                         on:click|stopPropagation={() => openImagePicker(i)}

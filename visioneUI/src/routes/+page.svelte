@@ -39,7 +39,7 @@
   import { onMount, onDestroy, tick } from "svelte";
 
   // ---------------------------
-  // Stato non-UI (locale)
+  // Non-UI local state
   // ---------------------------
   // Scroll manager (owns listeners + position save/restore)
   const scrollMgr = createScrollManager();
@@ -117,7 +117,7 @@
             const fakeImgId = `upload-${Date.now()}`;
             const frame = { imgId: fakeImgId, url: dataUrl, title: file.name };
             
-            // Aggiungiamo lo step e avviamo la ricerca
+            // Add the step and trigger search
             addSimilarityAsSearchStep(dataUrl, frame);
           };
           img.src = event.target.result;
@@ -127,7 +127,7 @@
       }
     }
     
-    // Fallback: controllo se è stato trascinato un URL
+    // Fallback: check whether a URL was dropped
     const url = e.dataTransfer?.getData('URL') || e.dataTransfer?.getData('text/uri-list');
     if (url && url.startsWith('http')) {
        const fakeImgId = `url-${Date.now()}`;
@@ -206,7 +206,7 @@
     highlightedKeyframes: []
   };
 
-  // Settings modal (solo apertura/chiusura)
+  // Settings modal (open/close state only)
   let isSettingsOpen = false;
   let isVideoSummaryModalOpen = false;
   let pinnedVideoSummaries = [];
@@ -242,7 +242,7 @@
   $: visioneAPI.defaultImageModel = String($uiStore.defaultImageModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
 
   // ---------------------------
-  // CSS vars (solo da uiStore)
+  // CSS vars (driven only by uiStore)
   // ---------------------------
   $: if (browser) {
     const { keyframeSize, theme, dresEnabled } = $uiStore;
@@ -261,7 +261,7 @@
   let searchLoading = false;
   let searchError = null;
 
-  // submittedImages: per ora “in-session”. (Commit 2: sessionStore)
+  // submittedImages: currently in-session (Commit 2: sessionStore)
   $: submittedImages = $sessionStore.submittedImages;
   $: submittedAnswers = $sessionStore.submittedAnswers;
   $: pinnedVideoSummaries = $sessionStore.pinnedVideoSummaries || [];
@@ -286,14 +286,14 @@
   let rfMethod = 'svm';
   let selectedIndex = 0;
 
-  // View2 stato
+  // View2 state
   let view2Frames = null;
   let view2VideoId = null;
   let view2Loading = false;
   let view2Error = null;
   let view2SelectedImgId = null;
 
-  // Similarity stato
+  // Similarity state
   let similarityLoading = false;
   let similarityError = null;
   let similarityResultSet = null;
@@ -304,7 +304,7 @@
   let similarityDisplayRows = [];
   let focusSearchInputHandler = () => {};
 
-  // Variabili separate per ogni view
+  // Separate variables for each view
   let lastViewedSearchIndex = 0;
   let lastViewedVideoIndex = 0;
   let lastViewedSimilarityIndex = 0;
@@ -1567,7 +1567,7 @@ function handleViewSubmitted() {
 
 
   // ---------------------------
-  // Navigazione selection (keyboard)
+  // Selection navigation (keyboard)
   // ---------------------------
   function moveSelection(delta) {
     if (!images || images.length === 0) return;

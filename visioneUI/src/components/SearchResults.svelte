@@ -4,7 +4,7 @@
   export let rows = [];
   export let selectedImage = null;
   export let registerContainer = (el) => {};
-  export let viewMode = "byrank"; // ✅ AGGIUNGI
+  export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";
   export let isSelectionMode = false; 
   export let virtualizationEnabled = true;

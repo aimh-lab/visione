@@ -6,7 +6,7 @@
   export let tabs = ["View1", "View2", "Similarity"];
   
   export let isSidebarOpen = true;
-  export let isSidebarRightOpen = true; // ✅ NUOVO
+  export let isSidebarRightOpen = false;
   export let viewMode = "byrank";
   export let showViewModeRadios = false;
   export let keyframeSize = 130;
@@ -47,7 +47,7 @@
   
   const getConfig = getTabConfig;
   const toggleSidebar = () => dispatch("toggleSidebar");
-  const toggleRightSidebar = () => dispatch("toggleRightSidebar"); // ✅ NUOVO
+  const toggleRightSidebar = () => dispatch("toggleRightSidebar");
   const setMode = (mode) => {
     dispatch("changeViewMode", { mode });
     isSortDropdownOpen = false;
@@ -332,7 +332,7 @@
         {/if}
       </div>
 
-      <!-- ✅ Sidebar LEFT toggle -->
+      <!-- Sidebar LEFT toggle -->
       <button
         class="ui-toolbar-btn ui-toolbar-sidebar ui-left-sidebar-toggle p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarOpen 
@@ -355,7 +355,7 @@
         </svg>
       </button>
 
-      <!-- ✅ Sidebar RIGHT toggle (NUOVO) -->
+      <!-- Sidebar RIGHT toggle -->
       <button
         class="ui-toolbar-btn ui-toolbar-sidebar ui-right-sidebar-toggle p-2 rounded-lg transition-all duration-200 border shadow-sm
                {isSidebarRightOpen 

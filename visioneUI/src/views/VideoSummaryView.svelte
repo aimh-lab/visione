@@ -38,12 +38,12 @@
   export let onPrevFrame = () => {};
   export let onNextFrame = () => {};
 
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {}; // NUOVO
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
   let containerEl: HTMLElement | null = null;
   $: if (containerEl) registerContainer(containerEl);
 
-  // Converti frames in formato "rows" per ResultsGrid
+  // Convert frames into "rows" format for ResultsGrid
   $: framesAsRows = frames ? [frames] : [];
   $: hasFrames = (frames?.length ?? 0) > 0;
 

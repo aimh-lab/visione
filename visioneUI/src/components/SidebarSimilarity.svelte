@@ -5,7 +5,7 @@
   import RFLists from "../components/RFLists.svelte";
   import SubmittedList from "../components/SubmittedList.svelte";
 
-  // Stato/props dal genitore
+  // Parent-provided state/props
   export let isSidebarOpen = true;           // 20vw o collapsed
   export let activeTab = "Search";           // "Search" | "RF" | "Submitted"
   export let textareas = [];                 // [{ value, enabled }]
@@ -90,7 +90,7 @@
   min-width: 200px;
   max-width: 360px;
   height: 100%;
-  flex-shrink: 0; /* ✅ FONDAMENTALE - impedisce shrinking */
+  flex-shrink: 0; /* Impedisce shrinking */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
