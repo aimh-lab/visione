@@ -19,12 +19,12 @@
   const dispatch = createEventDispatcher();
   
   let showPositionMenu = false;
-  let isSortDropdownOpen = false; // ✅ Per left/right
+  let isSortDropdownOpen = false;
   let isChallengeDropdownOpen = false;
   let isPinnedDropdownOpen = false;
   const challengeOptions = ["KIS", "AVS", "Q&A"];
   
-  // ✅ Sort options
+  // Sort options
   const sortOptions = [
     { 
       value: 'byrank', 
@@ -344,7 +344,7 @@
       
       <div class="flex-1"></div>
       
-      <!-- ✅ Sort dropdown (solo se showViewModeRadios) -->
+      <!-- Sort dropdown (solo se showViewModeRadios) -->
       {#if showViewModeRadios}
         <div class="flex flex-col items-center gap-1">
           <button
@@ -641,7 +641,7 @@
       
       <div class="flex-1"></div>
       
-      <!-- ✅ Sort dropdown -->
+      <!-- Sort dropdown -->
       {#if showViewModeRadios}
         <div class="flex flex-col items-center gap-1">
           <button

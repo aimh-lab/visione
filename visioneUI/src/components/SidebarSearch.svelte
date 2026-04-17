@@ -22,7 +22,7 @@
   export let searchResultSet = null;
   export let width = 18;
   export let images = []; 
-  export let textareaImages = {}; // ✅ AGGIUNTO: ricevuto dal padre
+  export let textareaImages = {};
 
   
   let isSelectingImage = false;
@@ -105,7 +105,6 @@
   }
 
 
-  // ✅ Resize logic
   let isResizing = false;
 
   function startResize(e) {
@@ -250,7 +249,7 @@
               on:imageSelected
           />
 
-          <!-- ✅ NUOVO: Banner informativo durante la selezione -->
+          <!-- Banner informativo durante la selezione -->
           {#if isSelectingImage}
             <div class="sticky top-0 z-50 bg-green-600 text-white px-4 py-3 shadow-lg">
               <div class="flex items-center justify-between">
@@ -429,7 +428,7 @@
     </div>
   {/if}
 
-  <!-- ✅ RESIZE HANDLE - sempre visibile, FUORI dall'if -->
+  <!-- Resize handle sempre visibile, fuori dall'if -->
   <button
     type="button"
     class="resize-handle"

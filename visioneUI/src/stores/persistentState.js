@@ -58,7 +58,7 @@ class PersistentStore {
   }
 }
 
-// Utility per Set persistenti (per submittedIds)
+// Utility for persistent Sets (for submittedIds)
 class PersistentSet extends PersistentStore {
   constructor(key) {
     super(key, []);
@@ -94,18 +94,18 @@ class PersistentSet extends PersistentStore {
   }
 }
 
-// Stores specifici per l'app
+// App-specific stores
 export const appSettingsStore = new PersistentStore('visione-app-settings', {
   theme: 'default',
   contentScale: 1,
   viewMode: 'byvideo',
   isSidebarOpen: true,
-  isSidebarRightOpen: false, // ✅ AGGIUNGI
+  isSidebarRightOpen: false,
   sidebarLeftWidth: 18,
-  sidebarRightWidth: 18, // ✅ AGGIUNGI (in vw)
-  keyframeSize: 130,        // ✅ AGGIUNGI
-  resultsPerRow: 8,          // ✅ AGGIUNGI
-  resultsAutoFit: true,     // ✅ AGGIUNGI
+  sidebarRightWidth: 18,
+  keyframeSize: 130,
+  resultsPerRow: 8,
+  resultsAutoFit: true,
   cacheEnabled: true,
   justifyResultRows: false,
   videoBadgeOrientation: 'vertical',

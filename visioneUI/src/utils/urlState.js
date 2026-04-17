@@ -6,25 +6,25 @@ import { pushState, replaceState } from '$app/navigation';
 export function serializeToURL(state) {
   const params = new URLSearchParams();
   
-  // Query testuale
+  // Text query
   if (state.textareas?.length > 0) {
     const queries = state.textareas
       .filter(t => t.enabled && t.value?.trim())
       .map(t => t.value.trim())
-      .join('|'); // ✅ queries è una stringa
+      .join('|'); // queries is a string
     
     
     if (queries.length > 0) {
-      params.set('q', queries); // ✅ RIMOSSO .join('|')
+      params.set('q', queries); // keep as-is, no .join('|')
     }
   }
 
-  // Query per imageID (step similarity dentro Search)
+  // imageID query (similarity step inside Search)
   if (state.imageId && String(state.imageId).trim()) {
     params.set('img', String(state.imageId).trim());
   }
 
-  // Query image inline (stessa textarea del testo), separata da img= per non confondere la semantica similarity.
+  // Inline image query (same textarea as text), separated via img= to preserve similarity semantics.
   if (Array.isArray(state.inlineQueryImages) && state.inlineQueryImages.length > 0) {
     const packed = state.inlineQueryImages
       .map((entry) => {
@@ -39,7 +39,7 @@ export function serializeToURL(state) {
     if (packed) params.set('qimg', packed);
   }
   
-  // Tab attivo
+  // Active tab
   if (state.activeTab && state.activeTab !== 'View1') {
     params.set('tab', state.activeTab);
   }
@@ -49,7 +49,7 @@ export function serializeToURL(state) {
  //   params.set('view', state.viewMode);
  // }
   
-  // Video ID (per VideoSummary)
+  // Video ID (for VideoSummary)
   if (state.videoId) {
     params.set('video', state.videoId);
   }
@@ -59,7 +59,7 @@ export function serializeToURL(state) {
     params.set('sim', state.similarityBase);
   }
   
-  // RF images (solo imgId, compressi)
+  // RF images (imgId only, compact)
   if (state.rfPositive?.length > 0) {
     params.set('rfp', state.rfPositive.map(r => r.imgId).join(','));
   }
@@ -82,16 +82,16 @@ export function deserializeFromURL(urlString) {
   const params = new URLSearchParams(urlString || window.location.search);
   const state = {};
   
-  // Query testuale
+  // Text query
   const q = params.get('q');
   if (q) {
     state.textareas = q.split('|').map(value => ({
-      value: value.trim(), // URLSearchParams decodifica automaticamente
+      value: value.trim(), // URLSearchParams handles decoding
       enabled: true
     }));
   }
 
-  // Query by imageID: va sempre in uno step separato per preservare la semantica temporale
+  // imageID query: always create a separate step to preserve temporal semantics
   const img = params.get('img');
   if (img && img.trim()) {
     const imageId = img.trim();
@@ -132,7 +132,7 @@ export function deserializeFromURL(urlString) {
     }
   }
   
-  // Tab attivo
+  // Active tab
   const tab = params.get('tab');
   if (tab && ['View1', 'View2', 'Similarity'].includes(tab)) {
     state.activeTab = tab;

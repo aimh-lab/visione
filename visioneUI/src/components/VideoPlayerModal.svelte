@@ -437,7 +437,7 @@
     });
   }
 
-  // ✅ NUOVO: Salta al keyframe cliccato
+  // Salta al keyframe cliccato
   function jumpToKeyframe(timestamp: number) {
     seekVideoTo(timestamp);
     dispatch('playerAction', {
@@ -894,7 +894,7 @@
               </div>
             {/if}
 
-            <!-- ✅ Keyframe markers CLICCABILI -->
+            <!-- Keyframe markers cliccabili -->
             {#each keyframes as frame}
               {#if rankMap.has(frame.imgId)}
                 <!-- Keyframe evidenziato - CLICCABILE -->

@@ -8,7 +8,7 @@
   export let selectedId = null;
   export let showVideoSummary = false;
   export let registerContainer = (el) => {};
-  export let viewMode = "byrank"; // ✅ NUOVA PROP
+  export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";
   export let isSelectionMode = false;
   export let virtualizeRows = true;
@@ -330,7 +330,7 @@
       // In modalità selezione, dispatch selectImage
       dispatch("selectImage", item);
     } else {
-      // Normale apertura modal
+      // Standard modal open
       dispatch("open", { index: getIndex(item), img: item, frame: item });
     }
   };
@@ -486,7 +486,7 @@
 
   const rowInfoCache = new Map();
 
-  // ✅ Helper per generare header info
+  // Helper to build row header info
   function getRowInfo(row) {
     if (!row || row.length === 0) return null;
     const firstItem = row[0];
@@ -790,7 +790,7 @@
       class="w-full {viewMode === 'byvideo' ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
     >
       
-        <!-- ✅ ROW HEADER (solo per byvideo e bydate) -->
+        <!-- Row header (solo per byvideo e bydate) -->
         {#if rowInfo}
           {#if rowInfo.type === 'date'}
             <div class="sticky top-0 z-30 px-4 py-2 bg-white/95 backdrop-blur-sm border-b border-gray-300 flex items-center justify-between shadow-sm">
@@ -870,7 +870,7 @@
               on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
 
-              <!-- ✅ Badge in modalità selezione -->
+              <!-- Badge in selection mode -->
               {#if isSelectionMode}
                 <div class="absolute top-2 left-2 z-30 bg-green-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg flex items-center space-x-1.5 animate-pulse">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">

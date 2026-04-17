@@ -181,7 +181,7 @@ export class VisioneAPI {
           if (error instanceof APIError) throw error;
           throw new APIError(`Network error: ${error.message}`, 0, null);
         }
-        // Exponential backoff per retry
+        // Exponential backoff for each retry
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
     }
@@ -394,7 +394,7 @@ export class VisioneAPI {
       .map((imgId) => ({ imgId, timestamp: null }));
   }
 
-  // Health check API (opzionale)
+  // Health check API (optional)
   async healthCheck() {
     try {
       const response = await this.#makeRequest(`${this.baseUrl}/health`, {
@@ -758,18 +758,22 @@ export class VisioneAPI {
     const value = String(raw || '').trim();
     if (!value) return { comparator: fallbackComparator, value: '' };
 
-    const namedMatch = value.match(/^(eq|ne|lt|gt|like|ilike):(.*)$/i);
+    const namedMatch = value.match(/^(eq|ne|lt|gt|egt|elt|like|ilike):(.*)$/i);
     if (namedMatch) {
       return { comparator: namedMatch[1].toLowerCase(), value: this.#unquoteValue(namedMatch[2]) };
     }
 
-    const symbolicMatch = value.match(/^([<>]|!=|=|~)(.*)$/);
+    const symbolicMatch = value.match(/^(>=|<=|!=|>|<|=|~)(.*)$/);
     if (symbolicMatch) {
       const symbol = symbolicMatch[1];
       const mapped = symbol === '>'
         ? 'gt'
+        : symbol === '>='
+          ? 'egt'
         : symbol === '<'
           ? 'lt'
+          : symbol === '<='
+            ? 'elt'
           : symbol === '!='
             ? 'ne'
             : symbol === '~'

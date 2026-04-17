@@ -13,7 +13,7 @@
   export let dresEnabled = false;
   export let dresUsername = '';
   
-  // ✅ BONUS: Eventi per azioni rapide
+  // Events for quick actions
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
 
@@ -46,7 +46,7 @@
           <span class="text-gray-400">results</span>
         </div>
         
-        <!-- ✅ BONUS: Submitted count - CLICCABILE -->
+        <!-- Submitted count - cliccabile -->
         {#if showSubmitted && submittedCount > 0}
           <button
             on:click={onViewSubmitted}
@@ -62,7 +62,7 @@
           </button>
         {/if}
         
-        <!-- ✅ BONUS: RF counts - CLICCABILE -->
+        <!-- RF counts - cliccabile -->
         {#if rfPositiveCount > 0 || rfNegativeCount > 0}
           <button
             on:click={onViewRF}

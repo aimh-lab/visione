@@ -12,7 +12,7 @@
   
   const dispatch = createEventDispatcher();
 
-    // ✅ AGGIUNGI: forza reactivity
+    // Forza reactivity
  // let searchesKey = 0;
 //  $: if ($recentSearches) {
 //    searchesKey = Date.now(); // cambia key ad ogni update
@@ -25,7 +25,7 @@
     dispatch('select', { 
       query: search.query,
       cachedResults: search.results,
-      textareas: search.textareas // ✅ AGGIUNGI QUESTA RIGA
+      textareas: search.textareas
     });
     
     
@@ -101,7 +101,7 @@
     <!-- Expandable list -->
 {#if effectiveExpanded}
   <div class="space-y-1 animate-slide-down max-h-80 overflow-y-auto custom-scrollbar">
-    {#each $recentSearches as search} <!-- ✅ Rimuovi .slice(0, 5) -->
+    {#each $recentSearches as search}
      <div
   role="button"
   tabindex="0"
@@ -142,7 +142,7 @@
           {/if}
         {/each}
       </div>
-      <!-- ✅ Badge per cache -->
+      <!-- Badge per cache -->
       {#if search.results}
         <span class="px-1.5 py-0.5 bg-green-600/20 text-green-400 text-[9px] font-medium rounded uppercase flex-shrink-0">
           Cached

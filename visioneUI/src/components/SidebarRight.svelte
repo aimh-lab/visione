@@ -65,11 +65,11 @@
     dispatch("openFromSubmitted", e.detail);
   }
 
-  // ✅ Resize logic
+  // Resize logic
   let isResizing = false;
 
   function startResize(e) {
-    if (!isOpen) return; // ✅ Non resizare se chiusa
+    if (!isOpen) return; // Do not resize when closed
     isResizing = true;
     e.preventDefault();
   }
@@ -90,7 +90,7 @@
     isResizing = false;
   }
 
-  // ✅ Toggle sidebar
+  // Toggle sidebar
   function toggleSidebar() {
     dispatch('toggleRightSidebar');
   }
@@ -273,7 +273,7 @@
     </div>
   {/if}
 
-  <!-- ✅ RESIZE HANDLE - sempre visibile, FUORI dall'if -->
+  <!-- Resize handle sempre visibile, fuori dall'if -->
   <button
     type="button"
     class="resize-handle-right"

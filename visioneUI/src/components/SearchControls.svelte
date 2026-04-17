@@ -9,12 +9,12 @@
   const clear = () => dispatch("clear");
 </script>
 
-<!-- ✅ Rimosso bottone grande "Run Search" (ora è nella sidebar principale) -->
-<!-- ✅ Solo bottoni utility secondari -->
+<!-- Bottone principale "Run Search" spostato nella sidebar principale -->
+<!-- Solo bottoni utility secondari -->
 
 {#if searchResultSet || searchError}
   <div class="flex flex-col space-y-2">
-    <!-- ✅ Results info badge -->
+    <!-- Results info badge -->
     {#if searchResultSet}
       <div class="flex items-center justify-between px-3 py-2 bg-green-900/20 border border-green-700/30 rounded-lg">
         <div class="flex items-center space-x-2">

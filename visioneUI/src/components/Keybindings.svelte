@@ -93,12 +93,12 @@
         showActionFeedback('Next frame');
       }
       else if (e.key === "ArrowUp") {
-        // ✅ Vai al primo della riga sopra
+        // Vai al primo della riga sopra
         onNavigateImage(-1, true); // offset -1, toFirstOfRow true
         showActionFeedback('Row up');
       }
       else if (e.key === "ArrowDown") {
-        // ✅ Vai al primo della riga sotto
+        // Vai al primo della riga sotto
         onNavigateImage(1, true); // offset 1, toFirstOfRow true
         showActionFeedback('Row down');
       }

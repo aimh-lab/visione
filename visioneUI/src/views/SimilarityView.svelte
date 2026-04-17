@@ -6,7 +6,7 @@
   type QueryTextarea = { value: string; enabled: boolean };
   type Img = { imgId?: string; videoId?: string; [key: string]: unknown };
 
-  // Stato/props dal genitore (invariati)
+  // Parent-provided state/props (unchanged)
   export let isSidebarOpen = true;
   export let contentScale = 1;
   export let viewMode = "byrank";
@@ -24,7 +24,7 @@
   export let challengeType = "KIS";
   export let runtimeProfile = {};
 
-  export let textareas: QueryTextarea[] = [];         // per SidebarSimilarity (identico a SidebarSearch)
+  export let textareas: QueryTextarea[] = [];         // for SidebarSimilarity (same shape as SidebarSearch)
   export let searchError: string | null = null;
   export let searchResultSet: unknown = null;
   export let rfPositive: Img[] = [];
@@ -36,7 +36,7 @@
   // Toolbar/controls
   export let onToggleSidebar = () => {};
 
-  // Sidebar azioni (riuso identico a SidebarSearch)
+  // Sidebar actions (same behavior as SidebarSearch)
   export let onSelectTab = (_tab: string) => {};
   export let onAddTextarea = (_index: number) => {};
   export let onRemoveTextarea = (_index: number) => {};
@@ -47,7 +47,7 @@
   export let onOpenFromRF = (_index: number) => {};
   export let onOpenFromSubmitted = (_index: number) => {};
 
-  // Griglia azioni
+  // Grid actions
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
 
@@ -55,10 +55,10 @@
   export let addRFNegativeByImg = (_imgId: string) => {};
   export let submitByImgId = (_imgId: string) => {};
   export let openByImgId = (_imgId: string) => {};
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {}; // NUOVO
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
 
-  // Modale azioni
+  // Modal actions
   export let onCloseSimModal = () => {};
   export let onPrevSim = () => {};
   export let onNextSim = () => {};
@@ -68,7 +68,7 @@
 </script>
 
 <div class="flex h-full w-full" style="--sidebar-width: clamp(200px, 18vw, 360px);"  aria-label="Similarity View">
-  <!-- Sidebar: ora con SidebarSimilarity, identica a SidebarSearch -->
+  <!-- Sidebar: uses SidebarSimilarity, aligned with SidebarSearch -->
   <SidebarSimilarity
     isSidebarOpen={isSidebarOpen}
     activeTab={"Search"}                
@@ -89,7 +89,7 @@
     on:openFromSubmitted={(e) => onOpenFromSubmitted(e.detail.index)}
   />
 
-  <!-- Colonna principale (identica a SearchView) -->
+  <!-- Main column (same structure as SearchView) -->
  <div class="flex flex-col flex-1 min-w-0">
     <div class="content bg-gray-100 flex-1"
          style="height:100%; zoom:{contentScale};">

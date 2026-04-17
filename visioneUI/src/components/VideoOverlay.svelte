@@ -49,5 +49,5 @@
 </div>
 
 <style>
-/* opzionale: ombre/contorni per staccare dall’immagine */
+/* optional: shadow/outline to separate from the image */
 </style>

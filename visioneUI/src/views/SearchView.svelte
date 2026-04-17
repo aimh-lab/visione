@@ -25,9 +25,9 @@
     updateRFMethod: { method: string };
   };
 
-  // Stato/props dal genitore
+  // Parent-provided state/props
   export let isSidebarOpen = true;
-  export let isSidebarRightOpen = true;
+  export let isSidebarRightOpen = false;
   export let sidebarRightTab = "RF";
   export let sidebarLeftWidth = 18;
   export let sidebarRightWidth = 18;
@@ -63,12 +63,12 @@
   export let submittedAnswers: Array<Record<string, unknown>> = [];
   export let submitTextAnswer = (_text: string) => {};
 
-  // Modale immagini
+  // Image modal
   export let selectedImage: Img | null = null;
   export let isModalOpen = false;
   export let totalImages = 0;
 
-  // Callback dal genitore
+  // Parent callbacks
   export let registerContainer = (_el: Element | null) => {};
   export let onToggleSidebar = () => {};
   export let onToggleRightSidebar = () => {};
@@ -89,13 +89,13 @@
   export let onRemovePositive = (_e: CustomEvent) => {};
   export let onRemoveNegative = (_e: CustomEvent) => {};
 
-  // Azioni griglia
+  // Grid actions
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
   export let openByImgId = (_imgId: string) => {};  
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
-  // Azioni modale
+  // Modal actions
   export let onCloseModal = () => {};
   export let onPrev = () => {};
   export let onNext = () => {};
@@ -163,7 +163,7 @@
 </script>
 
 <div class="flex h-full w-full" style="--sidebar-width: clamp(200px, 16vw, 360px);" aria-label="Search View">
-  <!-- Sidebar SINISTRA -->
+  <!-- Left sidebar -->
 <SidebarSearch
   bind:this={sidebarSearchRef}
   {isSidebarOpen}
@@ -206,9 +206,9 @@
 />
 
 
-  <!-- CONTENUTO CENTRALE -->
+  <!-- Main content -->
   <div class="flex flex-col flex-1 min-w-0">
-    <!-- ✅ NUOVO: Banner modalità selezione -->
+    <!-- Selection mode banner -->
     {#if isSelectingImage}
       <div class="sticky top-0 z-40 border-b border-green-200 bg-green-50/95 backdrop-blur px-4 py-3">
         <div class="flex items-center justify-between max-w-6xl mx-auto">
@@ -353,7 +353,7 @@
     </div>
   </div>
 
-  <!-- Sidebar DESTRA -->
+  <!-- Right sidebar -->
   <SidebarRight
     isOpen={isSidebarRightOpen}
     activeTab={sidebarRightTab}
@@ -379,7 +379,7 @@
   />
 </div>
 
-<!-- Modal FUORI dal contenitore principale -->
+<!-- Modal outside the main container -->
 <ImageModal
   isOpen={isModalOpen}
   image={selectedImage as any}

@@ -1,7 +1,7 @@
 <!-- src/components/VideoSidebar.svelte -->
 <script>
   import { createEventDispatcher } from "svelte";
-  export let isSidebarOpen = true;     // controlla apertura/chiusura (20vw vs collapsed)
+  export let isSidebarOpen = true;     // controls open/closed state (20vw vs collapsed)
   const dispatch = createEventDispatcher();
   const openOptions = () => dispatch("openOptions");
   const openFilters = () => dispatch("openFilters");
@@ -30,7 +30,7 @@
   min-width: 200px;
   max-width: 360px;
   height: 100%;
-  flex-shrink: 0; /* ✅ FONDAMENTALE - impedisce shrinking */
+  flex-shrink: 0; /* Impedisce shrinking */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }

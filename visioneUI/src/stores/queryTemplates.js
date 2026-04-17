@@ -30,7 +30,7 @@ function createTemplatesStore() {
   return {
     subscribe,
     
-    // Aggiungi nuovo template
+    // Add new template
     add: (name, queries) => {
       let result = { status: 'skipped', name: '' };
 
@@ -90,7 +90,7 @@ function createTemplatesStore() {
       return result;
     },
     
-    // Elimina template
+    // Delete template
     delete: (id) => {
       update(templates => {
         const updated = templates.filter(t => t.id !== id);
@@ -99,13 +99,13 @@ function createTemplatesStore() {
       });
     },
     
-    // Carica template
+    // Load template
     load: (id) => {
       const templates = get({ subscribe });
       return Promise.resolve(templates.find(t => t.id === id));
     },
     
-    // Rinomina
+    // Rename
     rename: (id, newName) => {
       update(templates => {
         const safeName = String(newName || '').trim();
@@ -118,7 +118,7 @@ function createTemplatesStore() {
       });
     },
     
-    // Reset (cancella tutto)
+    // Reset (clear all)
     clear: () => {
       if (typeof window !== 'undefined') {
         try {

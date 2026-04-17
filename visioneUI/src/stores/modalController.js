@@ -11,24 +11,24 @@ export function createModalController(getId = (item) => item.imgId || item.id) {
   return {
     subscribe,
     
-    // Imposta la lista corrente
+    // Set current items list
     setItems: (items) => update(state => ({ ...state, items })),
     
-    // Apri modale con item selezionato
+    // Open modal with selected item
     open: (item) => update(state => ({ 
       ...state, 
       isOpen: true, 
       selected: item 
     })),
     
-    // Chiudi modale
+    // Close modal
     close: (options = {}) => update(state => ({ 
       ...state, 
       isOpen: false, 
       selected: options.keepSelection ? state.selected : null 
     })),
     
-    // Naviga di offset posizioni
+    // Navigate by offset
 // In modalController.js
 navigate: (offset) => update(state => {
   
@@ -51,7 +51,7 @@ navigate: (offset) => update(state => {
   return { ...state, selected: newSelected };
 }),
     
-    // Seleziona item senza aprire
+    // Select item without opening
     select: (item) => update(state => ({ ...state, selected: item }))
   };
 }

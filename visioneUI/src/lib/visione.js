@@ -10,7 +10,7 @@ export const columns = 5;
 export let lastViewedIndex = 0;
 export let imagesContainer;
 
-// Toggle della sidebar
+// Sidebar toggle
 export function toggleSidebar() {
     isSidebarOpen = !isSidebarOpen;
 }
@@ -24,7 +24,7 @@ export function zoomOut() {
     contentScale = Math.max(contentScale - 0.1, 0.5);
 }
 
-// Apertura modale
+// Open modal
 export function openModal(index) {
     selectedImage = {
         index: index,
@@ -40,12 +40,12 @@ export function openModal(index) {
     tick().then(scrollToSelected);
 }
 
-// Chiusura modale
+// Close modal
 export function closeModal() {
     isModalOpen = false;
 }
 
-// Navigazione immagini
+// Image navigation
 export function navigateImage(offset) {
     if (!selectedImage) return;
     let newIndex = selectedImage.index + offset;
@@ -54,7 +54,7 @@ export function navigateImage(offset) {
     openModal(newIndex);
 }
 
-// Scroll verso l'immagine selezionata
+// Scroll to selected image
 export function scrollToSelected() {
     if (selectedImage) {
         const imgElement = document.querySelector(
@@ -66,7 +66,7 @@ export function scrollToSelected() {
     }
 }
 
-// Scroll alla posizione dell'immagine nella griglia
+// Scroll to image position in the grid
 export function scrollToImage(index) {
     if (!imagesContainer) return;
 

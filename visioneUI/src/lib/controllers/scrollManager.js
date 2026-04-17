@@ -15,7 +15,7 @@ export function createScrollManager() {
   let prevLayoutTab = null;
   const suppressNextRestore = { View1: false, View2: false, Similarity: false };
 
-  // One handler per tab — writes to a plain object, no store involved.
+  // One handler per tab - writes to a plain object, no store involved.
   const scrollHandlers = {
     View1:      () => { if (containers.View1)      positions.View1      = containers.View1.scrollTop; },
     View2:      () => { if (containers.View2)      positions.View2      = containers.View2.scrollTop; },

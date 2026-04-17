@@ -2,10 +2,10 @@ import { writable } from 'svelte/store';
 import { appSettingsStore } from './persistentState.js';
 
 const DEFAULT = {
-  // Runtime UI (NON persistente)
+  // Runtime UI (non-persistent)
   layoutTab: 'View1',          // 'View1' | 'View2' | 'Similarity'
 
-  // Persistente
+  // Persistent
   theme: 'default',            // 'default' | 'dark' | 'light'
   viewMode: 'byvideo',
   contentScale: 1,
@@ -72,7 +72,7 @@ function createUIStore() {
       const s = appSettingsStore.get() || {};
       update(u => ({
         ...u,
-        // layoutTab volutamente escluso
+        // layoutTab intentionally excluded
         theme: s.theme ?? u.theme,
         viewMode: s.viewMode ?? u.viewMode,
         contentScale: s.contentScale ?? u.contentScale,
@@ -109,7 +109,7 @@ function createUIStore() {
       }));
     },
 
-    // usa questa per il tasto "reset app" (UI + persistenza)
+    // Use for the "reset app" action (UI + persistence)
     resetUI() {
       set(DEFAULT);
       persist({
@@ -149,7 +149,7 @@ function createUIStore() {
       update(u => ({ ...u, layoutTab }));
     },
 
-    // ---- Persistenti (con persist)
+    // ---- Persistent (with persist)
     setViewMode(viewMode) {
       update(u => ({ ...u, viewMode }));
       persist({ viewMode });
