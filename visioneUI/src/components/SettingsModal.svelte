@@ -19,6 +19,7 @@
   export let dresPassword = '';
   export let dresMemberId = '';
   export let autoTranslateQueries = true;
+  export let showAutoTranslateToggle = true;
   export let temporalWindowSeconds = 50;
   export let modelSelectionPerStepEnabled = true;
   export let defaultTextModel = 'openclip_clip_vit_b_32';
@@ -99,6 +100,7 @@
     dresPassword,
     dresMemberId,
     autoTranslateQueries,
+    showAutoTranslateToggle,
     temporalWindowSeconds,
     modelSelectionPerStepEnabled,
     defaultTextModel,
@@ -106,7 +108,14 @@
     futureOptionA,
     futureOptionB
   };
-  let dresExpanded = false;
+  let activeSettingsTab = 'general';
+  const settingsTabs = [
+    { id: 'general', label: 'General' },
+    { id: 'search', label: 'Search' },
+    { id: 'models', label: 'Models' },
+    { id: 'performance', label: 'Performance' },
+    { id: 'dres', label: 'DRES' }
+  ];
   
   // ✅ Aggiorna local quando modal si apre
   $: if (isOpen) {
@@ -127,6 +136,7 @@
       dresPassword,
       dresMemberId,
       autoTranslateQueries,
+      showAutoTranslateToggle,
       temporalWindowSeconds,
       modelSelectionPerStepEnabled,
       defaultTextModel,
@@ -134,7 +144,7 @@
       futureOptionA,
       futureOptionB
     };
-    dresExpanded = false;
+    activeSettingsTab = 'general';
   }
 
   function close() { 
@@ -181,6 +191,7 @@
       dresPassword: local.dresPassword ?? '',
       dresMemberId: (local.dresMemberId ?? '').trim(),
       autoTranslateQueries: !!local.autoTranslateQueries,
+      showAutoTranslateToggle: !!local.showAutoTranslateToggle,
       temporalWindowSeconds: safeTemporalWindowSeconds,
       modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
       defaultTextModel: safeDefaultTextModel,
@@ -284,7 +295,7 @@
       aria-label="Close settings"
     ></button>
     
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden">
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg h-[88vh] max-h-[88vh] flex flex-col overflow-hidden">
       <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center space-x-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -300,290 +311,304 @@
         </button>
       </div>
 
-      <div class="px-5 py-4 space-y-4 overflow-y-auto">
-        <div>
-          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Appearance</h4>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-theme" class="ui-settings-label text-sm font-medium text-gray-700">Theme</label>
-            <select
-              id="settings-theme"
-              class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-              bind:value={local.theme}
-              on:change={() => save()}
+      <div class="px-5 pt-2 pb-0 border-b {local.theme === 'dark' ? 'border-slate-700 bg-transparent' : 'border-gray-200 bg-transparent'}">
+        <div class="flex items-end gap-1 overflow-x-auto">
+          {#each settingsTabs as tab}
+            <button
+              type="button"
+              class="px-3 py-1 rounded-t-md text-[11px] font-medium border transition-colors whitespace-nowrap {activeSettingsTab === tab.id
+                ? (local.theme === 'dark'
+                  ? 'bg-slate-900 text-slate-100 border-slate-600 border-b-slate-900'
+                  : 'bg-white text-gray-800 border-gray-300 border-b-white shadow-[0_-1px_0_rgba(255,255,255,0.65)_inset]')
+                : (local.theme === 'dark'
+                  ? 'bg-transparent text-slate-400 border-transparent hover:bg-slate-800/60 hover:text-slate-200'
+                  : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100 hover:text-gray-700')}"
+              on:click={() => (activeSettingsTab = tab.id)}
+              aria-pressed={activeSettingsTab === tab.id}
             >
-              <option value="default">Default</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </div>
+              {tab.label}
+            </button>
+          {/each}
         </div>
+      </div>
 
-        <div>
-          <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Display</h4>
-          
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-keyframe-size" class="ui-settings-label text-sm font-medium text-gray-700">Keyframe size</label>
-            <div class="flex items-center space-x-2">
+      <div class="px-5 py-4 overflow-y-auto">
+        {#if activeSettingsTab === 'general'}
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">General</h4>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-theme" class="ui-settings-label text-sm font-medium text-gray-700">Theme</label>
+              <select
+                id="settings-theme"
+                class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.theme}
+                on:change={() => save()}
+              >
+                <option value="default">Default</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-keyframe-size" class="ui-settings-label text-sm font-medium text-gray-700">Keyframe size</label>
+              <div class="flex items-center space-x-2">
+                <div class="relative">
+                  <input
+                    id="settings-keyframe-size"
+                    type="number"
+                    min="80"
+                    max="400"
+                    step="10"
+                    class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                    bind:value={local.keyframeSize}
+                    on:input={handleKeyframeSizeInput}
+                    on:blur={commitKeyframeSizeInput}
+                  />
+                  <div class="ui-settings-stepper">
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Increase keyframe size" on:click={() => adjustNumber('keyframeSize', 10, 80, 400)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                    </button>
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease keyframe size" on:click={() => adjustNumber('keyframeSize', -10, 80, 400)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <span class="ui-settings-unit text-xs text-gray-500">px</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-results-per-row" class="ui-settings-label text-sm font-medium text-gray-700">Results per row</label>
+              <div class="flex items-center space-x-3">
+                <div class="relative">
+                  <input
+                    id="settings-results-per-row"
+                    type="number"
+                    min="1"
+                    max="10"
+                    step="1"
+                    class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                    bind:value={local.resultsPerRow}
+                    disabled={local.resultsAutoFit}
+                    on:input={(e) => {
+                      const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
+                      local.resultsPerRow = n;
+                      save();
+                    }}
+                  />
+                  <div class="ui-settings-stepper">
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Increase results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', 1, 1, 10)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                    </button>
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', -1, 1, 10)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                  <input
+                    type="checkbox"
+                    id="autofit"
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    bind:checked={local.resultsAutoFit}
+                    on:change={() => save()}
+                  />
+                  <label for="autofit" class="ui-settings-hint text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
+                </div>
+              </div>
+            </div>
+
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              In by video mode, rows are still capped by Results per row even when Auto-fit is enabled.
+            </p>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-video-badge-orientation" class="ui-settings-label text-sm font-medium text-gray-700">Video badge</label>
+              <select
+                id="settings-video-badge-orientation"
+                class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.videoBadgeOrientation}
+                on:change={() => save()}
+              >
+                <option value="vertical">Vertical</option>
+                <option value="horizontal">Horizontal</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-justify-result-rows" class="ui-settings-label text-sm font-medium text-gray-700">Justify result rows</label>
+              <input
+                id="settings-justify-result-rows"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.justifyResultRows}
+                on:change={() => save()}
+              />
+            </div>
+          </div>
+        {/if}
+
+        {#if activeSettingsTab === 'search'}
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Search</h4>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-cache-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable search cache</label>
+              <input
+                id="settings-cache-enabled"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.cacheEnabled}
+                on:change={() => save()}
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-auto-translate-toggle" class="ui-settings-label text-sm font-medium text-gray-700">Enable auto-translate</label>
+              <input
+                id="settings-auto-translate-toggle"
+                type="checkbox"
+                bind:checked={local.showAutoTranslateToggle}
+                on:change={() => save()}
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-temporal-window-seconds" class="ui-settings-label text-sm font-medium text-gray-700">Temporal window (seconds)</label>
               <div class="relative">
                 <input
-                  id="settings-keyframe-size"
+                  id="settings-temporal-window-seconds"
                   type="number"
-                  min="80"
-                  max="400"
-                  step="10"
-                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                  bind:value={local.keyframeSize}
-                  on:input={handleKeyframeSizeInput}
-                  on:blur={commitKeyframeSizeInput}
+                  min="1"
+                  max="99999"
+                  step="1"
+                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.temporalWindowSeconds}
+                  on:input={handleTemporalWindowInput}
+                  on:blur={commitTemporalWindowInput}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase keyframe size" on:click={() => adjustNumber('keyframeSize', 10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease keyframe size" on:click={() => adjustNumber('keyframeSize', -10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
               </div>
-              <span class="ui-settings-unit text-xs text-gray-500">px</span>
             </div>
           </div>
-        </div>
+        {/if}
 
-        <div>
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Layout</h4>
-          
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-results-per-row" class="ui-settings-label text-sm font-medium text-gray-700">Results per row</label>
-            <div class="flex items-center space-x-3">
+        {#if activeSettingsTab === 'models'}
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Models</h4>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-model-selection-per-step" class="ui-settings-label text-sm font-medium text-gray-700">Enable model selection per step</label>
+              <input
+                id="settings-model-selection-per-step"
+                type="checkbox"
+                bind:checked={local.modelSelectionPerStepEnabled}
+                on:change={() => save()}
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-default-text-model" class="ui-settings-label text-sm font-medium text-gray-700">Default text model</label>
+              <select
+                id="settings-default-text-model"
+                class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.defaultTextModel}
+                on:change={() => save()}
+              >
+                {#each textModelOptions as m}
+                  <option value={m}>{m}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-default-image-model" class="ui-settings-label text-sm font-medium text-gray-700">Default image model</label>
+              <select
+                id="settings-default-image-model"
+                class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.defaultImageModel}
+                on:change={() => save()}
+              >
+                {#each imageModelOptions as m}
+                  <option value={m}>{m}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+        {/if}
+
+        {#if activeSettingsTab === 'performance'}
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Performance</h4>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
+              <input
+                id="virtualization-enabled"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.virtualizationEnabled}
+                on:change={() => save()}
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="virtualization-threshold" class="ui-settings-label text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
               <div class="relative">
                 <input
-                  id="settings-results-per-row"
+                  id="virtualization-threshold"
                   type="number"
-                  min="1"
-                  max="10"
-                  step="1"
-                  class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                  bind:value={local.resultsPerRow}
-                  disabled={local.resultsAutoFit}
+                  min="10"
+                  max="300"
+                  step="5"
+                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                  bind:value={local.virtualizationThreshold}
+                  disabled={!local.virtualizationEnabled}
                   on:input={(e) => {
-                    const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
-                    local.resultsPerRow = n;
+                    const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
+                    local.virtualizationThreshold = n;
                     save();
                   }}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', 1, 1, 10)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', 5, 10, 300)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', -1, 1, 10)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', -5, 10, 300)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
               </div>
-              <div class="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-                <input
-                  type="checkbox"
-                  id="autofit"
-                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  bind:checked={local.resultsAutoFit}
-                  on:change={() => save()} 
-                />
-                <label for="autofit" class="ui-settings-hint text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
-              </div>
             </div>
           </div>
+        {/if}
 
-          <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
-            In by video mode, rows are still capped by Results per row even when Auto-fit is enabled.
-          </p>
+        {#if activeSettingsTab === 'dres'}
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">DRES Submit</h4>
+            <p class="ui-settings-hint text-xs">Configure endpoint and credentials used for manual DRES submissions.</p>
 
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-video-badge-orientation" class="ui-settings-label text-sm font-medium text-gray-700">Video badge</label>
-            <select
-              id="settings-video-badge-orientation"
-              class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-              bind:value={local.videoBadgeOrientation}
-              on:change={() => save()}
-            >
-              <option value="vertical">Vertical</option>
-              <option value="horizontal">Horizontal</option>
-            </select>
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-justify-result-rows" class="ui-settings-label text-sm font-medium text-gray-700">Justify result rows</label>
-            <input
-              id="settings-justify-result-rows"
-              type="checkbox"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              bind:checked={local.justifyResultRows}
-              on:change={() => save()}
-            />
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-cache-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable search cache</label>
-            <input
-              id="settings-cache-enabled"
-              type="checkbox"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              bind:checked={local.cacheEnabled}
-              on:change={() => save()}
-            />
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
-            <input
-              id="virtualization-enabled"
-              type="checkbox"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-              bind:checked={local.virtualizationEnabled}
-              on:change={() => save()}
-            />
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="virtualization-threshold" class="ui-settings-label text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
-            <div class="relative">
+            <div class="flex items-center justify-between py-1">
+              <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
               <input
-                id="virtualization-threshold"
-                type="number"
-                min="10"
-                max="300"
-                step="5"
-                class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                bind:value={local.virtualizationThreshold}
-                disabled={!local.virtualizationEnabled}
-                on:input={(e) => {
-                  const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
-                  local.virtualizationThreshold = n;
-                  save();
-                }}
+                id="dres-enabled"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.dresEnabled}
+                on:change={() => save()}
               />
-              <div class="ui-settings-stepper">
-                <button type="button" class="ui-settings-stepper-btn" aria-label="Increase virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', 5, 10, 300)}>
-                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
-                </button>
-                <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', -5, 10, 300)}>
-                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
-                </button>
-              </div>
             </div>
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-auto-translate" class="ui-settings-label text-sm font-medium text-gray-700">Auto-translate queries to English</label>
-            <input
-              id="settings-auto-translate"
-              type="checkbox"
-              bind:checked={local.autoTranslateQueries}
-              on:change={() => save()}
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-temporal-window-seconds" class="ui-settings-label text-sm font-medium text-gray-700">Temporal window (seconds)</label>
-            <div class="relative">
-              <input
-                id="settings-temporal-window-seconds"
-                type="number"
-                min="1"
-                max="99999"
-                step="1"
-                class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                bind:value={local.temporalWindowSeconds}
-                on:input={handleTemporalWindowInput}
-                on:blur={commitTemporalWindowInput}
-              />
-              <div class="ui-settings-stepper">
-                <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
-                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
-                </button>
-                <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
-                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-model-selection-per-step" class="ui-settings-label text-sm font-medium text-gray-700">Enable model selection per step</label>
-            <input
-              id="settings-model-selection-per-step"
-              type="checkbox"
-              bind:checked={local.modelSelectionPerStepEnabled}
-              on:change={() => save()}
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-default-text-model" class="ui-settings-label text-sm font-medium text-gray-700">Default text model</label>
-            <select
-              id="settings-default-text-model"
-              class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-              bind:value={local.defaultTextModel}
-              on:change={() => save()}
-            >
-              {#each textModelOptions as m}
-                <option value={m}>{m}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="flex items-center justify-between py-2">
-            <label for="settings-default-image-model" class="ui-settings-label text-sm font-medium text-gray-700">Default image model</label>
-            <select
-              id="settings-default-image-model"
-              class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-              bind:value={local.defaultImageModel}
-              on:change={() => save()}
-            >
-              {#each imageModelOptions as m}
-                <option value={m}>{m}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <button
-            type="button"
-            class="ui-settings-subsection w-full mb-2 px-3 py-2 inline-flex items-center justify-between text-left hover:border-blue-300 transition-colors"
-            on:click={() => (dresExpanded = !dresExpanded)}
-            aria-expanded={dresExpanded}
-            aria-controls="dres-settings-panel"
-            title={dresExpanded ? 'Collapse DRES settings' : 'Expand DRES settings'}
-          >
-            <div>
-              <h4 class="ui-settings-section-title text-xs font-semibold text-gray-500 uppercase tracking-wider">DRES Submit</h4>
-              <p class="ui-settings-hint text-[11px]">Connection and credentials</p>
-            </div>
-            <svg class="w-4 h-4 text-gray-500 transition-transform {dresExpanded ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </button>
-
-          {#if dresExpanded}
-            <div id="dres-settings-panel" class="ui-settings-subsection mt-2 space-y-2.5 p-3">
-              <p class="ui-settings-hint text-xs">
-                Configure endpoint and credentials used for manual DRES submissions.
-              </p>
-
-              <div class="flex items-center justify-between py-1">
-                <label for="dres-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable DRES submit</label>
-                <input
-                  id="dres-enabled"
-                  type="checkbox"
-                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  bind:checked={local.dresEnabled}
-                  on:change={() => save()}
-                />
-              </div>
 
             <div>
               <label for="dres-server" class="ui-settings-label block text-sm font-medium mb-1">Submit server URL</label>
@@ -622,30 +647,29 @@
               />
             </div>
 
-              <div>
-                <label for="dres-member-id" class="ui-settings-label block text-sm font-medium mb-1">Member ID (optional)</label>
-                <input
-                  id="dres-member-id"
-                  type="text"
-                  class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                  bind:value={local.dresMemberId}
-                  disabled={!local.dresEnabled}
-                  on:change={() => save()}
-                />
-              </div>
-
-              <div class="pt-1">
-                <button
-                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  on:click={testDresConnection}
-                  disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
-                >
-                  Test DRES connection
-                </button>
-              </div>
+            <div>
+              <label for="dres-member-id" class="ui-settings-label block text-sm font-medium mb-1">Member ID (optional)</label>
+              <input
+                id="dres-member-id"
+                type="text"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                bind:value={local.dresMemberId}
+                disabled={!local.dresEnabled}
+                on:change={() => save()}
+              />
             </div>
-          {/if}
-        </div>
+
+            <div class="pt-1">
+              <button
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-700 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                on:click={testDresConnection}
+                disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
+              >
+                Test DRES connection
+              </button>
+            </div>
+          </div>
+        {/if}
       </div>
 
       <div class="px-5 py-3 bg-gray-50 border-t border-gray-200 rounded-b-xl flex items-center justify-end">

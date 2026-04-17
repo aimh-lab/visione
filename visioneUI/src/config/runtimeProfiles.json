@@ -16,6 +16,18 @@
   },
   "collections": {
     "lsc": {
+      "queryFilters": {
+        "metadataFields": [
+          "year",
+          "month",
+          "day",
+          "hour",
+          "semantic_name",
+          "heart_rate_bpm",
+          "country",
+          "city"
+        ]
+      },
       "timeBadge": {
         "source": "epoch",
         "format": "HH:mm",

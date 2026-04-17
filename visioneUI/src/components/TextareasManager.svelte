@@ -47,7 +47,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "date" | "imageUrl" | "type" | "";
+    filterType: "date" | "imageUrl" | "type" | "metadata" | "";
   };
 
   type ModalSubmitData = {
@@ -56,6 +56,8 @@
     url?: string;
     name?: string;
     type?: string;
+    comparator?: string;
+    value?: string;
   };
 
   type DispatchEvents = {
@@ -89,6 +91,7 @@
   export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModelInput[] = [];
   export let modelSelectionPerStepEnabled = true;
+  export let runtimeProfile: Record<string, unknown> = {};
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
 
@@ -121,6 +124,22 @@
   let textModelOptions: string[] = [];
   let imageModelOptions: string[] = [];
   let multiModalModelOptions: string[] = [];
+  let metadataFilterFields: string[] = [];
+  let modalMetadataField = '';
+  let modalMetadataShortcut = '';
+
+  const SHORTCUT_ALIAS_BY_FIELD: Record<string, string> = {
+    year: 'y',
+    month: 'm',
+    day: 'd',
+    hour: 'h',
+    semantic_name: 'semantic',
+    heart_rate_bpm: 'hr',
+    country: 'country',
+    city: 'city'
+  };
+
+  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'heart_rate_bpm']);
 
   function getTextModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
@@ -182,6 +201,47 @@
       .filter((m) => m.modalities.includes('image+text'))
       .map((m) => m.name)
   ));
+
+  $: metadataFilterFields = Array.from(new Set(
+    (Array.isArray((runtimeProfile as any)?.queryFilters?.metadataFields)
+      ? (runtimeProfile as any).queryFilters.metadataFields
+      : [])
+      .map((field: unknown) => String(field || '').trim())
+      .filter(Boolean)
+  ));
+
+  function getShortcutForField(field: string) {
+    const normalized = String(field || '').trim().toLowerCase();
+    return SHORTCUT_ALIAS_BY_FIELD[normalized] || normalized;
+  }
+
+  function getDefaultComparatorForField(field: string) {
+    return NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase()) ? 'eq' : 'ilike';
+  }
+
+  function getMetadataFieldHint(field: string) {
+    const shortcut = getShortcutForField(field);
+    if (NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase())) {
+      return `${shortcut}:42 or ${shortcut}:>42`;
+    }
+    return `${shortcut}:dublin or ${shortcut}:~dublin`;
+  }
+
+  function toComparatorSymbol(comparator: string, fallback: string) {
+    const normalized = String(comparator || '').trim().toLowerCase();
+    if (normalized === 'gt') return '>';
+    if (normalized === 'lt') return '<';
+    if (normalized === 'eq') return '=';
+    if (normalized === 'ne') return '!=';
+    if (normalized === 'like' || normalized === 'ilike') return '~';
+
+    const normalizedFallback = String(fallback || '').trim().toLowerCase();
+    if (normalizedFallback === 'gt') return '>';
+    if (normalizedFallback === 'lt') return '<';
+    if (normalizedFallback === 'ne') return '!=';
+    if (normalizedFallback === 'like' || normalizedFallback === 'ilike') return '~';
+    return '=';
+  }
 
   function hexToRgb(hex: string) {
     const clean = hex.replace("#", "");
@@ -617,6 +677,7 @@
 
   // ✅ Gestione menu dropdown
   let openMenuIndex: number | null = null;
+  let openMetadataSubmenuIndex: number | null = null;
   let openTranslationHintIndex: number | null = null;
   let menuTriggerRefs: Array<HTMLButtonElement | null> = [];
   let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
@@ -646,6 +707,7 @@
 
   async function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
+    openMetadataSubmenuIndex = null;
 
     if (openMenuIndex === index) {
       await tick();
@@ -655,6 +717,15 @@
 
   function closeMenu() {
     openMenuIndex = null;
+    openMetadataSubmenuIndex = null;
+  }
+
+  function openMetadataSubmenu(index: number) {
+    openMetadataSubmenuIndex = index;
+  }
+
+  function closeMetadataSubmenu() {
+    openMetadataSubmenuIndex = null;
   }
 
   $: if (openTranslationHintIndex !== null && !getTranslationHint(openTranslationHintIndex)) {
@@ -879,6 +950,50 @@
     };
     closeMenu();
   }
+
+  function openMetadataFilterModal(index: number, field: string) {
+    const normalizedField = String(field || '').trim();
+    if (!normalizedField) return;
+
+    modalMetadataField = normalizedField;
+    modalMetadataShortcut = getShortcutForField(normalizedField);
+
+    modalConfig = {
+      isOpen: true,
+      title: `Add ${normalizedField} Filter`,
+      icon: 'filter',
+      description: `Insert shortcut ${modalMetadataShortcut}:... for metadata filtering`,
+      targetIndex: index,
+      filterType: 'metadata',
+      fields: [
+        {
+          name: 'comparator',
+          label: 'Comparator',
+          type: 'select',
+          value: getDefaultComparatorForField(normalizedField),
+          options: [
+            { value: 'eq', label: '= (equal)' },
+            { value: 'ne', label: '!= (not equal)' },
+            { value: 'lt', label: '< (less than)' },
+            { value: 'gt', label: '> (greater than)' },
+            { value: 'like', label: '~ (like)' },
+            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+          ]
+        },
+        {
+          name: 'value',
+          label: 'Value',
+          type: 'text',
+          value: '',
+          placeholder: 'Filter value',
+          required: true,
+          hint: getMetadataFieldHint(normalizedField)
+        }
+      ]
+    };
+
+    closeMenu();
+  }
   
   function handleModalSubmit(event: CustomEvent<ModalSubmitData>) {
 
@@ -917,14 +1032,33 @@
     } else if (filterType === 'type') {
       const currentValue = textareas[targetIndex].value || '';
       update(targetIndex, currentValue + ' type:' + (data.type ?? ''));
+    } else if (filterType === 'metadata') {
+      const rawValue = String(data.value ?? '').trim();
+      if (rawValue) {
+        const comparator = String(data.comparator || getDefaultComparatorForField(modalMetadataField)).trim().toLowerCase();
+        const defaultComparator = getDefaultComparatorForField(modalMetadataField);
+        const shortcut = modalMetadataShortcut || getShortcutForField(modalMetadataField);
+        const symbol = toComparatorSymbol(comparator, defaultComparator);
+        const token = comparator === defaultComparator
+          ? `${shortcut}:${rawValue}`
+          : `${shortcut}:${symbol}${rawValue}`;
+
+        const currentValue = textareas[targetIndex].value || '';
+        const sep = currentValue.trim().length > 0 ? ' ' : '';
+        update(targetIndex, currentValue + sep + token);
+      }
     }
     
     modalConfig.isOpen = false;
+    modalMetadataField = '';
+    modalMetadataShortcut = '';
   }
   
   function handleModalClose() {
 
     modalConfig.isOpen = false;
+    modalMetadataField = '';
+    modalMetadataShortcut = '';
   }
 </script>
 
@@ -1441,6 +1575,70 @@
                           <div class="text-[10px] text-gray-400 font-mono">type:format</div>
                         </div>
                       </button>
+
+                      {#if metadataFilterFields.length > 0}
+                        <div class="my-1 h-px bg-gray-700"></div>
+
+                        {#if openMetadataSubmenuIndex === i}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={closeMetadataSubmenu}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 18l-6-6 6-6"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Back</div>
+                              <div class="text-[10px] text-gray-400">Return to add menu</div>
+                            </div>
+                          </button>
+
+                          <div class="px-3 py-1">
+                            <span class="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">Metadata Filters</span>
+                          </div>
+
+                          {#each metadataFilterFields as field}
+                            {@const shortcut = getShortcutForField(field)}
+                            <button
+                              type="button"
+                              on:click|stopPropagation={() => openMetadataFilterModal(i, field)}
+                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                            >
+                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M4 7h16M4 12h16M4 17h16"/>
+                                </svg>
+                              </div>
+                              <div class="flex-1">
+                                <div class="text-xs font-medium text-white">{field}</div>
+                                <div class="text-[10px] text-gray-400 font-mono">{shortcut}:...</div>
+                              </div>
+                            </button>
+                          {/each}
+                        {:else}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openMetadataSubmenu(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 7h16M4 12h16M4 17h16"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Metadata Filters</div>
+                              <div class="text-[10px] text-gray-400">Open metadata shortcuts</div>
+                            </div>
+                            <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M9 6l6 6-6 6"/>
+                            </svg>
+                          </button>
+                        {/if}
+                      {/if}
                     </div>
                   </div>
                 {/if}

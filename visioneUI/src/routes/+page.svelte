@@ -2114,6 +2114,7 @@ function handleViewSubmitted() {
   dresPassword={$uiStore.dresPassword}
   dresMemberId={$uiStore.dresMemberId}
   autoTranslateQueries={$uiStore.autoTranslateQueries}
+  showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}
   modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
   defaultTextModel={$uiStore.defaultTextModel}
@@ -2167,6 +2168,7 @@ function handleViewSubmitted() {
         {translatedQueryHints}
         {availableModels}
         modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
+        showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
         autoTranslateEnabled={$uiStore.autoTranslateQueries}
         onToggleAutoTranslate={handleToggleAutoTranslate}
         {textareaImages}

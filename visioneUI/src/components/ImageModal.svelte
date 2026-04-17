@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { focusTrap } from "../utils/ui";
   import SubmitBadge from "./SubmitBadge.svelte";
+  import { visioneAPI } from "../services/api";
   
   export let isOpen = false;
   export let image = null;
@@ -28,8 +29,165 @@
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
+
+  const METADATA_FIELDS_PER_REQUEST = 20;
+  const imageMetadataCache = new Map();
+  let metadataFields = [];
+  let metadataValues = {};
+  let metadataLoading = false;
+  let metadataError = "";
+  let metadataRequestToken = 0;
+  let loadedMetadataImageId = "";
+
+  $: modalImageId = String(image?.imgId || "").trim();
+  $: metadataEntries = buildMetadataEntries(metadataFields, metadataValues);
+
+  $: if (!isOpen) {
+    metadataLoading = false;
+    metadataError = "";
+  }
+
+  $: if (isOpen && modalImageId && loadedMetadataImageId !== modalImageId) {
+    void loadMetadataForImage(modalImageId);
+  }
   
   let imageContainer;
+
+  function uniqueStrings(values) {
+    return Array.from(new Set(
+      (Array.isArray(values) ? values : [])
+        .map((v) => String(v || "").trim())
+        .filter(Boolean)
+    ));
+  }
+
+  function extractMetadataFieldsFromDiscovery(discoveryPayload) {
+    const entries = Array.isArray(discoveryPayload) ? discoveryPayload : [discoveryPayload];
+    const allFields = [];
+
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object") continue;
+      const fields = Array.isArray(entry.metadata) ? entry.metadata : [];
+      allFields.push(...fields);
+    }
+
+    return uniqueStrings(allFields);
+  }
+
+  async function ensureMetadataFields() {
+    if (metadataFields.length > 0) return metadataFields;
+
+    const discovery = await visioneAPI.discovery();
+    metadataFields = extractMetadataFieldsFromDiscovery(discovery);
+    return metadataFields;
+  }
+
+  function chunkList(values, size) {
+    const out = [];
+    for (let i = 0; i < values.length; i += size) {
+      out.push(values.slice(i, i + size));
+    }
+    return out;
+  }
+
+  function normalizeMetadataValues(fields, payload) {
+    const data = payload && typeof payload === "object" ? payload : {};
+    const out = {};
+
+    for (const field of fields) {
+      out[field] = Object.prototype.hasOwnProperty.call(data, field) ? data[field] : null;
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+      if (!Object.prototype.hasOwnProperty.call(out, key)) {
+        out[key] = value;
+      }
+    }
+
+    return out;
+  }
+
+  function buildMetadataEntries(fields, values) {
+    const orderedFields = Array.isArray(fields) ? fields : [];
+    const map = values && typeof values === "object" ? values : {};
+    const ordered = orderedFields.map((field) => ({ key: field, value: map[field] ?? null }));
+
+    const extra = Object.keys(map)
+      .filter((key) => !orderedFields.includes(key))
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => ({ key, value: map[key] }));
+
+    return [...ordered, ...extra];
+  }
+
+  function formatMetadataValue(value) {
+    if (value === null || value === undefined || value === "") return "-";
+    if (Array.isArray(value)) {
+      return value.length > 0 ? value.map((v) => String(v)).join(", ") : "-";
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  }
+
+  async function loadMetadataForImage(imgId) {
+    const normalizedId = String(imgId || "").trim();
+    if (!normalizedId) return;
+
+    const requestToken = ++metadataRequestToken;
+    metadataError = "";
+    metadataLoading = true;
+
+    try {
+      const fields = await ensureMetadataFields();
+      if (requestToken !== metadataRequestToken) return;
+
+      if (fields.length === 0) {
+        metadataValues = {};
+        loadedMetadataImageId = normalizedId;
+        metadataLoading = false;
+        return;
+      }
+
+      const cached = imageMetadataCache.get(normalizedId);
+      if (cached) {
+        metadataValues = cached;
+        loadedMetadataImageId = normalizedId;
+        metadataLoading = false;
+        return;
+      }
+
+      const chunks = chunkList(fields, METADATA_FIELDS_PER_REQUEST);
+      const merged = {};
+
+      for (const chunk of chunks) {
+        const partial = await visioneAPI.getField(normalizedId, chunk);
+        if (requestToken !== metadataRequestToken) return;
+        if (partial && typeof partial === "object") {
+          Object.assign(merged, partial);
+        }
+      }
+
+      const normalizedValues = normalizeMetadataValues(fields, merged);
+      imageMetadataCache.set(normalizedId, normalizedValues);
+      metadataValues = normalizedValues;
+      loadedMetadataImageId = normalizedId;
+    } catch (error) {
+      if (requestToken !== metadataRequestToken) return;
+      metadataError = error?.message || "Unable to load metadata";
+      metadataValues = {};
+      loadedMetadataImageId = "";
+    } finally {
+      if (requestToken === metadataRequestToken) {
+        metadataLoading = false;
+      }
+    }
+  }
 </script>
 
 {#if isOpen}
@@ -239,6 +397,36 @@
                 </span>
               </div>
             </div>
+          </div>
+
+          <!-- Metadata -->
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Metadata</h4>
+
+            {#if metadataLoading}
+              <div class="border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                Loading metadata...
+              </div>
+            {:else if metadataError}
+              <div class="border border-red-200 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                {metadataError}
+              </div>
+            {:else if metadataEntries.length === 0}
+              <div class="border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                No metadata available for this frame.
+              </div>
+            {:else}
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="max-h-64 overflow-auto divide-y divide-gray-100">
+                  {#each metadataEntries as entry}
+                    <div class="grid grid-cols-[minmax(0,150px)_1fr] gap-3 px-3 py-2 text-xs">
+                      <div class="font-mono text-gray-500 break-all">{entry.key}</div>
+                      <div class="text-gray-800 break-all">{formatMetadataValue(entry.value)}</div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
           
           <!-- Notes -->

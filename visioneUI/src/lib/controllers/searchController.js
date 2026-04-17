@@ -32,6 +32,14 @@ export function createSearchController({
   let debounceTimer = null;
   const DEBOUNCE_MS = 250;
 
+  function hasQueryFilterShortcuts(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value) return false;
+
+    // Keep user-authored shortcut filters untouched in the visible query text.
+    return /(^|\s)(date|type|city|country|semantic|sem|semantic_name|new_semantic_name|ns|y|year|m|month|d|day|h|hour|hr|heart_rate_bpm):/i.test(value);
+  }
+
   async function maybeTranslateTextareas(rawTextareas) {
     const source = Array.isArray(rawTextareas) ? rawTextareas : [];
     const autoTranslateEnabled = typeof getAutoTranslateEnabled === 'function'
@@ -51,6 +59,11 @@ export function createSearchController({
     const translatedTextareas = await Promise.all(source.map(async (t) => {
       const rawValue = String(t?.value || '').trim();
       if (!rawValue) return t;
+
+      if (hasQueryFilterShortcuts(rawValue)) {
+        // Do not rewrite user-visible query when filters are present.
+        return t;
+      }
 
       const lowerRaw = rawValue.toLowerCase();
       if (lowerRaw.startsWith('image:') || lowerRaw.startsWith('similarity:')) {
