@@ -525,10 +525,12 @@ export class VisioneAPI {
         throw new APIError('No valid query items', 400);
       }
 
+      const metadataToRetrieve = this.#buildMetadataToRetrieve(singleTextareaNode);
+
       return {
         query: singleTextareaNode,
         urls_to_retrieve: ['images', 'thumbnails', 'videos'],
-        metadata_to_retrieve: this.defaultMetadataToRetrieve
+        metadata_to_retrieve: metadataToRetrieve
       };
     }
 
@@ -536,15 +538,21 @@ export class VisioneAPI {
       ? Math.min(99999, Math.max(1, Number(temporalWindowSeconds)))
       : this.defaultTemporalWindowSeconds;
 
-    return {
+    const temporalQuery = {
       query: {
         item: textareaNodes,
         aggregation_type: 'temporal',
         window_seconds: safeTemporalWindowSeconds,
         k: this.defaultAggregatedK
       },
-      urls_to_retrieve: ['images', 'thumbnails', 'videos'],
-      metadata_to_retrieve: this.defaultMetadataToRetrieve
+      urls_to_retrieve: ['images', 'thumbnails', 'videos']
+    };
+
+    const metadataToRetrieve = this.#buildMetadataToRetrieve(temporalQuery.query);
+
+    return {
+      ...temporalQuery,
+      metadata_to_retrieve: metadataToRetrieve
     };
   }
 
@@ -554,11 +562,17 @@ export class VisioneAPI {
 
     const subqueries = queryItems.map((item) => {
       const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
-      return {
+      const node = {
         item: item.value,
         model: item.model || defaultModel,
         k: leafK
       };
+
+      if (item.filters && Array.isArray(item.filters.arguments) && item.filters.arguments.length > 0) {
+        node.filters = item.filters;
+      }
+
+      return node;
     });
 
     if (subqueries.length === 1) {
@@ -574,6 +588,7 @@ export class VisioneAPI {
 
   #expandTextareaToItems(textarea) {
     const raw = String(textarea?.value || '').trim();
+    const { cleanText, filters } = this.#extractFiltersFromRawQuery(raw);
     const similarityImgId = String(textarea?.similarityImgId || '').trim();
     const legacyModel = String(textarea?.model || '').trim();
     const textModel = String(textarea?.textModel || legacyModel || '').trim();
@@ -581,24 +596,262 @@ export class VisioneAPI {
     const out = [];
 
     if (similarityImgId) {
-      out.push({ type: 'image', value: `image:${similarityImgId}`, model: imageModel });
+      out.push({ type: 'image', value: `image:${similarityImgId}`, model: imageModel, filters });
     }
 
-    if (raw) {
-      const lowerRaw = raw.toLowerCase();
+    if (cleanText) {
+      const lowerRaw = cleanText.toLowerCase();
       if (lowerRaw.startsWith('similarity:')) {
-        const legacyId = raw.slice('similarity:'.length).trim();
+        const legacyId = cleanText.slice('similarity:'.length).trim();
         if (legacyId) {
-          out.push({ type: 'image', value: `image:${legacyId}`, model: imageModel });
+          out.push({ type: 'image', value: `image:${legacyId}`, model: imageModel, filters });
         }
       } else if (lowerRaw.startsWith('image:')) {
-        out.push({ type: 'image', value: raw, model: imageModel });
+        out.push({ type: 'image', value: cleanText, model: imageModel, filters });
       } else {
-        out.push({ type: 'text', value: raw, model: textModel });
+        out.push({ type: 'text', value: cleanText, model: textModel, filters });
       }
     }
 
     return out;
+  }
+
+  #buildMetadataToRetrieve(queryNode) {
+    const defaults = Array.isArray(this.defaultMetadataToRetrieve)
+      ? this.defaultMetadataToRetrieve.map((v) => String(v || '').trim()).filter(Boolean)
+      : [];
+    const fromFilters = Array.from(this.#collectFilterAttributes(queryNode));
+    return Array.from(new Set([...defaults, ...fromFilters]));
+  }
+
+  #collectFilterAttributes(queryNode) {
+    const out = new Set();
+
+    const walk = (node) => {
+      if (!node || typeof node !== 'object') return;
+
+      const args = node?.filters?.arguments;
+      if (Array.isArray(args)) {
+        for (const arg of args) {
+          const attr = String(arg?.attribute || '').trim();
+          if (attr) out.add(attr);
+        }
+      }
+
+      const item = node?.item;
+      if (Array.isArray(item)) {
+        item.forEach((sub) => walk(sub));
+      }
+    };
+
+    walk(queryNode);
+    return out;
+  }
+
+  #extractFiltersFromRawQuery(rawText) {
+    const text = String(rawText || '').trim();
+    if (!text) return { cleanText: '', filters: null };
+
+    const tokenPattern = /[^\s:]+:"[^"]*"|[^\s:]+:'[^']*'|\S+/g;
+    const tokens = text.match(tokenPattern) || [];
+    const passthroughTokens = [];
+    const args = [];
+
+    for (const token of tokens) {
+      const firstColon = token.indexOf(':');
+      if (firstColon <= 0) {
+        passthroughTokens.push(token);
+        continue;
+      }
+
+      const rawKey = token.slice(0, firstColon).trim();
+      const rawValue = token.slice(firstColon + 1).trim();
+      const parsed = this.#parseFilterToken(rawKey, rawValue);
+
+      if (!parsed || !Array.isArray(parsed.arguments) || parsed.arguments.length === 0) {
+        passthroughTokens.push(token);
+        continue;
+      }
+
+      args.push(...parsed.arguments);
+    }
+
+    const cleanText = passthroughTokens.join(' ').replace(/\s+/g, ' ').trim();
+    if (args.length === 0) return { cleanText: text, filters: null };
+
+    return {
+      cleanText,
+      filters: {
+        operator: 'and',
+        arguments: args
+      }
+    };
+  }
+
+  #parseFilterToken(key, rawValue) {
+    const alias = String(key || '').trim().toLowerCase();
+    const value = this.#unquoteValue(rawValue);
+    if (!value) return null;
+
+    const numericShortcuts = {
+      y: 'year',
+      year: 'year',
+      m: 'month',
+      month: 'month',
+      d: 'day',
+      day: 'day',
+      h: 'hour',
+      hour: 'hour',
+      hr: 'heart_rate_bpm',
+      heart_rate_bpm: 'heart_rate_bpm'
+    };
+
+    const textShortcuts = {
+      city: 'city',
+      country: 'country',
+      semantic: 'semantic_name',
+      sem: 'semantic_name',
+      semantic_name: 'semantic_name',
+      new_semantic_name: 'new_semantic_name',
+      ns: 'new_semantic_name',
+      type: 'type'
+    };
+
+    if (alias === 'date') {
+      const dateArgs = this.#parseDateFilterArguments(value);
+      return dateArgs.length > 0 ? { arguments: dateArgs } : null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(numericShortcuts, alias)) {
+      const attribute = numericShortcuts[alias];
+      const parsed = this.#extractComparatorValue(value, 'eq');
+      const numericValue = Number(parsed.value);
+      if (!Number.isFinite(numericValue)) return null;
+      return {
+        arguments: [{ comparator: parsed.comparator, attribute, value: numericValue }]
+      };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(textShortcuts, alias)) {
+      const attribute = textShortcuts[alias];
+      const parsed = this.#extractComparatorValue(value, attribute === 'type' ? 'eq' : 'ilike');
+      const normalized = this.#normalizeTextFilterValue(parsed.value, parsed.comparator);
+      if (!normalized) return null;
+      return {
+        arguments: [{ comparator: parsed.comparator, attribute, value: normalized }]
+      };
+    }
+
+    return null;
+  }
+
+  #unquoteValue(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+      return raw.slice(1, -1).trim();
+    }
+    return raw;
+  }
+
+  #extractComparatorValue(raw, fallbackComparator) {
+    const value = String(raw || '').trim();
+    if (!value) return { comparator: fallbackComparator, value: '' };
+
+    const namedMatch = value.match(/^(eq|ne|lt|gt|like|ilike):(.*)$/i);
+    if (namedMatch) {
+      return { comparator: namedMatch[1].toLowerCase(), value: this.#unquoteValue(namedMatch[2]) };
+    }
+
+    const symbolicMatch = value.match(/^([<>]|!=|=|~)(.*)$/);
+    if (symbolicMatch) {
+      const symbol = symbolicMatch[1];
+      const mapped = symbol === '>'
+        ? 'gt'
+        : symbol === '<'
+          ? 'lt'
+          : symbol === '!='
+            ? 'ne'
+            : symbol === '~'
+              ? (String(fallbackComparator || '').trim().toLowerCase() === 'like' ? 'like' : 'ilike')
+              : 'eq';
+      return { comparator: mapped, value: this.#unquoteValue(symbolicMatch[2]) };
+    }
+
+    return { comparator: fallbackComparator, value: this.#unquoteValue(value) };
+  }
+
+  #normalizeTextFilterValue(rawValue, comparator) {
+    const value = String(rawValue || '').trim();
+    if (!value) return '';
+    if (comparator === 'like' || comparator === 'ilike') {
+      const withoutBoundaryPercents = value.replace(/^%+|%+$/g, '');
+      const core = withoutBoundaryPercents || value.replace(/%/g, '');
+      return `%${core}%`;
+    }
+    return value;
+  }
+
+  #parseDateFilterArguments(rawValue) {
+    const input = String(rawValue || '').trim();
+    if (!input) return [];
+
+    if (input.includes('..')) {
+      const [fromRaw, toRaw] = input.split('..', 2);
+      const from = this.#toEpochStart(fromRaw);
+      const to = this.#toEpochEnd(toRaw);
+      const out = [];
+      if (Number.isFinite(from)) out.push({ comparator: 'gt', attribute: 'epoch', value: Math.floor(from) - 1 });
+      if (Number.isFinite(to)) out.push({ comparator: 'lt', attribute: 'epoch', value: Math.floor(to) + 1 });
+      return out;
+    }
+
+    const parsed = this.#extractComparatorValue(input, 'eq');
+    const comparator = parsed.comparator;
+    const value = parsed.value;
+    const start = this.#toEpochStart(value);
+    const end = this.#toEpochEnd(value);
+
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return [];
+    }
+
+    if (comparator === 'eq') {
+      return [
+        { comparator: 'gt', attribute: 'epoch', value: Math.floor(start) - 1 },
+        { comparator: 'lt', attribute: 'epoch', value: Math.floor(end) + 1 }
+      ];
+    }
+
+    if (comparator === 'ne') {
+      return [{ comparator: 'ne', attribute: 'epoch', value: Math.floor(start) }];
+    }
+
+    if (comparator === 'gt') {
+      return [{ comparator: 'gt', attribute: 'epoch', value: Math.floor(end) }];
+    }
+
+    if (comparator === 'lt') {
+      return [{ comparator: 'lt', attribute: 'epoch', value: Math.floor(start) }];
+    }
+
+    return [];
+  }
+
+  #toEpochStart(rawDate) {
+    const normalized = String(rawDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return NaN;
+    const epochMs = Date.parse(`${normalized}T00:00:00Z`);
+    if (!Number.isFinite(epochMs)) return NaN;
+    return Math.floor(epochMs / 1000);
+  }
+
+  #toEpochEnd(rawDate) {
+    const normalized = String(rawDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return NaN;
+    const epochMs = Date.parse(`${normalized}T23:59:59Z`);
+    if (!Number.isFinite(epochMs)) return NaN;
+    return Math.floor(epochMs / 1000);
   }
 
   #buildRelevanceFeedback(config) {

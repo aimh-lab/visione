@@ -118,6 +118,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   dresPassword: '',
   dresMemberId: '',
   autoTranslateQueries: true,
+  showAutoTranslateToggle: true,
   temporalWindowSeconds: 50,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',

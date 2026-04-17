@@ -13,8 +13,10 @@
   export let translatedQueryHints = {};
   export let availableModels = [];
   export let modelSelectionPerStepEnabled = true;
+  export let showAutoTranslateToggle = true;
   export let autoTranslateEnabled = true;
   export let onToggleAutoTranslate = () => {};
+  export let runtimeProfile = {};
   export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
@@ -192,33 +194,35 @@
               </div>
             </div>
 
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-slate-700/35"
-              title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
-              aria-label={autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
-              aria-pressed={autoTranslateEnabled}
-              on:click={onToggleAutoTranslate}
-            >
-              <img
-                src="/icons/translate.svg"
-                alt=""
-                aria-hidden="true"
-                class="w-3.5 h-3.5 object-contain transition-opacity {autoTranslateEnabled ? 'opacity-100 saturate-125' : 'opacity-55 grayscale'}"
-                loading="lazy"
-              />
-              <span
-                class="relative inline-flex h-3.5 w-6 items-center rounded-full border transition-colors {autoTranslateEnabled
-                  ? 'border-emerald-400/70 bg-emerald-500/35'
-                  : 'border-slate-500/70 bg-slate-700/70'}"
+            {#if showAutoTranslateToggle}
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-slate-700/35"
+                title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
+                aria-label={autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
+                aria-pressed={autoTranslateEnabled}
+                on:click={onToggleAutoTranslate}
               >
+                <img
+                  src="/icons/translate.svg"
+                  alt=""
+                  aria-hidden="true"
+                  class="w-3.5 h-3.5 object-contain transition-opacity {autoTranslateEnabled ? 'opacity-100 saturate-125' : 'opacity-55 grayscale'}"
+                  loading="lazy"
+                />
                 <span
-                  class="inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform {autoTranslateEnabled
-                    ? 'translate-x-3'
-                    : 'translate-x-0.5'}"
-                ></span>
-              </span>
-            </button>
+                  class="relative inline-flex h-3.5 w-6 items-center rounded-full border transition-colors {autoTranslateEnabled
+                    ? 'border-emerald-400/70 bg-emerald-500/35'
+                    : 'border-slate-500/70 bg-slate-700/70'}"
+                >
+                  <span
+                    class="inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform {autoTranslateEnabled
+                      ? 'translate-x-3'
+                      : 'translate-x-0.5'}"
+                  ></span>
+                </span>
+              </button>
+            {/if}
           </div>
           
           <TextareasManager
@@ -227,6 +231,7 @@
             {translatedQueryHints}
             {availableModels}
             {modelSelectionPerStepEnabled}
+            {runtimeProfile}
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}
