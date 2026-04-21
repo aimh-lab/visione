@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -30,7 +31,7 @@ def metadata_field(
             doc = request.app.state.vector_store.get_by_ids(ids=[hashed_id], columns_override=field)
             if not doc:
                 raise HTTPException(status_code=404, detail=f"No record found for ID '{id}'.")
-            return doc[0].metadata
+            return _sanitize_for_json(doc[0].metadata)
 
         # Overloaded mode requires select_field and select_value.
         if not (select_field and select_value is not None):
@@ -47,7 +48,7 @@ def metadata_field(
             select_value=_coerce_select_value(select_value),
             retrieve_fields=field,
         )
-        return rows
+        return _sanitize_for_json(rows)
     except HTTPException:
         raise
     except Exception as exc:
@@ -72,3 +73,25 @@ def _coerce_select_value(value: str):
         return int(value)
     except ValueError:
         return value
+
+
+def _sanitize_for_json(value):
+    """Convert non-finite floats (NaN/Inf) to None so JSON encoding succeeds."""
+    if isinstance(value, dict):
+        return {k: _sanitize_for_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_for_json(v) for v in value]
+
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return None
+        return value
+
+    # Handle numpy/pandas scalar values that can wrap NaN/Inf.
+    if hasattr(value, "item"):
+        try:
+            return _sanitize_for_json(value.item())
+        except Exception:
+            return value
+
+    return value
