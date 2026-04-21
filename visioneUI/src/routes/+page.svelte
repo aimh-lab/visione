@@ -11,6 +11,7 @@
   import { visioneAPI } from '../services/api.js';
   import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
+  import SlideshowModal from "../components/SlideshowModal.svelte";
   import VideoSummaryModal from "../components/VideoSummaryModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
   import { deserializeFromURL, updateURL } from '../utils/urlState.js';
@@ -198,11 +199,18 @@
 
   // VideoPlayerModal
   let isVideoPlayerOpen = false;
+  let isSlideshowOpen = false;
   let videoPlayer = {
     url: "",
     startTime: 0,
     title: "",
     videoId: "",
+    highlightedKeyframes: []
+  };
+  let slideshowPlayer = {
+    videoId: "",
+    selectedImgId: "",
+    title: "",
     highlightedKeyframes: []
   };
 
@@ -1356,7 +1364,45 @@
   // ---------------------------
   // Video player helpers
   // ---------------------------
+  function normalizeVideoId(value) {
+    const raw = String(value || '').trim().replace(/\.mp4$/i, '');
+    if (!raw) return '';
+    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
+  }
+
+  function extractVideoIdFromImageId(imgId) {
+    const raw = String(imgId || '').trim();
+    if (!raw) return '';
+    const hourMatch = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+    if (hourMatch) return hourMatch[1];
+    return raw.split('-')[0] || '';
+  }
+
+  function useSlideshowModal() {
+    const overrideMode = String($uiStore.videoPlayerModalMode || 'profile').trim().toLowerCase();
+    if (overrideMode === 'slideshow') return true;
+    if (overrideMode === 'video') return false;
+
+    const mode = String(runtimeProfile?.videoPlayer?.modal || 'video').trim().toLowerCase();
+    return mode === 'slideshow';
+  }
+
   async function openVideoPlayerBy(imgId, videoId, startAt) {
+    const normalizedVideoId = normalizeVideoId(videoId || extractVideoIdFromImageId(imgId));
+    const normalizedImgId = String(imgId || '').trim();
+
+    if (useSlideshowModal()) {
+      slideshowPlayer = {
+        videoId: normalizedVideoId,
+        selectedImgId: normalizedImgId,
+        title: normalizedVideoId,
+        highlightedKeyframes: videoPlayerCtrl.getHighlightedKeyframesForVideo(normalizedVideoId)
+      };
+      isSlideshowOpen = true;
+      logVideoPlayer('openSlideshow', `imgId:${normalizedImgId} video:${normalizedVideoId}`);
+      return;
+    }
+
     videoPlayer = await videoPlayerCtrl.buildPlayerData(imgId, videoId, startAt);
     isVideoPlayerOpen = true;
     logVideoPlayer('open', `imgId:${String(imgId || '')} start:${Number(startAt || 0)}`);
@@ -1909,6 +1955,7 @@ function handleViewSubmitted() {
     similarityModal.close();
     videoModal.close();
     isVideoPlayerOpen = false;
+    isSlideshowOpen = false;
     isVideoSummaryModalOpen = false;
     activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
 
@@ -1976,7 +2023,7 @@ function handleViewSubmitted() {
 <!-- Template invariato -->
 <Keybindings
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen}
-  isVideoPlayerOpen={isVideoPlayerOpen}
+  isVideoPlayerOpen={isVideoPlayerOpen || isSlideshowOpen}
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => {
     if (tab !== 'View1') return;
@@ -2029,7 +2076,8 @@ function handleViewSubmitted() {
     else navigateImage(offset, toFirstOfRow);
   }}
   onCloseModal={() => {
-    if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
+    if (isSlideshowOpen) isSlideshowOpen = false;
+    else if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
     else if ($videoModal.isOpen) closeFrameModal();
     else if ($similarityModal.isOpen) closeSimilarityModal();
     else closeModal();
@@ -2065,6 +2113,45 @@ function handleViewSubmitted() {
   on:close={() => {
     logVideoPlayer('close');
     isVideoPlayerOpen = false;
+  }}
+/>
+
+<SlideshowModal
+  isOpen={isSlideshowOpen}
+  videoId={slideshowPlayer.videoId}
+  selectedImgId={slideshowPlayer.selectedImgId}
+  title={slideshowPlayer.title}
+  highlightedKeyframes={slideshowPlayer.highlightedKeyframes}
+  showSubmitUI={$uiStore.dresEnabled}
+  challengeType={$uiStore.dresChallengeType}
+  on:playerAction={(e) => {
+    const d = e?.detail || {};
+    const action = String(d.action || 'unknown');
+    const idx = Number(d.currentIndex ?? -1);
+    const ts = Number(d.timestamp ?? 0);
+    const img = String(d.imgId || '');
+    logVideoPlayer(`slideshow:${action}`, `idx:${idx} ts:${ts.toFixed(3)} imgId:${img}`);
+  }}
+  on:submitFrame={(e) => {
+    const { imgId, videoId, dataUrl, currentTime } = e.detail || {};
+    logVideoPlayer('slideshow:submitFrame', `imgId:${String(imgId || '')} t:${Number(currentTime || 0).toFixed(3)}`);
+    submitByImgId(imgId, {
+      imgId,
+      videoId,
+      url: dataUrl || "",
+      title: imgId,
+      raw: { source: "slideshow-modal", currentTime }
+    });
+  }}
+  on:captureForSimilarity={(e) => {
+    const t = Number(e?.detail?.currentTime || 0);
+    logVideoPlayer('slideshow:captureForSimilarity', `t:${t.toFixed(3)}`);
+    isSlideshowOpen = false;
+    addSimilarityAsSearchStep(e.detail.imgId);
+  }}
+  on:close={() => {
+    logVideoPlayer('closeSlideshow');
+    isSlideshowOpen = false;
   }}
 />
 
@@ -2116,6 +2203,7 @@ function handleViewSubmitted() {
   autoTranslateQueries={$uiStore.autoTranslateQueries}
   showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}
+  videoPlayerModalMode={$uiStore.videoPlayerModalMode}
   modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
   defaultTextModel={$uiStore.defaultTextModel}
   defaultImageModel={$uiStore.defaultImageModel}

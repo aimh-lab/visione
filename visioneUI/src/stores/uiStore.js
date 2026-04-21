@@ -34,6 +34,7 @@ const DEFAULT = {
   autoTranslateQueries: true,
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 50,
+  videoPlayerModalMode: 'profile',
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'
@@ -103,6 +104,9 @@ function createUIStore() {
         temporalWindowSeconds: Number.isFinite(Number(s.temporalWindowSeconds))
           ? Math.min(99999, Math.max(1, Number(s.temporalWindowSeconds)))
           : u.temporalWindowSeconds,
+        videoPlayerModalMode: ['profile', 'video', 'slideshow'].includes(s.videoPlayerModalMode)
+          ? s.videoPlayerModalMode
+          : u.videoPlayerModalMode,
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
         defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
@@ -138,6 +142,7 @@ function createUIStore() {
         autoTranslateQueries: DEFAULT.autoTranslateQueries,
         showAutoTranslateToggle: DEFAULT.showAutoTranslateToggle,
         temporalWindowSeconds: DEFAULT.temporalWindowSeconds,
+        videoPlayerModalMode: DEFAULT.videoPlayerModalMode,
         modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
         defaultTextModel: DEFAULT.defaultTextModel,
         defaultImageModel: DEFAULT.defaultImageModel
@@ -217,11 +222,14 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, showAutoTranslateToggle, temporalWindowSeconds, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, showAutoTranslateToggle, temporalWindowSeconds, videoPlayerModalMode, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
       const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(temporalWindowSeconds) || DEFAULT.temporalWindowSeconds));
+      const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(videoPlayerModalMode)
+        ? videoPlayerModalMode
+        : DEFAULT.videoPlayerModalMode;
       const safeDefaultTextModel = String(defaultTextModel || '').trim() || DEFAULT.defaultTextModel;
       const safeDefaultImageModel = String(defaultImageModel || '').trim() || DEFAULT.defaultImageModel;
       update(u => ({
@@ -244,6 +252,7 @@ function createUIStore() {
         autoTranslateQueries: !!autoTranslateQueries,
         showAutoTranslateToggle: !!showAutoTranslateToggle,
         temporalWindowSeconds: safeTemporalWindowSeconds,
+        videoPlayerModalMode: safeVideoPlayerModalMode,
         modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
         defaultTextModel: safeDefaultTextModel,
         defaultImageModel: safeDefaultImageModel
@@ -267,6 +276,7 @@ function createUIStore() {
         autoTranslateQueries: !!autoTranslateQueries,
         showAutoTranslateToggle: !!showAutoTranslateToggle,
         temporalWindowSeconds: safeTemporalWindowSeconds,
+        videoPlayerModalMode: safeVideoPlayerModalMode,
         modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
         defaultTextModel: safeDefaultTextModel,
         defaultImageModel: safeDefaultImageModel

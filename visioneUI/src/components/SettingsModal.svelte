@@ -21,6 +21,7 @@
   export let autoTranslateQueries = true;
   export let showAutoTranslateToggle = true;
   export let temporalWindowSeconds = 50;
+  export let videoPlayerModalMode = 'profile';
   export let modelSelectionPerStepEnabled = true;
   export let defaultTextModel = 'openclip_clip_vit_b_32';
   export let defaultImageModel = 'dinov2_base';
@@ -101,6 +102,7 @@
     autoTranslateQueries,
     showAutoTranslateToggle,
     temporalWindowSeconds,
+    videoPlayerModalMode,
     modelSelectionPerStepEnabled,
     defaultTextModel,
     defaultImageModel,
@@ -136,6 +138,7 @@
       autoTranslateQueries,
       showAutoTranslateToggle,
       temporalWindowSeconds,
+      videoPlayerModalMode,
       modelSelectionPerStepEnabled,
       defaultTextModel,
       defaultImageModel,
@@ -165,6 +168,9 @@
     const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 50));
+    const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
+      ? local.videoPlayerModalMode
+      : 'profile';
     const safeDefaultTextModel = textModelOptions.includes(String(local.defaultTextModel || '').trim())
       ? String(local.defaultTextModel || '').trim()
       : FALLBACK_TEXT_MODEL;
@@ -190,6 +196,7 @@
       autoTranslateQueries: !!local.autoTranslateQueries,
       showAutoTranslateToggle: !!local.showAutoTranslateToggle,
       temporalWindowSeconds: safeTemporalWindowSeconds,
+      videoPlayerModalMode: safeVideoPlayerModalMode,
       modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
       defaultTextModel: safeDefaultTextModel,
       defaultImageModel: safeDefaultImageModel,
@@ -495,6 +502,20 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-video-player-modal-mode" class="ui-settings-label text-sm font-medium text-gray-700">Player modal mode (testing)</label>
+              <select
+                id="settings-video-player-modal-mode"
+                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.videoPlayerModalMode}
+                on:change={() => save()}
+              >
+                <option value="profile">Use runtime profile</option>
+                <option value="video">Force video player</option>
+                <option value="slideshow">Force slideshow</option>
+              </select>
             </div>
           </div>
         {/if}
