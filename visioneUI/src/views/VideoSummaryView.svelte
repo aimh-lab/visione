@@ -151,4 +151,8 @@
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}
+  on:openVideoPlayer={(e) => {
+    onCloseFrameModal();
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+  }}
 />

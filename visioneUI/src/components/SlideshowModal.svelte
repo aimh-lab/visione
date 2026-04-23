@@ -508,7 +508,19 @@
             <div class="rounded-lg border border-red-500/50 bg-red-900/20 text-red-200 text-sm px-4 py-3">{error}</div>
           </div>
         {:else if activeFrame}
-          <div class="absolute inset-0 flex items-center justify-center p-4 md:p-6">
+          <div
+            class="absolute inset-0 flex items-center justify-center p-4 md:p-6 cursor-pointer"
+            on:click={toggleAutoPlay}
+            aria-label="Toggle slideshow play/pause"
+            role="button"
+            tabindex="0"
+            on:keydown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                toggleAutoPlay();
+              }
+            }}
+          >
             <img src={activeFrame.imageUrl} alt={activeFrame.imgId} class="max-w-full max-h-full object-contain rounded-md" />
           </div>
 
