@@ -140,22 +140,28 @@ export function createSearchController({
   }
 
   function prepareResultItems(transformedItems) {
+    const reindex = (list) => (Array.isArray(list)
+      ? list.map((item, index) => ({ ...item, index }))
+      : []);
+
     const dedupeEnabled = typeof getDedupeResultsEnabled === 'function'
       ? !!getDedupeResultsEnabled()
       : true;
 
     if (dedupeEnabled) {
       const { items, removedCount } = dedupeByTopRank(transformedItems);
+      const normalized = reindex(items);
       return {
-        items,
+        items: normalized,
         removedCount,
         duplicateCount: removedCount,
         dedupeEnabled: true
       };
     }
 
+    const normalized = reindex(transformedItems);
     return {
-      items: transformedItems,
+      items: normalized,
       removedCount: 0,
       duplicateCount: countDuplicateImageIds(transformedItems),
       dedupeEnabled: false

@@ -116,6 +116,7 @@
     futureOptionB
   };
   let activeSettingsTab = 'general';
+  let wasOpen = false;
   const settingsTabs = [
     { id: 'general', label: 'General' },
     { id: 'search', label: 'Search' },
@@ -124,7 +125,7 @@
     { id: 'dres', label: 'DRES' }
   ];
   
-  $: if (isOpen) {
+  $: if (isOpen && !wasOpen) {
     local = {
       theme,
       keyframeSize,
@@ -154,6 +155,8 @@
     };
     activeSettingsTab = 'general';
   }
+
+  $: wasOpen = isOpen;
 
   function close() { 
     dispatch('close'); 
