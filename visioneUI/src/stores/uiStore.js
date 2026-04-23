@@ -20,6 +20,7 @@ const DEFAULT = {
   resultsPerRow: 8,
   resultsAutoFit: true,
   cacheEnabled: true,
+  dedupeResults: true,
   justifyResultRows: false,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
@@ -88,6 +89,7 @@ function createUIStore() {
         resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
+        dedupeResults: s.dedupeResults ?? u.dedupeResults,
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
@@ -129,6 +131,7 @@ function createUIStore() {
         resultsPerRow: DEFAULT.resultsPerRow,
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
+        dedupeResults: DEFAULT.dedupeResults,
         justifyResultRows: DEFAULT.justifyResultRows,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
@@ -222,7 +225,7 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, showAutoTranslateToggle, temporalWindowSeconds, videoPlayerModalMode, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
+    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, dedupeResults, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, showAutoTranslateToggle, temporalWindowSeconds, videoPlayerModalMode, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
       const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
       const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
       const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
@@ -239,6 +242,7 @@ function createUIStore() {
         resultsPerRow,
         resultsAutoFit,
         cacheEnabled: !!cacheEnabled,
+        dedupeResults: !!dedupeResults,
         justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,
@@ -263,6 +267,7 @@ function createUIStore() {
         resultsPerRow,
         resultsAutoFit,
         cacheEnabled: !!cacheEnabled,
+        dedupeResults: !!dedupeResults,
         justifyResultRows: !!justifyResultRows,
         videoBadgeOrientation: safeVideoBadgeOrientation,
         virtualizationEnabled,

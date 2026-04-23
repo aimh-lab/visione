@@ -10,6 +10,7 @@
   export let resultsPerRow = 8;
   export let justifyResultRows = false;
   export let cacheEnabled = true;
+  export let dedupeResults = true;
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
@@ -71,17 +72,21 @@
     .map((m) => normalizeAvailableModelEntry(m))
     .filter((m) => !!m);
 
-  $: textModelOptions = Array.from(new Set([
-    FALLBACK_TEXT_MODEL,
-    String(defaultTextModel || '').trim(),
-    ...normalizedModelEntries.filter(supportsTextModel).map((m) => m.name)
-  ].filter(Boolean)));
+  $: discoveredTextModels = Array.from(new Set(
+    normalizedModelEntries.filter(supportsTextModel).map((m) => m.name).filter(Boolean)
+  ));
 
-  $: imageModelOptions = Array.from(new Set([
-    FALLBACK_IMAGE_MODEL,
-    String(defaultImageModel || '').trim(),
-    ...normalizedModelEntries.filter(supportsImageModel).map((m) => m.name)
-  ].filter(Boolean)));
+  $: discoveredImageModels = Array.from(new Set(
+    normalizedModelEntries.filter(supportsImageModel).map((m) => m.name).filter(Boolean)
+  ));
+
+  $: textModelOptions = discoveredTextModels.length > 0
+    ? discoveredTextModels
+    : [FALLBACK_TEXT_MODEL];
+
+  $: imageModelOptions = discoveredImageModels.length > 0
+    ? discoveredImageModels
+    : [FALLBACK_IMAGE_MODEL];
   
   let local = {
     theme,
@@ -89,6 +94,7 @@
     resultsPerRow,
     resultsAutoFit,
     cacheEnabled,
+    dedupeResults,
     justifyResultRows,
     videoBadgeOrientation,
     virtualizationEnabled,
@@ -125,6 +131,7 @@
       resultsPerRow,
       resultsAutoFit,
       cacheEnabled,
+      dedupeResults,
       justifyResultRows,
       videoBadgeOrientation,
       virtualizationEnabled,
@@ -171,12 +178,14 @@
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
-    const safeDefaultTextModel = textModelOptions.includes(String(local.defaultTextModel || '').trim())
-      ? String(local.defaultTextModel || '').trim()
-      : FALLBACK_TEXT_MODEL;
-    const safeDefaultImageModel = imageModelOptions.includes(String(local.defaultImageModel || '').trim())
-      ? String(local.defaultImageModel || '').trim()
-      : FALLBACK_IMAGE_MODEL;
+    const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
+    const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
+    const safeDefaultTextModel = textModelOptions.includes(safeDefaultTextModelRaw)
+      ? safeDefaultTextModelRaw
+      : (textModelOptions[0] || FALLBACK_TEXT_MODEL);
+    const safeDefaultImageModel = imageModelOptions.includes(safeDefaultImageModelRaw)
+      ? safeDefaultImageModelRaw
+      : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
     
     const newSettings = {
       theme: ['default', 'dark', 'light'].includes(local.theme) ? local.theme : 'default',
@@ -184,6 +193,7 @@
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
       cacheEnabled: !!local.cacheEnabled,
+      dedupeResults: !!local.dedupeResults,
       justifyResultRows: !!local.justifyResultRows,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
@@ -467,6 +477,21 @@
                 on:change={() => save()}
               />
             </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-dedupe-results" class="ui-settings-label text-sm font-medium text-gray-700">Remove duplicate result IDs</label>
+              <input
+                id="settings-dedupe-results"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.dedupeResults}
+                on:change={() => save()}
+              />
+            </div>
+
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              When disabled, all results are shown even with repeated imgId values.
+            </p>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-auto-translate-toggle" class="ui-settings-label text-sm font-medium text-gray-700">Enable auto-translate</label>

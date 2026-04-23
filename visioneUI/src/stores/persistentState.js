@@ -107,6 +107,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   resultsPerRow: 8,
   resultsAutoFit: true,
   cacheEnabled: true,
+  dedupeResults: true,
   justifyResultRows: false,
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,

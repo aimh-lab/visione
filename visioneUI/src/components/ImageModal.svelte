@@ -41,6 +41,8 @@
 
   $: modalImageId = String(image?.imgId || "").trim();
   $: metadataEntries = buildMetadataEntries(metadataFields, metadataValues);
+  $: tupleMembers = normalizeTupleItems(image?.tupleItems);
+  $: hasTupleMembers = tupleMembers.length > 0;
 
   $: if (!isOpen) {
     metadataLoading = false;
@@ -139,6 +141,42 @@
     const url = String(rawUrl || "").trim();
     if (!url) return "";
     return url.replace(/\/(thumbnails)(?=\/)/i, "/selected-frames");
+  }
+
+  function toNumberOrNull(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function formatTupleTime(value) {
+    const n = toNumberOrNull(value);
+    if (n == null) return "-";
+    const total = Math.max(0, n);
+    const mins = Math.floor(total / 60);
+    const secs = Math.floor(total % 60);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  function normalizeTupleItems(rawTupleItems) {
+    const tuple = Array.isArray(rawTupleItems) ? rawTupleItems : [];
+    return tuple.map((entry, idx) => {
+      const metadata = entry && typeof entry.metadata === 'object' ? entry.metadata : {};
+      const imgId = String(entry?.id || entry?.imgId || entry?.imageId || '').trim();
+      const videoId = String(metadata?.hour_id || metadata?.video_id || metadata?.videoId || '').trim();
+      const imageUrl = String(metadata?.images || metadata?.thumbnails || '').trim();
+      const selectedFrameUrl = toSelectedFramesUrl(imageUrl);
+      const score = toNumberOrNull(entry?.score);
+      const middleTime = toNumberOrNull(metadata?.hour_msb_middletime);
+
+      return {
+        index: idx,
+        imgId,
+        videoId,
+        imageUrl: selectedFrameUrl,
+        timecode: formatTupleTime(middleTime),
+        score: score != null ? score.toFixed(4) : '-'
+      };
+    });
   }
 
   $: modalImageUrl = toSelectedFramesUrl(image?.url);
@@ -404,8 +442,37 @@
                   {image?.videoId}
                 </span>
               </div>
+              <div class="flex items-start">
+                <span class="w-28 text-gray-500 pt-1">Tuple size:</span>
+                <span class="font-semibold text-gray-800">{hasTupleMembers ? tupleMembers.length : 1}</span>
+              </div>
             </div>
           </div>
+
+          {#if hasTupleMembers}
+            <div>
+              <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Temporal Tuple</h4>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="max-h-56 overflow-auto divide-y divide-gray-100 bg-white">
+                  {#each tupleMembers as member}
+                    <div class="p-2.5 grid grid-cols-[56px_1fr] gap-2.5 items-start">
+                      <div class="w-14 h-10 rounded bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                        {#if member.imageUrl}
+                          <img src={member.imageUrl} alt={member.imgId || `Tuple ${member.index + 1}`} class="w-full h-full object-cover" />
+                        {:else}
+                          <span class="text-[10px] text-gray-400">N/A</span>
+                        {/if}
+                      </div>
+                      <div class="min-w-0">
+                        <div class="text-xs font-semibold text-gray-800 truncate">#{member.index + 1} {member.imgId || '-'}</div>
+                        <div class="text-[11px] text-gray-500 mt-0.5">video: {member.videoId || '-'} · t: {member.timecode} · score: {member.score}</div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {/if}
 
           <!-- Metadata -->
           <div>

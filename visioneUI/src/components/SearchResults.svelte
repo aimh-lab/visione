@@ -23,6 +23,7 @@
 <ResultsGrid 
   items={rows}
   selectedId={selectedImage?.imgId}
+  selectedIndex={selectedImage?.index}
   layout="rows"
   showVideoSummary={true}
   {viewMode}
