@@ -12,6 +12,7 @@ export function createSearchController({
   setTextareas,
   getFramesPerRow,        // () => number
   getCacheEnabled,        // () => boolean
+  getDedupeResultsEnabled,// () => boolean
   getAutoTranslateEnabled,// () => boolean
   getTemporalWindowSeconds, // () => number
   getSubmittedIds,        // () => Set<string>
@@ -93,18 +94,72 @@ export function createSearchController({
     return { translatedTextareas, translatedCount, failedCount };
   }
 
-  function assertUniqueImageIds(items) {
-    if (!Array.isArray(items) || items.length === 0) return;
-    const seen = new Map();
-    for (let i = 0; i < items.length; i += 1) {
-      const id = String(items[i]?.imgId ?? '').trim();
+  function countDuplicateImageIds(items) {
+    if (!Array.isArray(items) || items.length === 0) return 0;
+    const seen = new Set();
+    let duplicates = 0;
+    for (const item of items) {
+      const id = String(item?.imgId ?? '').trim();
       if (!id) continue;
       if (seen.has(id)) {
-        const firstIndex = seen.get(id);
-        throw new Error(`Duplicate image id in search results: ${id} (indexes ${firstIndex} and ${i})`);
+        duplicates += 1;
+      } else {
+        seen.add(id);
       }
-      seen.set(id, i);
     }
+    return duplicates;
+  }
+
+  function dedupeByTopRank(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return { items: [], removedCount: 0 };
+    }
+
+    const seen = new Set();
+    const deduped = [];
+    let removedCount = 0;
+
+    for (const item of items) {
+      const id = String(item?.imgId ?? '').trim();
+      if (!id) {
+        deduped.push(item);
+        continue;
+      }
+
+      // Input order is rank order, so keep first occurrence (highest rank).
+      if (seen.has(id)) {
+        removedCount += 1;
+        continue;
+      }
+
+      seen.add(id);
+      deduped.push(item);
+    }
+
+    return { items: deduped, removedCount };
+  }
+
+  function prepareResultItems(transformedItems) {
+    const dedupeEnabled = typeof getDedupeResultsEnabled === 'function'
+      ? !!getDedupeResultsEnabled()
+      : true;
+
+    if (dedupeEnabled) {
+      const { items, removedCount } = dedupeByTopRank(transformedItems);
+      return {
+        items,
+        removedCount,
+        duplicateCount: removedCount,
+        dedupeEnabled: true
+      };
+    }
+
+    return {
+      items: transformedItems,
+      removedCount: 0,
+      duplicateCount: countDuplicateImageIds(transformedItems),
+      dedupeEnabled: false
+    };
   }
 
   function runSearch() {
@@ -196,7 +251,7 @@ export function createSearchController({
 
         const submittedIds = getSubmittedIds();
         const transformed = transformSearchResults(cached.results, submittedIds);
-        assertUniqueImageIds(transformed);
+        const { items: preparedItems, removedCount, duplicateCount, dedupeEnabled } = prepareResultItems(transformed);
 
         setSearchState({
           resultSet: cached.results,
@@ -221,12 +276,20 @@ export function createSearchController({
           toasts.info(`Translated ${translatedCount} query step${translatedCount > 1 ? 's' : ''} to English.`);
         }
 
-        setImages(transformed);
+        setImages(preparedItems);
 
         await tick();
         if (!isRestoringFromHistory()) syncURL();
 
-        toasts.success(`📦 Loaded ${transformed.length} cached results!`);
+        if (removedCount > 0) {
+          toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);
+        }
+
+        if (!dedupeEnabled && duplicateCount > 0) {
+          toasts.info(`Detected ${duplicateCount} duplicate result${duplicateCount > 1 ? 's' : ''} (dedupe disabled).`);
+        }
+
+        toasts.success(`📦 Loaded ${preparedItems.length} cached results!`);
         return;
       }
 
@@ -271,20 +334,28 @@ export function createSearchController({
 
       const submittedIds = getSubmittedIds();
       const transformed = transformSearchResults(resultSet, submittedIds);
-      assertUniqueImageIds(transformed);
-      setImages(transformed);
+      const { items: preparedItems, removedCount, duplicateCount, dedupeEnabled } = prepareResultItems(transformed);
+      setImages(preparedItems);
 
       await tick();
       if (!isRestoringFromHistory()) syncURL();
 
-      if (transformed.length > 0) {
+      if (preparedItems.length > 0) {
         if (cacheEnabled && cacheKey) {
           const similarityPreview = typeof getSimilarityPreview === 'function'
             ? getSimilarityPreview(rawTextareas)
             : null;
-          recentSearches.add(cacheKey, transformed.length, resultSet, rawTextareas, similarityPreview);
+          recentSearches.add(cacheKey, preparedItems.length, resultSet, rawTextareas, similarityPreview);
         }
-        toasts.success(`🌐 Found ${transformed.length} new results!`);
+        if (removedCount > 0) {
+          toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);
+        }
+
+        if (!dedupeEnabled && duplicateCount > 0) {
+          toasts.info(`Detected ${duplicateCount} duplicate result${duplicateCount > 1 ? 's' : ''} (dedupe disabled).`);
+        }
+
+        toasts.success(`🌐 Found ${preparedItems.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');
       }

@@ -18,16 +18,74 @@ export function findResultsArray(obj: any): any[] | null {
 }
 
 export function extractImageInfo(item: any, i: number) {
+  const tupleItems = Array.isArray(item) ? item : null;
+  const baseItem = tupleItems
+    ? (tupleItems.find((entry) => entry != null) ?? null)
+    : item;
+
+  if (typeof baseItem === 'string' || typeof baseItem === 'number') {
+    const rawImg = String(baseItem).trim();
+    const imgId = rawImg || null;
+    const noExt = rawImg.replace(/\.jpg$/i, '');
+    const match = noExt.match(/-(\d+)-(\d+)$/);
+    const videoId = match?.[1] ?? (imgId ? imgId.split('-')[0] : null);
+    const url = videoId && noExt ? tinyFrameUrl(String(videoId), noExt) : null;
+
+    return {
+      index: i,
+      title: imgId ?? `Image ${i + 1}`,
+      videoId: videoId ? String(videoId) : null,
+      imgId,
+      url,
+      imageUrl: null,
+      thumbnailUrl: null,
+      videoUrl: null,
+      hourId: null,
+      timestamp: null,
+      date: null,
+      size: null,
+      resolution: null,
+      tags: [],
+      submitted: false,
+      raw: { id: imgId },
+      tupleItems: tupleItems ?? null,
+      tupleSize: tupleItems?.length ?? 1
+    };
+  }
+
+  if (!baseItem || typeof baseItem !== 'object') {
+    return {
+      index: i,
+      title: `Image ${i + 1}`,
+      videoId: null,
+      imgId: null,
+      url: null,
+      imageUrl: null,
+      thumbnailUrl: null,
+      videoUrl: null,
+      hourId: null,
+      timestamp: null,
+      date: null,
+      size: null,
+      resolution: null,
+      tags: [],
+      submitted: false,
+      raw: null,
+      tupleItems: tupleItems ?? null,
+      tupleSize: tupleItems?.length ?? 1
+    };
+  }
+
   const pick = (o: any, ...props: string[]) => {
     for (const p of props) if (o && o[p] != null) return o[p];
     return null;
   };
 
-  const metadata = (item && typeof item.metadata === 'object' && item.metadata) ? item.metadata : {};
+  const metadata = (baseItem && typeof baseItem.metadata === 'object' && baseItem.metadata) ? baseItem.metadata : {};
 
   let rawImg =
-    pick(item, "imgId", "imgid", "imageId", "imageid", "image_id", "frameId", "frameid", "id", "file", "fileName", "filename", "path", "uri");
-  let rawVid = pick(item, "videoId", "videoid", "vid", "video", "camera");
+    pick(baseItem, "imgId", "imgid", "imageId", "imageid", "image_id", "frameId", "frameid", "id", "file", "fileName", "filename", "path", "uri");
+  let rawVid = pick(baseItem, "videoId", "videoid", "vid", "video", "camera");
 
   if (typeof rawImg === "string") {
     const s = String(rawImg);
@@ -47,7 +105,7 @@ export function extractImageInfo(item: any, i: number) {
   }
 
   if (!rawVid) {
-    for (const [key, val] of Object.entries(item)) {
+    for (const [key, val] of Object.entries(baseItem)) {
       if (!/^videoid$/i.test(key)) continue;
       const s = String(val);
       if (/^\d{3,6}$/.test(s)) { rawVid = s; break; }
@@ -62,7 +120,7 @@ export function extractImageInfo(item: any, i: number) {
   const hourId = String(pick(metadata, 'hour_id', 'hourId') || '').trim() || null;
   const fallbackId = imgId ? imgId.replace(/\.jpg$/i, '') : null;
   const url = thumbnailUrl || imageUrl || (videoId && fallbackId ? tinyFrameUrl(videoId, fallbackId) : null);
-  const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? item.timestamp ?? item.date ?? null;
+  const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? baseItem.timestamp ?? baseItem.date ?? null;
 
   return {
     index: i,
@@ -76,10 +134,12 @@ export function extractImageInfo(item: any, i: number) {
     hourId,
     timestamp,
     date: timestamp,
-    size: item.size ?? null,
-    resolution: item.resolution ?? null,
-    tags: item.tags ?? item.labels ?? [],
+    size: baseItem.size ?? null,
+    resolution: baseItem.resolution ?? null,
+    tags: baseItem.tags ?? baseItem.labels ?? [],
     submitted: false,
-    raw: item,
+    raw: baseItem,
+    tupleItems: tupleItems ?? null,
+    tupleSize: tupleItems?.length ?? 1
   };
 }

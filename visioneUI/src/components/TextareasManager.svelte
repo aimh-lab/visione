@@ -143,12 +143,14 @@
 
   function getTextModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
-    return String(textarea?.textModel || legacyModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
+    const discoveredDefault = textModelOptions[0] || DEFAULT_TEXT_MODEL;
+    return String(textarea?.textModel || legacyModel || discoveredDefault).trim() || discoveredDefault;
   }
 
   function getImageModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
-    return String(textarea?.imageModel || legacyModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+    const discoveredDefault = imageModelOptions[0] || DEFAULT_IMAGE_MODEL;
+    return String(textarea?.imageModel || legacyModel || discoveredDefault).trim() || discoveredDefault;
   }
 
   function normalizeAvailableModelEntry(input: AvailableModelInput): ModelDescriptor | null {
@@ -186,15 +188,21 @@
     .map((m) => normalizeAvailableModelEntry(m))
     .filter((m): m is ModelDescriptor => !!m);
 
-  $: textModelOptions = Array.from(new Set([
-    DEFAULT_TEXT_MODEL,
-    ...normalizedModelEntries.filter(supportsTextModel).map((m) => m.name)
-  ]));
+  $: discoveredTextModels = Array.from(new Set(
+    normalizedModelEntries.filter(supportsTextModel).map((m) => m.name).filter(Boolean)
+  ));
 
-  $: imageModelOptions = Array.from(new Set([
-    DEFAULT_IMAGE_MODEL,
-    ...normalizedModelEntries.filter(supportsImageModel).map((m) => m.name)
-  ]));
+  $: discoveredImageModels = Array.from(new Set(
+    normalizedModelEntries.filter(supportsImageModel).map((m) => m.name).filter(Boolean)
+  ));
+
+  $: textModelOptions = discoveredTextModels.length > 0
+    ? discoveredTextModels
+    : [DEFAULT_TEXT_MODEL];
+
+  $: imageModelOptions = discoveredImageModels.length > 0
+    ? discoveredImageModels
+    : [DEFAULT_IMAGE_MODEL];
 
   $: multiModalModelOptions = Array.from(new Set(
     normalizedModelEntries

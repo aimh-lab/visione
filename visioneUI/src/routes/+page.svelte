@@ -246,8 +246,8 @@
   $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
-  $: visioneAPI.defaultTextModel = String($uiStore.defaultTextModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
-  $: visioneAPI.defaultImageModel = String($uiStore.defaultImageModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+  $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
+  $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
 
   // ---------------------------
   // CSS vars (driven only by uiStore)
@@ -370,11 +370,67 @@
   }
 
   function getGlobalDefaultTextModel() {
-    return String(get(uiStore).defaultTextModel || DEFAULT_TEXT_MODEL).trim() || DEFAULT_TEXT_MODEL;
+    const configured = String(get(uiStore).defaultTextModel || '').trim();
+    const discovered = getDiscoveredModelNames('text');
+
+    if (configured && (discovered.length === 0 || discovered.includes(configured))) {
+      return configured;
+    }
+
+    return discovered[0] || DEFAULT_TEXT_MODEL;
   }
 
   function getGlobalDefaultImageModel() {
-    return String(get(uiStore).defaultImageModel || DEFAULT_IMAGE_MODEL).trim() || DEFAULT_IMAGE_MODEL;
+    const configured = String(get(uiStore).defaultImageModel || '').trim();
+    const discovered = getDiscoveredModelNames('image');
+
+    if (configured && (discovered.length === 0 || discovered.includes(configured))) {
+      return configured;
+    }
+
+    return discovered[0] || DEFAULT_IMAGE_MODEL;
+  }
+
+  function normalizeAvailableModelEntry(input) {
+    if (typeof input === 'string') {
+      const name = input.trim();
+      if (!name) return null;
+      return { name, modalities: ['text', 'image'] };
+    }
+
+    if (!input || typeof input !== 'object') return null;
+
+    const name = String(input?.name || '').trim();
+    if (!name) return null;
+
+    const modalities = Array.isArray(input?.modalities)
+      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    return {
+      name,
+      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
+    };
+  }
+
+  function supportsTextModel(entry) {
+    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
+  }
+
+  function supportsImageModel(entry) {
+    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
+  }
+
+  function getDiscoveredModelNames(kind = 'text') {
+    const entries = (Array.isArray(availableModels) ? availableModels : [])
+      .map((m) => normalizeAvailableModelEntry(m))
+      .filter((m) => !!m);
+
+    const filtered = kind === 'image'
+      ? entries.filter((m) => supportsImageModel(m))
+      : entries.filter((m) => supportsTextModel(m));
+
+    return Array.from(new Set(filtered.map((m) => m.name).filter(Boolean)));
   }
 
   function normalizeTextareaModels(textarea) {
@@ -738,6 +794,7 @@
     setTextareas: (t) => { textareas = t; },
     getFramesPerRow: () => get(uiStore).resultsPerRow,
     getCacheEnabled: () => get(uiStore).cacheEnabled,
+    getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
     getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 50,
     getSubmittedIds,
@@ -1042,8 +1099,9 @@
 
       // Load available models from /discovery (non-blocking)
       visioneAPI.discovery().then((data) => {
-        if (Array.isArray(data?.available_models)) {
-          availableModels = data.available_models;
+        const discoveredModels = extractAvailableModelsFromDiscovery(data);
+        if (discoveredModels.length > 0) {
+          availableModels = discoveredModels;
         }
         if (typeof data?.name === 'string' && data.name.trim()) {
           activeCollectionName = data.name.trim().toLowerCase();
@@ -1238,6 +1296,79 @@
     }
 
     visioneAPI.defaultMetadataToRetrieve = Array.from(new Set(requested));
+  }
+
+  function extractAvailableModelsFromDiscovery(discoveryPayload) {
+    const entries = Array.isArray(discoveryPayload) ? discoveryPayload : [discoveryPayload];
+    const out = new Map();
+
+    function normalizeModalities(value) {
+      const list = Array.isArray(value) ? value : [value];
+      return Array.from(new Set(
+        list
+          .map((m) => String(m || '').trim().toLowerCase())
+          .filter(Boolean)
+          .map((m) => {
+            if (m === 'text' || m === 'image' || m === 'image+text') return m;
+            if (m === 'multimodal' || m === 'multi-modal' || m === 'both') return 'image+text';
+            return m;
+          })
+      ));
+    }
+
+    function addModel(name, modalities = ['text', 'image']) {
+      const modelName = String(name || '').trim();
+      if (!modelName) return;
+
+      const normalizedModalities = normalizeModalities(modalities);
+      const safeModalities = normalizedModalities.length > 0 ? normalizedModalities : ['text', 'image'];
+
+      if (out.has(modelName)) {
+        const merged = Array.from(new Set([...(out.get(modelName).modalities || []), ...safeModalities]));
+        out.set(modelName, { name: modelName, modalities: merged });
+        return;
+      }
+
+      out.set(modelName, { name: modelName, modalities: safeModalities });
+    }
+
+    function addFromArray(models, fallbackModality) {
+      if (!Array.isArray(models)) return;
+      models.forEach((entry) => {
+        if (typeof entry === 'string') {
+          addModel(entry, fallbackModality ? [fallbackModality] : ['text', 'image']);
+          return;
+        }
+
+        if (entry && typeof entry === 'object') {
+          const name = String(entry.name || entry.model || entry.id || '').trim();
+          const modalities = entry.modalities || entry.modality || entry.type || (fallbackModality ? [fallbackModality] : ['text', 'image']);
+          addModel(name, modalities);
+        }
+      });
+    }
+
+    entries.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+
+      addFromArray(entry.available_models, null);
+      addFromArray(entry.models, null);
+      addFromArray(entry.text_models, 'text');
+      addFromArray(entry.image_models, 'image');
+      addFromArray(entry.multimodal_models, 'image+text');
+
+      if (entry.discovery && typeof entry.discovery === 'object') {
+        addFromArray(entry.discovery.available_models, null);
+        addFromArray(entry.discovery.models, null);
+      }
+
+      if (entry.data && typeof entry.data === 'object') {
+        addFromArray(entry.data.available_models, null);
+        addFromArray(entry.data.models, null);
+      }
+    });
+
+    return Array.from(out.values());
   }
 
   function applySettings(e) {
@@ -2190,6 +2321,7 @@ function handleViewSubmitted() {
   resultsPerRow={$uiStore.resultsPerRow}
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
+  dedupeResults={$uiStore.dedupeResults}
   justifyResultRows={$uiStore.justifyResultRows}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}

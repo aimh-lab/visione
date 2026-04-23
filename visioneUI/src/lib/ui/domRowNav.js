@@ -5,28 +5,16 @@ export function getFirstOfNextRowDOM({ currentIndex, direction, container, items
   if (!browser) return currentIndex;
   if (!container || !Array.isArray(items) || items.length === 0) return currentIndex;
 
-  const currentEl = container.querySelector(
-    `[data-index="${currentIndex}"], [data-frame-id="${items[currentIndex]?.imgId}"]`
-  );
+  const currentEl = container.querySelector(`[data-index="${currentIndex}"]`);
   if (!currentEl) return currentIndex;
 
   const currentTop = currentEl.getBoundingClientRect().top;
 
-  const allElements = Array.from(container.querySelectorAll("[data-index], [data-frame-id]"));
+  const allElements = Array.from(container.querySelectorAll("[data-index]"));
   if (allElements.length === 0) return currentIndex;
 
-  const frameIdToIndex = new Map();
-  for (let i = 0; i < items.length; i += 1) {
-    const frameId = items[i]?.imgId;
-    if (frameId != null) frameIdToIndex.set(String(frameId), i);
-  }
-
   const resolveElementIndex = (entry) => {
-    if (entry.idx !== null && Number.isFinite(entry.idx)) return entry.idx;
-    if (entry.frameId) {
-      const found = frameIdToIndex.get(entry.frameId);
-      if (found !== undefined) return found;
-    }
+    if (entry.idx !== null && Number.isFinite(entry.idx) && entry.idx >= 0) return entry.idx;
     return currentIndex;
   };
 
@@ -35,8 +23,7 @@ export function getFirstOfNextRowDOM({ currentIndex, direction, container, items
     const parsedIdx = rawIdx !== null ? Number.parseInt(rawIdx, 10) : null;
     return {
       top: el.getBoundingClientRect().top,
-      idx: Number.isFinite(parsedIdx) ? parsedIdx : null,
-      frameId: el.getAttribute("data-frame-id")
+      idx: Number.isFinite(parsedIdx) ? parsedIdx : null
     };
   });
 

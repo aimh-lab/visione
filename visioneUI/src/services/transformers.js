@@ -1,29 +1,95 @@
 import { findResultsArray, extractImageInfo } from "../utils/results";
 import { tinyFrameUrl } from '$lib/urlConfig.js';
 
+function normalizeTupleArray(item) {
+  if (!Array.isArray(item)) return null;
+  const tuple = item.filter((entry) => entry != null && entry !== '');
+  return tuple.length > 0 ? tuple : null;
+}
+
+function tupleGroupKeyFrom(tupleItems, fallbackIndex) {
+  if (!Array.isArray(tupleItems) || tupleItems.length === 0) return `tuple-${fallbackIndex}`;
+  const ids = tupleItems
+    .map((entry) => {
+      if (entry && typeof entry === 'object') {
+        return String(entry?.id || entry?.imgId || entry?.imageId || '').trim();
+      }
+      return String(entry || '').trim();
+    })
+    .filter(Boolean)
+    .sort();
+  return ids.length > 0 ? ids.join('|') : `tuple-${fallbackIndex}`;
+}
+
+function expandTupleAwareItems(arr) {
+  const expanded = [];
+
+  arr.forEach((rawItem, tupleRank) => {
+    const tupleItems = normalizeTupleArray(rawItem);
+    if (!tupleItems) {
+      expanded.push({
+        rawItem,
+        tupleItems: null,
+        tupleSize: 1,
+        tupleRank,
+        tupleMemberIndex: 0,
+        tupleGroupKey: null
+      });
+      return;
+    }
+
+    const tupleGroupKey = tupleGroupKeyFrom(tupleItems, tupleRank);
+    tupleItems.forEach((member, memberIndex) => {
+      expanded.push({
+        rawItem: member,
+        tupleItems,
+        tupleSize: tupleItems.length,
+        tupleRank,
+        tupleMemberIndex: memberIndex,
+        tupleGroupKey
+      });
+    });
+  });
+
+  return expanded;
+}
+
 // src/services/transformers.js
 export function transformSearchResults(resultSet, submittedIds = new Set()) {
   const arr = findResultsArray(resultSet) ?? [];
-  return arr.map((item, index) => {
-    const info = extractImageInfo(item, index);
+  const expanded = expandTupleAwareItems(arr);
+
+  return expanded.map((entry, index) => {
+    const info = extractImageInfo(entry.rawItem, index);
+    const raw = info.raw && typeof info.raw === 'object' ? info.raw : {};
+    const scoreSource = Number(raw.score ?? raw.similarity ?? raw.distance ?? raw.confidence);
     
     return {
       ...info,
       index,
       submitted: submittedIds.has(info.imgId),
-      matchScore: item.score || item.similarity || item.distance || item.confidence || 0,
+      matchScore: Number.isFinite(scoreSource) ? scoreSource : 0,
+      tupleRank: entry.tupleRank,
+      tupleMemberIndex: entry.tupleMemberIndex,
+      tupleGroupKey: entry.tupleGroupKey,
       
       // Timecodes are resolved per-frame via getMiddleTimestamp API
       // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
-      raw: item
+      raw,
+      tupleItems: entry.tupleItems,
+      tupleSize: entry.tupleSize
     };
   });
 }
 
 export function transformSimilarityResults(resultSet, submittedIds = new Set()) {
   const arr = findResultsArray(resultSet) || [];
-  return arr.map((item, index) => {
-    const info = extractImageInfo(item, index);
+  const expanded = expandTupleAwareItems(arr);
+
+  return expanded.map((entry, index) => {
+    const info = extractImageInfo(entry.rawItem, index);
+    const raw = info.raw && typeof info.raw === 'object' ? info.raw : {};
+    const scoreSource = Number(raw.score ?? raw.similarity ?? raw.distance);
     
     return {
       index,
@@ -36,18 +102,23 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
       videoUrl: info.videoUrl,
       timestamp: info.timestamp,
       date: info.timestamp,
-      size: item.size ?? null,
-      resolution: item.resolution ?? null,
-      tags: item.tags ?? item.labels ?? [],
+      size: info.size ?? null,
+      resolution: info.resolution ?? null,
+      tags: info.tags ?? [],
       submitted: submittedIds.has(info.imgId),
+      tupleRank: entry.tupleRank,
+      tupleMemberIndex: entry.tupleMemberIndex,
+      tupleGroupKey: entry.tupleGroupKey,
       
       // Timecodes are resolved per-frame via getMiddleTimestamp API
       // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
       
       // Similarity score (se disponibile)
-      similarityScore: item.score || item.similarity || item.distance || 0,
+      similarityScore: Number.isFinite(scoreSource) ? scoreSource : 0,
       
-      raw: item
+      raw,
+      tupleItems: entry.tupleItems,
+      tupleSize: entry.tupleSize
     };
   });
 }

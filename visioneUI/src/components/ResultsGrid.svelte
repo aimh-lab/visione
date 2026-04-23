@@ -6,6 +6,7 @@
 
   export let items = [];
   export let selectedId = null;
+  export let selectedIndex = null;
   export let showVideoSummary = false;
   export let registerContainer = (el) => {};
   export let viewMode = "byrank";
@@ -35,7 +36,97 @@
   const getIndex = (item) => item.index ?? item.idx ?? -1;
   const getUrl = (item) => item.url;
   const getTitle = (item) => item.title ?? item.imgId ?? `Item ${getIndex(item) + 1}`;
-  const isSelected = (item) => selectedId === getId(item);
+  const toValidIndex = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
+  const isSelected = (item) => {
+    const idx = toValidIndex(getIndex(item));
+    const selectedIdx = toValidIndex(selectedIndex);
+
+    if (selectedIdx != null) {
+      return idx != null && idx === selectedIdx;
+    }
+
+    return selectedId != null && selectedId === getId(item);
+  };
+
+  function getCardRenderKey(item, rowIndex, colIndex) {
+    const idx = Number(getIndex(item));
+    const id = String(getId(item) ?? 'no-id');
+    const tupleRank = Number(item?.tupleRank);
+    const tupleMemberIndex = Number(item?.tupleMemberIndex);
+
+    if (Number.isFinite(idx) && idx >= 0) {
+      return `idx:${idx}|id:${id}|tr:${Number.isFinite(tupleRank) ? tupleRank : -1}|tm:${Number.isFinite(tupleMemberIndex) ? tupleMemberIndex : -1}`;
+    }
+
+    return `row:${rowIndex}|col:${colIndex}|id:${id}|tr:${Number.isFinite(tupleRank) ? tupleRank : -1}|tm:${Number.isFinite(tupleMemberIndex) ? tupleMemberIndex : -1}`;
+  }
+
+  const TUPLE_GROUP_COLORS = [
+    '#0ea5e9',
+    '#14b8a6',
+    '#22c55e',
+    '#eab308',
+    '#f97316',
+    '#ef4444',
+    '#a855f7'
+  ];
+
+  const TUPLE_BORDER_STYLES = ['solid', 'dashed', 'dotted', 'double'];
+
+  function getTupleSignature(item) {
+    const tuple = Array.isArray(item?.tupleItems) ? item.tupleItems : [];
+    const ids = tuple
+      .map((entry) => String(entry?.id || entry?.imgId || '').trim())
+      .filter(Boolean)
+      .sort();
+    return ids.join('|');
+  }
+
+  function hashString(value) {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+    }
+    return hash;
+  }
+
+  function getTupleGroupColor(item) {
+    const tupleSize = Number(item?.tupleSize || 1);
+    if (tupleSize <= 1) return '';
+
+    const explicitKey = String(item?.tupleGroupKey || '').trim();
+    const signature = explicitKey || getTupleSignature(item);
+    const idx = signature
+      ? hashString(signature) % TUPLE_GROUP_COLORS.length
+      : Math.max(0, Number(getIndex(item)) || 0) % TUPLE_GROUP_COLORS.length;
+    return TUPLE_GROUP_COLORS[idx];
+  }
+
+  function getTupleBorderStyle(item) {
+    const tupleSize = Number(item?.tupleSize || 1);
+    if (tupleSize <= 1) return '';
+    const color = getTupleGroupColor(item);
+    if (!color) return '';
+
+    const explicitKey = String(item?.tupleGroupKey || '').trim();
+    const signature = explicitKey || getTupleSignature(item) || String(getIndex(item) || '0');
+    const borderStyle = TUPLE_BORDER_STYLES[hashString(signature) % TUPLE_BORDER_STYLES.length] || 'solid';
+
+    return `border: 6px ${borderStyle} ${color};`;
+  }
+
+  function getTupleA11yLabel(item) {
+    const tupleSize = Number(item?.tupleSize || 1);
+    if (tupleSize <= 1) return '';
+    const rank = Number.isFinite(Number(item?.tupleRank)) ? Number(item.tupleRank) + 1 : '?';
+    const member = Number.isFinite(Number(item?.tupleMemberIndex)) ? Number(item.tupleMemberIndex) + 1 : '?';
+    return `T${rank} ${member}/${tupleSize}`;
+  }
 
   let fetchedTimecodes = new Map();
   let requestedTimecodeIds = new Set();
@@ -782,7 +873,7 @@
     <div style={`height: ${topSpacer}px;`} aria-hidden="true"></div>
   {/if}
 
-  {#each visibleRows as { row, rowIndex } (row[0]?.imgId ?? row[0]?.index ?? rowIndex)}
+  {#each visibleRows as { row, rowIndex } (rowIndex)}
     {@const rowInfo = getRowInfo(row)}
     
     <div
@@ -845,7 +936,7 @@
           </button>
         {/if}
 
-        {#each row as item (getId(item) ?? getIndex(item))}
+        {#each row as item, colIndex (getCardRenderKey(item, rowIndex, colIndex))}
           <div>
             <div
               use:observeCardForPreload={item}
@@ -869,6 +960,12 @@
               on:contextmenu={(e) => !isSelectionMode && handleContextPreview(e, item)}
               on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
+              {#if Number(item?.tupleSize || 1) > 1}
+                <div class="absolute inset-0 z-5 rounded-xl pointer-events-none" style={getTupleBorderStyle(item)}></div>
+                <div class="absolute left-1.5 bottom-1.5 z-30 pointer-events-none rounded-md border border-white/40 bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white">
+                  {getTupleA11yLabel(item)}
+                </div>
+              {/if}
 
               <!-- Badge in selection mode -->
               {#if isSelectionMode}
