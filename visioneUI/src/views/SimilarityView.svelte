@@ -181,4 +181,8 @@
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}
+  on:openVideoPlayer={(e) => {
+    onCloseSimModal();
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+  }}
 />

@@ -135,6 +135,14 @@
     return String(value);
   }
 
+  function toSelectedFramesUrl(rawUrl) {
+    const url = String(rawUrl || "").trim();
+    if (!url) return "";
+    return url.replace(/\/(thumbnails)(?=\/)/i, "/selected-frames");
+  }
+
+  $: modalImageUrl = toSelectedFramesUrl(image?.url);
+
   async function loadMetadataForImage(imgId) {
     const normalizedId = String(imgId || "").trim();
     if (!normalizedId) return;
@@ -229,9 +237,9 @@
           bind:this={imageContainer}
           class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden min-h-[400px]"
         >
-          {#if image?.url}
+          {#if modalImageUrl}
             <img 
-              src={image.url} 
+              src={modalImageUrl}
               alt={image?.title} 
               class="w-full h-full object-contain"
             />
@@ -429,15 +437,6 @@
             {/if}
           </div>
           
-          <!-- Notes -->
-          <div>
-            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Notes</h4>
-            <textarea 
-              class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none" 
-              rows="8" 
-              placeholder="Add notes here..."
-            ></textarea>
-          </div>
         </div>
       </div>
 

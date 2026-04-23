@@ -400,5 +400,8 @@
   }}
   on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
-  on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}
+  on:openVideoPlayer={(e) => {
+    onCloseModal();
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+  }}
 />
