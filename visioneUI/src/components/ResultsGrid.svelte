@@ -578,20 +578,41 @@
   const rowInfoCache = new Map();
 
   // Helper to build row header info
-  function getRowInfo(row) {
+  function getRowInfo(row, rowIndex = -1) {
     if (!row || row.length === 0) return null;
     const firstItem = row[0];
-    const cacheKey = `${viewMode}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
+    const cacheKey = `${viewMode}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
     if (rowInfoCache.has(cacheKey)) return rowInfoCache.get(cacheKey);
     
     let info = null;
     
     if (viewMode === "byvideo") {
       const videoId = getVideoId(firstItem);
+      const prevRow = rowIndex > 0 && Array.isArray(items[rowIndex - 1]) ? items[rowIndex - 1] : null;
+      const prevFirstItem = prevRow && prevRow.length > 0 ? prevRow[0] : null;
+      const prevVideoId = prevFirstItem ? getVideoId(prevFirstItem) : null;
+      const nextRow = rowIndex >= 0 && rowIndex < items.length - 1 && Array.isArray(items[rowIndex + 1]) ? items[rowIndex + 1] : null;
+      const nextFirstItem = nextRow && nextRow.length > 0 ? nextRow[0] : null;
+      const nextVideoId = nextFirstItem ? getVideoId(nextFirstItem) : null;
+      let continuationRows = 0;
+
+      if (nextVideoId === videoId) {
+        for (let index = rowIndex + 1; index < items.length; index += 1) {
+          const candidateRow = Array.isArray(items[index]) ? items[index] : null;
+          const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+          if (!candidateFirstItem || getVideoId(candidateFirstItem) !== videoId) break;
+          continuationRows += 1;
+        }
+      }
+
       info = {
         type: 'video',
         label: `${videoId}`,
-        item: firstItem
+        item: firstItem,
+        showVideoBadge: prevVideoId !== videoId,
+        continuesFromPreviousRow: prevVideoId === videoId,
+        continuesToNextRow: nextVideoId === videoId,
+        continuationRows
       };
       rowInfoCache.set(cacheKey, info);
       return info;
@@ -874,7 +895,7 @@
   {/if}
 
   {#each visibleRows as { row, rowIndex } (rowIndex)}
-    {@const rowInfo = getRowInfo(row)}
+    {@const rowInfo = getRowInfo(row, rowIndex)}
     
     <div
       use:measureRow={rowIndex}
@@ -910,7 +931,18 @@
         class="flex flex-wrap w-full p-2.5 {shouldJustifyRow(row, rowInfo) ? 'justify-between' : ''} {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'relative ml-2 mr-2.5 mb-1 border border-gray-300 border-l-2 border-l-gray-500 rounded-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]' : 'relative ml-2 mr-2.5 mb-1 border border-gray-400/70 border-l-2 border-l-gray-600 rounded-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_5px_14px_rgba(15,23,42,0.14)]') : ''} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
         style={`gap: ${rowInfo?.type === 'video' ? '12px' : 'var(--grid-gap, 16px)'};`}
       >
-        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
+        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal' && rowInfo?.continuesFromPreviousRow}
+          <div class="pointer-events-none absolute left-2 top-1.5 z-10 inline-flex items-center rounded-full border border-slate-300/80 bg-white/92 px-1.5 py-1 text-slate-600 shadow-sm backdrop-blur-sm" aria-hidden="true">
+            <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 7h14" />
+              <path d="M12 7v8" />
+              <path d="M8.5 11.5L12 15l3.5-3.5" />
+              <path d="M5 19h14" />
+            </svg>
+          </div>
+        {/if}
+
+        {#if rowInfo?.type === 'video' && rowInfo?.showVideoBadge && videoBadgeOrientation === 'vertical'}
           <button
             on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
             class="ui-video-badge group/video absolute left-1.5 top-2 bottom-2 z-20 w-5 inline-flex flex-col items-center justify-center gap-1 rounded-md border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors"
@@ -923,16 +955,28 @@
           </button>
         {/if}
 
-        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal'}
+        {#if rowInfo?.type === 'video' && rowInfo?.showVideoBadge && videoBadgeOrientation === 'horizontal'}
           <button
             on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors"
+            class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors overflow-visible"
             title={`Open video ${rowInfo.label}`}
           >
             <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
             </svg>
             <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
+            {#if rowInfo?.continuesToNextRow}
+              <span
+                class="inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-slate-100"
+                aria-label={`Video ${rowInfo.label} continues for ${rowInfo.continuationRows} more row${rowInfo.continuationRows === 1 ? '' : 's'}`}
+              >
+                <svg class="w-2.5 h-2.5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 5v12" />
+                  <path d="M7 12l5 5 5-5" />
+                </svg>
+                <span>+{rowInfo.continuationRows}</span>
+              </span>
+            {/if}
           </button>
         {/if}
 

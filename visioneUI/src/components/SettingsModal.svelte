@@ -1,7 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { focusTrap } from "../utils/ui";
-  import { appSettingsStore } from "../stores/persistentState.js";
   
   export let isOpen = false;
   export let theme = 'default';
@@ -117,6 +116,7 @@
   };
   let activeSettingsTab = 'general';
   let wasOpen = false;
+  let themeTouched = false;
   const settingsTabs = [
     { id: 'general', label: 'General' },
     { id: 'search', label: 'Search' },
@@ -153,6 +153,7 @@
       futureOptionA,
       futureOptionB
     };
+    themeTouched = false;
     activeSettingsTab = 'general';
   }
 
@@ -189,9 +190,13 @@
     const safeDefaultImageModel = imageModelOptions.includes(safeDefaultImageModelRaw)
       ? safeDefaultImageModelRaw
       : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
+    const currentTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+    const safeTheme = themeTouched
+      ? (['default', 'dark', 'light'].includes(local.theme) ? local.theme : currentTheme)
+      : currentTheme;
     
     const newSettings = {
-      theme: ['default', 'dark', 'light'].includes(local.theme) ? local.theme : 'default',
+      theme: safeTheme,
       keyframeSize: kf,
       resultsPerRow: perRow,
       resultsAutoFit: !!local.resultsAutoFit,
@@ -202,6 +207,7 @@
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       dresEnabled: !!local.dresEnabled,
+      dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(local.dresChallengeType) ? local.dresChallengeType : 'KIS',
       dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',
@@ -217,17 +223,6 @@
       futureOptionB: !!local.futureOptionB
     };
 
-
-    
-  // Salva nello store persistente
-  appSettingsStore.update(s => {
-    const updated = { ...s, ...newSettings };
-    return updated;
-  });
-  
-  // Verifica cosa c'è in localStorage
-  
-    
     dispatch('save', newSettings);
   }
 
@@ -359,7 +354,10 @@
                 id="settings-theme"
                 class="ui-settings-input ui-settings-select w-36 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.theme}
-                on:change={() => save()}
+                on:change={() => {
+                  themeTouched = true;
+                  save();
+                }}
               >
                 <option value="default">Default</option>
                 <option value="dark">Dark</option>
