@@ -378,7 +378,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             node_pg["reorder_by"] = reorder_by
 
         try:
-            docs = request.app.state.vector_store.similarity_search(
+            doc_groups = request.app.state.vector_store.similarity_search(
                 node_pg, k=k, filter=None, fetch_k=min(k * 10, 1000),
                 metadata_to_retrieve=metadata_to_retrieve,
             )
@@ -386,11 +386,11 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             return json.dumps({"error": str(exc)})
 
         results: List[Dict[str, Any]] = []
-        for idx, doc in enumerate(docs):
+        for idx, group in enumerate(doc_groups):
+            doc = group[0]
             meta = {mk: mv for mk, mv in doc.metadata.items() if mk != "score"}
             entry: Dict[str, Any] = {
                 "id": doc.page_content,
-                # "score": round(float(doc.metadata.get("score", 0)), 4),
                 "metadata": meta,
             }
             if idx < num_img:

@@ -616,7 +616,7 @@ class PGVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
-    ) -> list[Document]:
+    ) -> list[list[Document]]:
         """Return docs selected by similarity search on query."""
         return self._engine._run_as_sync(
             self.__vs.asimilarity_search(query, k, filter, **kwargs)
@@ -628,7 +628,7 @@ class PGVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
-    ) -> list[Document]:
+    ) -> list[list[Document]]:
         """Return docs selected by similarity search on query."""
         return await self._engine._run_as_async(
             self.__vs.asimilarity_search(query, k, filter, **kwargs)

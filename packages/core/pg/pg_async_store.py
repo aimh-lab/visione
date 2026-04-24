@@ -858,8 +858,13 @@ class AsyncPGVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
-    ) -> list[Document]:
-        """Return docs selected by similarity search on query."""
+    ) -> list[list[Document]]:
+        """Return docs selected by similarity search on query.
+
+        Returns a list of result groups. Each group is a list of Documents:
+        - Simple / RRF queries: each group has exactly one Document.
+        - Temporal queries: each group may contain multiple Documents.
+        """
 
         if isinstance(query, str):
             query = {"item": query}
@@ -887,7 +892,15 @@ class AsyncPGVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
-    ) -> list[Document]:
+    ) -> list[list[Document]]:
+        """Perform similarity search with optional temporal/RRF aggregation.
+
+        Returns a list of result groups. Each group is a list of Documents:
+        - For simple / RRF queries: each group has exactly one Document.
+        - For temporal queries: each group contains one Document per
+          temporal step that satisfied the constraints (deduplicated so
+          that a frame matching with itself appears only once).
+        """
         query_payload = query.get(
             "item", query.get("items", query.get("text", query.get("query")))
         )
@@ -955,48 +968,50 @@ class AsyncPGVectorStore(VectorStore):
                 return [float(w) for w in raw_window]
             return [float(raw_window)] * count
 
-        def _normalize_aggregation_type(raw_aggregation_type: Any) -> str:
-            if raw_aggregation_type is None:
+        def _normalize_aggregation_type(raw: Any) -> str:
+            if raw is None:
                 return "temporal"
-            if isinstance(raw_aggregation_type, str):
-                normalized = raw_aggregation_type.lower()
-                if normalized in {"temporal", "rrf"}:
-                    return normalized
+            if isinstance(raw, str) and raw.lower() in {"temporal", "rrf"}:
+                return raw.lower()
             raise ValueError("aggregation_type must be either 'temporal' or 'rrf'.")
 
         def _merge_filters(global_filter: Optional[dict], leaf_filter: Any) -> Optional[dict]:
-            normalized_leaf = (
-                leaf_filter
-                if leaf_filter is not None
-                else None
-            )
-            if global_filter and normalized_leaf:
-                return {"$and": [global_filter, normalized_leaf]}
-            return normalized_leaf or global_filter
+            if global_filter and leaf_filter:
+                return {"$and": [global_filter, leaf_filter]}
+            return leaf_filter or global_filter
 
-        async def _build_cte(node_like: Any, *, is_root: bool = False) -> str:
+        def _resolve_filter(node: dict) -> str:
+            """Return a SQL WHERE clause (or empty string) and update `params`."""
+            local = _merge_filters(filter, node.get("filters"))
+            if not local:
+                return ""
+            clause, clause_params = self._create_filter_clause(local)
+            params.update(clause_params)
+            return f"WHERE {clause}"
+
+        base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
+        groupby_select = (
+            f'b."{groupby_column}" AS groupby_value'
+            if groupby_column
+            else "NULL AS groupby_value"
+        )
+
+        # -----------------------------------------------------------------
+        # _build_cte returns (cte_name, is_temporal).
+        # is_temporal=True means the CTE only has id_chain arrays
+        # that grow with each temporal join step.
+        # -----------------------------------------------------------------
+        async def _build_cte(node_like: Any, *, is_root: bool = False) -> tuple[str, bool]:
             nonlocal node_counter
             node = _as_node(node_like)
             payload = node.get("item")
             node_name = f"q_{node_counter}"
             node_counter += 1
 
-            local_filter = _merge_filters(filter, node.get("filters"))
-            safe_filter = ""
-            if local_filter:
-                where_clause, where_params = self._create_filter_clause(local_filter)
-                safe_filter = f"WHERE {where_clause}"
-                params.update(where_params)
+            safe_filter = _resolve_filter(node)
 
-            # Empty or missing item means "filter-only" selection with no embedding search.
+            # ── Filter-only leaf (no embedding search) ──────────────────
             if payload is None or (isinstance(payload, str) and not payload.strip()):
-                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
-                groupby_select = (
-                    f'b."{groupby_column}" AS groupby_value'
-                    if groupby_column
-                    else "NULL AS groupby_value"
-                )
-
                 cte_statements.append(
                     f"""
                     {node_name} AS (
@@ -1005,23 +1020,23 @@ class AsyncPGVectorStore(VectorStore):
                             b."{temporal_column}" AS start_time,
                             b."{temporal_column}" AS end_time,
                             {groupby_select},
-                            1.0 AS score
+                            1.0 AS score,
+                            ARRAY[b."{self.id_column}"::text] AS id_chain
                         FROM {full_table_name} b
                         {safe_filter}
                     )
                     """.strip()
                 )
-                return node_name
+                return node_name, False
 
+            # ── Semantic leaf ───────────────────────────────────────────
             if isinstance(payload, str):
-                query_text = payload.strip()
-
                 selected_model, selected_embedder = self._resolve_embedding_backend(
                     model=node.get("model"),
                     embedding_column=node.get("embedding_column"),
                 )
                 embedding_expr, emb_params = await self._get_query_embedding_expression(
-                    query_text=query_text,
+                    query_text=payload.strip(),
                     embedder=selected_embedder,
                     param_prefix=node_name,
                 )
@@ -1030,25 +1045,16 @@ class AsyncPGVectorStore(VectorStore):
                 leaf_limit_name = f"{node_name}_k"
                 params[leaf_limit_name] = int(node.get("k", candidate_limit))
 
-                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
-                groupby_select = (
-                    f'b."{groupby_column}" AS groupby_value'
-                    if groupby_column
-                    else "NULL AS groupby_value"
-                )
-
                 if is_root:
-                    if search_function == "cosine_distance":
-                        score_expr = (
-                            f"(1.0 - {search_function}(b.\"{selected_model}\", {embedding_expr}))"
-                        )
-                    else:
-                        score_expr = (
-                            f"(1.0 / (1.0 + {search_function}(b.\"{selected_model}\", {embedding_expr})))"
-                        )
+                    score_expr = (
+                        f'(1.0 - {search_function}(b."{selected_model}", {embedding_expr}))'
+                        if search_function == "cosine_distance"
+                        else f'(1.0 / (1.0 + {search_function}(b."{selected_model}", {embedding_expr})))'
+                    )
                 else:
                     score_expr = (
-                        f'(100.0 / (ROW_NUMBER() OVER (ORDER BY b.\"{selected_model}\" {operator} {embedding_expr}) + 100.0))'
+                        f'(100.0 / (ROW_NUMBER() OVER '
+                        f'(ORDER BY b."{selected_model}" {operator} {embedding_expr}) + 100.0))'
                     )
 
                 cte_statements.append(
@@ -1059,7 +1065,8 @@ class AsyncPGVectorStore(VectorStore):
                             b."{temporal_column}" AS start_time,
                             b."{temporal_column}" AS end_time,
                             {groupby_select},
-                            {score_expr} AS score
+                            {score_expr} AS score,
+                            ARRAY[b."{self.id_column}"::text] AS id_chain
                         FROM {full_table_name} b
                         {safe_filter}
                         ORDER BY b."{selected_model}" {operator} {embedding_expr}
@@ -1067,253 +1074,320 @@ class AsyncPGVectorStore(VectorStore):
                     )
                     """.strip()
                 )
-                return node_name
+                return node_name, False
 
+            # ── Aggregation node (list of ≥ 2 children) ────────────────
             if not isinstance(payload, list) or len(payload) < 2:
                 raise ValueError("Temporal query nodes must contain at least two child queries.")
 
-            child_ctes = [await _build_cte(child) for child in payload]
+            child_results = [await _build_cte(child) for child in payload]
+            child_ctes = [name for name, _ in child_results]
+
             aggregation_type = _normalize_aggregation_type(node.get("aggregation_type"))
 
+            # Temporal results cannot be further aggregated.
+            if any(is_t for _, is_t in child_results):
+                raise ValueError(
+                    "Temporal aggregation cannot be a child of another aggregation node."
+                )
+
+            # ── RRF aggregation ─────────────────────────────────────────
             if aggregation_type == "rrf":
                 current = child_ctes[0]
                 for idx in range(1, len(child_ctes)):
                     right = child_ctes[idx]
-                    join_name = f"q_{node_counter}"
+                    jn = f"q_{node_counter}"
                     node_counter += 1
-
-                    join_limit_param = f"{join_name}_k"
-                    params[join_limit_param] = int(node.get("k", candidate_limit))
+                    jlp = f"{jn}_k"
+                    params[jlp] = int(node.get("k", candidate_limit))
 
                     cte_statements.append(
                         f"""
-                        {join_name} AS (
+                        {jn} AS (
                             SELECT
                                 COALESCE(l."{self.id_column}", r."{self.id_column}") AS "{self.id_column}",
-                                LEAST(
-                                    COALESCE(l.start_time, r.start_time),
-                                    COALESCE(r.start_time, l.start_time)
-                                ) AS start_time,
-                                GREATEST(
-                                    COALESCE(l.end_time, r.end_time),
-                                    COALESCE(r.end_time, l.end_time)
-                                ) AS end_time,
+                                LEAST(COALESCE(l.start_time, r.start_time),
+                                      COALESCE(r.start_time, l.start_time)) AS start_time,
+                                GREATEST(COALESCE(l.end_time, r.end_time),
+                                         COALESCE(r.end_time, l.end_time)) AS end_time,
                                 COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
-                                (COALESCE(l.score, 0.0) + COALESCE(r.score, 0.0)) AS score
+                                (COALESCE(l.score, 0.0) + COALESCE(r.score, 0.0)) AS score,
+                                COALESCE(l.id_chain, r.id_chain) AS id_chain
                             FROM {current} l
                             FULL OUTER JOIN {right} r
                               ON l."{self.id_column}" = r."{self.id_column}"
                             ORDER BY score DESC
-                            LIMIT :{join_limit_param}
+                            LIMIT :{jlp}
                         )
                         """.strip()
                     )
-                    current = join_name
+                    current = jn
 
-                agg_name = f"q_{node_counter}"
+                agg = f"q_{node_counter}"
                 node_counter += 1
-                agg_limit_param = f"{agg_name}_k"
-                params[agg_limit_param] = int(node.get("k", dense_limit))
-
-                base_cols_sql = ", ".join(f'b."{c}"' for c in base_columns)
+                alp = f"{agg}_k"
+                params[alp] = int(node.get("k", dense_limit))
 
                 cte_statements.append(
                     f"""
-                    {agg_name} AS (
+                    {agg} AS (
                         SELECT
-                            {base_cols_sql},
-                            s.start_time AS start_time,
-                            s.end_time AS end_time,
-                            s.groupby_value AS groupby_value,
-                            s.score AS score
+                            s."{self.id_column}",
+                            s.start_time, s.end_time, s.groupby_value,
+                            s.score, s.id_chain
                         FROM {current} s
-                        JOIN {full_table_name} b
-                          ON b."{self.id_column}" = s."{self.id_column}"
                         ORDER BY s.score DESC
-                        LIMIT :{agg_limit_param}
+                        LIMIT :{alp}
                     )
                     """.strip()
                 )
-                return agg_name
+                return agg, False
 
-            # Temporal aggregation
+            # ── Temporal aggregation ────────────────────────────────────
             windows = _normalize_windows(node.get("window_seconds", 30.0), len(child_ctes) - 1)
             also_backwards = bool(node.get("also_backwards_in_time", False))
 
             current = child_ctes[0]
             for idx in range(1, len(child_ctes)):
                 right = child_ctes[idx]
-                join_name = f"q_{node_counter}"
+                jn = f"q_{node_counter}"
                 node_counter += 1
+                wp = f"{jn}_window"
+                jlp = f"{jn}_k"
+                params[wp] = windows[idx - 1]
+                params[jlp] = int(node.get("k", dense_limit))
 
-                window_param = f"{join_name}_window"
-                join_limit_param = f"{join_name}_k"
-                params[window_param] = windows[idx - 1]
-                params[join_limit_param] = int(node.get("k", dense_limit))
-
-                join_conditions = []
+                join_conds = []
                 if groupby_column:
-                    join_conditions.append("l.groupby_value = r.groupby_value")
-                if also_backwards:
-                    join_conditions.append(
-                        f"r.start_time BETWEEN (l.end_time - :{window_param}) AND (l.end_time + :{window_param})"
-                    )
-                else:
-                    join_conditions.append(
-                        f"r.start_time BETWEEN l.end_time AND (l.end_time + :{window_param})"
-                    )
-
-                carry_cols = ",\n                            ".join(
-                    [f'l."{self.id_column}"', f'l."{self.content_column}"']
-                    + [f'l."{c}"' for c in metadata_columns]
-                    + ([f'l."{self.metadata_json_column}"'] if self.metadata_json_column else [])
+                    join_conds.append("l.groupby_value = r.groupby_value")
+                join_conds.append(
+                    f"r.start_time BETWEEN (l.end_time - :{wp}) AND (l.end_time + :{wp})"
+                    if also_backwards
+                    else f"r.start_time BETWEEN l.end_time AND (l.end_time + :{wp})"
                 )
 
                 cte_statements.append(
                     f"""
-                    {join_name} AS (
+                    {jn} AS (
                         SELECT
-                            {carry_cols},
+                            l.id_chain || r.id_chain AS id_chain,
                             l.start_time AS start_time,
                             r.end_time AS end_time,
                             COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
                             (l.score + r.score) AS score
                         FROM {current} l
                         JOIN {right} r
-                          ON {' AND '.join(join_conditions)}
+                          ON {' AND '.join(join_conds)}
                         ORDER BY score DESC
-                        LIMIT :{join_limit_param}
+                        LIMIT :{jlp}
                     )
                     """.strip()
                 )
-                current = join_name
+                current = jn
 
-            return current
+            return current, True
 
-        root_cte = await _build_cte({"item": query_payload, **query}, is_root=True)
+        # ── Build the CTE tree ──────────────────────────────────────────
+        root_cte, is_temporal = await _build_cte({"item": query_payload, **query}, is_root=True)
         params["final_limit"] = dense_limit
 
-        reorder_clause = "score DESC"
-        reorder_join_clause = ""
+        # ── Shared execution helper ─────────────────────────────────────
+        async def _execute(sql_str: str) -> list[RowMapping]:
+            sql_obj = text(sql_str)
+            async with self.engine.connect() as conn:
+                if self.index_query_options is not None:
+                    for opt in self.index_query_options.to_parameter():
+                        await conn.execute(text(f"SET LOCAL {opt};"))
+                if kwargs.get("explain_analyze", False):
+                    ea = (await conn.execute(
+                        text("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) " + sql_str),
+                        params,
+                    )).fetchall()
+                    print("EXPLAIN ANALYZE:")
+                    for r in ea:
+                        print(r[0])
+                    if kwargs.get("explain_analyze_only", False):
+                        return []
+                return (await conn.execute(sql_obj, params)).mappings().fetchall()
+
+        def _row_to_doc(row: RowMapping, score: float) -> Document:
+            meta = (
+                dict(row[self.metadata_json_column])
+                if self.metadata_json_column and row.get(self.metadata_json_column)
+                else {}
+            )
+            for col in metadata_columns:
+                meta[col] = row[col]
+            meta["score"] = score
+            return Document(
+                page_content=row[self.content_column],
+                metadata=meta,
+                id=str(row[self.id_column]),
+            )
+
+        # ── Parse reorder_by (shared validation + parameter setup) ──────
         reorder_by = query.get("reorder_by")
+        _rb_sel_col: Optional[str] = None
+        _rb_cols: Optional[list] = None
         if isinstance(reorder_by, dict):
             has_embedding = reorder_by.get("embedding") is not None
             has_columns = reorder_by.get("columns") is not None
             if has_embedding and has_columns:
                 raise ValueError(
-                    "reorder_by cannot contain both 'embedding' and 'columns'; they are mutually exclusive."
+                    "reorder_by cannot contain both 'embedding' and 'columns'."
                 )
-
             if has_embedding:
-                reorder_model = reorder_by.get("model")
-                reorder_embedding_column = reorder_by.get("embedding_column")
-                selected_reorder_column, _ = self._resolve_embedding_backend(
-                    model=reorder_model,
-                    embedding_column=reorder_embedding_column,
+                _rb_sel_col, _ = self._resolve_embedding_backend(
+                    model=reorder_by.get("model"),
+                    embedding_column=reorder_by.get("embedding_column"),
                 )
-
-                raw_reorder_embedding = reorder_by.get("embedding")
-                if isinstance(raw_reorder_embedding, np.ndarray):
-                    reorder_embedding = raw_reorder_embedding.astype(float).ravel().tolist()
-                elif isinstance(raw_reorder_embedding, str):
-                    reorder_embedding = json.loads(raw_reorder_embedding)
+                raw = reorder_by["embedding"]
+                if isinstance(raw, np.ndarray):
+                    vec = raw.astype(float).ravel().tolist()
+                elif isinstance(raw, str):
+                    vec = json.loads(raw)
                 else:
-                    reorder_embedding = list(raw_reorder_embedding)
-
-                if not isinstance(reorder_embedding, list) or len(reorder_embedding) == 0:
+                    vec = list(raw)
+                if not vec:
                     raise ValueError("reorder_by.embedding must be a non-empty vector.")
-
-                params["reorder_query_embedding"] = f"{[float(dimension) for dimension in reorder_embedding]}"
-                reorder_join_clause = (
-                    f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
-                )
-                reorder_clause = f'b_reorder."{selected_reorder_column}" {operator} :reorder_query_embedding'
-
+                params["reorder_query_embedding"] = f"{[float(d) for d in vec]}"
             elif has_columns:
-                reorder_columns = reorder_by["columns"]
-                if not isinstance(reorder_columns, list) or len(reorder_columns) == 0:
-                    raise ValueError("reorder_by.columns must be a non-empty list of column names.")
-                for col in reorder_columns:
-                    if not isinstance(col, str) or not col.isidentifier():
-                        raise ValueError(
-                            f"Invalid column name in reorder_by.columns: '{col}'. "
-                            "Must be a valid SQL identifier."
-                        )
-                # Sorting is hierarchical from right to left: the last column in
-                # the list is the primary sort key, preceding columns break ties.
-                reorder_join_clause = (
-                    f'JOIN {full_table_name} b_reorder ON b_reorder."{self.id_column}" = d."{self.id_column}"'
-                )
-                reorder_clause = ", ".join(
-                    f'b_reorder."{col}"' for col in reversed(reorder_columns)
-                )
+                _rb_cols = reorder_by["columns"]
+                if not isinstance(_rb_cols, list) or not _rb_cols:
+                    raise ValueError("reorder_by.columns must be a non-empty list.")
+                for c in _rb_cols:
+                    if not isinstance(c, str) or not c.isidentifier():
+                        raise ValueError(f"Invalid reorder column: '{c}'.")
 
-        joined_statements = ",\n".join(cte_statements)
-        sql = text(
-            f"""
-            WITH
-            {joined_statements},
-            deduped AS (
-                SELECT DISTINCT ON ("{self.id_column}")
-                    *
-                FROM {root_cte}
-                ORDER BY "{self.id_column}", score DESC, end_time DESC, start_time ASC
+        joined = ",\n".join(cte_statements)
+
+        # ================================================================
+        # Non-temporal fast path (simple leaf / RRF)
+        # ================================================================
+        # The root CTE already carries all base columns; a plain DISTINCT ON
+        # (id_column) is far cheaper than the array UNNEST/ARRAY_AGG pipeline
+        # that temporal results require.
+        if not is_temporal:
+            # Always JOIN back to the base table so that the full row data
+            # (content, metadata, temporal_column, …) is available even when
+            # the root CTE is a stripped RRF aggregation that carries only
+            # id / score / start_time / end_time / groupby_value / id_chain.
+            extra_join = ""
+            reorder_clause = "score DESC"
+            if _rb_sel_col is not None:
+                extra_join = (
+                    f'JOIN {full_table_name} b_reorder '
+                    f'ON b_reorder."{self.id_column}" = d."{self.id_column}"'
+                )
+                reorder_clause = f'b_reorder."{_rb_sel_col}" {operator} :reorder_query_embedding'
+            elif _rb_cols is not None:
+                extra_join = (
+                    f'JOIN {full_table_name} b_reorder '
+                    f'ON b_reorder."{self.id_column}" = d."{self.id_column}"'
+                )
+                reorder_clause = ", ".join(f'b_reorder."{c}"' for c in reversed(_rb_cols))
+
+            rows = await _execute(f"""
+                WITH
+                {joined},
+                deduped AS (
+                    SELECT DISTINCT ON ("{self.id_column}") "{self.id_column}", score
+                    FROM {root_cte}
+                    ORDER BY "{self.id_column}", score DESC
+                )
+                SELECT d.score, {base_cols_sql}
+                FROM deduped d
+                JOIN {full_table_name} b ON b."{self.id_column}" = d."{self.id_column}"
+                {extra_join}
+                ORDER BY {reorder_clause}
+                LIMIT :final_limit
+            """)
+            return [[_row_to_doc(row, float(row["score"]))] for row in rows]
+
+        # ================================================================
+        # Temporal result path — chain expansion
+        # ================================================================
+        reorder_extra_cte = ""
+        reorder_order = "uc._score DESC"
+        chain_cte = "_unique"
+        if _rb_sel_col is not None:
+            reorder_extra_cte = (
+                f",\n            _reordered AS (\n"
+                f"                SELECT u._rk, u._score, u._chain,\n"
+                f"                       {search_function}(b_ro.\"{_rb_sel_col}\", :reorder_query_embedding) AS _reorder_dist\n"
+                f"                FROM _unique u\n"
+                f"                JOIN {full_table_name} b_ro\n"
+                f"                  ON b_ro.\"{self.id_column}\"::text = u._chain[1]\n"
+                f"            )"
             )
-            SELECT d.*
-            FROM deduped d
-            {reorder_join_clause}
-            ORDER BY {reorder_clause}
-            LIMIT :final_limit
-            """
-        )
+            chain_cte = "_reordered"
+            reorder_order = "uc._reorder_dist ASC"
+        elif _rb_cols is not None:
+            ro_cols_select = ", ".join(f'b_ro."{c}" AS _ro_{c}' for c in _rb_cols)
+            reorder_extra_cte = (
+                f",\n            _reordered AS (\n"
+                f"                SELECT u._rk, u._score, u._chain,\n"
+                f"                       {ro_cols_select}\n"
+                f"                FROM _unique u\n"
+                f"                JOIN {full_table_name} b_ro\n"
+                f"                  ON b_ro.\"{self.id_column}\"::text = u._chain[1]\n"
+                f"            )"
+            )
+            chain_cte = "_reordered"
+            reorder_order = ", ".join(f'uc._ro_{c}' for c in reversed(_rb_cols))
 
-        results: list[Document] = []
-        async with self.engine.connect() as conn:
-            if self.index_query_options is not None:
-                for query_option in self.index_query_options.to_parameter():
-                    query_options_stmt = f"SET LOCAL {query_option};"
-                    await conn.execute(text(query_options_stmt))
-            # conn.execute(text("SET enable_indexscan = off;"))
+        rows = await _execute(f"""
+            WITH
+            {joined},
+            _ranked AS (
+                SELECT ROW_NUMBER() OVER (ORDER BY score DESC) AS _rk,
+                       id_chain, score
+                FROM {root_cte}
+                LIMIT :final_limit
+            ),
+            _expanded AS (
+                SELECT r._rk, r.score AS _score,
+                       u.val AS _mid, u.ord AS _ord
+                FROM _ranked r,
+                LATERAL UNNEST(r.id_chain) WITH ORDINALITY AS u(val, ord)
+            ),
+            _deduped AS (
+                SELECT DISTINCT ON (_rk, _mid) _rk, _score, _mid, _ord
+                FROM _expanded
+                ORDER BY _rk, _mid, _ord
+            ),
+            _chains AS (
+                SELECT _rk, _score,
+                       ARRAY_AGG(_mid ORDER BY _ord) AS _chain
+                FROM _deduped
+                GROUP BY _rk, _score
+            ),
+            _unique AS (
+                SELECT DISTINCT ON (_chain) _rk, _score, _chain
+                FROM _chains
+                ORDER BY _chain, _score DESC
+            ){reorder_extra_cte}
+            SELECT uc._rk, uc._score,
+                   {base_cols_sql}
+            FROM {chain_cte} uc,
+            LATERAL UNNEST(uc._chain) WITH ORDINALITY AS m(val, ord)
+            JOIN {full_table_name} b
+              ON b."{self.id_column}"::text = m.val
+            ORDER BY {reorder_order}, uc._rk, m.ord
+        """)
 
-            if kwargs.get("explain_analyze", False):
-                explain_sql = text(
-                    "EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) " + str(sql)
-                )
-                explain_rows = (await conn.execute(explain_sql, params)).fetchall()
-                print("EXPLAIN ANALYZE for temporal query:")
-                for row in explain_rows:
-                    print(row[0])
-                if kwargs.get("explain_analyze_only", False):
-                    return []
-
-            result_proxy = await conn.execute(sql, params)
-            rows = result_proxy.mappings().fetchall()
-
-            for row in rows:
-                metadata = (
-                    row[self.metadata_json_column]
-                    if self.metadata_json_column and row[self.metadata_json_column]
-                    else {}
-                )
-                for col in metadata_columns:
-                    metadata[col] = row[col]
-
-                metadata.update(
-                    {
-                        # "temporal_start": row["start_time"],
-                        # "temporal_end": row["end_time"],
-                        "score": row["score"],
-                    }
-                )
-
-                results.append(
-                    Document(
-                        page_content=row[self.content_column],
-                        metadata=metadata,
-                        id=str(row[self.id_column]),
-                    )
-                )
-
+        results: list[list[Document]] = []
+        current_rk: Any = None
+        group: list[Document] = []
+        for row in rows:
+            if row["_rk"] != current_rk:
+                if group:
+                    results.append(group)
+                group = []
+                current_rk = row["_rk"]
+            group.append(_row_to_doc(row, float(row["_score"])))
+        if group:
+            results.append(group)
         return results
 
     def _select_relevance_score_fn(self) -> Callable[[float], float]:
@@ -2067,7 +2141,7 @@ class AsyncPGVectorStore(VectorStore):
         k: Optional[int] = None,
         filter: Optional[dict] = None,
         **kwargs: Any,
-    ) -> list[Document]:
+    ) -> list[list[Document]]:
         raise NotImplementedError(
             "Sync methods are not implemented for AsyncPGVectorStore. Use PGVectorStore interface instead."
         )

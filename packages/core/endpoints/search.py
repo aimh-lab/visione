@@ -222,7 +222,7 @@ else:
 router = APIRouter()
 
 
-@router.post("/search", response_model=List[SearchResult])
+@router.post("/search", response_model=List[List[SearchResult]])
 async def search_endpoint(payload: SearchRequest, request: Request):
     start_time = time.time()
 
@@ -263,7 +263,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
         actual_query["reorder_by"] = query_dict.get("reorder_by", None)
 
     try:
-        docs = request.app.state.vector_store.similarity_search(
+        doc_groups = request.app.state.vector_store.similarity_search(
             actual_query,
             k=final_k,
             filter=None,
@@ -271,10 +271,12 @@ async def search_endpoint(payload: SearchRequest, request: Request):
         )
 
         urls_to_retrieve = query_dict.get("urls_to_retrieve")
-        results = [
-            SearchResult(
-                score=doc.metadata.pop("score"),
-                metadata=(
+        results = []
+        for group in doc_groups:
+            group_items = []
+            for doc in group:
+                score = doc.metadata.pop("score")
+                metadata = (
                     doc.metadata
                     | {
                         item_type: request.app.state.loader.get_collection_element_url_from_id(
@@ -285,11 +287,15 @@ async def search_endpoint(payload: SearchRequest, request: Request):
                     }
                     if urls_to_retrieve
                     else doc.metadata
-                ),
-                id=doc.page_content,
-            )
-            for doc in docs
-        ]
+                )
+                group_items.append(
+                    SearchResult(
+                        score=score,
+                        metadata=metadata,
+                        id=doc.page_content,
+                    )
+                )
+            results.append(group_items)
 
         duration = time.time() - start_time
         print(f"Query: '{query_dict}' | Time: {duration:.4f}s")
