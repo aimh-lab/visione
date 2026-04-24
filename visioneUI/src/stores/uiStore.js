@@ -225,67 +225,83 @@ function createUIStore() {
       persist({ sidebarRightTab: tab, isSidebarRightOpen: true });
     },
 
-    applySettings({ theme, keyframeSize, resultsPerRow, resultsAutoFit, cacheEnabled, dedupeResults, justifyResultRows, videoBadgeOrientation, virtualizationEnabled, virtualizationThreshold, dresEnabled, dresChallengeType, dresSubmitServer, dresUsername, dresPassword, dresMemberId, autoTranslateQueries, showAutoTranslateToggle, temporalWindowSeconds, videoPlayerModalMode, modelSelectionPerStepEnabled, defaultTextModel, defaultImageModel }) {
-      const safeTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
-      const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(videoBadgeOrientation) ? videoBadgeOrientation : 'vertical';
-      const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
-      const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(temporalWindowSeconds) || DEFAULT.temporalWindowSeconds));
-      const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(videoPlayerModalMode)
-        ? videoPlayerModalMode
-        : DEFAULT.videoPlayerModalMode;
-      const safeDefaultTextModel = String(defaultTextModel || '').trim() || DEFAULT.defaultTextModel;
-      const safeDefaultImageModel = String(defaultImageModel || '').trim() || DEFAULT.defaultImageModel;
-      update(u => ({
-        ...u,
-        theme: safeTheme,
-        keyframeSize,
-        resultsPerRow,
-        resultsAutoFit,
-        cacheEnabled: !!cacheEnabled,
-        dedupeResults: !!dedupeResults,
-        justifyResultRows: !!justifyResultRows,
-        videoBadgeOrientation: safeVideoBadgeOrientation,
-        virtualizationEnabled,
-        virtualizationThreshold,
-        dresEnabled: !!dresEnabled,
-        dresChallengeType: safeChallengeType,
-        dresSubmitServer: (dresSubmitServer ?? '').trim(),
-        dresUsername: (dresUsername ?? '').trim(),
-        dresPassword: dresPassword ?? '',
-        dresMemberId: (dresMemberId ?? '').trim(),
-        autoTranslateQueries: !!autoTranslateQueries,
-        showAutoTranslateToggle: !!showAutoTranslateToggle,
-        temporalWindowSeconds: safeTemporalWindowSeconds,
-        videoPlayerModalMode: safeVideoPlayerModalMode,
-        modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
-        defaultTextModel: safeDefaultTextModel,
-        defaultImageModel: safeDefaultImageModel
-      }));
-      persist({
-        theme: safeTheme,
-        keyframeSize,
-        resultsPerRow,
-        resultsAutoFit,
-        cacheEnabled: !!cacheEnabled,
-        dedupeResults: !!dedupeResults,
-        justifyResultRows: !!justifyResultRows,
-        videoBadgeOrientation: safeVideoBadgeOrientation,
-        virtualizationEnabled,
-        virtualizationThreshold,
-        dresEnabled: !!dresEnabled,
-        dresChallengeType: safeChallengeType,
-        dresSubmitServer: (dresSubmitServer ?? '').trim(),
-        dresUsername: (dresUsername ?? '').trim(),
-        dresPassword: dresPassword ?? '',
-        dresMemberId: (dresMemberId ?? '').trim(),
-        autoTranslateQueries: !!autoTranslateQueries,
-        showAutoTranslateToggle: !!showAutoTranslateToggle,
-        temporalWindowSeconds: safeTemporalWindowSeconds,
-        videoPlayerModalMode: safeVideoPlayerModalMode,
-        modelSelectionPerStepEnabled: !!modelSelectionPerStepEnabled,
-        defaultTextModel: safeDefaultTextModel,
-        defaultImageModel: safeDefaultImageModel
+    applySettings(patch = {}) {
+      let nextState = null;
+
+      update((u) => {
+        const safeTheme = ['default', 'dark', 'light'].includes(patch.theme) ? patch.theme : u.theme;
+        const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(patch.videoBadgeOrientation)
+          ? patch.videoBadgeOrientation
+          : u.videoBadgeOrientation;
+        const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
+          ? patch.dresChallengeType
+          : u.dresChallengeType;
+        const safeTemporalWindowSeconds = patch.temporalWindowSeconds == null
+          ? u.temporalWindowSeconds
+          : Math.min(99999, Math.max(1, Number(patch.temporalWindowSeconds) || u.temporalWindowSeconds || DEFAULT.temporalWindowSeconds));
+        const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)
+          ? patch.videoPlayerModalMode
+          : u.videoPlayerModalMode;
+        const safeDefaultTextModel = String(patch.defaultTextModel ?? '').trim() || u.defaultTextModel || DEFAULT.defaultTextModel;
+        const safeDefaultImageModel = String(patch.defaultImageModel ?? '').trim() || u.defaultImageModel || DEFAULT.defaultImageModel;
+
+        nextState = {
+          ...u,
+          theme: safeTheme,
+          keyframeSize: patch.keyframeSize ?? u.keyframeSize,
+          resultsPerRow: patch.resultsPerRow ?? u.resultsPerRow,
+          resultsAutoFit: patch.resultsAutoFit ?? u.resultsAutoFit,
+          cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
+          dedupeResults: patch.dedupeResults ?? u.dedupeResults,
+          justifyResultRows: patch.justifyResultRows ?? u.justifyResultRows,
+          videoBadgeOrientation: safeVideoBadgeOrientation,
+          virtualizationEnabled: patch.virtualizationEnabled ?? u.virtualizationEnabled,
+          virtualizationThreshold: patch.virtualizationThreshold ?? u.virtualizationThreshold,
+          dresEnabled: patch.dresEnabled ?? u.dresEnabled,
+          dresChallengeType: safeChallengeType,
+          dresSubmitServer: patch.dresSubmitServer == null ? u.dresSubmitServer : (patch.dresSubmitServer ?? '').trim(),
+          dresUsername: patch.dresUsername == null ? u.dresUsername : (patch.dresUsername ?? '').trim(),
+          dresPassword: patch.dresPassword ?? u.dresPassword,
+          dresMemberId: patch.dresMemberId == null ? u.dresMemberId : (patch.dresMemberId ?? '').trim(),
+          autoTranslateQueries: patch.autoTranslateQueries ?? u.autoTranslateQueries,
+          showAutoTranslateToggle: patch.showAutoTranslateToggle ?? u.showAutoTranslateToggle,
+          temporalWindowSeconds: safeTemporalWindowSeconds,
+          videoPlayerModalMode: safeVideoPlayerModalMode,
+          modelSelectionPerStepEnabled: patch.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
+          defaultTextModel: safeDefaultTextModel,
+          defaultImageModel: safeDefaultImageModel
+        };
+
+        return nextState;
       });
+
+      if (nextState) {
+        persist({
+          theme: nextState.theme,
+          keyframeSize: nextState.keyframeSize,
+          resultsPerRow: nextState.resultsPerRow,
+          resultsAutoFit: nextState.resultsAutoFit,
+          cacheEnabled: nextState.cacheEnabled,
+          dedupeResults: nextState.dedupeResults,
+          justifyResultRows: nextState.justifyResultRows,
+          videoBadgeOrientation: nextState.videoBadgeOrientation,
+          virtualizationEnabled: nextState.virtualizationEnabled,
+          virtualizationThreshold: nextState.virtualizationThreshold,
+          dresEnabled: nextState.dresEnabled,
+          dresChallengeType: nextState.dresChallengeType,
+          dresSubmitServer: nextState.dresSubmitServer,
+          dresUsername: nextState.dresUsername,
+          dresPassword: nextState.dresPassword,
+          dresMemberId: nextState.dresMemberId,
+          autoTranslateQueries: nextState.autoTranslateQueries,
+          showAutoTranslateToggle: nextState.showAutoTranslateToggle,
+          temporalWindowSeconds: nextState.temporalWindowSeconds,
+          videoPlayerModalMode: nextState.videoPlayerModalMode,
+          modelSelectionPerStepEnabled: nextState.modelSelectionPerStepEnabled,
+          defaultTextModel: nextState.defaultTextModel,
+          defaultImageModel: nextState.defaultImageModel
+        });
+      }
     }
   };
 
