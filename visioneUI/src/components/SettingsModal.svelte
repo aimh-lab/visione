@@ -86,47 +86,9 @@
   $: imageModelOptions = discoveredImageModels.length > 0
     ? discoveredImageModels
     : [FALLBACK_IMAGE_MODEL];
-  
-  let local = {
-    theme,
-    keyframeSize,
-    resultsPerRow,
-    resultsAutoFit,
-    cacheEnabled,
-    dedupeResults,
-    justifyResultRows,
-    videoBadgeOrientation,
-    virtualizationEnabled,
-    virtualizationThreshold,
-    dresEnabled,
-    dresChallengeType,
-    dresSubmitServer,
-    dresUsername,
-    dresPassword,
-    dresMemberId,
-    autoTranslateQueries,
-    showAutoTranslateToggle,
-    temporalWindowSeconds,
-    videoPlayerModalMode,
-    modelSelectionPerStepEnabled,
-    defaultTextModel,
-    defaultImageModel,
-    futureOptionA,
-    futureOptionB
-  };
-  let activeSettingsTab = 'general';
-  let wasOpen = false;
-  let themeTouched = false;
-  const settingsTabs = [
-    { id: 'general', label: 'General' },
-    { id: 'search', label: 'Search' },
-    { id: 'models', label: 'Models' },
-    { id: 'performance', label: 'Performance' },
-    { id: 'dres', label: 'DRES' }
-  ];
-  
-  $: if (isOpen && !wasOpen) {
-    local = {
+
+  function buildLocalState() {
+    return {
       theme,
       keyframeSize,
       resultsPerRow,
@@ -153,6 +115,28 @@
       futureOptionA,
       futureOptionB
     };
+  }
+
+  let local = buildLocalState();
+  let activeSettingsTab = 'general';
+  let wasOpen = false;
+  let themeTouched = false;
+  let hasLocalEdits = false;
+  const settingsTabs = [
+    { id: 'general', label: 'General' },
+    { id: 'search', label: 'Search' },
+    { id: 'models', label: 'Models' },
+    { id: 'performance', label: 'Performance' },
+    { id: 'dres', label: 'DRES' }
+  ];
+
+  $: if (isOpen && !hasLocalEdits) {
+    local = buildLocalState();
+  }
+  
+  $: if (isOpen && !wasOpen) {
+    local = buildLocalState();
+    hasLocalEdits = false;
     themeTouched = false;
     activeSettingsTab = 'general';
   }
@@ -175,6 +159,7 @@
   }
 
   function save() {
+    hasLocalEdits = true;
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
     const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
@@ -241,6 +226,7 @@
   }
 
   function handleTemporalWindowInput(event) {
+    hasLocalEdits = true;
     const raw = String(event?.currentTarget?.value ?? '');
     if (raw.trim() === '') {
       // Allow clearing the field while typing; commit happens on blur.
@@ -264,6 +250,7 @@
   }
 
   function handleKeyframeSizeInput(event) {
+    hasLocalEdits = true;
     const raw = String(event?.currentTarget?.value ?? '');
     if (raw.trim() === '') {
       local.keyframeSize = '';

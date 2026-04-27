@@ -605,14 +605,32 @@
         }
       }
 
+      let precedingRows = 0;
+      if (prevVideoId === videoId) {
+        for (let index = rowIndex - 1; index >= 0; index -= 1) {
+          const candidateRow = Array.isArray(items[index]) ? items[index] : null;
+          const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+          if (!candidateFirstItem || getVideoId(candidateFirstItem) !== videoId) break;
+          precedingRows += 1;
+        }
+      }
+
+      const groupRowCount = precedingRows + 1 + continuationRows;
+      const groupLabelRowIndex = Math.floor(groupRowCount / 2);
+
       info = {
         type: 'video',
         label: `${videoId}`,
         item: firstItem,
         showVideoBadge: prevVideoId !== videoId,
+        isVideoGroupStart: prevVideoId !== videoId,
+        isVideoGroupEnd: nextVideoId !== videoId,
         continuesFromPreviousRow: prevVideoId === videoId,
         continuesToNextRow: nextVideoId === videoId,
-        continuationRows
+        continuationRows,
+        groupRowCount,
+        groupRowOffset: precedingRows,
+        showGroupLabelOnThisRow: precedingRows === groupLabelRowIndex
       };
       rowInfoCache.set(cacheKey, info);
       return info;
@@ -642,6 +660,46 @@
     
     rowInfoCache.set(cacheKey, null);
     return null; // No header for byrank
+  }
+
+  function getVideoRowShellClass(rowInfo, rowIndex) {
+    if (rowInfo?.type !== 'video') return '';
+
+    const palette = 'bg-gradient-to-b from-white to-gray-100 border-gray-300 border-l-gray-500 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]';
+
+    const radius = rowInfo.isVideoGroupStart && rowInfo.isVideoGroupEnd
+      ? 'rounded-xl'
+      : rowInfo.isVideoGroupStart
+        ? 'rounded-t-xl rounded-b-none'
+        : rowInfo.isVideoGroupEnd
+          ? 'rounded-t-none rounded-b-xl'
+          : 'rounded-none';
+
+    const margin = rowInfo.isVideoGroupEnd ? 'mb-1' : 'mb-0';
+    const joinTop = rowInfo.continuesFromPreviousRow ? 'border-t-0 -mt-[2px]' : '';
+    const joinBottom = rowInfo.continuesToNextRow ? 'border-b-0' : '';
+    const groupChrome = '';
+
+    return `relative ml-2 mr-2.5 ${margin} border border-l-2 ${groupChrome} ${palette} ${radius} ${joinTop} ${joinBottom}`;
+  }
+
+  function getVerticalVideoBadgeClass(rowInfo) {
+    if (rowInfo?.type !== 'video') return '';
+
+    const radius = rowInfo.isVideoGroupStart && rowInfo.isVideoGroupEnd
+      ? 'rounded-md'
+      : rowInfo.isVideoGroupStart
+        ? 'rounded-t-md rounded-b-none'
+        : rowInfo.isVideoGroupEnd
+          ? 'rounded-t-none rounded-b-md'
+          : 'rounded-none';
+
+    const top = rowInfo.isVideoGroupStart ? 'top-2' : 'top-0';
+    const bottom = rowInfo.isVideoGroupEnd ? 'bottom-2' : 'bottom-0';
+    const joinTop = rowInfo.continuesFromPreviousRow ? 'border-t-0 -mt-[2px]' : '';
+    const joinBottom = rowInfo.continuesToNextRow ? 'border-b-0' : '';
+
+    return `ui-video-badge group/video absolute left-1.5 ${top} ${bottom} z-20 w-5 inline-flex flex-col items-center justify-center gap-1 border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors ${radius} ${joinTop} ${joinBottom}`;
   }
 
   function getEstimatedColumns(rowInfo) {
@@ -928,7 +986,7 @@
       
       <!-- Frames grid -->
       <div
-        class="flex flex-wrap w-full p-2.5 {shouldJustifyRow(row, rowInfo) ? 'justify-between' : ''} {rowInfo?.type === 'video' ? (rowIndex % 2 === 0 ? 'relative ml-2 mr-2.5 mb-1 border border-gray-300 border-l-2 border-l-gray-500 rounded-xl bg-gradient-to-b from-white to-gray-100 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]' : 'relative ml-2 mr-2.5 mb-1 border border-gray-400/70 border-l-2 border-l-gray-600 rounded-xl bg-gradient-to-b from-gray-50 to-gray-200 ring-1 ring-gray-300/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_5px_14px_rgba(15,23,42,0.14)]') : ''} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
+        class="flex flex-wrap w-full p-2.5 {shouldJustifyRow(row, rowInfo) ? 'justify-between' : ''} {getVideoRowShellClass(rowInfo, rowIndex)} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
         style={`gap: ${rowInfo?.type === 'video' ? '12px' : 'var(--grid-gap, 16px)'};`}
       >
         {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal' && rowInfo?.continuesFromPreviousRow}
@@ -942,16 +1000,18 @@
           </div>
         {/if}
 
-        {#if rowInfo?.type === 'video' && rowInfo?.showVideoBadge && videoBadgeOrientation === 'vertical'}
+        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
           <button
             on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class="ui-video-badge group/video absolute left-1.5 top-2 bottom-2 z-20 w-5 inline-flex flex-col items-center justify-center gap-1 rounded-md border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors"
+            class={`${getVerticalVideoBadgeClass(rowInfo)} hover:from-slate-600 hover:to-slate-800`}
             title={`Open video ${rowInfo.label}`}
           >
-            <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-            </svg>
-            <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
+            {#if rowInfo.showGroupLabelOnThisRow}
+              <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+              <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
+            {/if}
           </button>
         {/if}
 
