@@ -19,25 +19,22 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
       return dateB - dateA;
     });
 
+  const groupByVideo = (arr) => {
+    const byVideo = new Map();
+    for (const img of arr) {
+      const vid = img.videoId ?? `vid-${img.index}`;
+      if (!byVideo.has(vid)) byVideo.set(vid, []);
+      byVideo.get(vid).push(img);
+    }
+    return Array.from(byVideo.values());
+  };
+
   if (auto) {
     if (mode === "byrank") return [items];
 
     if (mode === "byvideo") {
-      const byVideo = new Map();
-      for (const img of items) {
-        const vid = img.videoId ?? `vid-${img.index}`;
-        if (!byVideo.has(vid)) byVideo.set(vid, []);
-        byVideo.get(vid).push(img);
-      }
-
-      const rows = [];
-      for (const group of byVideo.values()) {
-        for (let i = 0; i < group.length; i += perRow) {
-          rows.push(group.slice(i, i + perRow));
-        }
-      }
-
-      return rows;
+      // One visual container per video; cards wrap inside the same row.
+      return groupByVideo(items);
     }
 
     if (mode === "bydate") {
@@ -48,20 +45,6 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
   if (mode === "byrank") return chunk(items, perRow);
   if (mode === "bydate") return chunk(sortByDateDesc(items), perRow);
 
-  // byvideo (senza auto-fit) - grouping O(n) + chunking
-  const byVideo = new Map();
-  for (const img of items) {
-    const vid = img.videoId ?? `vid-${img.index}`;
-    if (!byVideo.has(vid)) byVideo.set(vid, []);
-    byVideo.get(vid).push(img);
-  }
-
-  const rows = [];
-  for (const group of byVideo.values()) {
-    for (let i = 0; i < group.length; i += perRow) {
-      rows.push(group.slice(i, i + perRow));
-    }
-  }
-
-  return rows;
+  // byvideo: one row per video group, independent from resultsPerRow.
+  return groupByVideo(items);
 }
