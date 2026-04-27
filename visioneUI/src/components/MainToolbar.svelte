@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
+  import { normalizeGroupByOptions } from '$lib/groupByConfig.js';
 
   export let active = "View1";
   export let tabs = ["View1", "View2", "Similarity"];
@@ -9,6 +10,7 @@
   export let isSidebarRightOpen = false;
   export let viewMode = "byrank";
   export let showViewModeRadios = false;
+  export let runtimeProfile = {};
   export let keyframeSize = 130;
   export let dresEnabled = false;
   export let challengeType = "KIS";
@@ -22,26 +24,7 @@
   let isPinnedDropdownOpen = false;
   const challengeOptions = ["KIS", "AVS", "Q&A"];
   
-  const sortOptions = [
-    { 
-      value: 'byrank', 
-      label: 'By Rank', 
-      icon: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
-      description: 'Sort results by relevance score'
-    },
-    { 
-      value: 'byvideo', 
-      label: 'By Video', 
-      icon: `<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>`,
-      description: 'Group results by video ID'
-    },
-    { 
-      value: 'bydate', 
-      label: 'By Date', 
-      icon: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
-      description: 'Sort by creation date'
-    }
-  ];
+  let sortOptions = [];
   
   // tabConfig imported from $lib/tabConfig.js
   
@@ -77,8 +60,9 @@
 
   const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   $: hasTabs = Array.isArray(tabs) && tabs.length > 0;
+  $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   
-  $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
+  $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
   
   function handleClickOutside(event) {
     if (isSortDropdownOpen && !event.target.closest('.sort-dropdown-container')) {

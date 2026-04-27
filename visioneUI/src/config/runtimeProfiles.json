@@ -1,5 +1,21 @@
 {
   "defaults": {
+    "groupBy": {
+      "modes": [
+        {
+          "value": "byrank",
+          "label": "By Rank"
+        },
+        {
+          "value": "byvideo",
+          "label": "By Video"
+        },
+        {
+          "value": "bydate",
+          "label": "By Date"
+        }
+      ]
+    },
     "timeBadge": {
       "source": "hour_msb_middletime",
       "format": "mm:ss",
@@ -17,6 +33,23 @@
   },
   "collections": {
     "lsc": {
+      "groupBy": {
+        "modes": [
+          {
+            "value": "byrank",
+            "label": "By Rank"
+          },
+          {
+            "value": "byvideo",
+            "label": "By Hour",
+            "metadata": "hour_id"
+          },
+          {
+            "value": "bydate",
+            "label": "By Date"
+          }
+        ]
+      },
       "queryFilters": {
         "metadataFields": [
           "year",
