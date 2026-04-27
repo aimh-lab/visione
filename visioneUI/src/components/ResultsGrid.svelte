@@ -3,6 +3,7 @@
   import SubmitBadge from "./SubmitBadge.svelte";
   import { visioneAPI } from "../services/api.js";
   import VideoOverlay from "./VideoOverlay.svelte";
+  import { resolveGroupByConfig } from "$lib/groupByConfig.js";
 
   export let items = [];
   export let selectedId = null;
@@ -20,6 +21,8 @@
   export let rfPositive = [];
   export let rfNegative = [];
   export let runtimeProfile = {};
+
+  $: activeGroupBy = resolveGroupByConfig(viewMode, runtimeProfile);
 
   const safeImgId = (value) => String(value || '').trim();
   $: rfPositiveIds = new Set((Array.isArray(rfPositive) ? rfPositive : []).map((item) => safeImgId(item?.imgId)));
@@ -240,6 +243,32 @@
     if (!item || typeof item !== 'object') return {};
     const metadata = item?.raw?.metadata;
     return metadata && typeof metadata === 'object' ? metadata : {};
+  }
+
+  function getGroupValueForItem(item) {
+    if (!item || typeof item !== 'object') return '';
+
+    if (activeGroupBy?.kind === 'video') {
+      return String(getVideoId(item));
+    }
+
+    if (activeGroupBy?.kind === 'metadata') {
+      const metadataField = String(activeGroupBy?.metadata || '').trim();
+      if (!metadataField) return String(getVideoId(item));
+
+      const metadata = getRawMetadata(item);
+      const rawValue = metadata?.[metadataField] ?? item?.raw?.[metadataField] ?? item?.[metadataField];
+      const normalized = String(rawValue ?? '').trim();
+      return normalized || 'N/A';
+    }
+
+    return String(getVideoId(item));
+  }
+
+  function getGroupDisplayLabel(rowInfo) {
+    const prefix = String(rowInfo?.groupLabel || 'Group').trim();
+    const value = String(rowInfo?.label || '').trim();
+    return value ? `${prefix} ${value}` : prefix;
   }
 
   function getVideoPlayerStartFromProfile(item) {
@@ -586,31 +615,31 @@
     
     let info = null;
     
-    if (viewMode === "byvideo") {
-      const videoId = getVideoId(firstItem);
+    if (activeGroupBy?.kind === 'video' || activeGroupBy?.kind === 'metadata') {
+      const groupValue = getGroupValueForItem(firstItem);
       const prevRow = rowIndex > 0 && Array.isArray(items[rowIndex - 1]) ? items[rowIndex - 1] : null;
       const prevFirstItem = prevRow && prevRow.length > 0 ? prevRow[0] : null;
-      const prevVideoId = prevFirstItem ? getVideoId(prevFirstItem) : null;
+      const prevGroupValue = prevFirstItem ? getGroupValueForItem(prevFirstItem) : null;
       const nextRow = rowIndex >= 0 && rowIndex < items.length - 1 && Array.isArray(items[rowIndex + 1]) ? items[rowIndex + 1] : null;
       const nextFirstItem = nextRow && nextRow.length > 0 ? nextRow[0] : null;
-      const nextVideoId = nextFirstItem ? getVideoId(nextFirstItem) : null;
+      const nextGroupValue = nextFirstItem ? getGroupValueForItem(nextFirstItem) : null;
       let continuationRows = 0;
 
-      if (nextVideoId === videoId) {
+      if (nextGroupValue === groupValue) {
         for (let index = rowIndex + 1; index < items.length; index += 1) {
           const candidateRow = Array.isArray(items[index]) ? items[index] : null;
           const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
-          if (!candidateFirstItem || getVideoId(candidateFirstItem) !== videoId) break;
+          if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
           continuationRows += 1;
         }
       }
 
       let precedingRows = 0;
-      if (prevVideoId === videoId) {
+      if (prevGroupValue === groupValue) {
         for (let index = rowIndex - 1; index >= 0; index -= 1) {
           const candidateRow = Array.isArray(items[index]) ? items[index] : null;
           const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
-          if (!candidateFirstItem || getVideoId(candidateFirstItem) !== videoId) break;
+          if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
           precedingRows += 1;
         }
       }
@@ -619,14 +648,16 @@
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
 
       info = {
-        type: 'video',
-        label: `${videoId}`,
+        type: 'grouped',
+        groupKind: activeGroupBy.kind,
+        groupLabel: activeGroupBy.label || 'Group',
+        label: `${groupValue}`,
         item: firstItem,
-        showVideoBadge: prevVideoId !== videoId,
-        isVideoGroupStart: prevVideoId !== videoId,
-        isVideoGroupEnd: nextVideoId !== videoId,
-        continuesFromPreviousRow: prevVideoId === videoId,
-        continuesToNextRow: nextVideoId === videoId,
+        showVideoBadge: prevGroupValue !== groupValue,
+        isVideoGroupStart: prevGroupValue !== groupValue,
+        isVideoGroupEnd: nextGroupValue !== groupValue,
+        continuesFromPreviousRow: prevGroupValue === groupValue,
+        continuesToNextRow: nextGroupValue === groupValue,
         continuationRows,
         groupRowCount,
         groupRowOffset: precedingRows,
@@ -636,7 +667,7 @@
       return info;
     }
     
-    if (viewMode === "bydate") {
+    if (activeGroupBy?.kind === 'date') {
       const timestamp = firstItem.timestamp || firstItem.raw?.timestamp || 0;
       const date = timestamp ? new Date(timestamp * 1000) : new Date();
       
@@ -663,7 +694,7 @@
   }
 
   function getVideoRowShellClass(rowInfo, rowIndex) {
-    if (rowInfo?.type !== 'video') return '';
+    if (rowInfo?.type !== 'grouped') return '';
 
     const palette = 'bg-gradient-to-b from-white to-gray-100 border-gray-300 border-l-gray-500 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]';
 
@@ -684,7 +715,7 @@
   }
 
   function getVerticalVideoBadgeClass(rowInfo) {
-    if (rowInfo?.type !== 'video') return '';
+    if (rowInfo?.type !== 'grouped') return '';
 
     const radius = rowInfo.isVideoGroupStart && rowInfo.isVideoGroupEnd
       ? 'rounded-md'
@@ -712,8 +743,8 @@
       if (Number.isFinite(cssMin) && cssMin > 0) minCardWidth = cssMin;
     }
 
-    const gap = rowInfo?.type === 'video' ? 12 : 16;
-    const horizontalPadding = rowInfo?.type === 'video'
+    const gap = rowInfo?.type === 'grouped' ? 12 : 16;
+    const horizontalPadding = rowInfo?.type === 'grouped'
       ? (videoBadgeOrientation === 'vertical' ? 40 : 20)
       : 20;
     const usableWidth = Math.max(0, containerWidth - horizontalPadding);
@@ -957,7 +988,7 @@
     
     <div
       use:measureRow={rowIndex}
-      class="w-full {viewMode === 'byvideo' ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
+      class="w-full {rowInfo?.type === 'grouped' ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
     >
       
         <!-- Row header (solo per byvideo e bydate) -->
@@ -986,10 +1017,10 @@
       
       <!-- Frames grid -->
       <div
-        class="flex flex-wrap w-full p-2.5 {shouldJustifyRow(row, rowInfo) ? 'justify-between' : ''} {getVideoRowShellClass(rowInfo, rowIndex)} {rowInfo?.type === 'video' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
-        style={`gap: ${rowInfo?.type === 'video' ? '12px' : 'var(--grid-gap, 16px)'};`}
+        class="flex flex-wrap w-full p-2.5 {shouldJustifyRow(row, rowInfo) ? 'justify-between' : ''} {getVideoRowShellClass(rowInfo, rowIndex)} {rowInfo?.type === 'grouped' ? (videoBadgeOrientation === 'vertical' ? 'pt-2 pb-2 pl-8 pr-2' : 'pt-8 pb-2 px-2') : ''}"
+        style={`gap: ${rowInfo?.type === 'grouped' ? '12px' : 'var(--grid-gap, 16px)'};`}
       >
-        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'horizontal' && rowInfo?.continuesFromPreviousRow}
+        {#if rowInfo?.type === 'grouped' && videoBadgeOrientation === 'horizontal' && rowInfo?.continuesFromPreviousRow}
           <div class="pointer-events-none absolute left-2 top-1.5 z-10 inline-flex items-center rounded-full border border-slate-300/80 bg-white/92 px-1.5 py-1 text-slate-600 shadow-sm backdrop-blur-sm" aria-hidden="true">
             <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 7h14" />
@@ -1000,44 +1031,81 @@
           </div>
         {/if}
 
-        {#if rowInfo?.type === 'video' && videoBadgeOrientation === 'vertical'}
-          <button
-            on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class={`${getVerticalVideoBadgeClass(rowInfo)} hover:from-slate-600 hover:to-slate-800`}
-            title={`Open video ${rowInfo.label}`}
-          >
-            {#if rowInfo.showGroupLabelOnThisRow}
-              <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-              </svg>
-              <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
-            {/if}
-          </button>
+        {#if rowInfo?.type === 'grouped' && videoBadgeOrientation === 'vertical'}
+          {#if rowInfo.groupKind === 'video'}
+            <button
+              on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
+              class={`${getVerticalVideoBadgeClass(rowInfo)} hover:from-slate-600 hover:to-slate-800`}
+              title={`Open ${getGroupDisplayLabel(rowInfo)}`}
+            >
+              {#if rowInfo.showGroupLabelOnThisRow}
+                <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                </svg>
+                <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
+              {/if}
+            </button>
+          {:else}
+            <div class={getVerticalVideoBadgeClass(rowInfo)} title={getGroupDisplayLabel(rowInfo)}>
+              {#if rowInfo.showGroupLabelOnThisRow}
+                <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
+                  <path d="M8 9h8M8 13h8M8 17h5"/>
+                </svg>
+                <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
+              {/if}
+            </div>
+          {/if}
         {/if}
 
-        {#if rowInfo?.type === 'video' && rowInfo?.showVideoBadge && videoBadgeOrientation === 'horizontal'}
-          <button
-            on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-            class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors overflow-visible"
-            title={`Open video ${rowInfo.label}`}
-          >
-            <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-            </svg>
-            <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
-            {#if rowInfo?.continuesToNextRow}
-              <span
-                class="inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-slate-100"
-                aria-label={`Video ${rowInfo.label} continues for ${rowInfo.continuationRows} more row${rowInfo.continuationRows === 1 ? '' : 's'}`}
-              >
-                <svg class="w-2.5 h-2.5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 5v12" />
-                  <path d="M7 12l5 5 5-5" />
-                </svg>
-                <span>+{rowInfo.continuationRows}</span>
-              </span>
-            {/if}
-          </button>
+        {#if rowInfo?.type === 'grouped' && rowInfo?.showVideoBadge && videoBadgeOrientation === 'horizontal'}
+          {#if rowInfo.groupKind === 'video'}
+            <button
+              on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
+              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors overflow-visible"
+              title={`Open ${getGroupDisplayLabel(rowInfo)}`}
+            >
+              <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+              <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
+              {#if rowInfo?.continuesToNextRow}
+                <span
+                  class="inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-slate-100"
+                  aria-label={`${getGroupDisplayLabel(rowInfo)} continues for ${rowInfo.continuationRows} more row${rowInfo.continuationRows === 1 ? '' : 's'}`}
+                >
+                  <svg class="w-2.5 h-2.5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 5v12" />
+                    <path d="M7 12l5 5 5-5" />
+                  </svg>
+                  <span>+{rowInfo.continuationRows}</span>
+                </span>
+              {/if}
+            </button>
+          {:else}
+            <div
+              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] overflow-visible"
+              title={getGroupDisplayLabel(rowInfo)}
+            >
+              <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
+                <path d="M8 9h8M8 13h8M8 17h5"/>
+              </svg>
+              <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
+              {#if rowInfo?.continuesToNextRow}
+                <span
+                  class="inline-flex items-center gap-1 rounded-sm border border-white/10 bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-slate-100"
+                  aria-label={`${getGroupDisplayLabel(rowInfo)} continues for ${rowInfo.continuationRows} more row${rowInfo.continuationRows === 1 ? '' : 's'}`}
+                >
+                  <svg class="w-2.5 h-2.5 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 5v12" />
+                    <path d="M7 12l5 5 5-5" />
+                  </svg>
+                  <span>+{rowInfo.continuationRows}</span>
+                </span>
+              {/if}
+            </div>
+          {/if}
         {/if}
 
         {#each row as item, colIndex (getCardRenderKey(item, rowIndex, colIndex))}

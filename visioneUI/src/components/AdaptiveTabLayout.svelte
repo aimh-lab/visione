@@ -3,6 +3,7 @@
   import { tabsPosition } from '../stores/tabsPosition.js';
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
   import MainToolbar from './MainToolbar.svelte';
+  import { normalizeGroupByOptions } from '$lib/groupByConfig.js';
   
   export let active;
   export let tabs;
@@ -10,6 +11,7 @@
   export let isSidebarRightOpen;
   export let viewMode;
   export let showViewModeRadios;
+  export let runtimeProfile = {};
   export let keyframeSize = 130;
   export let dresEnabled = false;
   export let challengeType = "KIS";
@@ -24,28 +26,11 @@
   let isPinnedDropdownOpen = false;
   const challengeOptions = ["KIS", "AVS", "Q&A"];
   
-  // Sort options
-  const sortOptions = [
-    { 
-      value: 'byrank', 
-      label: 'By Rank', 
-      icon: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`
-    },
-    { 
-      value: 'byvideo', 
-      label: 'By Video', 
-      icon: `<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>`
-    },
-    { 
-      value: 'bydate', 
-      label: 'By Date', 
-      icon: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`
-    }
-  ];
+  let sortOptions = [];
   
   const getConfig = getTabConfig;
   
-  $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0];
+  $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '' };
   
   function setPosition(pos) {
     tabsPosition.set(pos);
@@ -82,6 +67,7 @@
   }
 
   const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
+  $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   
   function handleClickOutside(event) {
     if (showPositionMenu && !event.target.closest('.position-menu-container')) {
@@ -119,6 +105,7 @@
         {isSidebarRightOpen}
         {viewMode} 
         {showViewModeRadios}
+        {runtimeProfile}
         {keyframeSize}
         {dresEnabled}
         {challengeType}

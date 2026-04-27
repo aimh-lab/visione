@@ -32,6 +32,7 @@
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
   import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
+  import { resolveViewMode } from '$lib/groupByConfig.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
@@ -246,6 +247,12 @@
   $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
+  $: {
+    const safeViewMode = resolveViewMode($uiStore.viewMode, runtimeProfile);
+    if (safeViewMode !== $uiStore.viewMode) {
+      uiStore.actions.setViewMode(safeViewMode);
+    }
+  }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
 
@@ -2353,6 +2360,7 @@ function handleViewSubmitted() {
   viewMode={$uiStore.viewMode}
   keyframeSize={$uiStore.keyframeSize}
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
+  {runtimeProfile}
   dresEnabled={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
   {pinnedVideoSummaries}
