@@ -45,6 +45,16 @@
             "metadata": "hour_id"
           },
           {
+            "value": "bycountry",
+            "label": "By Country",
+            "metadata": "country"
+          },
+          {
+            "value": "bycity",
+            "label": "By City",
+            "metadata": "city"
+          },
+          {
             "value": "bydate",
             "label": "By Date"
           }

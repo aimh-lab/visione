@@ -223,6 +223,7 @@
   let activePinnedSummaryKey = '';
   let activeCollectionName = 'default';
   let runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
+  let lastDiscoveryPayload = null;
 
   // Back/forward
   let isRestoringFromHistory = false;
@@ -1106,14 +1107,23 @@
 
       // Load available models from /discovery (non-blocking)
       visioneAPI.discovery().then((data) => {
+        lastDiscoveryPayload = data;
         const discoveredModels = extractAvailableModelsFromDiscovery(data);
         if (discoveredModels.length > 0) {
           availableModels = discoveredModels;
         }
+        let discoveredCollection = activeCollectionName;
         if (typeof data?.name === 'string' && data.name.trim()) {
-          activeCollectionName = data.name.trim().toLowerCase();
+          discoveredCollection = data.name.trim().toLowerCase();
+          activeCollectionName = discoveredCollection;
         }
-        configureSearchMetadataFromDiscovery(data);
+
+        const profileForMetadata = resolveRuntimeProfile(
+          discoveredCollection,
+          get(uiStore).dresChallengeType || 'default'
+        );
+
+        configureSearchMetadataFromDiscovery(data, profileForMetadata);
       }).catch(() => {});
 
       const urlState = deserializeFromURL();
@@ -1288,18 +1298,39 @@
     uiStore.actions.setContentScale(Math.max(0.5, +(contentScale - 0.1).toFixed(2)));
   }
 
-  function configureSearchMetadataFromDiscovery(data) {
+  $: if (lastDiscoveryPayload) {
+    configureSearchMetadataFromDiscovery(lastDiscoveryPayload, runtimeProfile);
+  }
+
+  function configureSearchMetadataFromDiscovery(data, profile = runtimeProfile) {
     const available = Array.isArray(data?.metadata)
       ? data.metadata.map((v) => String(v || '').trim()).filter(Boolean)
       : [];
     const availableSet = new Set(available);
+    const hasAvailabilityList = availableSet.size > 0;
+
+    const canRequestField = (field) => {
+      const normalized = String(field || '').trim();
+      if (!normalized) return false;
+      return !hasAvailabilityList || availableSet.has(normalized);
+    };
 
     const groupingField = String(data?.groupby_attribute || 'hour_id').trim() || 'hour_id';
     const requested = [groupingField];
 
+    const configuredGroupByMetadata = Array.isArray(profile?.groupBy?.modes)
+      ? profile.groupBy.modes
+          .map((entry) => String(entry?.metadata || entry?.field || '').trim())
+          .filter(Boolean)
+      : [];
+
+    for (const field of configuredGroupByMetadata) {
+      if (canRequestField(field)) requested.push(field);
+    }
+
     const optionalFields = ['epoch', 'video_offset_seconds', 'hour_msb_middletime'];
     for (const field of optionalFields) {
-      if (availableSet.has(field)) requested.push(field);
+      if (canRequestField(field)) requested.push(field);
     }
 
     visioneAPI.defaultMetadataToRetrieve = Array.from(new Set(requested));
@@ -1528,6 +1559,12 @@
   async function openVideoPlayerBy(imgId, videoId, startAt) {
     const normalizedVideoId = normalizeVideoId(videoId || extractVideoIdFromImageId(imgId));
     const normalizedImgId = String(imgId || '').trim();
+
+    // Ensure the dedicated player modal is never layered behind the summary modal.
+    if (isVideoSummaryModalOpen) {
+      isVideoSummaryModalOpen = false;
+      await tick();
+    }
 
     if (useSlideshowModal()) {
       slideshowPlayer = {
@@ -2119,14 +2156,16 @@ function handleViewSubmitted() {
   $: displayRows = buildRows(images, {
     viewMode: $uiStore.viewMode,
     resultsPerRow: $uiStore.resultsPerRow,
-    resultsAutoFit: $uiStore.resultsAutoFit
+    resultsAutoFit: $uiStore.resultsAutoFit,
+    runtimeProfile
   });
 
 
   $: similarityDisplayRows = buildRows(similarityImages, {
     viewMode: $uiStore.viewMode,
     resultsPerRow: $uiStore.resultsPerRow,
-    resultsAutoFit: $uiStore.resultsAutoFit
+    resultsAutoFit: $uiStore.resultsAutoFit,
+    runtimeProfile
   });
 
 

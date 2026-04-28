@@ -1,5 +1,7 @@
 // src/lib/ui/buildRows.js
-export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
+import { resolveGroupByConfig } from '$lib/groupByConfig.js';
+
+export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit, runtimeProfile = {} }) {
   if (!Array.isArray(items) || items.length === 0) return [];
 
   const chunk = (arr, n) => {
@@ -8,7 +10,10 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
     return out;
   };
 
-  const mode = viewMode;
+  const groupBy = resolveGroupByConfig(viewMode, runtimeProfile);
+  const mode = String(groupBy?.mode || viewMode || 'byrank');
+  const kind = String(groupBy?.kind || '').trim().toLowerCase();
+  const metadataField = String(groupBy?.metadata || '').trim();
   const perRow = Math.max(1, Number(resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
@@ -19,22 +24,45 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
       return dateB - dateA;
     });
 
-  const groupByVideo = (arr) => {
-    const byVideo = new Map();
+  const groupByKey = (arr, keyFn, fallbackPrefix = 'group') => {
+    const groups = new Map();
     for (const img of arr) {
-      const vid = img.videoId ?? `vid-${img.index}`;
-      if (!byVideo.has(vid)) byVideo.set(vid, []);
-      byVideo.get(vid).push(img);
+      const key = String(keyFn(img) ?? '').trim() || `${fallbackPrefix}-${img?.index}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(img);
     }
-    return Array.from(byVideo.values());
+    return Array.from(groups.values());
   };
+
+  const groupByVideo = (arr) =>
+    groupByKey(arr, (img) => img.videoId, 'vid');
+
+  const groupByMetadata = (arr, field) =>
+    groupByKey(
+      arr,
+      (img) => {
+        const metadata = img?.raw?.metadata;
+        const rawValue = metadata && typeof metadata === 'object'
+          ? metadata[field]
+          : (img?.raw?.[field] ?? img?.[field]);
+        return String(rawValue ?? '').trim() || 'N/A';
+      },
+      'meta'
+    );
+
+  const groupedRows =
+    kind === 'video'
+      ? groupByVideo(items)
+      : (kind === 'metadata' && metadataField
+        ? groupByMetadata(items, metadataField)
+        : null);
 
   if (auto) {
     if (mode === "byrank") return [items];
 
-    if (mode === "byvideo") {
-      // One visual container per video; cards wrap inside the same row.
-      return groupByVideo(items);
+    if (groupedRows) {
+      // One visual container per group; cards wrap inside the same row.
+      return groupedRows;
     }
 
     if (mode === "bydate") {
@@ -45,6 +73,8 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit }) {
   if (mode === "byrank") return chunk(items, perRow);
   if (mode === "bydate") return chunk(sortByDateDesc(items), perRow);
 
-  // byvideo: one row per video group, independent from resultsPerRow.
-  return groupByVideo(items);
+  // Grouped modes (video or metadata): one row per group, independent from resultsPerRow.
+  if (groupedRows) return groupedRows;
+
+  return chunk(items, perRow);
 }
