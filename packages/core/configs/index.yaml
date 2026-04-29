@@ -1,0 +1,9 @@
+defaults:
+  - loader: ???
+  - common
+  - _self_
+
+hnsw:
+  m: 16
+  ef_construction: 64
+  maintenance_work_mem: "16GB"
