@@ -129,12 +129,11 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
       ? item
       : (item?.imgId || item?.id || item?.content || item);
 
-    const rawImgId = String(imgId || '').trim();
-    const normalizedImgId = rawImgId.replace(/\.jpg$/i, '');
+    const rawImgId = String(imgId || '');
     const itemVideoId = typeof item === 'object' && item
-      ? String(item.videoId || videoId || '').trim().replace(/\.mp4$/i, '')
-      : String(videoId || '').trim().replace(/\.mp4$/i, '');
-    const vid = /^\d+$/.test(itemVideoId) ? itemVideoId.padStart(5, '0') : itemVideoId;
+      ? String(item.videoId || videoId || '')
+      : String(videoId || '');
+    const vid = itemVideoId;
 
     const explicitThumb = typeof item === 'object' && item
       ? String(item.thumbnailUrl || item.imageUrl || item.url || '').trim()
@@ -150,7 +149,7 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
       videoId: vid,
       url,
       title: rawImgId,
-      submitted: submittedIds.has(rawImgId) || submittedIds.has(normalizedImgId),
+      submitted: submittedIds.has(rawImgId),
       timestamp,
       date: timestamp,
       // Timecodes are resolved per-frame via getMiddleTimestamp API in ResultsGrid.

@@ -26,10 +26,9 @@ export function extractImageInfo(item: any, i: number) {
   if (typeof baseItem === 'string' || typeof baseItem === 'number') {
     const rawImg = String(baseItem).trim();
     const imgId = rawImg || null;
-    const noExt = rawImg.replace(/\.jpg$/i, '');
-    const match = noExt.match(/-(\d+)-(\d+)$/);
+    const match = rawImg.match(/-(\d+)-(\d+)(?:\.jpg)?$/i);
     const videoId = match?.[1] ?? (imgId ? imgId.split('-')[0] : null);
-    const url = videoId && noExt ? tinyFrameUrl(String(videoId), noExt) : null;
+    const url = videoId && rawImg ? tinyFrameUrl(String(videoId), rawImg) : null;
 
     return {
       index: i,
@@ -89,8 +88,7 @@ export function extractImageInfo(item: any, i: number) {
 
   if (typeof rawImg === "string") {
     const s = String(rawImg);
-    const noExt = s.replace(/\.jpg$/i, "");
-    const m = noExt.match(/-(\d+)-(\d+)$/);
+    const m = s.match(/-(\d+)-(\d+)(?:\.jpg)?$/i);
     if (m) {
       rawVid = rawVid ?? m[1];
       // Keep the original id exactly as provided by the backend.
@@ -118,8 +116,7 @@ export function extractImageInfo(item: any, i: number) {
   const thumbnailUrl = String(pick(metadata, 'thumbnails', 'thumbnail_url', 'thumbnailUrl') || '').trim() || null;
   const videoUrl = String(pick(metadata, 'videos', 'video_url', 'videoUrl') || '').trim() || null;
   const hourId = String(pick(metadata, 'hour_id', 'hourId') || '').trim() || null;
-  const fallbackId = imgId ? imgId.replace(/\.jpg$/i, '') : null;
-  const url = thumbnailUrl || imageUrl || (videoId && fallbackId ? tinyFrameUrl(videoId, fallbackId) : null);
+  const url = thumbnailUrl || imageUrl || (videoId && imgId ? tinyFrameUrl(videoId, imgId) : null);
   const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? baseItem.timestamp ?? baseItem.date ?? null;
 
   return {

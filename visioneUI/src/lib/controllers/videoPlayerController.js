@@ -12,9 +12,7 @@ import { visioneAPI } from '../../services/api.js';
  */
 export function createVideoPlayerController({ getImages, getSimilarityImages }) {
   const normalizeVideoId = (value) => {
-    const vid = String(value || '').trim();
-    if (!vid) return '';
-    return /^\d+$/.test(vid) ? vid.padStart(5, '0') : vid;
+    return String(value || '');
   };
 
   const extractVideoIdFromImageId = (imgId) => {

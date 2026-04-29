@@ -32,7 +32,7 @@
 
   const getVideoId = (item) => {
     const vid = item.videoId ?? String(getId(item)).split("-")[0];
-    return String(vid).padStart(5, "0");
+    return String(vid);
   };
 
   const getId = (item) => item.imgId;

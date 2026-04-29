@@ -46,7 +46,7 @@ function modelToImageType(model, hasRf = false) {
 }
 
 function parseFrameFromImageId(imgId) {
-  const raw = String(imgId || '').trim().replace(/\.jpg$/i, '');
+  const raw = String(imgId || '').trim();
   if (!raw) return null;
 
   const underscore = raw.match(/_(\d{3,})$/);
