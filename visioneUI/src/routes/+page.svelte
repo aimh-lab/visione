@@ -443,14 +443,59 @@
 
   function normalizeTextareaModels(textarea) {
     const legacyModel = String(textarea?.model || '').trim();
-    const textModel = String(textarea?.textModel || legacyModel || getGlobalDefaultTextModel()).trim() || getGlobalDefaultTextModel();
-    const imageModel = String(textarea?.imageModel || legacyModel || getGlobalDefaultImageModel()).trim() || getGlobalDefaultImageModel();
+    const rawTextModel = String(textarea?.textModel || legacyModel || getGlobalDefaultTextModel()).trim();
+    const rawImageModel = String(textarea?.imageModel || legacyModel || getGlobalDefaultImageModel()).trim();
+
+    const discoveredText = getDiscoveredModelNames('text');
+    const discoveredImage = getDiscoveredModelNames('image');
+
+    const textModel = rawTextModel && (discoveredText.length === 0 || discoveredText.includes(rawTextModel))
+      ? rawTextModel
+      : getGlobalDefaultTextModel();
+
+    const imageModel = rawImageModel && (discoveredImage.length === 0 || discoveredImage.includes(rawImageModel))
+      ? rawImageModel
+      : getGlobalDefaultImageModel();
 
     return {
       ...textarea,
       textModel,
       imageModel
     };
+  }
+
+  function alignModelDefaultsFromDiscovery() {
+    const discoveredText = getDiscoveredModelNames('text');
+    const discoveredImage = getDiscoveredModelNames('image');
+    if (discoveredText.length === 0 && discoveredImage.length === 0) return;
+
+    const ui = get(uiStore);
+    const configuredText = String(ui?.defaultTextModel || '').trim();
+    const configuredImage = String(ui?.defaultImageModel || '').trim();
+
+    const shouldAutoSetText = !configuredText || configuredText === DEFAULT_TEXT_MODEL;
+    const shouldAutoSetImage = !configuredImage || configuredImage === DEFAULT_IMAGE_MODEL;
+
+    const fallbackText = discoveredText[0] || configuredText || DEFAULT_TEXT_MODEL;
+    const fallbackImage = discoveredImage[0] || configuredImage || DEFAULT_IMAGE_MODEL;
+
+    const nextText = shouldAutoSetText ? fallbackText : configuredText;
+    const nextImage = shouldAutoSetImage ? fallbackImage : configuredImage;
+
+    if (nextText !== configuredText || nextImage !== configuredImage) {
+      uiStore.actions.applySettings({
+        defaultTextModel: nextText,
+        defaultImageModel: nextImage
+      });
+    }
+
+    const normalized = textareas.map((t) => normalizeTextareaModels(t));
+    const changed = normalized.some((n, idx) =>
+      n.textModel !== textareas[idx]?.textModel || n.imageModel !== textareas[idx]?.imageModel
+    );
+    if (changed) {
+      textareas = normalized;
+    }
   }
 
   function getInlineQueryImagesForURL() {
@@ -516,7 +561,7 @@
       if (alreadyHasQueryImage) return;
 
       const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
-      const videoId = hourMatch?.[1] || rawImgId.split('-')[0]?.padStart(5, '0') || '';
+      const videoId = hourMatch?.[1] || rawImgId.split('-')[0] || '';
       if (!videoId) return;
 
       nextTextareaImages[idx] = [
@@ -1111,6 +1156,7 @@
         const discoveredModels = extractAvailableModelsFromDiscovery(data);
         if (discoveredModels.length > 0) {
           availableModels = discoveredModels;
+          alignModelDefaultsFromDiscovery();
         }
         let discoveredCollection = activeCollectionName;
         if (typeof data?.name === 'string' && data.name.trim()) {
@@ -1534,9 +1580,7 @@
   // Video player helpers
   // ---------------------------
   function normalizeVideoId(value) {
-    const raw = String(value || '').trim().replace(/\.mp4$/i, '');
-    if (!raw) return '';
-    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
+    return String(value || '');
   }
 
   function extractVideoIdFromImageId(imgId) {
@@ -1558,7 +1602,7 @@
 
   async function openVideoPlayerBy(imgId, videoId, startAt) {
     const normalizedVideoId = normalizeVideoId(videoId || extractVideoIdFromImageId(imgId));
-    const normalizedImgId = String(imgId || '').trim();
+    const normalizedImgId = String(imgId || '');
 
     // Ensure the dedicated player modal is never layered behind the summary modal.
     if (isVideoSummaryModalOpen) {
@@ -1878,9 +1922,8 @@ function handleViewSubmitted() {
 
   async function openVideoSummary(videoId, highlightImgId = null) {
     isVideoSummaryModalOpen = true;
-    const rawVideoId = String(videoId || '').trim().replace(/\.mp4$/i, '');
-    const normalizedVideoId = /^\d+$/.test(rawVideoId) ? rawVideoId.padStart(5, '0') : rawVideoId;
-    const normalizedHighlight = String(highlightImgId || '').trim() || null;
+    const normalizedVideoId = String(videoId || '');
+    const normalizedHighlight = String(highlightImgId || '') || null;
     activeVideoSummaryContext = {
       videoId: normalizedVideoId,
       highlightImgId: normalizedHighlight,
@@ -2343,6 +2386,8 @@ function handleViewSubmitted() {
   {activePinnedSummaryKey}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  {rfPositive}
+  {rfNegative}
   {runtimeProfile}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}

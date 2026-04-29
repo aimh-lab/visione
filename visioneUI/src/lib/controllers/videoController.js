@@ -30,12 +30,6 @@ export function createVideoController({
     return results;
   }
 
-  const normalizeVideoId = (value) => {
-    const raw = String(value || '').trim().replace(/\.mp4$/i, '');
-    if (!raw) return '';
-    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
-  };
-
   async function fetchVideoKeyframes(videoId) {
     if (!videoId) return [];
     const rawFrames = await api.getVideoKeyframes(videoId);
@@ -75,30 +69,30 @@ export function createVideoController({
 
     const req = ++reqId;
 
-    const padded = normalizeVideoId(videoId);
+    const requestedVideoId = String(videoId);
     // Preserve raw imgId (including extensions) to keep selection/anchor
     // aligned with transformed keyframe ids.
-    const selectedImgId = highlightImgId ? String(highlightImgId).trim() : null;
+    const selectedImgId = highlightImgId ? String(highlightImgId) : null;
 
     setVideoState({
       loading: true,
       error: null,
       frames: null,
-      videoId: padded,
+      videoId: requestedVideoId,
       selectedImgId
     });
 
     try {
       await tick();
 
-      const frames = await fetchVideoKeyframes(padded);
+      const frames = await fetchVideoKeyframes(requestedVideoId);
       if (req !== reqId) return;
 
       setVideoState({
         loading: false,
         error: null,
         frames,
-        videoId: padded,
+        videoId: requestedVideoId,
         selectedImgId
       });
     } catch (err) {
@@ -108,7 +102,7 @@ export function createVideoController({
         loading: false,
         error: err?.message ?? String(err),
         frames: null,
-        videoId: padded,
+        videoId: requestedVideoId,
         selectedImgId: null
       });
     }

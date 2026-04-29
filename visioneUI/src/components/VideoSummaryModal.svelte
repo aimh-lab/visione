@@ -27,6 +27,8 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
+  export let rfPositive: Frame[] = [];
+  export let rfNegative: Frame[] = [];
 
   export let selectedFrameId: string | null = null;
 
@@ -325,6 +327,8 @@
               {showSubmitUI}
               {challengeType}
               {runtimeProfile}
+              {rfPositive}
+              {rfNegative}
               {justifyResultRows}
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}

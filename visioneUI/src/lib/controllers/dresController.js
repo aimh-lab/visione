@@ -97,7 +97,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
       const middleSeconds = await visioneAPI.getMiddleTimestamp(imgId);
       const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
-      const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]).padStart(5, '0');
+      const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
 
       let result;
       try {

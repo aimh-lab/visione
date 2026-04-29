@@ -32,9 +32,7 @@
   const SLIDESHOW_SPEED_OPTIONS = [50, 100, 200, 300, 400];
 
   function normalizeVideoId(value) {
-    const raw = String(value || "").trim().replace(/\.mp4$/i, "");
-    if (!raw) return "";
-    return /^\d+$/.test(raw) ? raw.padStart(5, "0") : raw;
+    return String(value || "");
   }
 
   function formatSeconds(value) {
@@ -148,9 +146,9 @@
       if (token !== loadToken) return;
 
       const sortedEntries = sortKeyframes(entries)
-        .filter((entry) => String(entry?.imgId || "").trim())
+        .filter((entry) => String(entry?.imgId || ""))
         .map((entry) => ({
-          imgId: String(entry.imgId).trim(),
+          imgId: String(entry.imgId),
           timestamp: Number.isFinite(Number(entry?.timestamp)) && Number(entry?.timestamp) >= 0
             ? Number(entry.timestamp)
             : null
@@ -173,7 +171,7 @@
       frames = initialFrames;
       loadedVideoId = normalizedVideoId;
 
-      const targetImgId = String(preferredImgId || "").trim();
+      const targetImgId = String(preferredImgId || "");
       const startIndex = targetImgId
         ? initialFrames.findIndex((frame) => frame.imgId === targetImgId)
         : -1;
@@ -412,7 +410,7 @@
   }
 
   $: normalizedVideoId = normalizeVideoId(videoId);
-  $: normalizedSelectedImgId = String(selectedImgId || "").trim();
+  $: normalizedSelectedImgId = String(selectedImgId || "");
   $: activeFrame = frames[currentIndex] || null;
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? "KIS").toUpperCase() !== "Q&A";

@@ -380,16 +380,12 @@
 
   function deriveVideoId() {
     if (videoId) {
-      const raw = String(videoId).trim().replace(/\.mp4$/i, '');
-      if (!raw) return '';
-      return /^\d+$/.test(raw) ? raw.padStart(5, "0") : raw;
+      return String(videoId);
     }
     try {
       const file = videoUrl.split("/").pop() || "";
-      const noExt = file.replace(/\.mp4$/i, '');
-      const base = noExt.replace(/-(tiny|small|medium|large)$/i, '') || "";
-      if (!base) return '';
-      return /^\d+$/.test(base) ? String(base).padStart(5, "0") : String(base);
+      if (!file) return '';
+      return String(file);
     } catch { return ""; }
   }
 

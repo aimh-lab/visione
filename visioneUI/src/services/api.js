@@ -63,9 +63,7 @@ export class VisioneAPI {
   }
 
   #normalizeVideoId(videoId) {
-    const raw = String(videoId || '').trim().replace(/\.mp4$/i, '');
-    if (!raw) return '';
-    return /^\d+$/.test(raw) ? raw.padStart(5, '0') : raw;
+    return String(videoId || '');
   }
 
   // ... #makeRequest e metodi esistenti ...
