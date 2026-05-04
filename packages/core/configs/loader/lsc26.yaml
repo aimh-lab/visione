@@ -4,3 +4,4 @@ metadata_file: "/data1/lsc-common-data/lsc26-data/lsc26_metadata.csv"
 
 collection_paths:
   images: "lsc26/images"
+  thumbnails: "lsc26/images"  # as of now, images are also used as thumbnails

@@ -406,7 +406,8 @@ class AsyncPGVectorStore(VectorStore):
                      normalized_embeddings[i][self.embedding_column] = v
 
         # --- 3. Database Insertion Loop ---
-        
+        statements: list[tuple[str, dict]] = []
+
         for id, content, embedding_dict, metadata in zip(ids, text_list, normalized_embeddings, metadatas):
             
             # --- Prepare SQL Parts ---
@@ -524,9 +525,12 @@ class AsyncPGVectorStore(VectorStore):
 
             query = insert_stmt + values_stmt + upsert_stmt
             
-            async with self.engine.connect() as conn:
+            statements.append((query, values))
+
+        async with self.engine.connect() as conn:
+            for query, values in statements:
                 await conn.execute(text(query), values)
-                await conn.commit()
+            await conn.commit()
 
         return ids
 

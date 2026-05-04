@@ -5,16 +5,16 @@ database:
   dbname: langchain
 
 embedding:
-  server_url: "http://trinity.isti.cnr.it:8000"
+  server_url: "localhost:1234"
   timeout: 120
   # Define available models here
   models:
     - name: "qwen_embedding_8B"
       dim: 4096
       mrl_dim: 1024
-    - name: "openclip_clip_vit_b_32"
-      dim: 512
-      mrl_dim: null 
+    # - name: "openclip_clip_vit_b_32"
+    #   dim: 512
+    #   mrl_dim: null 
     - name: "openclip_clip_vit_l_14"
       dim: 768
       mrl_dim: null
@@ -26,4 +26,4 @@ embedding:
       mrl_dim: null
 
 data:
-  server_url: "http://visione-dev.isti.cnr.it:3333"
+  server_url: "localhost:4567"
