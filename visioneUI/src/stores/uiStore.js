@@ -36,12 +36,24 @@ const DEFAULT = {
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 50,
   videoPlayerModalMode: 'profile',
-  imageModalScale: 100,
-  slideshowModalScale: 100,
+  imageModalScale: 160,
+  slideshowModalScale: 160,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'
 };
+
+function normalizeModalSizePx(value, fallback = 160) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+
+  // Temporary migration compatibility: values from the previous wide-pixel model.
+  if (numeric > 400) {
+    return Math.min(400, Math.max(80, Math.round(numeric / 10)));
+  }
+
+  return Math.min(400, Math.max(80, Math.round(numeric)));
+}
 
 function clampSidebarWidthVw(value, fallback = 18) {
   const numeric = Number.parseFloat(String(value));
@@ -111,12 +123,8 @@ function createUIStore() {
         videoPlayerModalMode: ['profile', 'video', 'slideshow'].includes(s.videoPlayerModalMode)
           ? s.videoPlayerModalMode
           : u.videoPlayerModalMode,
-        imageModalScale: Number.isFinite(Number(s.imageModalScale))
-          ? Math.min(160, Math.max(80, Number(s.imageModalScale)))
-          : u.imageModalScale,
-        slideshowModalScale: Number.isFinite(Number(s.slideshowModalScale))
-          ? Math.min(160, Math.max(80, Number(s.slideshowModalScale)))
-          : u.slideshowModalScale,
+        imageModalScale: normalizeModalSizePx(s.imageModalScale, u.imageModalScale),
+        slideshowModalScale: normalizeModalSizePx(s.slideshowModalScale, u.slideshowModalScale),
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
         defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
@@ -254,10 +262,10 @@ function createUIStore() {
           : u.videoPlayerModalMode;
         const safeImageModalScale = patch.imageModalScale == null
           ? u.imageModalScale
-          : Math.min(160, Math.max(80, Number(patch.imageModalScale) || u.imageModalScale || DEFAULT.imageModalScale));
+          : normalizeModalSizePx(patch.imageModalScale, u.imageModalScale || DEFAULT.imageModalScale);
         const safeSlideshowModalScale = patch.slideshowModalScale == null
           ? u.slideshowModalScale
-          : Math.min(160, Math.max(80, Number(patch.slideshowModalScale) || u.slideshowModalScale || DEFAULT.slideshowModalScale));
+          : normalizeModalSizePx(patch.slideshowModalScale, u.slideshowModalScale || DEFAULT.slideshowModalScale);
         const safeDefaultTextModel = String(patch.defaultTextModel ?? '').trim() || u.defaultTextModel || DEFAULT.defaultTextModel;
         const safeDefaultImageModel = String(patch.defaultImageModel ?? '').trim() || u.defaultImageModel || DEFAULT.defaultImageModel;
 

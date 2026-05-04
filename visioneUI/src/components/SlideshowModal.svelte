@@ -413,9 +413,13 @@
   $: activeFrame = frames[currentIndex] || null;
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? "KIS").toUpperCase() !== "Q&A";
-  $: safeModalScale = Math.min(160, Math.max(80, Number(modalScale) || 100));
-  $: modalWidth = `min(98vw, max(42rem, calc(72rem * ${safeModalScale / 100})))`;
-  $: modalHeight = `min(98vh, max(34rem, calc(82vh * ${safeModalScale / 100})))`;
+  $: safeModalScale = Math.min(400, Math.max(80, Math.round(Number(modalScale) || 160)));
+  $: shellWidthPx = Math.min(1200, Math.max(760, Math.round(safeModalScale * 2.0)));
+  $: stageHeightPx = Math.min(560, Math.max(180, safeModalScale + 36));
+  $: shellHeightPx = Math.min(900, Math.max(360, stageHeightPx + 190));
+  $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
+  $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
+  $: previewHeight = `${safeModalScale}px`;
   $: timelineProgress = frames.length > 1 ? (currentIndex / (frames.length - 1)) * 100 : 0;
   $: highlightedSet = new Set((Array.isArray(highlightedKeyframes) ? highlightedKeyframes : []).map((entry) => typeof entry === "string" ? entry : entry?.imgId).filter(Boolean));
   $: rankMap = new Map(
@@ -503,7 +507,7 @@
         </button>
       </div>
 
-      <div class="flex-1 min-h-0 bg-slate-950 relative">
+      <div class="min-h-0 bg-slate-950 relative" style="height: {stageHeightPx}px;">
         {#if loading}
           <div class="absolute inset-0 flex items-center justify-center text-slate-300 text-sm">Loading keyframes...</div>
         {:else if error}
@@ -524,7 +528,12 @@
               }
             }}
           >
-            <img src={activeFrame.imageUrl} alt={activeFrame.imgId} class="max-w-full max-h-full object-contain rounded-md" />
+            <img
+              src={activeFrame.imageUrl}
+              alt={activeFrame.imgId}
+              class="block rounded-md"
+              style="height: {previewHeight}; width: auto; max-width: 100%; object-fit: contain;"
+            />
           </div>
 
           <button
