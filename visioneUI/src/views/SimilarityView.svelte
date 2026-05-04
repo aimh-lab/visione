@@ -22,6 +22,7 @@
   export let justifyResultRows = false;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let imageModalScale = 100;
   export let runtimeProfile = {};
 
   export let textareas: QueryTextarea[] = [];         // for SidebarSimilarity (same shape as SidebarSearch)
@@ -176,6 +177,7 @@
   isOpen={simIsModalOpen}
   image={simSelected as any}
   total={similarityTotal}
+  modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
   on:close={onCloseSimModal}

@@ -122,6 +122,8 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 50,
   videoPlayerModalMode: 'profile',
+  imageModalScale: 100,
+  slideshowModalScale: 100,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'

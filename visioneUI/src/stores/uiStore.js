@@ -36,6 +36,8 @@ const DEFAULT = {
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 50,
   videoPlayerModalMode: 'profile',
+  imageModalScale: 100,
+  slideshowModalScale: 100,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'
@@ -109,6 +111,12 @@ function createUIStore() {
         videoPlayerModalMode: ['profile', 'video', 'slideshow'].includes(s.videoPlayerModalMode)
           ? s.videoPlayerModalMode
           : u.videoPlayerModalMode,
+        imageModalScale: Number.isFinite(Number(s.imageModalScale))
+          ? Math.min(160, Math.max(80, Number(s.imageModalScale)))
+          : u.imageModalScale,
+        slideshowModalScale: Number.isFinite(Number(s.slideshowModalScale))
+          ? Math.min(160, Math.max(80, Number(s.slideshowModalScale)))
+          : u.slideshowModalScale,
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
         defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
@@ -146,6 +154,8 @@ function createUIStore() {
         showAutoTranslateToggle: DEFAULT.showAutoTranslateToggle,
         temporalWindowSeconds: DEFAULT.temporalWindowSeconds,
         videoPlayerModalMode: DEFAULT.videoPlayerModalMode,
+        imageModalScale: DEFAULT.imageModalScale,
+        slideshowModalScale: DEFAULT.slideshowModalScale,
         modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
         defaultTextModel: DEFAULT.defaultTextModel,
         defaultImageModel: DEFAULT.defaultImageModel
@@ -242,6 +252,12 @@ function createUIStore() {
         const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)
           ? patch.videoPlayerModalMode
           : u.videoPlayerModalMode;
+        const safeImageModalScale = patch.imageModalScale == null
+          ? u.imageModalScale
+          : Math.min(160, Math.max(80, Number(patch.imageModalScale) || u.imageModalScale || DEFAULT.imageModalScale));
+        const safeSlideshowModalScale = patch.slideshowModalScale == null
+          ? u.slideshowModalScale
+          : Math.min(160, Math.max(80, Number(patch.slideshowModalScale) || u.slideshowModalScale || DEFAULT.slideshowModalScale));
         const safeDefaultTextModel = String(patch.defaultTextModel ?? '').trim() || u.defaultTextModel || DEFAULT.defaultTextModel;
         const safeDefaultImageModel = String(patch.defaultImageModel ?? '').trim() || u.defaultImageModel || DEFAULT.defaultImageModel;
 
@@ -267,6 +283,8 @@ function createUIStore() {
           showAutoTranslateToggle: patch.showAutoTranslateToggle ?? u.showAutoTranslateToggle,
           temporalWindowSeconds: safeTemporalWindowSeconds,
           videoPlayerModalMode: safeVideoPlayerModalMode,
+          imageModalScale: safeImageModalScale,
+          slideshowModalScale: safeSlideshowModalScale,
           modelSelectionPerStepEnabled: patch.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
           defaultTextModel: safeDefaultTextModel,
           defaultImageModel: safeDefaultImageModel
@@ -297,6 +315,8 @@ function createUIStore() {
           showAutoTranslateToggle: nextState.showAutoTranslateToggle,
           temporalWindowSeconds: nextState.temporalWindowSeconds,
           videoPlayerModalMode: nextState.videoPlayerModalMode,
+          imageModalScale: nextState.imageModalScale,
+          slideshowModalScale: nextState.slideshowModalScale,
           modelSelectionPerStepEnabled: nextState.modelSelectionPerStepEnabled,
           defaultTextModel: nextState.defaultTextModel,
           defaultImageModel: nextState.defaultImageModel

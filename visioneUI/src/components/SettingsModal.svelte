@@ -22,6 +22,8 @@
   export let showAutoTranslateToggle = true;
   export let temporalWindowSeconds = 50;
   export let videoPlayerModalMode = 'profile';
+  export let imageModalScale = 100;
+  export let slideshowModalScale = 100;
   export let modelSelectionPerStepEnabled = true;
   export let defaultTextModel = 'openclip_clip_vit_b_32';
   export let defaultImageModel = 'dinov2_base';
@@ -109,6 +111,8 @@
       showAutoTranslateToggle,
       temporalWindowSeconds,
       videoPlayerModalMode,
+      imageModalScale,
+      slideshowModalScale,
       modelSelectionPerStepEnabled,
       defaultTextModel,
       defaultImageModel,
@@ -167,6 +171,8 @@
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
+    const safeImageModalScale = Math.min(160, Math.max(80, Number(local.imageModalScale) || 100));
+    const safeSlideshowModalScale = Math.min(160, Math.max(80, Number(local.slideshowModalScale) || 100));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
     const safeDefaultTextModel = textModelOptions.includes(safeDefaultTextModelRaw)
@@ -201,6 +207,8 @@
       showAutoTranslateToggle: !!local.showAutoTranslateToggle,
       temporalWindowSeconds: safeTemporalWindowSeconds,
       videoPlayerModalMode: safeVideoPlayerModalMode,
+      imageModalScale: safeImageModalScale,
+      slideshowModalScale: safeSlideshowModalScale,
       modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
       defaultTextModel: safeDefaultTextModel,
       defaultImageModel: safeDefaultImageModel,
@@ -529,6 +537,54 @@
                 <option value="video">Force video player</option>
                 <option value="slideshow">Force slideshow</option>
               </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-image-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Image modal size</label>
+              <div class="relative">
+                <input
+                  id="settings-image-modal-scale"
+                  type="number"
+                  min="80"
+                  max="160"
+                  step="5"
+                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.imageModalScale}
+                  on:input={() => save()}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase image modal size" on:click={() => adjustNumber('imageModalScale', 5, 80, 160)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease image modal size" on:click={() => adjustNumber('imageModalScale', -5, 80, 160)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-slideshow-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Slideshow size</label>
+              <div class="relative">
+                <input
+                  id="settings-slideshow-modal-scale"
+                  type="number"
+                  min="80"
+                  max="160"
+                  step="5"
+                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.slideshowModalScale}
+                  on:input={() => save()}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 5, 80, 160)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -5, 80, 160)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         {/if}

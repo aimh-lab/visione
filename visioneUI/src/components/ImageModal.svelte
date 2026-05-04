@@ -7,6 +7,7 @@
   export let isOpen = false;
   export let image = null;
   export let total = 0;
+  export let modalScale = 100;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
 
@@ -29,6 +30,9 @@
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
+  $: safeModalScale = Math.min(160, Math.max(80, Number(modalScale) || 100));
+  $: modalWidth = `min(98vw, calc(64rem * ${safeModalScale / 100}))`;
+  $: modalHeight = `min(96vh, calc(90vh * ${safeModalScale / 100}))`;
 
   const METADATA_FIELDS_PER_REQUEST = 20;
   const imageMetadataCache = new Map();
@@ -248,8 +252,9 @@
     ></button>
 
     <!-- Modal -->
-    <div 
-      class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+    <div
+      class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
+      style="max-width: {modalWidth}; max-height: {modalHeight};"
     >
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white">

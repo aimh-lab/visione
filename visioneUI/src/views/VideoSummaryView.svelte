@@ -19,6 +19,7 @@
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let imageModalScale = 100;
   export let runtimeProfile = {};
 
   export let registerContainer = (_el: Element | null) => {};
@@ -146,6 +147,7 @@
   isOpen={frameIsModalOpen}
   image={selectedFrame as any}
   total={totalFrames}
+  modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
   on:close={onCloseFrameModal}
