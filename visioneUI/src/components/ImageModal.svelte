@@ -30,9 +30,12 @@
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
-  $: safeModalScale = Math.min(160, Math.max(80, Number(modalScale) || 100));
-  $: modalWidth = `min(98vw, calc(64rem * ${safeModalScale / 100}))`;
-  $: modalHeight = `min(96vh, calc(90vh * ${safeModalScale / 100}))`;
+  $: safeModalScale = Math.min(400, Math.max(80, Math.round(Number(modalScale) || 160)));
+  $: shellWidthPx = Math.min(1200, Math.max(760, Math.round(safeModalScale * 2.05)));
+  $: shellHeightPx = Math.min(920, Math.max(430, Math.round(safeModalScale + 260)));
+  $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
+  $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
+  $: previewHeight = `${safeModalScale}px`;
 
   const METADATA_FIELDS_PER_REQUEST = 20;
   const imageMetadataCache = new Map();
@@ -254,7 +257,7 @@
     <!-- Modal -->
     <div
       class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
-      style="max-width: {modalWidth}; max-height: {modalHeight};"
+      style="width: {modalWidth}; height: {modalHeight};"
     >
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
@@ -274,17 +277,19 @@
       </div>
 
       <!-- Content: grid 2 colonne -->
-      <div class="flex-grow overflow-auto grid md:grid-cols-2 gap-6 p-6">
+      <div class="flex-grow overflow-auto grid items-start md:grid-cols-2 gap-6 p-6">
         <!-- Box immagine con overlay buttons (stile ResultsGrid) -->
         <div 
           bind:this={imageContainer}
-          class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden min-h-[400px]"
+          class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden"
+          style="min-height: {previewHeight};"
         >
           {#if modalImageUrl}
             <img 
               src={modalImageUrl}
               alt={image?.title} 
-              class="w-full h-full object-contain"
+              class="block"
+              style="height: {previewHeight}; width: auto; max-width: 100%; object-fit: contain;"
             />
 
             <!-- Overlay layer con trasparenza -->
