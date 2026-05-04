@@ -34,32 +34,42 @@ export function createVideoController({
     if (!videoId) return [];
     const rawFrames = await api.getVideoKeyframes(videoId);
 
-    const enrichedFrames = await mapWithConcurrency(
-      rawFrames,
-      KEYFRAME_ELEMENT_URL_CONCURRENCY,
-      async (entry) => {
-        const imgId = String(entry?.imgId || entry?.id || entry?.content || entry || '').trim();
-        if (!imgId) return entry;
+    const ids = rawFrames
+      .map((entry) => String(entry?.imgId || entry?.id || entry?.content || entry || '').trim())
+      .filter(Boolean);
+    let urlById = new Map();
 
-        try {
-          const urls = await api.getElementUrls(imgId, ['images', 'thumbnails', 'resized-videos-tiny']);
-          const thumbnailUrl = String(urls?.thumbnails || '').trim() || api.getThumbnailUrlByImgId(imgId, videoId) || null;
-          const imageUrl = String(urls?.images || '').trim() || null;
-          return {
-            ...(typeof entry === 'object' && entry ? entry : { imgId }),
-            imgId,
-            thumbnailUrl,
-            imageUrl
-          };
-        } catch {
-          return {
-            ...(typeof entry === 'object' && entry ? entry : { imgId }),
-            imgId,
-            thumbnailUrl: api.getThumbnailUrlByImgId(imgId, videoId) || null
-          };
-        }
-      }
-    );
+    try {
+      const urlRows = await api.getElementUrlsBatch(ids, ['images', 'thumbnails']);
+      urlById = new Map(
+        (Array.isArray(urlRows) ? urlRows : [])
+          .map((row) => [
+            String(row?.id || '').trim(),
+            {
+              imageUrl: String(row?.images || '').trim() || null,
+              thumbnailUrl: String(row?.thumbnails || '').trim() || null
+            }
+          ])
+          .filter(([id]) => !!id)
+      );
+    } catch {
+      // Keep fallback URLs below when batch lookup fails.
+    }
+
+    const enrichedFrames = rawFrames.map((entry) => {
+      const imgId = String(entry?.imgId || entry?.id || entry?.content || entry || '').trim();
+      if (!imgId) return entry;
+
+      const resolved = urlById.get(imgId) || {};
+      const thumbnailUrl = String(resolved?.thumbnailUrl || '').trim() || api.getThumbnailUrlByImgId(imgId, videoId) || null;
+      const imageUrl = String(resolved?.imageUrl || '').trim() || null;
+      return {
+        ...(typeof entry === 'object' && entry ? entry : { imgId }),
+        imgId,
+        thumbnailUrl,
+        imageUrl
+      };
+    });
 
     return transformVideoKeyframes(enrichedFrames, videoId, getSubmittedIds());
   }

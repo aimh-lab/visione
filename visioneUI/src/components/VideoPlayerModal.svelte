@@ -345,26 +345,19 @@
       keyframes = initial;
       loadingKeyframes = false;
 
-      // Resolve real thumbnail URLs via /element-url.
+      // Resolve real thumbnail URLs via batch /element-url POST.
       const imgIds = entries.map((e: { imgId: string }) => e.imgId);
-      const thumbPairs = await mapWithConcurrency(
-        imgIds,
-        KEYFRAME_ELEMENT_URL_CONCURRENCY,
-        async (imgId: string): Promise<[string, string | null]> => {
-          try {
-            const urls = await visioneAPI.getElementUrls(imgId, ['images', 'thumbnails', 'resized-videos-tiny']);
-            const thumb = String(urls?.thumbnails || '').trim() || null;
-            return [imgId, thumb];
-          } catch {
-            return [imgId, null];
-          }
-        }
-      );
+      const urlRows = await visioneAPI.getElementUrlsBatch(imgIds, ['images', 'thumbnails']);
 
       if (currentToken !== keyframesLoadToken) return;
 
       const thumbnailMap = new Map(
-        thumbPairs.filter(([, url]) => !!url) as Array<[string, string]>
+        (Array.isArray(urlRows) ? urlRows : [])
+          .map((row): [string, string | null] => [
+            String(row?.id || ''),
+            String(row?.thumbnails || row?.images || '').trim() || null
+          ])
+          .filter(([id, url]) => !!id && !!url) as Array<[string, string]>
       );
 
       keyframes = initial.map((frame) => ({

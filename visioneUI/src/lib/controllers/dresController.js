@@ -70,6 +70,36 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     return '';
   }
 
+  function toFiniteNumber(value) {
+    if (value == null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function resolveFrameMiddleSeconds(frameObj) {
+    if (!frameObj || typeof frameObj !== 'object') return null;
+    const raw = frameObj?.raw && typeof frameObj.raw === 'object' ? frameObj.raw : {};
+    const metadata = raw?.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
+
+    const fromCurrentTime = toFiniteNumber(raw?.currentTime);
+    if (fromCurrentTime != null && fromCurrentTime >= 0) return fromCurrentTime;
+
+    const fromTimestamp = toFiniteNumber(
+      frameObj?.timestamp
+      ?? raw?.timestamp
+      ?? frameObj?.hour_msb_middletime
+      ?? raw?.hour_msb_middletime
+      ?? metadata?.hour_msb_middletime
+      ?? frameObj?.video_offset_seconds
+      ?? raw?.video_offset_seconds
+      ?? metadata?.video_offset_seconds
+    );
+    if (fromTimestamp != null && fromTimestamp >= 0) return fromTimestamp;
+
+    return null;
+  }
+
   function notifyVerdict(verdict, description = 'sent', prefix = 'DRES submission') {
     if (verdict === 'WRONG') {
       toasts.error(`${prefix} WRONG: ${description}`);
@@ -95,7 +125,10 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
         throw new Error('Missing imgId for DRES submission');
       }
 
-      const middleSeconds = await visioneAPI.getMiddleTimestamp(imgId);
+      const localMiddleSeconds = resolveFrameMiddleSeconds(frameObj);
+      const middleSeconds = localMiddleSeconds != null
+        ? localMiddleSeconds
+        : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
       const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
       const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
 
