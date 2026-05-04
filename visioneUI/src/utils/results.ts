@@ -26,7 +26,7 @@ export function extractImageInfo(item: any, i: number) {
   if (typeof baseItem === 'string' || typeof baseItem === 'number') {
     const rawImg = String(baseItem).trim();
     const imgId = rawImg || null;
-    const match = rawImg.match(/-(\d+)-(\d+)(?:\.jpg)?$/i);
+    const match = rawImg.match(/-(\d+)-(\d+)(?:\.[^./]+)?$/i);
     const videoId = match?.[1] ?? (imgId ? imgId.split('-')[0] : null);
     const url = videoId && rawImg ? tinyFrameUrl(String(videoId), rawImg) : null;
 
@@ -88,7 +88,7 @@ export function extractImageInfo(item: any, i: number) {
 
   if (typeof rawImg === "string") {
     const s = String(rawImg);
-    const m = s.match(/-(\d+)-(\d+)(?:\.jpg)?$/i);
+    const m = s.match(/-(\d+)-(\d+)(?:\.[^./]+)?$/i);
     if (m) {
       rawVid = rawVid ?? m[1];
       // Keep the original id exactly as provided by the backend.

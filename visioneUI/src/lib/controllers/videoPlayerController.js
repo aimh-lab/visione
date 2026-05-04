@@ -18,7 +18,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
   const extractVideoIdFromImageId = (imgId) => {
     const raw = String(imgId || '').trim();
     if (!raw) return '';
-    const match = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+    const match = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
     if (match) return match[1];
     return raw.split('-')[0] || '';
   };
@@ -114,7 +114,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
       };
     }
 
-    if (imgId) {
+    if (imgId && visioneAPI.supportsVideos) {
       try {
         const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
         const middle = toFiniteNumber(metadata?.hour_msb_middletime);
@@ -145,6 +145,15 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
     }
 
     try {
+      if (!visioneAPI.supportsVideos) {
+        return {
+          url: resolvedVideoUrl,
+          startTime: 0,
+          title: `${vid}`,
+          videoId: vid,
+          highlightedKeyframes: highlighted
+        };
+      }
       const middle = await visioneAPI.getMiddleTimestamp(imgId);
       return {
         url: resolvedVideoUrl,

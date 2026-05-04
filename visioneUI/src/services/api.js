@@ -30,6 +30,7 @@ export class VisioneAPI {
     this.defaultTemporalWindowSeconds = 50;
     this.defaultRelevanceFeedbackModel = 'qwen_embedding_8B';
     this.defaultMetadataToRetrieve = ['hour_id'];
+    this.supportsVideos = true;
     this.elementUrlCache = new Map();
     this.elementUrlInFlight = new Map();
     this.elementUrlCacheMax = 3000;
@@ -70,6 +71,11 @@ export class VisioneAPI {
 
   async getMiddleTimestamp(imgId) {
     if (!imgId) throw new APIError('imgId is required', 400);
+
+    // Collection has no videos: avoid requesting video-only timing fields.
+    if (!this.supportsVideos) {
+      return 0;
+    }
 
     const key = String(imgId);
     const now = Date.now();
@@ -138,15 +144,22 @@ export class VisioneAPI {
     return `${this.videosBase}/${vid}.mp4`;
   }
 
+  setSupportsVideos(enabled) {
+    this.supportsVideos = Boolean(enabled);
+  }
+
   getThumbnailUrlByImgId(imgId, videoId = '') {
     const rawId = String(imgId || '').trim();
     if (!rawId) return null;
 
-    const hour = String(videoId || '').trim() || (rawId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i)?.[1] || '');
-    const mmss = rawId.match(/^\d{8}_\d{2}(\d{4})_\d{3}(?:\.jpg)?$/i)?.[1] || '';
-    if (!hour || !mmss) return null;
+    const rawVideoId = String(videoId || '').trim();
+    if (rawVideoId) {
+      return `${this.baseUrl}/thumbnails/${rawVideoId}/${rawId}`;
+    }
 
-    return `${this.baseUrl}/thumbnails/${hour}/${hour}-${mmss}.jpg`;
+    const hour = rawId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i)?.[1] || '';
+    if (!hour) return null;
+    return `${this.baseUrl}/thumbnails/${hour}/${rawId}`;
   }
 
 
@@ -234,7 +247,7 @@ export class VisioneAPI {
         model: this.defaultImageModel,
         k: this.defaultSingleK
       },
-      urls_to_retrieve: ['images', 'thumbnails', 'videos'],
+      urls_to_retrieve: this.#buildUrlsToRetrieve(),
       metadata_to_retrieve: this.defaultMetadataToRetrieve
     };
     const payloadText = JSON.stringify(payload);
@@ -254,22 +267,44 @@ export class VisioneAPI {
     return data;
   }
 
+  async getElementUrlsBatch(ids = [], what = ['images']) {
+    const normalizedIds = (Array.isArray(ids) ? ids : [ids])
+      .map((v) => String(v || '').trim())
+      .filter(Boolean);
+    if (normalizedIds.length === 0) throw new APIError('ids is required', 400);
+
+    const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
+    if (list.length === 0) throw new APIError('what is required', 400);
+
+    const response = await this.#makeRequest(`${this.baseUrl}/element-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ids: normalizedIds,
+        what: list
+      }),
+      retries: 2
+    });
+
+    const payload = await response.json();
+    if (!Array.isArray(payload)) {
+      throw new APIError('Invalid response from /element-url: expected array', 500);
+    }
+
+    return payload;
+  }
+
   async getElementUrl(id, what = ['images']) {
     if (!id) throw new APIError('id is required', 400);
     const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
     if (list.length === 0) throw new APIError('what is required', 400);
 
-    const params = new URLSearchParams();
-    params.set('id', String(id));
-    list.forEach((w) => params.append('what', w));
-
-    const response = await this.#makeRequest(`${this.baseUrl}/element-url?${params.toString()}`, {
-      retries: 2
-    });
-    return response.json();
+    const rows = await this.getElementUrlsBatch([id], list);
+    const normalizedId = String(id).trim();
+    return rows.find((row) => String(row?.id || '').trim() === normalizedId) || rows[0] || null;
   }
 
-  async getElementUrls(id, what = ['images', 'thumbnails', 'resized-videos-tiny']) {
+  async getElementUrls(id, what = ['images', 'thumbnails']) {
     if (!id) throw new APIError('id is required', 400);
     const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
     if (list.length === 0) throw new APIError('what is required', 400);
@@ -289,9 +324,7 @@ export class VisioneAPI {
 
     const run = (async () => {
       const raw = await this.getElementUrl(id, list);
-      const urls = raw && typeof raw === 'object'
-        ? (raw.urls && typeof raw.urls === 'object' ? raw.urls : raw)
-        : {};
+      const urls = raw && typeof raw === 'object' ? raw : {};
 
       const normalized = {
         images: String(urls.images || '').trim() || null,
@@ -334,7 +367,7 @@ export class VisioneAPI {
 
   // Video Keyframes API
   // Returns Array<{ imgId: string, timestamp: number | null }>
-  // timestamp = video_offset_seconds (seconds from the start of the video).
+  // New API only returns image_name; timestamp is null and may be resolved later.
   async getVideoKeyframes(videoId) {
     if (!videoId) {
       throw new APIError('VideoId is required', 400);
@@ -342,54 +375,30 @@ export class VisioneAPI {
 
     const normalizedVideoId = this.#normalizeVideoId(videoId);
 
-    // New API: /field?select_field=hour_id&select_value=<videoId>&field=content&field=hour_msb_middletime
-    try {
-      const params = new URLSearchParams();
-      params.set('select_field', 'hour_id');
-      params.set('select_value', normalizedVideoId);
-      params.append('field', 'content');
-      params.append('field', 'hour_msb_middletime');
-      params.append('field', 'video_offset_seconds');
+    // New API: /field?select_field=hour_id&select_value=<videoId>&field=image_name
+    const params = new URLSearchParams();
+    params.set('select_field', 'hour_id');
+    params.set('select_value', normalizedVideoId);
+    params.append('field', 'image_name');
 
-      const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
-        retries: 2
-      });
-
-      const data = await response.json();
-
-      if (Array.isArray(data)) {
-        return data
-          .filter((item) => item?.content)
-          .map((item) => {
-            const middle = Number(item.hour_msb_middletime);
-            const offset = Number(item.video_offset_seconds);
-            return {
-              imgId: String(item.content),
-              timestamp: Number.isFinite(middle) && middle >= 0
-                ? middle
-                : (Number.isFinite(offset) && offset >= 0 ? offset : null)
-            };
-          });
-      }
-    } catch {
-      // Fall back to legacy endpoint below.
-    }
-
-    // Legacy fallback for older deployments (returns only imgIds, no timestamp).
-    const legacyUrl = `${this.baseUrl}/core/getAllVideoKeyframes?videoId=${encodeURIComponent(normalizedVideoId)}`;
-    const legacyResponse = await this.#makeRequest(legacyUrl, {
+    const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
       retries: 2
     });
-    const legacyData = await legacyResponse.json();
 
-    if (!Array.isArray(legacyData)) {
-      throw new APIError('Invalid response: expected array', 500);
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new APIError('Invalid response from /field: expected array', 500);
     }
 
-    return legacyData
-      .map((v) => String(v))
-      .filter(Boolean)
-      .map((imgId) => ({ imgId, timestamp: null }));
+    return data
+      .filter((item) => item?.image_name)
+      .map((item) => {
+        return {
+          imgId: String(item.image_name),
+          timestamp: null
+        };
+      });
   }
 
   // Health check API (optional)
@@ -527,7 +536,7 @@ export class VisioneAPI {
 
       return {
         query: singleTextareaNode,
-        urls_to_retrieve: ['images', 'thumbnails', 'videos'],
+        urls_to_retrieve: this.#buildUrlsToRetrieve(),
         metadata_to_retrieve: metadataToRetrieve
       };
     }
@@ -543,7 +552,7 @@ export class VisioneAPI {
         window_seconds: safeTemporalWindowSeconds,
         k: this.defaultAggregatedK
       },
-      urls_to_retrieve: ['images', 'thumbnails', 'videos']
+      urls_to_retrieve: this.#buildUrlsToRetrieve()
     };
 
     const metadataToRetrieve = this.#buildMetadataToRetrieve(temporalQuery.query);
@@ -582,6 +591,12 @@ export class VisioneAPI {
       aggregation_type: 'rrf',
       k: groupK
     };
+  }
+
+  #buildUrlsToRetrieve() {
+    return this.supportsVideos
+      ? ['images', 'thumbnails', 'videos']
+      : ['images', 'thumbnails'];
   }
 
   #expandTextareaToItems(textarea) {
@@ -705,8 +720,6 @@ export class VisioneAPI {
     };
 
     const textShortcuts = {
-      city: 'city',
-      country: 'country',
       semantic: 'semantic_name',
       sem: 'semantic_name',
       semantic_name: 'semantic_name',

@@ -28,6 +28,10 @@ export function resolveRuntimeProfile(collectionName = 'default', competitionNam
 
   const byCollection = runtimeProfiles?.collections?.[collectionKey] || {};
   const byCompetition = runtimeProfiles?.competitions?.[competitionKey] || runtimeProfiles?.competitions?.default || {};
+  const strictUnknownCollectionOverride = (!isObject(byCollection) || Object.keys(byCollection).length === 0)
+    && collectionKey !== 'default'
+    ? { media: { hasVideos: false } }
+    : {};
 
-  return deepMerge(deepMerge(defaults, byCollection), byCompetition);
+  return deepMerge(deepMerge(deepMerge(defaults, byCollection), strictUnknownCollectionOverride), byCompetition);
 }

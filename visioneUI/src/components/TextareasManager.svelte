@@ -134,9 +134,7 @@
     day: 'd',
     hour: 'h',
     semantic_name: 'semantic',
-    heart_rate_bpm: 'hr',
-    country: 'country',
-    city: 'city'
+    heart_rate_bpm: 'hr'
   };
 
   const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'heart_rate_bpm']);
@@ -919,7 +917,7 @@
           name: 'url',
           label: 'Image URL',
           type: 'url',
-          placeholder: 'https://example.com/image.jpg',
+          placeholder: 'https://example.com/image.webp',
           value: '',
           required: true,
           hint: 'Must be a valid image URL'

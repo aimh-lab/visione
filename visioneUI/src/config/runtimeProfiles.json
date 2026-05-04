@@ -1,5 +1,8 @@
 {
   "defaults": {
+    "media": {
+      "hasVideos": true
+    },
     "groupBy": {
       "modes": [
         {
@@ -33,6 +36,9 @@
   },
   "collections": {
     "lsc": {
+      "media": {
+        "hasVideos": false
+      },
       "groupBy": {
         "modes": [
           {
@@ -43,16 +49,6 @@
             "value": "byvideo",
             "label": "By Hour",
             "metadata": "hour_id"
-          },
-          {
-            "value": "bycountry",
-            "label": "By Country",
-            "metadata": "country"
-          },
-          {
-            "value": "bycity",
-            "label": "By City",
-            "metadata": "city"
           },
           {
             "value": "bydate",
@@ -67,9 +63,7 @@
           "day",
           "hour",
           "semantic_name",
-          "heart_rate_bpm",
-          "country",
-          "city"
+          "heart_rate_bpm"
         ]
       },
       "timeBadge": {

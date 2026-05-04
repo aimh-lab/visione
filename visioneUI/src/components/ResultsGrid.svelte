@@ -23,6 +23,7 @@
   export let runtimeProfile = {};
 
   $: activeGroupBy = resolveGroupByConfig(viewMode, runtimeProfile);
+  $: hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
 
   const safeImgId = (value) => String(value || '').trim();
   $: rfPositiveIds = new Set((Array.isArray(rfPositive) ? rfPositive : []).map((item) => safeImgId(item?.imgId)));
@@ -271,6 +272,13 @@
     return value ? `${prefix} ${value}` : prefix;
   }
 
+  function useSlideshowFromProfile() {
+    const hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
+    if (!hasCollectionVideos) return true;
+    const mode = String(runtimeProfile?.videoPlayer?.modal || 'video').trim().toLowerCase();
+    return mode === 'slideshow';
+  }
+
   function getVideoPlayerStartFromProfile(item) {
     if (!item || typeof item !== 'object') return null;
 
@@ -459,7 +467,7 @@
     e.stopPropagation();
     const imgId = getId(item);
     const videoId = getVideoId(item);
-    const startAt = getVideoPlayerStartFromProfile(item);
+    const startAt = useSlideshowFromProfile() ? null : getVideoPlayerStartFromProfile(item);
     dispatch("openVideoPlayer", { img: item, imgId, videoId, startAt });
   }
 
@@ -565,13 +573,14 @@
   }
 
   async function handleContextPreview(e, item) {
+    if (!hasCollectionVideos) return;
     e.preventDefault();
     e.stopPropagation();
     try {
       const imgId = getId(item);
       const videoId = getVideoId(item);
       let timestamp = getVideoPlayerStartFromProfile(item);
-      if (timestamp == null && imgId) {
+      if (timestamp == null && imgId && visioneAPI.supportsVideos) {
         try {
           const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
           const middle = toSecondsValue(metadata?.hour_msb_middletime);
@@ -582,7 +591,7 @@
           // Ignore and keep fallback chain below.
         }
       }
-      if (timestamp == null && imgId) {
+      if (timestamp == null && imgId && visioneAPI.supportsVideos) {
         try {
           const middle = await visioneAPI.getMiddleTimestamp(imgId);
           if (Number.isFinite(middle) && middle >= 0) {
@@ -1129,7 +1138,7 @@
               tabindex="0"
               on:click={() => handleOpen(item)}
               on:keydown={(e) => e.key === 'Enter' && handleOpen(item)}
-              on:contextmenu={(e) => !isSelectionMode && handleContextPreview(e, item)}
+              on:contextmenu={(e) => !isSelectionMode && hasCollectionVideos && handleContextPreview(e, item)}
               on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
               {#if Number(item?.tupleSize || 1) > 1}

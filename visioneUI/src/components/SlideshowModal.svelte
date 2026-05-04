@@ -177,24 +177,22 @@
         : -1;
       currentIndex = startIndex >= 0 ? startIndex : 0;
 
-      const imagePairs = await mapWithConcurrency(
-        initialFrames,
-        KEYFRAME_ELEMENT_URL_CONCURRENCY,
-        async (frame) => {
-          try {
-            const urls = await visioneAPI.getElementUrls(frame.imgId, ["images", "thumbnails"]);
-            const resolvedImage = String(urls?.images || urls?.thumbnails || "").trim() || null;
-            const resolvedThumbnail = String(urls?.thumbnails || urls?.images || "").trim() || null;
-            return [frame.imgId, { imageUrl: resolvedImage, thumbnailUrl: resolvedThumbnail }];
-          } catch {
-            return [frame.imgId, null];
-          }
-        }
-      );
+      const imgIds = initialFrames.map((frame) => frame.imgId);
+      const urlRows = await visioneAPI.getElementUrlsBatch(imgIds, ["images", "thumbnails"]);
 
       if (token !== loadToken) return;
 
-      const imageMap = new Map(imagePairs.filter(([, value]) => !!value));
+      const imageMap = new Map(
+        (Array.isArray(urlRows) ? urlRows : [])
+          .map((row) => {
+            const id = String(row?.id || "").trim();
+            if (!id) return null;
+            const resolvedImage = String(row?.images || row?.thumbnails || "").trim() || null;
+            const resolvedThumbnail = String(row?.thumbnails || row?.images || "").trim() || null;
+            return [id, { imageUrl: resolvedImage, thumbnailUrl: resolvedThumbnail }];
+          })
+          .filter(Boolean)
+      );
       frames = initialFrames.map((frame) => ({
         ...frame,
         imageUrl: imageMap.get(frame.imgId)?.imageUrl || frame.imageUrl,

@@ -560,7 +560,7 @@
       );
       if (alreadyHasQueryImage) return;
 
-      const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+      const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
       const videoId = hourMatch?.[1] || rawImgId.split('-')[0] || '';
       if (!videoId) return;
 
@@ -1144,20 +1144,25 @@
 
     const init = async () => {
       uiStore.actions.hydrateFromSettings();
+      // Strict startup: keep video URLs disabled until discovery resolves a profile.
+      visioneAPI.setSupportsVideos(false);
       await vbsLogger.initSession(getLoggerContext());
       await refreshLogCount();
       uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
       await tick();
       clearInitialSidebarBootstrap();
 
-      // Load available models from /discovery (non-blocking)
-      visioneAPI.discovery().then((data) => {
+      // Load /discovery before any initial search so runtime profile is stable.
+      try {
+        const data = await visioneAPI.discovery();
         lastDiscoveryPayload = data;
+
         const discoveredModels = extractAvailableModelsFromDiscovery(data);
         if (discoveredModels.length > 0) {
           availableModels = discoveredModels;
           alignModelDefaultsFromDiscovery();
         }
+
         let discoveredCollection = activeCollectionName;
         if (typeof data?.name === 'string' && data.name.trim()) {
           discoveredCollection = data.name.trim().toLowerCase();
@@ -1168,9 +1173,11 @@
           discoveredCollection,
           get(uiStore).dresChallengeType || 'default'
         );
-
+        visioneAPI.setSupportsVideos(profileForMetadata?.media?.hasVideos !== false);
         configureSearchMetadataFromDiscovery(data, profileForMetadata);
-      }).catch(() => {});
+      } catch {
+        // Keep strict startup behavior when discovery is unavailable.
+      }
 
       const urlState = deserializeFromURL();
       if (Object.keys(urlState).length > 0) {
@@ -1586,12 +1593,15 @@
   function extractVideoIdFromImageId(imgId) {
     const raw = String(imgId || '').trim();
     if (!raw) return '';
-    const hourMatch = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.jpg)?$/i);
+    const hourMatch = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
     if (hourMatch) return hourMatch[1];
     return raw.split('-')[0] || '';
   }
 
   function useSlideshowModal() {
+    const hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
+    if (!hasCollectionVideos) return true;
+
     const overrideMode = String($uiStore.videoPlayerModalMode || 'profile').trim().toLowerCase();
     if (overrideMode === 'slideshow') return true;
     if (overrideMode === 'video') return false;

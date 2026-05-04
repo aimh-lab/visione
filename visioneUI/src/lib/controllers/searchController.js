@@ -38,7 +38,7 @@ export function createSearchController({
     if (!value) return false;
 
     // Keep user-authored shortcut filters untouched in the visible query text.
-    return /(^|\s)(date|type|city|country|semantic|sem|semantic_name|new_semantic_name|ns|y|year|m|month|d|day|h|hour|hr|heart_rate_bpm):/i.test(value);
+    return /(^|\s)(date|type|semantic|sem|semantic_name|new_semantic_name|ns|y|year|m|month|d|day|h|hour|hr|heart_rate_bpm):/i.test(value);
   }
 
   async function maybeTranslateTextareas(rawTextareas) {
