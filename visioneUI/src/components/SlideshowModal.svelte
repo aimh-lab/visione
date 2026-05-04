@@ -8,6 +8,7 @@
   export let videoId = "";
   export let selectedImgId = "";
   export let title = "";
+  export let modalScale = 100;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
   export let highlightedKeyframes = [];
@@ -412,6 +413,9 @@
   $: activeFrame = frames[currentIndex] || null;
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? "KIS").toUpperCase() !== "Q&A";
+  $: safeModalScale = Math.min(160, Math.max(80, Number(modalScale) || 100));
+  $: modalWidth = `min(98vw, max(42rem, calc(72rem * ${safeModalScale / 100})))`;
+  $: modalHeight = `min(98vh, max(34rem, calc(82vh * ${safeModalScale / 100})))`;
   $: timelineProgress = frames.length > 1 ? (currentIndex / (frames.length - 1)) * 100 : 0;
   $: highlightedSet = new Set((Array.isArray(highlightedKeyframes) ? highlightedKeyframes : []).map((entry) => typeof entry === "string" ? entry : entry?.imgId).filter(Boolean));
   $: rankMap = new Map(
@@ -478,7 +482,10 @@
       aria-label="Close keyframe slideshow"
     ></button>
 
-    <div class="relative z-[1001] w-full max-w-6xl max-h-[92vh] bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+    <div
+      class="relative z-[1001] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
+      style="width: {modalWidth}; height: {modalHeight};"
+    >
       <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/80">
         <div class="min-w-0">
           <h3 class="text-sm font-semibold text-slate-100 truncate">{resolvedTitle}</h3>
@@ -496,7 +503,7 @@
         </button>
       </div>
 
-      <div class="flex-1 min-h-[360px] bg-slate-950 relative">
+      <div class="flex-1 min-h-0 bg-slate-950 relative">
         {#if loading}
           <div class="absolute inset-0 flex items-center justify-center text-slate-300 text-sm">Loading keyframes...</div>
         {:else if error}

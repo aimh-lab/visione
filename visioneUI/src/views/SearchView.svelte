@@ -59,6 +59,7 @@
   export let justifyResultRows = false;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let imageModalScale = 100;
   export let runtimeProfile = {};
   export let submittedAnswers: Array<Record<string, unknown>> = [];
   export let submitTextAnswer = (_text: string) => {};
@@ -384,6 +385,7 @@
   isOpen={isModalOpen}
   image={selectedImage as any}
   total={totalImages}
+  modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
   on:close={onCloseModal}

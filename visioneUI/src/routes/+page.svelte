@@ -2351,6 +2351,7 @@ function handleViewSubmitted() {
   videoId={slideshowPlayer.videoId}
   selectedImgId={slideshowPlayer.selectedImgId}
   title={slideshowPlayer.title}
+  modalScale={$uiStore.slideshowModalScale}
   highlightedKeyframes={slideshowPlayer.highlightedKeyframes}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
@@ -2437,6 +2438,8 @@ function handleViewSubmitted() {
   showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}
   videoPlayerModalMode={$uiStore.videoPlayerModalMode}
+  imageModalScale={$uiStore.imageModalScale}
+  slideshowModalScale={$uiStore.slideshowModalScale}
   modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
   defaultTextModel={$uiStore.defaultTextModel}
   defaultImageModel={$uiStore.defaultImageModel}
@@ -2516,6 +2519,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
         submitTextAnswer={submitTextAnswer}
 
@@ -2628,6 +2632,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
@@ -2663,6 +2668,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
