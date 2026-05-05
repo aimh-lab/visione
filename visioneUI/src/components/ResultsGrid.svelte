@@ -16,6 +16,7 @@
   export let virtualizeRows = true;
   export let virtualizeThreshold = 40;
   export let justifyResultRows = false;
+  export let tupleIndicatorMode = "badge+bar";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
   export let rfPositive = [];
@@ -80,8 +81,6 @@
     '#a855f7'
   ];
 
-  const TUPLE_BORDER_STYLES = ['solid', 'dashed', 'dotted', 'double'];
-
   function getTupleSignature(item) {
     const tuple = Array.isArray(item?.tupleItems) ? item.tupleItems : [];
     const ids = tuple
@@ -111,17 +110,29 @@
     return TUPLE_GROUP_COLORS[idx];
   }
 
-  function getTupleBorderStyle(item) {
-    const tupleSize = Number(item?.tupleSize || 1);
-    if (tupleSize <= 1) return '';
+  function hexToRgba(hexColor, alpha) {
+    const hex = String(hexColor || '').replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) return `rgba(148,163,184,${alpha})`;
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function getTupleAccentStyle(item) {
     const color = getTupleGroupColor(item);
     if (!color) return '';
+    return `background-color: ${hexToRgba(color, 0.78)};`;
+  }
 
-    const explicitKey = String(item?.tupleGroupKey || '').trim();
-    const signature = explicitKey || getTupleSignature(item) || String(getIndex(item) || '0');
-    const borderStyle = TUPLE_BORDER_STYLES[hashString(signature) % TUPLE_BORDER_STYLES.length] || 'solid';
-
-    return `border: 6px ${borderStyle} ${color};`;
+  function getTupleBadgeStyle(item) {
+    const color = getTupleGroupColor(item);
+    if (!color) return '';
+    return [
+      `background-color: ${hexToRgba(color, 0.16)};`,
+      `border-color: ${hexToRgba(color, 0.45)};`,
+      `color: ${hexToRgba(color, 0.96)};`
+    ].join(' ');
   }
 
   function getTupleA11yLabel(item) {
@@ -130,6 +141,14 @@
     const rank = Number.isFinite(Number(item?.tupleRank)) ? Number(item.tupleRank) + 1 : '?';
     const member = Number.isFinite(Number(item?.tupleMemberIndex)) ? Number(item.tupleMemberIndex) + 1 : '?';
     return `T${rank} ${member}/${tupleSize}`;
+  }
+
+  function showTupleBar() {
+    return tupleIndicatorMode === 'badge+bar';
+  }
+
+  function showTupleBadge() {
+    return tupleIndicatorMode === 'badge+bar' || tupleIndicatorMode === 'badge';
   }
 
   let fetchedTimecodes = new Map();
@@ -1142,10 +1161,14 @@
               on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
               {#if Number(item?.tupleSize || 1) > 1}
-                <div class="absolute inset-0 z-5 rounded-xl pointer-events-none" style={getTupleBorderStyle(item)}></div>
-                <div class="absolute left-1.5 bottom-1.5 z-30 pointer-events-none rounded-md border border-white/40 bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white">
-                  {getTupleA11yLabel(item)}
-                </div>
+                {#if showTupleBar()}
+                  <div class="absolute left-0 top-0 bottom-0 z-5 w-1.5 rounded-l-xl pointer-events-none" style={getTupleAccentStyle(item)}></div>
+                {/if}
+                {#if showTupleBadge()}
+                  <div class="absolute left-2 top-2 z-30 pointer-events-none rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide backdrop-blur-sm" style={getTupleBadgeStyle(item)}>
+                    {getTupleA11yLabel(item)}
+                  </div>
+                {/if}
               {/if}
 
               <!-- Badge in selection mode -->

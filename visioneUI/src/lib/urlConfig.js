@@ -22,15 +22,3 @@ export const VISIONE_VIDEOS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_VISIONE_VIDEOS_URL) ||
   `${VISIONE_BASE_URL}/videos`;
 
-/**
- * Build a tiny-frame thumbnail URL for the given video/image IDs.
- * @param {string} videoId
- * @param {string} imgId
- * @returns {string}
- */
-export function tinyFrameUrl(videoId, imgId) {
-  const rawVideoId = String(videoId || '').trim();
-  const rawImgId = String(imgId || '').trim();
-  if (!rawVideoId || !rawImgId) return '';
-  return `${VISIONE_BASE_URL}/frames/tiny/${rawVideoId}/${rawImgId}`;
-}

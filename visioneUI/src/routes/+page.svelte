@@ -36,7 +36,6 @@
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
-  import { tinyFrameUrl } from '$lib/urlConfig.js';
 
   import { onMount, onDestroy, tick } from "svelte";
 
@@ -563,10 +562,11 @@
       const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
       const videoId = hourMatch?.[1] || rawImgId.split('-')[0] || '';
       if (!videoId) return;
+      const fallbackThumbUrl = visioneAPI.getThumbnailUrlByImgId(rawImgId, videoId);
 
       nextTextareaImages[idx] = [
         {
-          url: tinyFrameUrl(videoId, rawImgId),
+          url: fallbackThumbUrl || '',
           name: rawImgId,
           type: 'result',
           imgId: rawImgId
@@ -2425,6 +2425,7 @@ function handleViewSubmitted() {
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}
   justifyResultRows={$uiStore.justifyResultRows}
+  tupleIndicatorMode={$uiStore.tupleIndicatorMode}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -2516,6 +2517,7 @@ function handleViewSubmitted() {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         justifyResultRows={$uiStore.justifyResultRows}
+        tupleIndicatorMode={$uiStore.tupleIndicatorMode}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
@@ -2629,6 +2631,7 @@ function handleViewSubmitted() {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         justifyResultRows={$uiStore.justifyResultRows}
+        tupleIndicatorMode={$uiStore.tupleIndicatorMode}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
@@ -2665,6 +2668,7 @@ function handleViewSubmitted() {
         virtualizationEnabled={$uiStore.virtualizationEnabled}
         virtualizationThreshold={$uiStore.virtualizationThreshold}
         justifyResultRows={$uiStore.justifyResultRows}
+        tupleIndicatorMode={$uiStore.tupleIndicatorMode}
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}

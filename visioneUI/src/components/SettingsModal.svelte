@@ -11,6 +11,7 @@
   export let cacheEnabled = true;
   export let dedupeResults = true;
   export let virtualizationEnabled = true;
+  export let tupleIndicatorMode = 'badge+bar';
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
   export let dresChallengeType = 'KIS';
@@ -98,6 +99,7 @@
       cacheEnabled,
       dedupeResults,
       justifyResultRows,
+      tupleIndicatorMode,
       videoBadgeOrientation,
       virtualizationEnabled,
       virtualizationThreshold,
@@ -181,6 +183,9 @@
     const safeDefaultImageModel = imageModelOptions.includes(safeDefaultImageModelRaw)
       ? safeDefaultImageModelRaw
       : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
+    const safeTupleIndicatorMode = ['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)
+      ? local.tupleIndicatorMode
+      : 'badge+bar';
     const currentTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
     const safeTheme = themeTouched
       ? (['default', 'dark', 'light'].includes(local.theme) ? local.theme : currentTheme)
@@ -194,6 +199,7 @@
       cacheEnabled: !!local.cacheEnabled,
       dedupeResults: !!local.dedupeResults,
       justifyResultRows: !!local.justifyResultRows,
+      tupleIndicatorMode: safeTupleIndicatorMode,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
@@ -443,6 +449,20 @@
               >
                 <option value="vertical">Vertical</option>
                 <option value="horizontal">Horizontal</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-tuple-indicator-mode" class="ui-settings-label text-sm font-medium text-gray-700">Tuple indicator</label>
+              <select
+                id="settings-tuple-indicator-mode"
+                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.tupleIndicatorMode}
+                on:change={() => save()}
+              >
+                <option value="badge+bar">Badge + side bar</option>
+                <option value="badge">Badge only</option>
+                <option value="none">None</option>
               </select>
             </div>
 

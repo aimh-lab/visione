@@ -1,5 +1,4 @@
 import { findResultsArray, extractImageInfo } from "../utils/results";
-import { tinyFrameUrl } from '$lib/urlConfig.js';
 
 function normalizeTupleArray(item) {
   if (!Array.isArray(item)) return null;
@@ -138,7 +137,7 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
     const explicitThumb = typeof item === 'object' && item
       ? String(item.thumbnailUrl || item.imageUrl || item.url || '').trim()
       : '';
-    const url = explicitThumb || tinyFrameUrl(vid, rawImgId);
+    const url = explicitThumb || null;
 
     const rawTs = typeof item === 'object' && item ? Number(item.timestamp) : NaN;
     const timestamp = Number.isFinite(rawTs) ? rawTs : null;

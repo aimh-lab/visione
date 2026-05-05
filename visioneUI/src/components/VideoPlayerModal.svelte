@@ -2,7 +2,6 @@
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { focusTrap, tooltip } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
-  import { tinyFrameUrl } from '$lib/urlConfig.js';
 
   type HighlightedInput = string | { imgId: string; rank?: number };
   type Keyframe = {
@@ -338,7 +337,7 @@
           ? entry.timestamp
           : (index / Math.max(1, entries.length)) * fallbackDuration,
         thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, vid)
-          || tinyFrameUrl(vid, String(entry.imgId))
+          || ''
       }));
 
       // Show timeline immediately with positions from epochs.

@@ -10,6 +10,7 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
+  export let tupleIndicatorMode = 'badge+bar';
   export let showSubmitUI = false;
   export let challengeType = "KIS";
   export let rfPositive = [];
@@ -31,6 +32,7 @@
   virtualizeRows={virtualizationEnabled}
   virtualizeThreshold={virtualizationThreshold}
   {justifyResultRows}
+  {tupleIndicatorMode}
   {showSubmitUI}
   {challengeType}
   {rfPositive}
