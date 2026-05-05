@@ -47,6 +47,40 @@
   let frameStepInterval: ReturnType<typeof setInterval> | undefined;
   const FRAME_STEP_INITIAL_DELAY = 400; // ms before auto-repeat starts
   const FRAME_STEP_REPEAT_RATE = 80;    // ms between repeats
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let dragPointerId: number | null = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragBaseX = 0;
+  let dragBaseY = 0;
+
+  function isDragHandleTarget(target: EventTarget | null) {
+    const el = target as HTMLElement | null;
+    return !el?.closest?.("button, input, select, textarea, a, [role='button']");
+  }
+
+  function startDrag(event: PointerEvent) {
+    if (!isDragHandleTarget(event.target)) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragBaseX = dragOffsetX;
+    dragBaseY = dragOffsetY;
+    (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent) {
+    if (dragPointerId !== event.pointerId) return;
+    dragOffsetX = dragBaseX + (event.clientX - dragStartX);
+    dragOffsetY = dragBaseY + (event.clientY - dragStartY);
+  }
+
+  function endDrag(event: PointerEvent) {
+    if (dragPointerId !== event.pointerId) return;
+    (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+    dragPointerId = null;
+  }
 
   function onKeyDown(e: KeyboardEvent) {
     if (!isOpen) return;
@@ -108,6 +142,12 @@
       stopFrameStep();
     }
   });
+
+  $: if (!isOpen) {
+    dragOffsetX = 0;
+    dragOffsetY = 0;
+    dragPointerId = null;
+  }
 
   function onLoaded() {
     if (!videoEl) return;
@@ -619,10 +659,16 @@
       on:click={() => dispatch("close")}
       aria-label="Close video player modal"
     ></button>
-    <div class="relative bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]">
+    <div class="relative bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
       
       <!-- Header -->
-      <div class="px-4 py-3 bg-gray-800 rounded-t-xl border-b border-gray-700 flex items-center justify-between">
+      <div
+        class="px-4 py-3 bg-gray-800 rounded-t-xl border-b border-gray-700 flex items-center justify-between cursor-move select-none touch-none"
+        on:pointerdown={startDrag}
+        on:pointermove={moveDrag}
+        on:pointerup={endDrag}
+        on:pointercancel={endDrag}
+      >
         <div class="flex items-center space-x-3">
           <svg class="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="5 3 19 12 5 21 5 3"/>

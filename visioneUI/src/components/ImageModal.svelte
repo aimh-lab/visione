@@ -28,6 +28,40 @@
     dispatch("openVideoPlayer", { imgId: image?.imgId, videoId });
   };
 
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let dragPointerId = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragBaseX = 0;
+  let dragBaseY = 0;
+
+  function isDragHandleTarget(target) {
+    return !target?.closest?.("button, input, select, textarea, a, [role='button']");
+  }
+
+  function startDrag(event) {
+    if (!isDragHandleTarget(event.target)) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragBaseX = dragOffsetX;
+    dragBaseY = dragOffsetY;
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+  }
+
+  function moveDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    dragOffsetX = dragBaseX + (event.clientX - dragStartX);
+    dragOffsetY = dragBaseY + (event.clientY - dragStartY);
+  }
+
+  function endDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    event.currentTarget?.releasePointerCapture?.(event.pointerId);
+    dragPointerId = null;
+  }
+
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
   $: safeModalScale = Math.min(400, Math.max(80, Math.round(Number(modalScale) || 160)));
@@ -49,11 +83,14 @@
   $: modalImageId = String(image?.imgId || "").trim();
   $: metadataEntries = buildMetadataEntries(metadataFields, metadataValues);
   $: tupleMembers = normalizeTupleItems(image?.tupleItems);
-  $: hasTupleMembers = tupleMembers.length > 0;
+  $: hasTupleMembers = tupleMembers.length > 1;
 
   $: if (!isOpen) {
     metadataLoading = false;
     metadataError = "";
+    dragOffsetX = 0;
+    dragOffsetY = 0;
+    dragPointerId = null;
   }
 
   $: if (isOpen && modalImageId && loadedMetadataImageId !== modalImageId) {
@@ -256,10 +293,16 @@
     <!-- Modal -->
     <div
       class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
-      style="width: {modalWidth}; height: {modalHeight};"
+      style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <!-- Header -->
-      <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white">
+      <div
+        class="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-b from-gray-50 to-white cursor-move select-none touch-none"
+        on:pointerdown={startDrag}
+        on:pointermove={moveDrag}
+        on:pointerup={endDrag}
+        on:pointercancel={endDrag}
+      >
         <div class="flex items-center space-x-4">
           <h3 class="text-xl font-bold text-gray-800">{image?.title ?? "Frame Details"}</h3>
         </div>
@@ -277,12 +320,13 @@
 
       <!-- Content: grid 2 colonne -->
       <div class="flex-grow overflow-auto grid items-start md:grid-cols-2 gap-6 p-6">
-        <!-- Box immagine con overlay buttons (stile ResultsGrid) -->
-        <div 
-          bind:this={imageContainer}
-          class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden"
-          style="min-height: {previewHeight};"
-        >
+        <div class="space-y-2">
+          <!-- Box immagine con overlay buttons (stile ResultsGrid) -->
+          <div 
+            bind:this={imageContainer}
+            class="group relative bg-gray-900 rounded-xl flex items-center justify-center overflow-hidden"
+            style="min-height: {previewHeight};"
+          >
           {#if modalImageUrl}
             <img 
               src={modalImageUrl}
@@ -427,37 +471,15 @@
               <p class="text-sm mt-1">Frame #{currentIndex + 1}</p>
             </div>
           {/if}
+          </div>
+
+          <div class="px-1 text-sm text-gray-600">
+            <span class="font-semibold text-gray-800">{currentIndex + 1} / {total}</span>
+          </div>
         </div>
         
         <!-- Info column -->
-        <div class="space-y-4">
-          <!-- Details -->
-          <div>
-            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Details</h4>
-            <div class="space-y-3 text-sm">
-              <div class="flex items-center">
-                <span class="w-28 text-gray-500">Position:</span>
-                <span class="font-semibold text-gray-800">{currentIndex + 1} / {total}</span>
-              </div>
-              <div class="flex items-start">
-                <span class="w-28 text-gray-500 pt-1">Image ID:</span>
-                <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200 break-all flex-1">
-                  {image?.imgId}
-                </span>
-              </div>
-              <div class="flex items-start">
-                <span class="w-28 text-gray-500 pt-1">Video ID:</span>
-                <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                  {image?.videoId}
-                </span>
-              </div>
-              <div class="flex items-start">
-                <span class="w-28 text-gray-500 pt-1">Tuple size:</span>
-                <span class="font-semibold text-gray-800">{hasTupleMembers ? tupleMembers.length : 1}</span>
-              </div>
-            </div>
-          </div>
-
+        <div class="flex flex-col gap-4 min-h-0 h-full">
           {#if hasTupleMembers}
             <div>
               <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Temporal Tuple</h4>
@@ -484,8 +506,7 @@
           {/if}
 
           <!-- Metadata -->
-          <div>
-            <h4 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Metadata</h4>
+          <div class="flex-1 min-h-0 flex flex-col">
 
             {#if metadataLoading}
               <div class="border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
@@ -500,8 +521,8 @@
                 No metadata available for this frame.
               </div>
             {:else}
-              <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <div class="max-h-64 overflow-auto divide-y divide-gray-100">
+              <div class="border border-gray-200 rounded-lg overflow-hidden flex-1 min-h-0">
+                <div class="h-full overflow-auto divide-y divide-gray-100">
                   {#each metadataEntries as entry}
                     <div class="grid grid-cols-[minmax(0,150px)_1fr] gap-3 px-3 py-2 text-xs">
                       <div class="font-mono text-gray-500 break-all">{entry.key}</div>

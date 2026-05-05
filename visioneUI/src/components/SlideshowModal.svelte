@@ -27,6 +27,13 @@
   let keyframeStripEl = null;
   let hoveredIndex = null;
   let hoveredFrame = null;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let dragPointerId = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragBaseX = 0;
+  let dragBaseY = 0;
 
   const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
   const SLIDESHOW_SPEED_OPTIONS = [50, 100, 200, 300, 400];
@@ -369,6 +376,32 @@
     dispatch("close");
   }
 
+  function isDragHandleTarget(target) {
+    return !target?.closest?.("button, input, select, textarea, a, [role='button']");
+  }
+
+  function startDrag(event) {
+    if (!isDragHandleTarget(event.target)) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragBaseX = dragOffsetX;
+    dragBaseY = dragOffsetY;
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+  }
+
+  function moveDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    dragOffsetX = dragBaseX + (event.clientX - dragStartX);
+    dragOffsetY = dragBaseY + (event.clientY - dragStartY);
+  }
+
+  function endDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    event.currentTarget?.releasePointerCapture?.(event.pointerId);
+    dragPointerId = null;
+  }
+
   function onKeyDown(event) {
     if (!isOpen) return;
 
@@ -437,6 +470,9 @@
     currentIndex = 0;
     loadedVideoId = "";
     isAutoPlaying = true;
+    dragOffsetX = 0;
+    dragOffsetY = 0;
+    dragPointerId = null;
     stopAutoPlay();
   }
 
@@ -487,9 +523,15 @@
 
     <div
       class="relative z-[1001] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
-      style="width: {modalWidth}; height: {modalHeight};"
+      style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
-      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/80">
+      <div
+        class="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/80 cursor-move select-none touch-none"
+        on:pointerdown={startDrag}
+        on:pointermove={moveDrag}
+        on:pointerup={endDrag}
+        on:pointercancel={endDrag}
+      >
         <div class="min-w-0">
           <h3 class="text-sm font-semibold text-slate-100 truncate">{resolvedTitle}</h3>
           <p class="text-xs text-slate-400">Use left/right arrows to navigate keyframes</p>
