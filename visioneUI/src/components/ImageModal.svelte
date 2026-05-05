@@ -146,8 +146,7 @@
 
   function toSelectedFramesUrl(rawUrl) {
     const url = String(rawUrl || "").trim();
-    if (!url) return "";
-    return url.replace(/\/(thumbnails)(?=\/)/i, "/selected-frames");
+    return url;
   }
 
   function toNumberOrNull(value) {

@@ -2,7 +2,6 @@
   import { createEventDispatcher, onDestroy, tick } from "svelte";
   import { focusTrap } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
-  import { tinyFrameUrl } from "$lib/urlConfig.js";
 
   export let isOpen = false;
   export let videoId = "";
@@ -165,8 +164,8 @@
 
       const initialFrames = sortedEntries.map((entry) => ({
         ...entry,
-        thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || tinyFrameUrl(normalizedVideoId, entry.imgId),
-        imageUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || tinyFrameUrl(normalizedVideoId, entry.imgId)
+        thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || null,
+        imageUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || null
       }));
 
       frames = initialFrames;

@@ -1,6 +1,4 @@
 // utils/results.ts
-import { tinyFrameUrl } from '$lib/urlConfig.js';
-
 export function findResultsArray(obj: any): any[] | null {
   if (!obj) return null;
   if (Array.isArray(obj)) return obj;
@@ -28,7 +26,7 @@ export function extractImageInfo(item: any, i: number) {
     const imgId = rawImg || null;
     const match = rawImg.match(/-(\d+)-(\d+)(?:\.[^./]+)?$/i);
     const videoId = match?.[1] ?? (imgId ? imgId.split('-')[0] : null);
-    const url = videoId && rawImg ? tinyFrameUrl(String(videoId), rawImg) : null;
+    const url = null;
 
     return {
       index: i,
@@ -116,7 +114,7 @@ export function extractImageInfo(item: any, i: number) {
   const thumbnailUrl = String(pick(metadata, 'thumbnails', 'thumbnail_url', 'thumbnailUrl') || '').trim() || null;
   const videoUrl = String(pick(metadata, 'videos', 'video_url', 'videoUrl') || '').trim() || null;
   const hourId = String(pick(metadata, 'hour_id', 'hourId') || '').trim() || null;
-  const url = thumbnailUrl || imageUrl || (videoId && imgId ? tinyFrameUrl(videoId, imgId) : null);
+  const url = thumbnailUrl || imageUrl || null;
   const timestamp = pick(metadata, 'epoch', 'timestamp', 'time') ?? baseItem.timestamp ?? baseItem.date ?? null;
 
   return {

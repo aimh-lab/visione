@@ -22,6 +22,7 @@ const DEFAULT = {
   cacheEnabled: true,
   dedupeResults: true,
   justifyResultRows: false,
+  tupleIndicatorMode: 'badge+bar',
   videoBadgeOrientation: 'vertical',
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
@@ -76,6 +77,12 @@ function normalizeSidebarWidth(value, fallback = 18) {
   return clampSidebarWidthVw(numeric, fallback);
 }
 
+function normalizeTupleIndicatorMode(value, fallback = 'badge+bar') {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'badge' || raw === 'none' || raw === 'badge+bar') return raw;
+  return fallback;
+}
+
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
 
@@ -105,6 +112,7 @@ function createUIStore() {
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
+        tupleIndicatorMode: normalizeTupleIndicatorMode(s.tupleIndicatorMode, u.tupleIndicatorMode),
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
@@ -149,6 +157,7 @@ function createUIStore() {
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
         justifyResultRows: DEFAULT.justifyResultRows,
+        tupleIndicatorMode: DEFAULT.tupleIndicatorMode,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
@@ -251,6 +260,7 @@ function createUIStore() {
         const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(patch.videoBadgeOrientation)
           ? patch.videoBadgeOrientation
           : u.videoBadgeOrientation;
+        const safeTupleIndicatorMode = normalizeTupleIndicatorMode(patch.tupleIndicatorMode, u.tupleIndicatorMode);
         const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
@@ -278,6 +288,7 @@ function createUIStore() {
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
           justifyResultRows: patch.justifyResultRows ?? u.justifyResultRows,
+          tupleIndicatorMode: safeTupleIndicatorMode,
           videoBadgeOrientation: safeVideoBadgeOrientation,
           virtualizationEnabled: patch.virtualizationEnabled ?? u.virtualizationEnabled,
           virtualizationThreshold: patch.virtualizationThreshold ?? u.virtualizationThreshold,
@@ -310,6 +321,7 @@ function createUIStore() {
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,
           justifyResultRows: nextState.justifyResultRows,
+          tupleIndicatorMode: nextState.tupleIndicatorMode,
           videoBadgeOrientation: nextState.videoBadgeOrientation,
           virtualizationEnabled: nextState.virtualizationEnabled,
           virtualizationThreshold: nextState.virtualizationThreshold,
