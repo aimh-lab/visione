@@ -64,9 +64,10 @@
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
-  $: safeModalScale = Math.min(400, Math.max(80, Math.round(Number(modalScale) || 160)));
-  $: shellWidthPx = Math.min(1200, Math.max(760, Math.round(safeModalScale * 2.05)));
-  $: shellHeightPx = Math.min(920, Math.max(430, Math.round(safeModalScale + 260)));
+  $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 160));
+  // Give the preview column enough width to preserve target height similarly to slideshow sizing.
+  $: shellWidthPx = Math.max(900, Math.round(safeModalScale * 2.8));
+  $: shellHeightPx = Math.max(430, Math.round(safeModalScale + 260));
   $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
   $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
   $: previewHeight = `${safeModalScale}px`;
@@ -319,7 +320,7 @@
       </div>
 
       <!-- Content: grid 2 colonne -->
-      <div class="flex-grow overflow-auto grid items-start md:grid-cols-2 gap-6 p-6">
+      <div class="flex-grow overflow-auto grid items-start md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6 p-6">
         <div class="space-y-2">
           <!-- Box immagine con overlay buttons (stile ResultsGrid) -->
           <div 
