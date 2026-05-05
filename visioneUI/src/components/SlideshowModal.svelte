@@ -445,10 +445,10 @@
   $: activeFrame = frames[currentIndex] || null;
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
   $: allowFrameSubmit = showSubmitUI && String(challengeType ?? "KIS").toUpperCase() !== "Q&A";
-  $: safeModalScale = Math.min(400, Math.max(80, Math.round(Number(modalScale) || 160)));
-  $: shellWidthPx = Math.min(1200, Math.max(760, Math.round(safeModalScale * 2.0)));
-  $: stageHeightPx = Math.min(560, Math.max(180, safeModalScale + 36));
-  $: shellHeightPx = Math.min(900, Math.max(360, stageHeightPx + 190));
+  $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 160));
+  $: shellWidthPx = Math.max(760, Math.round(safeModalScale * 2.0));
+  $: stageHeightPx = Math.max(180, safeModalScale + 36);
+  $: shellHeightPx = Math.max(360, stageHeightPx + 190);
   $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
   $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
   $: previewHeight = `${safeModalScale}px`;

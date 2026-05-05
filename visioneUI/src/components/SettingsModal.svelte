@@ -173,8 +173,8 @@
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
-    const safeImageModalScale = Math.min(400, Math.max(80, Math.round(Number(local.imageModalScale) || 160)));
-    const safeSlideshowModalScale = Math.min(400, Math.max(80, Math.round(Number(local.slideshowModalScale) || 160)));
+    const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || 160));
+    const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || 160));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
     const safeDefaultTextModel = textModelOptions.includes(safeDefaultTextModelRaw)
@@ -566,17 +566,16 @@
                   id="settings-image-modal-scale"
                   type="number"
                   min="80"
-                  max="400"
                   step="10"
                   class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.imageModalScale}
                   on:input={() => save()}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase image modal size" on:click={() => adjustNumber('imageModalScale', 10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase image modal size" on:click={() => adjustNumber('imageModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease image modal size" on:click={() => adjustNumber('imageModalScale', -10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease image modal size" on:click={() => adjustNumber('imageModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
@@ -590,17 +589,16 @@
                   id="settings-slideshow-modal-scale"
                   type="number"
                   min="80"
-                  max="400"
                   step="10"
                   class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.slideshowModalScale}
                   on:input={() => save()}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, 400)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>

@@ -48,12 +48,7 @@ function normalizeModalSizePx(value, fallback = 160) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
 
-  // Temporary migration compatibility: values from the previous wide-pixel model.
-  if (numeric > 400) {
-    return Math.min(400, Math.max(80, Math.round(numeric / 10)));
-  }
-
-  return Math.min(400, Math.max(80, Math.round(numeric)));
+  return Math.max(80, Math.round(numeric));
 }
 
 function clampSidebarWidthVw(value, fallback = 18) {
