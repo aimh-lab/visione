@@ -27,9 +27,8 @@ from __future__ import annotations
 import base64
 import json
 import operator
-import re
-import asyncio
-import uuid
+import os
+import tempfile
 from typing import Any, Dict, List, Literal, Optional, Annotated
 
 import aiohttp
@@ -46,6 +45,39 @@ from typing_extensions import TypedDict
 from endpoints.search import convert_filters_to_pg
 
 router = APIRouter()
+
+# ── Sandbox runner (used by search_and_analyze_frames) ──────────────────────────────────
+_SANDBOX_SESSIONS_DIR = "/tmp/pyodide_sessions"
+_sandbox_runner: Optional[Any] = None  # async (code: str) -> str
+
+
+def _init_sandbox_runner() -> Any:
+    """Return the sandbox execution function, initialising it on first call.
+
+    Tries ``PyodideSandbox`` (requires Deno); falls back to a restricted
+    ``exec()`` in a thread-pool executor when Deno is not available.
+    """
+    global _sandbox_runner
+    if _sandbox_runner is not None:
+        return _sandbox_runner
+
+    from langchain_sandbox import PyodideSandbox  # noqa: PLC0415
+
+    _sandbox = PyodideSandbox(
+        allow_net=True,
+        sessions_dir=_SANDBOX_SESSIONS_DIR,
+    )
+
+    async def _run_pyodide(code: str) -> str:
+        result = await _sandbox.execute(code)
+        if result.stderr:
+            return json.dumps({"error": result.stderr})
+        return result.stdout
+
+    _sandbox_runner = _run_pyodide
+    print("[QA] Sandbox: PyodideSandbox (Deno)")
+
+    return _sandbox_runner
 
 # ── Request / Response models ──────────────────────────────────────────────
 class QARequest(BaseModel):
@@ -179,21 +211,19 @@ def _build_system_prompt(attribute_info: list, max_total_images: int, max_images
 You are a helpful assistant that answers questions about a user's lifelog – a continuous, \
 first-person photo stream captured throughout each day, enriched with metadata.
 
-You have ONE tool: **search_frames**.
-
-### Tool parameters
-| param | type | description |
-|-------|------|-------------|
-| `query` | string | Possibly rich semantic description of the visual scene to find, which carefully includes all the details asked in the query. Can be "" if only filters should be applied. |
-| `k` | int | Number of metadata results to return. Default 50. |
-| `num_images` | int | How many of the TOP results should include the actual image for you to see. Max per call: {max_images_per_call}. Budget: ~{max_total_images} images total across the whole conversation. Set 0 when metadata alone suffices. |
-| `filters` | object or null | Optional metadata filter. See examples below. |
-| `metadata_to_retrieve` | list of strings | List of metadata fields to include in the results. |
-| `reorder_by` | list of strings or null | Optional list of metadata fields to reorder results by (e.g., ["epoch", "day"]). If null, results are returned in default relevance order. To be used with empty semantic queries. |
+You have two tools:
+- **search_frames** – semantic + metadata search returning up to k frames with optional \
+images. Use for exploration, visual verification, and moderate result sets (k ≤ ~150). \
+Image budget: {max_images_per_call} per call, ~{max_total_images} total.
+- **search_and_analyze_frames** – same search, but runs a Python script on the results inside a \
+sandbox instead of returning all records to you. Use when you need to count, group, or \
+aggregate large result sets (k ≥ 200). The script \
+receives results in a ``data`` variable (list of dicts with ``"id"`` and ``"metadata"`` \
+keys) and must ``print`` a JSON object as its last output.
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
-Comparators: eq, ne, gt, gte lt, lte, ilike.
+Comparators: eq, ne, gt, gte, lt, lte, ilike.
 Operators: and, or, not.
 
 **Single filter:**
@@ -240,9 +270,48 @@ Operators: and, or, not.
 ]}}
 ```
 
-**Look at a specific image (in this case, do not specify the textual query)**
-```
+**Look at a specific image (leave query empty):**
+```json
 {{"comparator": "eq", "attribute": "image_name", "value": "20190110_101531_000.jpg"}}
+```
+
+### Sample analysis scripts (for search_and_analyze_frames)
+
+All scripts receive a ``data`` list and the ``json``, ``pandas`` (as ``pd``) modules.
+
+**Count unique days matching a query:**
+```python
+import pandas as pd
+df = pd.DataFrame([r['metadata'] for r in data])
+days = df[['year', 'month', 'day']].drop_duplicates()
+print(json.dumps({{"unique_days": len(days), "days": days.values.tolist()}}, default=str))
+```
+
+**Group by hour_id (count distinct moments):**
+```python
+import pandas as pd
+df = pd.DataFrame([r['metadata'] for r in data])
+counts = df.groupby('hour_id').size().reset_index(name='frames')
+print(json.dumps({{"n_moments": len(counts), "moments": counts.to_dict(orient='records')}}, default=str))
+```
+
+**Count occurrences grouped by a metadata field:**
+```python
+import pandas as pd
+df = pd.DataFrame([r['metadata'] for r in data])
+counts = df['city'].value_counts().reset_index()
+counts.columns = ['city', 'count']
+print(json.dumps({{"counts": counts.to_dict(orient='records')}}, default=str))
+```
+
+**Temporal aggregation – frames per day:**
+```python
+import pandas as pd
+df = pd.DataFrame([r['metadata'] for r in data])
+df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
+per_day = df.groupby('date').size().reset_index(name='frames')
+per_day['date'] = per_day['date'].astype(str)
+print(json.dumps({{"per_day": per_day.to_dict(orient='records')}}, default=str))
 ```
 
 ### Available metadata fields
@@ -252,43 +321,47 @@ Operators: and, or, not.
 1. **Start broad**: search with a semantic query, moderate k (40-50), 1-2 images.
 2. **Temporal succession**: to find what happened AFTER a result, issue a new search \
 with epoch filters: gt(epoch, prev_epoch) and lt(epoch, prev_epoch + window). \
-Same for a query including what happened BEFORE, but using lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window).
+Same for BEFORE: lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window). \
 A reasonable window is 60-3600 s depending on context.
-3. **Counting & aggregation**: large k (in the order of 400-600). Then group by `hour_id` or \
-by day (same year+month+day from epoch). Consecutive frames within the same hour belong \
-to the same moment. For multi-day events (conferences, trips), group contiguous days as \
-ONE event.
-4. **Deduplication**: same `hour_id` → same moment. Epoch gap < 3600 s → likely same \
+3. **Counting & aggregation**: Most likely you need large result sets (k ≥ 200). In this case, use **search_and_analyze_frames** \
+   with a Python aggregation script instead of loading all records into context. Group by ``hour_id`` or by \
+day (same year+month+day). Consecutive frames within the same hour belong to the same \
+moment. For multi-day events, group contiguous days as ONE event.
+4. **Deduplication**: same ``hour_id`` → same moment. Epoch gap < 3600 s → likely same \
 event.
-5. **Visual verification**: request large number of images (num_images=5-8) when you need \
-to see the scenes. You can also request image by their ids. Important: rather than trying to infer results by using different queries, \
-use a broader query and then visually verify the top results.
-(filter on `image_name`) by leaving the query empty to verify specific moments.
-6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.) and start again with a narrower query.
+5. **Visual verification**: use search_frames with num_images=5-8 to see scenes. You can \
+also request specific images by id (filter on ``image_name``, leave query empty).
+6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.) \
+and start again with a narrower query.
 
 Important:
-- Notice that you can use "filters" alone to use only conditions on metadata. 
-- Do not ask questions back to the user. Use the tools, the images and the metadata to infer the answer.
-- If using only filter without a semantic query, use the reorder_by parameter to order results by a specific attribute (e.g., epoch if you want results returned in chronological order). Otherwise, results will be likely returned in a random order.
-- If not sure about the answer, do not surrender. Try to call again the tool with a refined query or filters, also asking for images. Do not hallucinate, \
-find evidence in the data or declare that the output is not reliable. Do not infer activities based on biases, instead LOOK at the images first.
-- Before saying that metadata cannot confirm an hypothesis, ask for images to verify.
-- Always use "ilike" with wildcards (e.g., "%Text%") for string matching. Use eq only for numeric fields.
-- Consider that the search_frames tool can also sometimes return erroneous results (for example, zero results or irrelevant results). 
-- If the results are empty, try to reformulate the query by checking if you are using the right operator (most likely you are using eq instead of ilike or filtering on the wrong metadata) or ask for images to verify.
-- In the semantic query, do not use logic operators or keyword-like terms. Instead, write natural language descriptions.
-- Always give a clear, definitive natural-language answer at the end. Show your reasoning briefly.
-- When providing the final answer, DO NOT repeat the full list of results or metadata. Summarise the evidence briefly."""
+- You can use "filters" alone (no semantic query) to apply only metadata conditions.
+- Do not ask questions back to the user. Use the tools, images, and metadata to infer answers.
+- If using only a filter without a semantic query, use reorder_by to get results in a \
+deterministic order (e.g., ["epoch"]). Otherwise results may be returned in random order.
+- If not sure about the answer, do not surrender. Try refined queries/filters or ask for \
+images. Do not hallucinate; find evidence in the data or declare the output unreliable. \
+Do not infer activities from biases – LOOK at images first.
+- Before saying metadata cannot confirm a hypothesis, ask for images to verify.
+- Always use "ilike" with wildcards (e.g., "%Text%") for string matching. Use eq only for \
+numeric fields.
+- If results are empty, check your operator (likely using eq instead of ilike) or ask for \
+images to verify.
+- In semantic queries, write natural language descriptions, not logic operators or keywords.
+- Always give a clear, definitive natural-language answer at the end. Show reasoning briefly.
+- When providing the final answer, DO NOT repeat the full list of results or metadata. \
+Summarise the evidence briefly."""
 
 
 def _build_planning_prompt() -> str:
     return """\
 Based on the user's question and the system instructions above, create a brief \
 step-by-step plan for how you will answer this question. Consider:
-1. What searches you need to perform (queries, filters, number of results).
+1. What tools you need to call (search_frames for visual inspection and moderate result sets, \ 
+search_and_analyze_frames for large result sets that require counting or aggregation).
 2. Whether you need images or metadata is sufficient.
 3. How you might refine or verify results.
-4. Any temporal reasoning or counting strategies required.
+5. Any temporal reasoning strategies required.
 
 Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
 
@@ -296,9 +369,12 @@ Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
 def _build_plan_review_prompt() -> str:
     return """\
 Critically review the original plan. Check for:
-1. **Feasibility**: Can each step actually be performed with the search_frames tool?
+1. **Feasibility**: Can each step actually be performed with the search_frames or \
+   search_and_analyze_frames tool?
 2. **Completeness**: Are there steps missing that are needed to answer the question?
-3. **Correctness**: Are the proposed filters, queries, and strategies appropriate?
+3. **Correctness**: Are the proposed filters, queries, strategies, and scripts appropriate?
+4. **Efficiency**: For counting/aggregation over many results, does the plan use \
+   search_and_analyze_frames instead of putting hundreds of records into context?
 
 If the plan is sound, output it unchanged with a brief "Plan approved." prefix.
 If there are problems, output a corrected plan as a numbered list, prefixed with \
@@ -409,7 +485,90 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             results.append(entry)
         return json.dumps(results, default=str)
 
-    tools = [search_frames]
+    # ── Analyze tool (search + sandbox script execution) ────────────────
+    @tool
+    async def search_and_analyze_frames(
+        query: str,
+        metadata_to_retrieve: List[str],
+        script: str,
+        k: int = 200,
+        filters: Optional[Dict[str, Any]] = None,
+        reorder_by: Optional[List[str]] = None,
+    ) -> str:
+        """Search lifelog frames and run a Python script to aggregate or count the results.
+
+        Use instead of search_frames when you need to count, group, or aggregate large
+        result sets (k >= 200) without loading all records into context. The search results
+        are available in the script as ``data`` – a list of dicts, each with ``"id"`` and
+        ``"metadata"`` keys. The ``json`` standard-library module is pre-imported. The
+        script must ``print`` a JSON-serialisable object as its last output; that compact
+        result is returned to you.
+
+        Args:
+            query: Semantic description of the scene to search for (can be "" for filter-only).
+            metadata_to_retrieve: Metadata fields to include in each result's 'metadata' dict.
+            script: Python code to execute. Has access to ``data`` (list of result dicts) and
+                ``json``. Must print a JSON object to stdout as its final output.
+            k: Number of frames to retrieve for analysis (can be large: 200–600).
+            filters: Optional metadata filter object using comparator/operator syntax.
+            reorder_by: Metadata fields to sort results by (e.g. ["epoch"]). Use with empty
+                queries to get results in a deterministic order.
+
+        Returns:
+            The stdout output of the script (a JSON object summarising the analysis).
+        """
+        node: Dict[str, Any] = {"item": query, "model": default_model, "k": k}
+        if filters:
+            node["filters"] = filters
+        node_pg = convert_filters_to_pg(node)
+        if reorder_by and (not query or not query.strip()):
+            node_pg["reorder_by"] = reorder_by
+
+        try:
+            doc_groups = request.app.state.vector_store.similarity_search(
+                node_pg, k=k, filter=None, fetch_k=min(k * 10, 5000),
+                metadata_to_retrieve=metadata_to_retrieve,
+            )
+        except Exception as exc:
+            return json.dumps({"error": f"Search failed: {exc}"})
+
+        data: List[Dict[str, Any]] = []
+        for group in doc_groups:
+            doc = group[0]
+            meta = {mk: mv for mk, mv in doc.metadata.items() if mk != "score"}
+            data.append({"id": doc.page_content, "metadata": meta})
+
+        # Write data to sessions_dir: PyodideSandbox always grants Deno
+        # --allow-read and --allow-write for that directory, so Deno's native
+        # Deno.readTextFileSync() can reach it. Python's open() inside Pyodide
+        # only sees Pyodide's virtual MEMFS, so we must use the JS bridge.
+        os.makedirs(_SANDBOX_SESSIONS_DIR, exist_ok=True)
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".json", dir=_SANDBOX_SESSIONS_DIR)
+        try:
+            with os.fdopen(tmp_fd, "w") as f:
+                json.dump(data, f, default=str)
+
+            runner = _init_sandbox_runner()
+            full_script = (
+                "import js as _js, json, pandas as pd\n"
+                f"data = json.loads(str(_js.Deno.readTextFileSync({repr(tmp_path)})))\n"
+                "del _js\n\n"
+                f"{script}"
+            )
+            try:
+                output = await runner(full_script)
+            except Exception as exc:
+                return json.dumps({"error": f"Script execution failed: {exc}"})
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        output = output.strip()
+        return output if output else json.dumps({"error": "Script produced no output"})
+
+    tools = [search_frames, search_and_analyze_frames]
 
     # ── LLM with and without tool binding ──────────────────────────────
     llm = ChatOllama(
@@ -508,9 +667,20 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         new_sources: List[Dict[str, Any]] = []
         new_messages: list = []
 
+        tool_dispatch = {"search_frames": search_frames, "search_and_analyze_frames": search_and_analyze_frames}
+
         for tc in last_msg.tool_calls:
+            tool_name = tc.get("name", "search_frames")
+            tool_fn = tool_dispatch.get(tool_name)
+            if tool_fn is None:
+                new_messages.append(ToolMessage(
+                    content=json.dumps({"error": f"Unknown tool: {tool_name}"}),
+                    tool_call_id=tc["id"],
+                ))
+                continue
+
             try:
-                result_str = await search_frames.ainvoke(tc["args"])
+                result_str = await tool_fn.ainvoke(tc["args"])
             except Exception as exc:
                 if not handle_tool_errors:
                     raise
@@ -518,6 +688,12 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
                 new_messages.append(ToolMessage(content=error_text, tool_call_id=tc["id"]))
                 continue
 
+            if tool_name == "search_and_analyze_frames":
+                # Analysis result: compact JSON from script stdout – return as-is
+                new_messages.append(ToolMessage(content=result_str, tool_call_id=tc["id"]))
+                continue
+
+            # ── search_frames: parse results, accumulate sources, fetch images ──
             try:
                 results = json.loads(result_str)
             except json.JSONDecodeError:
@@ -850,7 +1026,7 @@ async def qa_endpoint(payload: QARequest, request: Request):
                                         yield _sse_event("thinking", {"content": text_str})
                                         last_agent_text = text_str
 
-                    # -- Tool node (search results) --------------------------------
+                    # -- Tool node (search results + analysis) --------------------
                     elif node_name == "tools":
                         new_sources = update.get("all_sources", [])
                         all_sources.extend(new_sources)
@@ -859,6 +1035,20 @@ async def qa_endpoint(payload: QARequest, request: Request):
                         # the compact ToolMessage content (which strips them).
                         if new_sources:
                             yield _sse_event("tool_result", {"results": new_sources})
+
+                        # Also emit analysis results from search_and_analyze_frames calls
+                        # (these are not in all_sources; they come as ToolMessages
+                        # whose content is a JSON object, not a list).
+                        for msg in update.get("messages", []):
+                            if isinstance(msg, ToolMessage):
+                                raw = msg.content
+                                if isinstance(raw, str):
+                                    try:
+                                        parsed = json.loads(raw)
+                                        if isinstance(parsed, dict):
+                                            yield _sse_event("tool_result", {"analysis": parsed})
+                                    except json.JSONDecodeError:
+                                        pass
 
                     # -- Final-answer node -----------------------------------------
                     elif node_name == "final_answer":

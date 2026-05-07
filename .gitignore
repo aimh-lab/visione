@@ -10,6 +10,7 @@ visioneUI/dist/
 # virtual envs
 .venv*/
 venv*/
+node_modules/
 
 # outputs
 output*

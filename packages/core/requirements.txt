@@ -1,4 +1,5 @@
 langchain
+langchain-sandbox
 Pillow>=9.0.0
 aiohttp
 tqdm
