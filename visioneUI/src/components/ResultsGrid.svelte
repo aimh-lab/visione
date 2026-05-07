@@ -138,9 +138,16 @@
   function getTupleA11yLabel(item) {
     const tupleSize = Number(item?.tupleSize || 1);
     if (tupleSize <= 1) return '';
-    const rank = Number.isFinite(Number(item?.tupleRank)) ? Number(item.tupleRank) + 1 : '?';
     const member = Number.isFinite(Number(item?.tupleMemberIndex)) ? Number(item.tupleMemberIndex) + 1 : '?';
-    return `T${rank} ${member}/${tupleSize}`;
+    return `${member}/${tupleSize}`;
+  }
+
+  function getRankBadgeLabel(item, rowIndex, colIndex) {
+    const idx = Number(getIndex(item));
+    if (Number.isFinite(idx) && idx >= 0) return `# ${idx + 1}`;
+
+    const fallbackRank = Number(rowIndex) * 1000 + Number(colIndex) + 1;
+    return `# ${fallbackRank}`;
   }
 
   function showTupleBar() {
@@ -503,7 +510,8 @@
   const handleRFPositive = (item, e) => { e.stopPropagation(); dispatch("rfPositive", { index: getIndex(item), img: item }); };
   const handleRFNegative = (item, e) => { e.stopPropagation(); dispatch("rfNegative", { index: getIndex(item), img: item }); };
   const handleSubmit = (item, e) => { e.stopPropagation(); dispatch("submit", { index: getIndex(item), img: item }); };
-  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
+  $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
+  $: allowFrameSubmit = showSubmitUI;
 
   function handleFrameDragStart(event, item) {
     if (!event.dataTransfer) return;
@@ -1160,20 +1168,24 @@
               on:contextmenu={(e) => !isSelectionMode && hasCollectionVideos && handleContextPreview(e, item)}
               on:dragstart={(e) => handleFrameDragStart(e, item)}
             >
-              {#if Number(item?.tupleSize || 1) > 1}
-                {#if showTupleBar()}
-                  <div class="absolute left-0 top-0 bottom-0 z-5 w-1.5 rounded-l-xl pointer-events-none" style={getTupleAccentStyle(item)}></div>
-                {/if}
-                {#if showTupleBadge()}
-                  <div class="absolute left-2 top-2 z-30 pointer-events-none rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide backdrop-blur-sm" style={getTupleBadgeStyle(item)}>
+              {#if Number(item?.tupleSize || 1) > 1 && showTupleBar()}
+                <div class="absolute left-0 top-0 bottom-0 z-5 w-1.5 rounded-l-xl pointer-events-none" style={getTupleAccentStyle(item)}></div>
+              {/if}
+
+              <div class="absolute left-2 top-2 z-30 pointer-events-none inline-flex items-center gap-1">
+                <div class="rounded-md border border-slate-500/65 bg-slate-900/85 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-slate-100 backdrop-blur-sm">
+                  {getRankBadgeLabel(item, rowIndex, colIndex)}
+                </div>
+                {#if Number(item?.tupleSize || 1) > 1 && showTupleBadge()}
+                  <div class="rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide backdrop-blur-sm" style={getTupleBadgeStyle(item)}>
                     {getTupleA11yLabel(item)}
                   </div>
                 {/if}
-              {/if}
+              </div>
 
               <!-- Badge in selection mode -->
               {#if isSelectionMode}
-                <div class="absolute top-2 left-2 z-30 bg-green-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg flex items-center space-x-1.5 animate-pulse">
+                <div class="absolute top-10 left-2 z-30 bg-green-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg flex items-center space-x-1.5 animate-pulse">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     <path d="M9 12l2 2 4-4"/>
@@ -1275,7 +1287,8 @@
                     role="button"
                     tabindex="0"
                     class="absolute top-2 right-2 z-40 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
-                    title="Submit"
+                    title={isQaChallenge ? 'Submit answer' : 'Submit'}
+                    aria-label={isQaChallenge ? 'Submit answer' : 'Submit frame'}
                     on:click={(e) => handleSubmit(item, e)}
                     on:keydown={(e) => e.key === 'Enter' && handleSubmit(item, e)}
                   >

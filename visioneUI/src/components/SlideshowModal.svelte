@@ -444,7 +444,8 @@
   $: normalizedSelectedImgId = String(selectedImgId || "");
   $: activeFrame = frames[currentIndex] || null;
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
-  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? "KIS").toUpperCase() !== "Q&A";
+  $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
+  $: allowFrameSubmit = showSubmitUI;
   $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 160));
   $: shellWidthPx = Math.max(760, Math.round(safeModalScale * 2.0));
   $: stageHeightPx = Math.max(180, safeModalScale + 36);
@@ -513,7 +514,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] flex items-center justify-center p-4">
     <button
       type="button"
       class="absolute inset-0 bg-black/60"
@@ -522,7 +523,7 @@
     ></button>
 
     <div
-      class="relative z-[1001] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
+      class="relative z-[var(--z-modal-content)] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
       style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <div
@@ -683,7 +684,8 @@
           <button
             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold text-xs"
             on:click={submitCurrentFrame}
-            aria-label="Submit current frame"
+            aria-label={isQaChallenge ? 'Submit answer' : 'Submit current frame'}
+            title={isQaChallenge ? 'Submit answer' : 'Submit frame'}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M12 19V7M5 12l7-7 7 7"/>

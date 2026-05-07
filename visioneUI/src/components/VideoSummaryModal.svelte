@@ -212,7 +212,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[1000]">
+  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)]">
     <button
       type="button"
       class="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
@@ -221,7 +221,7 @@
     ></button>
 
     <div
-      class="video-summary-modal fixed z-[1001] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-[0_24px_60px_rgba(2,6,23,0.65)] ring-1 ring-sky-500/30 flex flex-col animate-modal-in"
+      class="video-summary-modal fixed z-[var(--z-modal-content)] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-[0_24px_60px_rgba(2,6,23,0.65)] ring-1 ring-sky-500/30 flex flex-col animate-modal-in"
       style={`left:${modalRect.x}px; top:${modalRect.y}px; width:${modalRect.width}px; height:${modalRect.height}px;`}
     >
       <div

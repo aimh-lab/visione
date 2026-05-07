@@ -47,15 +47,12 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "date" | "imageUrl" | "type" | "metadata" | "";
+    filterType: "imageUrl" | "metadata" | "";
   };
 
   type ModalSubmitData = {
-    from?: string;
-    to?: string;
     url?: string;
     name?: string;
-    type?: string;
     comparator?: string;
     value?: string;
   };
@@ -871,38 +868,6 @@
     closeTranslationHint();
   }
 
-  function openDateFilterModal(index: number) {
-
-    modalConfig = {
-      isOpen: true,
-      title: 'Add Date Filter',
-      icon: 'calendar',
-      description: 'Filter by capture date range',
-      targetIndex: index,
-      filterType: 'date',
-      fields: [
-        {
-          name: 'from',
-          label: 'From Date',
-          type: 'date',
-          placeholder: 'YYYY-MM-DD',
-          value: '',
-          hint: 'Leave empty for no start limit'
-        },
-        {
-          name: 'to',
-          label: 'To Date',
-          type: 'date',
-          placeholder: 'YYYY-MM-DD',
-          value: '',
-          hint: 'Leave empty for no end limit'
-        }
-      ]
-    };
-
-    closeMenu();
-  }
-  
   function openUrlModal(index: number) {
 
     modalConfig = {
@@ -935,32 +900,6 @@
     closeMenu();
   }
   
-  function openTypeFilterModal(index: number) {
-    modalConfig = {
-      isOpen: true,
-      title: 'Add Type Filter',
-      icon: 'filter',
-      description: 'Filter by content type',
-      targetIndex: index,
-      filterType: 'type',
-      fields: [
-        {
-          name: 'type',
-          label: 'Content Type',
-          type: 'select',
-          value: 'video',
-          options: [
-            { value: 'video', label: 'Video' },
-            { value: 'image', label: 'Image' },
-            { value: 'audio', label: 'Audio' },
-            { value: 'document', label: 'Document' }
-          ]
-        }
-      ]
-    };
-    closeMenu();
-  }
-
   function openMetadataFilterModal(index: number, field: string) {
     const normalizedField = String(field || '').trim();
     if (!normalizedField) return;
@@ -1016,23 +955,7 @@
       return;
     }
     
-    if (filterType === 'date') {
-      let dateFilter = 'date:';
-      if (data.from && data.to) {
-        dateFilter += `${data.from}..${data.to}`;
-      } else if (data.from) {
-        dateFilter += `>${data.from}`;
-      } else if (data.to) {
-        dateFilter += `<${data.to}`;
-      } else {
-        dateFilter = ''; // No dates entered
-      }
-      
-      if (dateFilter) {
-        const currentValue = textareas[targetIndex].value || '';
-        update(targetIndex, currentValue + ' ' + dateFilter);
-      }
-    } else if (filterType === 'imageUrl') {
+    if (filterType === 'imageUrl') {
       if (data.url) {
         addImageToTextarea(
           targetIndex,
@@ -1041,9 +964,6 @@
           'url'
         );
       }
-    } else if (filterType === 'type') {
-      const currentValue = textareas[targetIndex].value || '';
-      update(targetIndex, currentValue + ' type:' + (data.type ?? ''));
     } else if (filterType === 'metadata') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
@@ -1550,44 +1470,6 @@
                       </button>
 
                       <div class="my-1 h-px bg-gray-700"></div>
-
-
-            <!-- Date filter -->
-                      <button
-                        type="button"
-                        on:click|stopPropagation={() => openDateFilterModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2"/>
-                            <path d="M16 2v4M8 2v4M3 10h18"/>
-                          </svg>
-                        </div>
-                        <div class="flex-1">
-                          <div class="text-xs font-medium text-white">Add Date Filter</div>
-                          <div class="text-[10px] text-gray-400 font-mono">date:YYYY-MM-DD</div>
-                        </div>
-                      </button>
-
-                      <!-- Type filter -->
-                      <button
-                        type="button"
-                        on:click|stopPropagation={() => openTypeFilterModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                          <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
-                          </svg>
-                        </div>
-                        <div class="flex-1">
-                          <div class="text-xs font-medium text-white">Add Type Filter</div>
-                          <div class="text-[10px] text-gray-400 font-mono">type:format</div>
-                        </div>
-                      </button>
-
                       {#if metadataFilterFields.length > 0}
                         <div class="my-1 h-px bg-gray-700"></div>
 

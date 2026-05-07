@@ -7,6 +7,8 @@
   export let icon = 'default';
   export let fields = []; // Array di { name, label, type, placeholder, value, min, max, step }
   export let description = '';
+  export let submitLabel = 'Submit';
+  export let cancelLabel = 'Cancel';
   
   const dispatch = createEventDispatcher();
   
@@ -57,7 +59,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+  <div use:focusTrap class="fixed inset-0 z-[var(--z-dialog-overlay)] flex items-center justify-center p-4">
     <!-- Backdrop -->
     <button
       type="button"
@@ -68,7 +70,7 @@
     
     <!-- Modal -->
     <div 
-      class="relative z-[1001] bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
+      class="relative z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900">
@@ -159,13 +161,13 @@
             on:click={close}
             class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
           >
-            Cancel
+            {cancelLabel}
           </button>
           <button
             on:click={handleSubmit}
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all shadow-lg hover:shadow-blue-500/30"
           >
-            Insert
+            {submitLabel}
           </button>
         </div>
       </div>

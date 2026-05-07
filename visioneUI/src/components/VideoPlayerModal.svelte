@@ -578,7 +578,8 @@
       return [imgId, rank];
     })
   );
-  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
+  $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
+  $: allowFrameSubmit = showSubmitUI;
 
   function getRankColor(imgId: string) {
     if (!rankMap.has(imgId)) return 'rgb(107, 114, 128)';
@@ -652,14 +653,14 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center">
+  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] bg-black/80 flex items-center justify-center">
     <button
       type="button"
       class="absolute inset-0"
       on:click={() => dispatch("close")}
       aria-label="Close video player modal"
     ></button>
-    <div class="relative bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
+    <div class="relative z-[var(--z-modal-content)] bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
       
       <!-- Header -->
       <div
@@ -828,7 +829,8 @@
             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-md transition-colors font-semibold text-xs"
             on:click={submitCurrentFrame}
             use:tooltip={{ text: 'Submit frame', shortcut: 'S', position: 'top' }}
-            aria-label="Submit current frame"
+            aria-label={isQaChallenge ? 'Submit answer' : 'Submit current frame'}
+            title={isQaChallenge ? 'Submit answer' : 'Submit frame'}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M12 19V7M5 12l7-7 7 7"/>
