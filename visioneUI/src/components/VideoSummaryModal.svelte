@@ -24,6 +24,8 @@
   export let showSubmitUI = false;
   export let challengeType = "KIS";
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
@@ -327,6 +329,8 @@
               {showSubmitUI}
               {challengeType}
               {runtimeProfile}
+              {showLocalTimeInTitles}
+              {resultsetBadgeLabelMode}
               {rfPositive}
               {rfNegative}
               {justifyResultRows}

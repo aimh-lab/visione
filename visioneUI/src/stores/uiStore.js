@@ -24,6 +24,8 @@ const DEFAULT = {
   justifyResultRows: false,
   tupleIndicatorMode: 'badge+bar',
   videoBadgeOrientation: 'vertical',
+  resultsetBadgeLabelMode: 'both',
+  showLocalTimeInTitles: true,
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
 
@@ -78,6 +80,12 @@ function normalizeTupleIndicatorMode(value, fallback = 'badge+bar') {
   return fallback;
 }
 
+function normalizeResultsetBadgeLabelMode(value, fallback = 'both') {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'id' || raw === 'date' || raw === 'both') return raw;
+  return fallback;
+}
+
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
 
@@ -109,6 +117,8 @@ function createUIStore() {
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         tupleIndicatorMode: normalizeTupleIndicatorMode(s.tupleIndicatorMode, u.tupleIndicatorMode),
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
+        resultsetBadgeLabelMode: normalizeResultsetBadgeLabelMode(s.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode),
+        showLocalTimeInTitles: s.showLocalTimeInTitles ?? u.showLocalTimeInTitles,
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
 
@@ -154,6 +164,8 @@ function createUIStore() {
         justifyResultRows: DEFAULT.justifyResultRows,
         tupleIndicatorMode: DEFAULT.tupleIndicatorMode,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
+        resultsetBadgeLabelMode: DEFAULT.resultsetBadgeLabelMode,
+        showLocalTimeInTitles: DEFAULT.showLocalTimeInTitles,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
         dresEnabled: DEFAULT.dresEnabled,
@@ -256,6 +268,7 @@ function createUIStore() {
           ? patch.videoBadgeOrientation
           : u.videoBadgeOrientation;
         const safeTupleIndicatorMode = normalizeTupleIndicatorMode(patch.tupleIndicatorMode, u.tupleIndicatorMode);
+        const safeResultsetBadgeLabelMode = normalizeResultsetBadgeLabelMode(patch.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode);
         const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
@@ -285,6 +298,8 @@ function createUIStore() {
           justifyResultRows: patch.justifyResultRows ?? u.justifyResultRows,
           tupleIndicatorMode: safeTupleIndicatorMode,
           videoBadgeOrientation: safeVideoBadgeOrientation,
+          resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
+          showLocalTimeInTitles: patch.showLocalTimeInTitles ?? u.showLocalTimeInTitles,
           virtualizationEnabled: patch.virtualizationEnabled ?? u.virtualizationEnabled,
           virtualizationThreshold: patch.virtualizationThreshold ?? u.virtualizationThreshold,
           dresEnabled: patch.dresEnabled ?? u.dresEnabled,
@@ -318,6 +333,8 @@ function createUIStore() {
           justifyResultRows: nextState.justifyResultRows,
           tupleIndicatorMode: nextState.tupleIndicatorMode,
           videoBadgeOrientation: nextState.videoBadgeOrientation,
+          resultsetBadgeLabelMode: nextState.resultsetBadgeLabelMode,
+          showLocalTimeInTitles: nextState.showLocalTimeInTitles,
           virtualizationEnabled: nextState.virtualizationEnabled,
           virtualizationThreshold: nextState.virtualizationThreshold,
           dresEnabled: nextState.dresEnabled,

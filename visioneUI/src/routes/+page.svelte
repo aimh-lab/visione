@@ -2451,6 +2451,8 @@ function handleViewSubmitted() {
   {rfPositive}
   {rfNegative}
   {runtimeProfile}
+  showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+  resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -2478,6 +2480,8 @@ function handleViewSubmitted() {
   justifyResultRows={$uiStore.justifyResultRows}
   tupleIndicatorMode={$uiStore.tupleIndicatorMode}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
+  resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
+  showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
   dresEnabled={$uiStore.dresEnabled}
@@ -2574,6 +2578,8 @@ function handleViewSubmitted() {
         challengeType={$uiStore.dresChallengeType}
         imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
+        showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+        resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
         submitTextAnswer={submitTextAnswer}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
@@ -2688,6 +2694,8 @@ function handleViewSubmitted() {
         challengeType={$uiStore.dresChallengeType}
         imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
+        showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+        resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 
@@ -2725,6 +2733,8 @@ function handleViewSubmitted() {
         challengeType={$uiStore.dresChallengeType}
         imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
+        showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+        resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
 
         onToggleSidebar={() => uiStore.actions.toggleSidebar()}
 

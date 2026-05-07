@@ -16,6 +16,8 @@
   export let rfPositive = [];
   export let rfNegative = [];
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -38,6 +40,8 @@
   {rfPositive}
   {rfNegative}
   {runtimeProfile}
+  {showLocalTimeInTitles}
+  {resultsetBadgeLabelMode}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}
