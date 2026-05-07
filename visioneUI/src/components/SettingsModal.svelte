@@ -128,15 +128,14 @@
   }
 
   let local = buildLocalState();
-  let activeSettingsTab = 'general';
+  let activeSettingsTab = 'appearance';
   let wasOpen = false;
   let themeTouched = false;
   let hasLocalEdits = false;
   const settingsTabs = [
-    { id: 'general', label: 'General' },
+    { id: 'appearance', label: 'Appearance' },
     { id: 'search', label: 'Search' },
     { id: 'models', label: 'Models' },
-    { id: 'performance', label: 'Performance' },
     { id: 'dres', label: 'DRES' }
   ];
 
@@ -148,7 +147,7 @@
     local = buildLocalState();
     hasLocalEdits = false;
     themeTouched = false;
-    activeSettingsTab = 'general';
+    activeSettingsTab = 'appearance';
   }
 
   $: wasOpen = isOpen;
@@ -354,9 +353,9 @@
       </div>
 
       <div class="px-5 py-4 overflow-y-auto">
-        {#if activeSettingsTab === 'general'}
+        {#if activeSettingsTab === 'appearance'}
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">General</h4>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Appearance</h4>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-theme" class="ui-settings-label text-sm font-medium text-gray-700">Theme</label>
@@ -449,6 +448,19 @@
             </p>
 
             <div class="flex items-center justify-between py-2">
+              <label for="settings-justify-result-rows" class="ui-settings-label text-sm font-medium text-gray-700">Justify result rows</label>
+              <input
+                id="settings-justify-result-rows"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.justifyResultRows}
+                on:change={() => save()}
+              />
+            </div>
+
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Media display</h4>
+
+            <div class="flex items-center justify-between py-2">
               <label for="settings-video-badge-orientation" class="ui-settings-label text-sm font-medium text-gray-700">Video badge</label>
               <select
                 id="settings-video-badge-orientation"
@@ -476,17 +488,6 @@
             </div>
 
             <div class="flex items-center justify-between py-2">
-              <label for="settings-local-time-titles" class="ui-settings-label text-sm font-medium text-gray-700">Local time in titles</label>
-              <input
-                id="settings-local-time-titles"
-                type="checkbox"
-                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                bind:checked={local.showLocalTimeInTitles}
-                on:change={() => save()}
-              />
-            </div>
-
-            <div class="flex items-center justify-between py-2">
               <label for="settings-resultset-badge-label-mode" class="ui-settings-label text-sm font-medium text-gray-700">Resultset badge label</label>
               <select
                 id="settings-resultset-badge-label-mode"
@@ -501,14 +502,74 @@
             </div>
 
             <div class="flex items-center justify-between py-2">
-              <label for="settings-justify-result-rows" class="ui-settings-label text-sm font-medium text-gray-700">Justify result rows</label>
+              <label for="settings-local-time-titles" class="ui-settings-label text-sm font-medium text-gray-700">Local time in titles</label>
               <input
-                id="settings-justify-result-rows"
+                id="settings-local-time-titles"
                 type="checkbox"
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                bind:checked={local.justifyResultRows}
+                bind:checked={local.showLocalTimeInTitles}
                 on:change={() => save()}
               />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-video-player-modal-mode" class="ui-settings-label text-sm font-medium text-gray-700">Player modal mode (testing)</label>
+              <select
+                id="settings-video-player-modal-mode"
+                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.videoPlayerModalMode}
+                on:change={() => save()}
+              >
+                <option value="profile">Use runtime profile</option>
+                <option value="video">Force video player</option>
+                <option value="slideshow">Force slideshow</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-image-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Image preview size (px)</label>
+              <div class="relative">
+                <input
+                  id="settings-image-modal-scale"
+                  type="number"
+                  min="80"
+                  step="10"
+                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.imageModalScale}
+                  on:input={() => save()}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase image modal size" on:click={() => adjustNumber('imageModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease image modal size" on:click={() => adjustNumber('imageModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-slideshow-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Slideshow preview size (px)</label>
+              <div class="relative">
+                <input
+                  id="settings-slideshow-modal-scale"
+                  type="number"
+                  min="80"
+                  step="10"
+                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.slideshowModalScale}
+                  on:input={() => save()}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         {/if}
@@ -579,65 +640,48 @@
               </div>
             </div>
 
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Performance</h4>
+
             <div class="flex items-center justify-between py-2">
-              <label for="settings-video-player-modal-mode" class="ui-settings-label text-sm font-medium text-gray-700">Player modal mode (testing)</label>
-              <select
-                id="settings-video-player-modal-mode"
-                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                bind:value={local.videoPlayerModalMode}
+              <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
+              <input
+                id="virtualization-enabled"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.virtualizationEnabled}
                 on:change={() => save()}
-              >
-                <option value="profile">Use runtime profile</option>
-                <option value="video">Force video player</option>
-                <option value="slideshow">Force slideshow</option>
-              </select>
+              />
             </div>
 
             <div class="flex items-center justify-between py-2">
-              <label for="settings-image-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Image preview size (px)</label>
+              <label for="virtualization-threshold" class="ui-settings-label text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
               <div class="relative">
                 <input
-                  id="settings-image-modal-scale"
+                  id="virtualization-threshold"
                   type="number"
-                  min="80"
-                  step="10"
-                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                  bind:value={local.imageModalScale}
-                  on:input={() => save()}
+                  min="10"
+                  max="300"
+                  step="5"
+                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                  bind:value={local.virtualizationThreshold}
+                  disabled={!local.virtualizationEnabled}
+                  on:input={(e) => {
+                    const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
+                    local.virtualizationThreshold = n;
+                    save();
+                  }}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase image modal size" on:click={() => adjustNumber('imageModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', 5, 10, 300)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease image modal size" on:click={() => adjustNumber('imageModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', -5, 10, 300)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
               </div>
             </div>
 
-            <div class="flex items-center justify-between py-2">
-              <label for="settings-slideshow-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Slideshow preview size (px)</label>
-              <div class="relative">
-                <input
-                  id="settings-slideshow-modal-scale"
-                  type="number"
-                  min="80"
-                  step="10"
-                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                  bind:value={local.slideshowModalScale}
-                  on:input={() => save()}
-                />
-                <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
-                  </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         {/if}
 
@@ -682,52 +726,6 @@
                   <option value={m}>{m}</option>
                 {/each}
               </select>
-            </div>
-          </div>
-        {/if}
-
-        {#if activeSettingsTab === 'performance'}
-          <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Performance</h4>
-
-            <div class="flex items-center justify-between py-2">
-              <label for="virtualization-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Virtualize results</label>
-              <input
-                id="virtualization-enabled"
-                type="checkbox"
-                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                bind:checked={local.virtualizationEnabled}
-                on:change={() => save()}
-              />
-            </div>
-
-            <div class="flex items-center justify-between py-2">
-              <label for="virtualization-threshold" class="ui-settings-label text-sm font-medium text-gray-700">Virtualization threshold (rows)</label>
-              <div class="relative">
-                <input
-                  id="virtualization-threshold"
-                  type="number"
-                  min="10"
-                  max="300"
-                  step="5"
-                  class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                  bind:value={local.virtualizationThreshold}
-                  disabled={!local.virtualizationEnabled}
-                  on:input={(e) => {
-                    const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
-                    local.virtualizationThreshold = n;
-                    save();
-                  }}
-                />
-                <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', 5, 10, 300)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
-                  </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease virtualization threshold" disabled={!local.virtualizationEnabled} on:click={() => adjustNumber('virtualizationThreshold', -5, 10, 300)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         {/if}
