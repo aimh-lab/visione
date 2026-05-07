@@ -25,6 +25,8 @@
   export let challengeType = "KIS";
   export let imageModalScale = 100;
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
 
   export let textareas: QueryTextarea[] = [];         // for SidebarSimilarity (same shape as SidebarSearch)
   export let searchError: string | null = null;
@@ -161,6 +163,8 @@
             {showSubmitUI}
             {challengeType}
             {runtimeProfile}
+            {showLocalTimeInTitles}
+            {resultsetBadgeLabelMode}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
             on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
@@ -182,6 +186,8 @@
   modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
+  {runtimeProfile}
+  {showLocalTimeInTitles}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}

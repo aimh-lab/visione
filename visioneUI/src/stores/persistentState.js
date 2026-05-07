@@ -111,6 +111,8 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   justifyResultRows: false,
   tupleIndicatorMode: 'badge+bar',
   videoBadgeOrientation: 'vertical',
+  resultsetBadgeLabelMode: 'both',
+  showLocalTimeInTitles: true,
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
   dresEnabled: false,

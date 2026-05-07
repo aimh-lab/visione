@@ -12,6 +12,8 @@
   export let dedupeResults = true;
   export let virtualizationEnabled = true;
   export let tupleIndicatorMode = 'badge+bar';
+  export let resultsetBadgeLabelMode = 'both';
+  export let showLocalTimeInTitles = true;
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
   export let dresChallengeType = 'KIS';
@@ -101,6 +103,8 @@
       justifyResultRows,
       tupleIndicatorMode,
       videoBadgeOrientation,
+      resultsetBadgeLabelMode,
+      showLocalTimeInTitles,
       virtualizationEnabled,
       virtualizationThreshold,
       dresEnabled,
@@ -186,6 +190,9 @@
     const safeTupleIndicatorMode = ['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)
       ? local.tupleIndicatorMode
       : 'badge+bar';
+    const safeResultsetBadgeLabelMode = ['both', 'id', 'date'].includes(local.resultsetBadgeLabelMode)
+      ? local.resultsetBadgeLabelMode
+      : 'both';
     const currentTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
     const safeTheme = themeTouched
       ? (['default', 'dark', 'light'].includes(local.theme) ? local.theme : currentTheme)
@@ -201,6 +208,8 @@
       justifyResultRows: !!local.justifyResultRows,
       tupleIndicatorMode: safeTupleIndicatorMode,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
+      resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
+      showLocalTimeInTitles: !!local.showLocalTimeInTitles,
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       dresEnabled: !!local.dresEnabled,
@@ -463,6 +472,31 @@
                 <option value="badge+bar">Badge + side bar</option>
                 <option value="badge">Badge only</option>
                 <option value="none">None</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-local-time-titles" class="ui-settings-label text-sm font-medium text-gray-700">Local time in titles</label>
+              <input
+                id="settings-local-time-titles"
+                type="checkbox"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                bind:checked={local.showLocalTimeInTitles}
+                on:change={() => save()}
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-resultset-badge-label-mode" class="ui-settings-label text-sm font-medium text-gray-700">Resultset badge label</label>
+              <select
+                id="settings-resultset-badge-label-mode"
+                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.resultsetBadgeLabelMode}
+                on:change={() => save()}
+              >
+                <option value="both">ID + date</option>
+                <option value="id">ID only</option>
+                <option value="date">Date only</option>
               </select>
             </div>
 

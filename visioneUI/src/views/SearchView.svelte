@@ -62,6 +62,8 @@
   export let challengeType = "KIS";
   export let imageModalScale = 100;
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
   export let submittedAnswers: Array<Record<string, unknown>> = [];
   export let submitTextAnswer = (_text: string) => {};
 
@@ -338,6 +340,8 @@
             {showSubmitUI}
             {challengeType}
             {runtimeProfile}
+            {showLocalTimeInTitles}
+            {resultsetBadgeLabelMode}
             {rfPositive}
             {rfNegative}
             registerContainer={registerContainer}
@@ -390,6 +394,8 @@
   modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
+  {runtimeProfile}
+  {showLocalTimeInTitles}
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}

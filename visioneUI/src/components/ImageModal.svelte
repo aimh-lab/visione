@@ -3,6 +3,7 @@
   import { focusTrap } from "../utils/ui";
   import SubmitBadge from "./SubmitBadge.svelte";
   import { visioneAPI } from "../services/api";
+  import { formatImageDisplayTitle } from "$lib/titleFormatting.js";
   
   export let isOpen = false;
   export let image = null;
@@ -10,6 +11,8 @@
   export let modalScale = 100;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch("close");
@@ -63,6 +66,9 @@
   }
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
+  $: modalTitle = image
+    ? formatImageDisplayTitle(image, runtimeProfile, showLocalTimeInTitles)
+    : "Frame Details";
   $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
   $: allowFrameSubmit = showSubmitUI;
   $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 160));
@@ -306,7 +312,7 @@
         on:pointercancel={endDrag}
       >
         <div class="flex items-center space-x-4">
-          <h3 class="text-xl font-bold text-gray-800">{image?.title ?? "Frame Details"}</h3>
+          <h3 class="text-xl font-bold text-gray-800">{modalTitle}</h3>
         </div>
         
         <button 
@@ -332,7 +338,7 @@
           {#if modalImageUrl}
             <img 
               src={modalImageUrl}
-              alt={image?.title} 
+              alt={modalTitle}
               class="block"
               style="height: {previewHeight}; width: auto; max-width: 100%; object-fit: contain;"
             />

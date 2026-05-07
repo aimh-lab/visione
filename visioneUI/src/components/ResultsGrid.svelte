@@ -4,6 +4,7 @@
   import { visioneAPI } from "../services/api.js";
   import VideoOverlay from "./VideoOverlay.svelte";
   import { resolveGroupByConfig } from "$lib/groupByConfig.js";
+  import { formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
 
   export let items = [];
   export let selectedId = null;
@@ -22,6 +23,14 @@
   export let rfPositive = [];
   export let rfNegative = [];
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
+  function getVideoBadgeModeOverride() {
+    if (resultsetBadgeLabelMode === 'id') return 'raw';
+    if (resultsetBadgeLabelMode === 'date') return 'formatted';
+    return 'both';
+  }
+
 
   $: activeGroupBy = resolveGroupByConfig(viewMode, runtimeProfile);
   $: hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
@@ -40,7 +49,7 @@
   const getId = (item) => item.imgId;
   const getIndex = (item) => item.index ?? item.idx ?? -1;
   const getUrl = (item) => item.url;
-  const getTitle = (item) => item.title ?? item.imgId ?? `Item ${getIndex(item) + 1}`;
+  const getTitle = (item) => formatImageDisplayTitle(item, runtimeProfile, showLocalTimeInTitles);
   const toValidIndex = (value) => {
     if (value === null || value === undefined) return null;
     if (typeof value === 'string' && value.trim() === '') return null;
@@ -642,11 +651,18 @@
 
   const rowInfoCache = new Map();
 
+  $: {
+    // Badge labels depend on these settings; clear cache so UI updates immediately.
+    void resultsetBadgeLabelMode;
+    void showLocalTimeInTitles;
+    rowInfoCache.clear();
+  }
+
   // Helper to build row header info
   function getRowInfo(row, rowIndex = -1) {
     if (!row || row.length === 0) return null;
     const firstItem = row[0];
-    const cacheKey = `${viewMode}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
+    const cacheKey = `${viewMode}::${resultsetBadgeLabelMode}::${showLocalTimeInTitles ? 1 : 0}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
     if (rowInfoCache.has(cacheKey)) return rowInfoCache.get(cacheKey);
     
     let info = null;
@@ -683,11 +699,15 @@
       const groupRowCount = precedingRows + 1 + continuationRows;
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
 
+      const displayGroupValue = activeGroupBy.kind === 'video'
+        ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())
+        : `${groupValue}`;
+
       info = {
         type: 'grouped',
         groupKind: activeGroupBy.kind,
         groupLabel: activeGroupBy.label || 'Group',
-        label: `${groupValue}`,
+        label: displayGroupValue,
         item: firstItem,
         showVideoBadge: prevGroupValue !== groupValue,
         isVideoGroupStart: prevGroupValue !== groupValue,
@@ -1304,7 +1324,7 @@
               {/if}
 
               {#if _tcLabels.get(getId(item))}
-                <div class="absolute top-0.5 left-0.5 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md border border-slate-300/35 bg-slate-700/95 text-slate-100 text-[10px] font-semibold tracking-wide shadow-md pointer-events-none">
+                <div class="absolute bottom-2 left-2 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md border border-slate-300/35 bg-slate-700/95 text-slate-100 text-[10px] font-semibold tracking-wide shadow-md pointer-events-none transition-all duration-200 group-hover:bottom-11">
                   {_tcLabels.get(getId(item))}
                 </div>
               {/if}

@@ -22,6 +22,8 @@
   export let challengeType = "KIS";
   export let imageModalScale = 100;
   export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
+  export let resultsetBadgeLabelMode = "both";
 
   export let registerContainer = (_el: Element | null) => {};
 
@@ -126,6 +128,8 @@
               {showSubmitUI}
               {challengeType}
               {runtimeProfile}
+              {showLocalTimeInTitles}
+              {resultsetBadgeLabelMode}
               {justifyResultRows}
               {tupleIndicatorMode}
               virtualizeRows={virtualizationEnabled}
@@ -152,6 +156,8 @@
   modalScale={imageModalScale}
   {showSubmitUI}
   {challengeType}
+  {runtimeProfile}
+  {showLocalTimeInTitles}
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}
