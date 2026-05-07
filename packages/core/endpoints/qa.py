@@ -24,11 +24,13 @@ SSE event types
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import operator
 import os
 import tempfile
+import uuid
 from typing import Any, Dict, List, Literal, Optional, Annotated
 
 import aiohttp
@@ -45,6 +47,21 @@ from typing_extensions import TypedDict
 from endpoints.search import convert_filters_to_pg
 
 router = APIRouter()
+
+# ── Active request cancellation registry ────────────────────────────────────
+# Maps request_id → asyncio.Event; set the event to request cancellation.
+_cancel_events: Dict[str, asyncio.Event] = {}
+
+
+@router.delete("/qa/{request_id}")
+async def qa_cancel_endpoint(request_id: str):
+    """Cancel a running /qa stream by its request_id."""
+    event = _cancel_events.get(request_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"No active request '{request_id}'.")
+    event.set()
+    return {"cancelled": request_id}
+
 
 # ── Sandbox runner (used by search_and_analyze_frames) ──────────────────────────────────
 _SANDBOX_SESSIONS_DIR = "/tmp/pyodide_sessions"
@@ -917,7 +934,7 @@ def _get_qa_runtime_registry(request: Request) -> Dict[str, Dict[str, Any]]:
 
 # ── Streaming endpoint ──────────────────────────────────────────────────────
 @router.post("/qa")
-async def qa_endpoint(payload: QARequest, request: Request):
+async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
     """Stream the QA agent reasoning as Server-Sent Events.
 
     Each SSE carries an ``event`` tag (``plan``, ``plan_review``, ``thinking``,
@@ -959,16 +976,37 @@ async def qa_endpoint(payload: QARequest, request: Request):
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
 
-    request_id = uuid.uuid4().hex
-    runtime = _get_qa_runtime_registry(request)
+    request_id = str(uuid.uuid4())
     cancel_event = asyncio.Event()
-    runtime["cancel_events"][request_id] = cancel_event
-    current_task = asyncio.current_task()
-    if current_task is not None:
-        runtime["tasks"][request_id] = current_task
+    _cancel_events[request_id] = cancel_event
 
     async def _event_generator():
-        """Yield SSE strings as the agent graph executes."""
+        """Yield SSE strings as the agent graph executes.
+
+        The agent runs in a dedicated asyncio Task and communicates via a Queue.
+        A separate polling loop checks for client disconnection every second and
+        cancels the agent task if detected.  This is necessary because
+        ``request.is_disconnected()`` alone is not sufficient: browsers use
+        HTTP/2 RST_STREAM (not a full TCP RST) when a fetch is aborted, so
+        uvicorn never raises CancelledError inside the blocked LLM call.
+        """
+        yield _sse_event("request_id", {"request_id": request_id})
+
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def _run_agent() -> None:
+            try:
+                async for event in agent.astream(initial_state, stream_mode="updates"):
+                    await queue.put(("event", event))
+                await queue.put(("done", None))
+            except asyncio.CancelledError:
+                await queue.put(("cancelled", None))
+                raise
+            except Exception as exc:
+                await queue.put(("error", exc))
+
+        agent_task = asyncio.create_task(_run_agent())
+
         try:
             yield _sse_event("request_id", {"request_id": request_id})
 
@@ -976,10 +1014,29 @@ async def qa_endpoint(payload: QARequest, request: Request):
             final_answer: Optional[str] = None
             last_agent_text: Optional[str] = None
 
-            async for event in agent.astream(initial_state, stream_mode="updates"):
-                if cancel_event.is_set():
-                    yield _sse_event("cancelled", {"request_id": request_id})
+            while True:
+                # Wait up to 1 s for the next event; use the timeout to poll
+                # for client disconnection without blocking indefinitely.
+                try:
+                    kind, data = await asyncio.wait_for(queue.get(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    if cancel_event.is_set() or await request.is_disconnected():
+                        if debug:
+                            print("[QA DEBUG] Cancellation requested, stopping agent.")
+                        agent_task.cancel()
+                        return
+                    continue
+
+                if kind == "done":
+                    break
+                if kind == "cancelled":
                     return
+                if kind == "error":
+                    yield _sse_event("error", {"detail": str(data)})
+                    return
+
+                # kind == "event"
+                event = data
 
                 # *event* is a dict mapping node-name → state-update produced by that node
                 for node_name, update in event.items():
@@ -1096,6 +1153,18 @@ async def qa_endpoint(payload: QARequest, request: Request):
         finally:
             runtime["tasks"].pop(request_id, None)
             runtime["cancel_events"].pop(request_id, None)
+
+        finally:
+            # Always cancel the agent task on exit (normal, error, or disconnect).
+            if not agent_task.done():
+                agent_task.cancel()
+                try:
+                    await agent_task
+                except (asyncio.CancelledError, Exception):
+                    pass
+            _cancel_events.pop(request_id, None)
+            if debug:
+                print("[QA DEBUG] Agent task finalised.")
 
     return StreamingResponse(
         _event_generator(),
