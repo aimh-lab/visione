@@ -1,27 +1,32 @@
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
 
 
 router = APIRouter()
 
 
-@router.get("/element-url")
-def element_url(id: str, request: Request, what: List[str] = Query(default=["images"])):
+class ElementUrlBatchRequest(BaseModel):
+    ids: List[str]
+    what: List[str] = ["images"]
+
+
+@router.post("/element-url")
+def element_url_batch(body: ElementUrlBatchRequest, request: Request):
     """
-    Given an image name (ID) and one or more element types, return the full URL for each type.
-    Example: /element-url?id=20190101_121948_000.jpg&what=images&what=thumbnails
+    Given a list of element IDs and one or more element types, return for each element
+    a dict with its "id" and the URLs for each requested type.
+    Example body: {"ids": ["20190101_121948_000.jpg", "..."], "what": ["images", "thumbnails"]}
     """
     try:
-        types = what
-        if len(types) == 1 and "," in types[0]:
-            types = [item.strip() for item in types[0].split(",") if item.strip()]
-
-        urls = {
-            collection_type: request.app.state.loader.get_collection_element_url_from_id(id, collection_type)
-            for collection_type in types
-        }
-        return {"urls": urls}
+        results = []
+        for element_id in body.ids:
+            entry = {"id": element_id}
+            for collection_type in body.what:
+                entry[collection_type] = request.app.state.loader.get_collection_element_url_from_id(element_id, collection_type)
+            results.append(entry)
+        return results
     except Exception as exc:
         error_str = f"URL Generation Error: {exc}"
         raise HTTPException(status_code=400, detail=error_str)
