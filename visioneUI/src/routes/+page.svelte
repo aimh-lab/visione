@@ -1411,7 +1411,19 @@
       if (canRequestField(field)) requested.push(field);
     }
 
-    const optionalFields = ['epoch', 'video_offset_seconds', 'hour_msb_middletime'];
+    const configuredTitleFormattingFields = [
+      String(profile?.titleFormatting?.imageTitle?.epochField || '').trim(),
+      String(profile?.titleFormatting?.imageTitle?.utcOffsetField || '').trim(),
+      String(profile?.titleFormatting?.videoGroup?.utcOffsetField || '').trim()
+    ].filter(Boolean);
+
+    const optionalFields = [
+      'epoch',
+      'utc_offset_hours',
+      'video_offset_seconds',
+      'hour_msb_middletime',
+      ...configuredTitleFormattingFields
+    ];
     for (const field of optionalFields) {
       if (canRequestField(field)) requested.push(field);
     }
