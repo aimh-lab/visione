@@ -186,6 +186,12 @@
   --ui-tab-count-badge-border: #cbd5e1;
   --ui-tab-count-badge-text: #334155;
 
+  /* ---- Global layering ---- */
+  --z-modal-overlay: 1000;
+  --z-modal-content: 1001;
+  --z-dialog-overlay: 2000;
+  --z-dialog-content: 2001;
+
   /* Base font size responsive */
   font-size: clamp(12px, 1.2vw, 16px);
 }

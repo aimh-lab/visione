@@ -63,7 +63,8 @@
   }
 
   $: currentIndex = image?.index ?? image?.idx ?? 0;
-  $: allowFrameSubmit = showSubmitUI && String(challengeType ?? 'KIS').toUpperCase() !== 'Q&A';
+  $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
+  $: allowFrameSubmit = showSubmitUI;
   $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 160));
   // Give the preview column enough width to preserve target height similarly to slideshow sizing.
   $: shellWidthPx = Math.max(900, Math.round(safeModalScale * 2.8));
@@ -282,7 +283,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[1000] flex items-start justify-center pt-10">
+  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] flex items-start justify-center pt-10">
     <!-- Backdrop -->
     <button
       type="button"
@@ -293,7 +294,7 @@
 
     <!-- Modal -->
     <div
-      class="relative z-[1001] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
+      class="relative z-[var(--z-modal-content)] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
       style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <!-- Header -->
@@ -445,9 +446,10 @@
                   role="button"
                   tabindex="0"
                   class="absolute top-3 right-3 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
-                  title="Submit"
-                  on:click={handleSubmit}
-                  on:keydown={(e) => e.key === 'Enter' && handleSubmit(e)}
+                    title={isQaChallenge ? 'Submit answer' : 'Submit'}
+                    aria-label={isQaChallenge ? 'Submit answer' : 'Submit frame'}
+                    on:click={handleSubmit}
+                    on:keydown={(e) => e.key === 'Enter' && handleSubmit(e)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M12 19V7M5 12l7-7 7 7"/>

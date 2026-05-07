@@ -7,6 +7,7 @@
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
   import SettingsModal from "../components/SettingsModal.svelte";
+  import InputModal from "../components/InputModal.svelte";
   import Keybindings from "../components/Keybindings.svelte";
   import { visioneAPI } from '../services/api.js';
   import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
@@ -217,6 +218,8 @@
   // Settings modal (open/close state only)
   let isSettingsOpen = false;
   let isVideoSummaryModalOpen = false;
+  let isQaAnswerModalOpen = false;
+  let qaAnswerContext = { imgId: '', source: '', title: '' };
   let pinnedVideoSummaries = [];
   let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
   let activePinnedSummaryKey = '';
@@ -1086,9 +1089,36 @@
     }
   });
 
-  const submitByImgId = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
+  const submitByImgIdRaw = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
   const submitTextAnswer = (text) => dresCtrl.submitTextAnswer(text);
   const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
+
+  function isQaChallengeMode() {
+    return String(get(uiStore).dresChallengeType || '').trim().toUpperCase() === 'Q&A';
+  }
+
+  function openQaAnswerModal({ imgId = '', source = 'submit', title = '' } = {}) {
+    qaAnswerContext = {
+      imgId: String(imgId || '').trim(),
+      source: String(source || 'submit').trim(),
+      title: String(title || '').trim()
+    };
+    isQaAnswerModalOpen = true;
+  }
+
+  async function handleQaAnswerSubmit(event) {
+    const answer = String(event?.detail?.answer || '').trim();
+    await submitTextAnswer(answer);
+    isQaAnswerModalOpen = false;
+  }
+
+  function submitByImgId(imgId, fallback = null, source = 'submit') {
+    if (isQaChallengeMode()) {
+      openQaAnswerModal({ imgId, source, title: fallback?.title || fallback?.imgId || '' });
+      return Promise.resolve({ accepted: false, verdict: '', description: 'Q&A answer dialog opened' });
+    }
+    return submitByImgIdRaw(imgId, fallback);
+  }
 
   // Video player controller
   const videoPlayerCtrl = createVideoPlayerController({
@@ -1646,7 +1676,7 @@
       url: dataUrl || "",
       title: imgId,
       raw: { source: "video-modal", currentTime }
-    });
+    }, 'video-player');
   }
 
   // ---------------------------
@@ -2260,12 +2290,8 @@ function handleViewSubmitted() {
     uiStore.actions.setLayoutTab(tab);
   }}
   onSubmitSelected={() => {
-    if ($uiStore.dresChallengeType === 'Q&A') {
-      toasts.info('Q&A mode: submit a text answer from the Submitted panel.');
-      return;
-    }
     const item = getSelectedItemForShortcuts();
-    if (item?.imgId) submitByImgId(item.imgId, item);
+    if (item?.imgId) submitByImgId(item.imgId, item, 'keyboard-shortcut');
   }}
   onToggleSidebar={() => uiStore.actions.toggleSidebar()}
   onOpenSettings={() => (isSettingsOpen = true)}
@@ -2312,6 +2338,31 @@ function handleViewSubmitted() {
     else if ($similarityModal.isOpen) closeSimilarityModal();
     else closeModal();
   }}
+/>
+
+<InputModal
+  isOpen={isQaAnswerModalOpen}
+  title="Submit Q&A answer"
+  icon="default"
+  submitLabel="Submit answer"
+  cancelLabel="Cancel"
+  description={qaAnswerContext.imgId
+    ? `Frame ${qaAnswerContext.imgId}${qaAnswerContext.source ? ` · from ${qaAnswerContext.source}` : ''}`
+    : 'Type the textual answer to submit to DRES'}
+  fields={[
+    {
+      name: 'answer',
+      label: 'Answer',
+      type: 'textarea',
+      placeholder: 'Type your Q&A answer...',
+      value: '',
+      rows: 4,
+      required: true,
+      hint: 'Submitted as DRES text answer for Q&A challenge.'
+    }
+  ]}
+  on:close={() => (isQaAnswerModalOpen = false)}
+  on:submit={handleQaAnswerSubmit}
 />
 
 <VideoPlayerModal
@@ -2372,7 +2423,7 @@ function handleViewSubmitted() {
       url: dataUrl || "",
       title: imgId,
       raw: { source: "slideshow-modal", currentTime }
-    });
+    }, 'slideshow');
   }}
   on:captureForSimilarity={(e) => {
     const t = Number(e?.detail?.currentTime || 0);
