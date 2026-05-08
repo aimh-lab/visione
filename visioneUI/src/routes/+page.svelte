@@ -258,6 +258,7 @@
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
+  $: visioneAPI.setElementUrlHost($uiStore.elementUrlHost);
 
   // ---------------------------
   // CSS vars (driven only by uiStore)
@@ -2489,6 +2490,7 @@ function handleViewSubmitted() {
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}
+  elementUrlHost={$uiStore.elementUrlHost}
   justifyResultRows={$uiStore.justifyResultRows}
   tupleIndicatorMode={$uiStore.tupleIndicatorMode}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}

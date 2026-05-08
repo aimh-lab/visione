@@ -35,6 +35,7 @@ export class VisioneAPI {
     this.elementUrlInFlight = new Map();
     this.elementUrlCacheMax = 3000;
     this.elementUrlTtlMs = 10 * 60 * 1000;
+    this.elementUrlHost = '';
     this.discoveryCache = null;
     this.discoveryInFlight = null;
     this.translationCache = new Map();
@@ -162,6 +163,22 @@ export class VisioneAPI {
     return `${this.baseUrl}/thumbnails/${hour}/${rawId}`;
   }
 
+  setElementUrlHost(host = '') {
+    const normalized = String(host || '').trim().replace(/\/+$/, '');
+    if (normalized === this.elementUrlHost) return;
+
+    this.elementUrlHost = normalized;
+    this.elementUrlCache.clear();
+    this.elementUrlInFlight.clear();
+  }
+
+  #getElementUrlEndpoint() {
+    if (this.elementUrlHost) {
+      return `${this.elementUrlHost}/element-url`;
+    }
+    return `${this.baseUrl}/element-url`;
+  }
+
 
   async #makeRequest(url, options = {}) {
     const { retries = 1, timeout = 30000, ...fetchOptions } = options;
@@ -276,7 +293,7 @@ export class VisioneAPI {
     const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
     if (list.length === 0) throw new APIError('what is required', 400);
 
-    const response = await this.#makeRequest(`${this.baseUrl}/element-url`, {
+    const response = await this.#makeRequest(this.#getElementUrlEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
