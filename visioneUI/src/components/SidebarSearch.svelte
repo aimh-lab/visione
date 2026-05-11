@@ -17,6 +17,7 @@
   export let autoTranslateEnabled = true;
   export let onToggleAutoTranslate = () => {};
   export let runtimeProfile = {};
+  export let discoveryMetadataFields = [];
   export let searchLoading = false;
   export let searchError = null;
   export let searchResultSet = null;
@@ -231,6 +232,7 @@
             {availableModels}
             {modelSelectionPerStepEnabled}
             {runtimeProfile}
+            {discoveryMetadataFields}
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}

@@ -226,6 +226,7 @@
   let activeCollectionName = 'default';
   let runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   let lastDiscoveryPayload = null;
+  let discoveryMetadataFields = [];
 
   // Back/forward
   let isRestoringFromHistory = false;
@@ -250,6 +251,7 @@
   $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
+  $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
   $: {
     const safeViewMode = resolveViewMode($uiStore.viewMode, runtimeProfile);
     if (safeViewMode !== $uiStore.viewMode) {
@@ -1194,9 +1196,8 @@
           alignModelDefaultsFromDiscovery();
         }
 
-        let discoveredCollection = activeCollectionName;
-        if (typeof data?.name === 'string' && data.name.trim()) {
-          discoveredCollection = data.name.trim().toLowerCase();
+        const discoveredCollection = extractDiscoveryCollectionName(data, activeCollectionName);
+        if (discoveredCollection) {
           activeCollectionName = discoveredCollection;
         }
 
@@ -1386,9 +1387,39 @@
     configureSearchMetadataFromDiscovery(lastDiscoveryPayload, runtimeProfile);
   }
 
+  function normalizeDiscoveryEntries(discoveryPayload) {
+    if (Array.isArray(discoveryPayload)) return discoveryPayload;
+    if (!discoveryPayload || typeof discoveryPayload !== 'object') return [];
+
+    if (Array.isArray(discoveryPayload.collections)) return discoveryPayload.collections;
+    if (Array.isArray(discoveryPayload.data)) return discoveryPayload.data;
+    if (discoveryPayload.data && typeof discoveryPayload.data === 'object') {
+      if (Array.isArray(discoveryPayload.data.collections)) return discoveryPayload.data.collections;
+      return [discoveryPayload.data];
+    }
+
+    return [discoveryPayload];
+  }
+
+  function selectDiscoveryEntry(discoveryPayload, collectionName = '') {
+    const entries = normalizeDiscoveryEntries(discoveryPayload);
+    const normalizedCollection = String(collectionName || '').trim().toLowerCase();
+
+    const selectedByCollection = entries.find((entry) => {
+      const name = String(entry?.name || '').trim().toLowerCase();
+      return !!name && !!normalizedCollection && name === normalizedCollection;
+    });
+
+    const selectedByLsc26 = entries.find((entry) => String(entry?.name || '').trim().toLowerCase() === 'lsc26');
+    const selectedByMetadata = entries.find((entry) => Array.isArray(entry?.metadata) && entry.metadata.length > 0);
+
+    return selectedByCollection || selectedByLsc26 || selectedByMetadata || entries[0] || null;
+  }
+
   function configureSearchMetadataFromDiscovery(data, profile = runtimeProfile) {
-    const available = Array.isArray(data?.metadata)
-      ? data.metadata.map((v) => String(v || '').trim()).filter(Boolean)
+    const selectedDiscovery = selectDiscoveryEntry(data, activeCollectionName);
+    const available = Array.isArray(selectedDiscovery?.metadata)
+      ? selectedDiscovery.metadata.map((v) => String(v || '').trim()).filter(Boolean)
       : [];
     const availableSet = new Set(available);
     const hasAvailabilityList = availableSet.size > 0;
@@ -1399,7 +1430,7 @@
       return !hasAvailabilityList || availableSet.has(normalized);
     };
 
-    const groupingField = String(data?.groupby_attribute || 'hour_id').trim() || 'hour_id';
+    const groupingField = String(selectedDiscovery?.groupby_attribute || 'hour_id').trim() || 'hour_id';
     const requested = [groupingField];
 
     const configuredGroupByMetadata = Array.isArray(profile?.groupBy?.modes)
@@ -1432,8 +1463,21 @@
     visioneAPI.defaultMetadataToRetrieve = Array.from(new Set(requested));
   }
 
+  function extractMetadataFieldsFromDiscovery(discoveryPayload, collectionName = '') {
+    const selected = selectDiscoveryEntry(discoveryPayload, collectionName);
+
+    return Array.isArray(selected?.metadata)
+      ? selected.metadata.map((v) => String(v || '').trim()).filter(Boolean)
+      : [];
+  }
+
+  function extractDiscoveryCollectionName(discoveryPayload, fallback = '') {
+    const selected = selectDiscoveryEntry(discoveryPayload, fallback);
+    return String(selected?.name || '').trim().toLowerCase();
+  }
+
   function extractAvailableModelsFromDiscovery(discoveryPayload) {
-    const entries = Array.isArray(discoveryPayload) ? discoveryPayload : [discoveryPayload];
+    const entries = normalizeDiscoveryEntries(discoveryPayload);
     const out = new Map();
 
     function normalizeModalities(value) {
@@ -2592,6 +2636,7 @@ function handleViewSubmitted() {
         challengeType={$uiStore.dresChallengeType}
         imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
+        {discoveryMetadataFields}
         showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
         resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
         submitTextAnswer={submitTextAnswer}
