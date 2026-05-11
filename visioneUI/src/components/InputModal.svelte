@@ -17,7 +17,11 @@
   // Inizializza form values dai fields
   $: if (isOpen && fields.length > 0) {
     formValues = fields.reduce((acc, field) => {
-      acc[field.name] = field.value || '';
+      if (field.type === 'checkbox') {
+        acc[field.name] = !!field.value;
+      } else {
+        acc[field.name] = field.value || '';
+      }
       return acc;
     }, {});
   }
@@ -121,6 +125,16 @@
                 rows={field.rows || 3}
                 class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all resize-none"
               ></textarea>
+            {:else if field.type === 'checkbox'}
+              <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  id={fieldId}
+                  type="checkbox"
+                  bind:checked={formValues[field.name]}
+                  class="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                />
+                <span class="text-sm text-gray-300">{field.placeholder || field.label}</span>
+              </label>
             {:else if field.type === 'select'}
               <select
                 id={fieldId}

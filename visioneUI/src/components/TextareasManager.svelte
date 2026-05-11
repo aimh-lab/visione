@@ -33,10 +33,13 @@
     label: string;
     type: string;
     placeholder?: string;
-    value?: string;
+    value?: string | boolean;
     hint?: string;
     required?: boolean;
     rows?: number;
+    min?: number;
+    max?: number;
+    step?: number;
     options?: ModalOption[];
   };
 
@@ -47,7 +50,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "imageUrl" | "metadata" | "";
+    filterType: "imageUrl" | "metadata" | "metadataDate" | "metadataCountry" | "metadataLocation" | "";
   };
 
   type ModalSubmitData = {
@@ -55,6 +58,11 @@
     name?: string;
     comparator?: string;
     value?: string;
+    year?: string;
+    month?: string;
+    day?: string;
+    hour?: string;
+    useTimezone?: boolean;
   };
 
   type DispatchEvents = {
@@ -89,6 +97,7 @@
   export let availableModels: AvailableModelInput[] = [];
   export let modelSelectionPerStepEnabled = true;
   export let runtimeProfile: Record<string, unknown> = {};
+  export let discoveryMetadataFields: string[] = [];
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
 
@@ -122,19 +131,41 @@
   let imageModelOptions: string[] = [];
   let multiModalModelOptions: string[] = [];
   let metadataFilterFields: string[] = [];
+  let displayMetadataFilterFields: string[] = [];
+  let discoveryMetadataSet: Set<string> = new Set();
+  let runtimeMetadataSet: Set<string> = new Set();
+  let hasDateFilterSupport = false;
+  let hasCountryFilterSupport = false;
+  let hasLocationFilterSupport = false;
+  let hasAnyCustomMetadataFilter = false;
   let modalMetadataField = '';
   let modalMetadataShortcut = '';
+
+  const SPECIAL_METADATA_FIELDS = new Set([
+    'year',
+    'month',
+    'day',
+    'hour',
+    'hour_local',
+    'timezone',
+    'location_country',
+    'location'
+  ]);
 
   const SHORTCUT_ALIAS_BY_FIELD: Record<string, string> = {
     year: 'y',
     month: 'm',
     day: 'd',
     hour: 'h',
+    hour_local: 'hl',
+    timezone: 'tz',
+    location_country: 'country',
+    location: 'location',
     semantic_name: 'semantic',
     heart_rate_bpm: 'hr'
   };
 
-  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'heart_rate_bpm']);
+  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'heart_rate_bpm']);
 
   function getTextModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
@@ -212,6 +243,46 @@
       .map((field: unknown) => String(field || '').trim())
       .filter(Boolean)
   ));
+
+  $: discoveryMetadataSet = new Set(
+    (Array.isArray(discoveryMetadataFields) ? discoveryMetadataFields : [])
+      .map((field) => String(field || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  $: runtimeMetadataSet = new Set(
+    (Array.isArray(metadataFilterFields) ? metadataFilterFields : [])
+      .map((field) => String(field || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  function hasMetadataField(field: string) {
+    const normalized = String(field || '').trim().toLowerCase();
+    if (!normalized) return false;
+
+    if (discoveryMetadataSet.size > 0) {
+      return discoveryMetadataSet.has(normalized);
+    }
+
+    return runtimeMetadataSet.has(normalized);
+  }
+
+  function hasSpecialMetadataField(field: string) {
+    const normalized = String(field || '').trim().toLowerCase();
+    if (!normalized) return false;
+    return discoveryMetadataSet.has(normalized) || runtimeMetadataSet.has(normalized);
+  }
+
+  $: hasDateFilterSupport = ['year', 'month', 'day', 'hour', 'hour_local'].some((f) => hasSpecialMetadataField(f));
+  $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
+  $: hasLocationFilterSupport = hasSpecialMetadataField('location');
+  // Keep these filters always available in UI even when discovery metadata is delayed/unavailable.
+  $: hasAnyCustomMetadataFilter = true;
+
+  $: displayMetadataFilterFields = metadataFilterFields.filter((field) => {
+    const normalized = String(field || '').trim().toLowerCase();
+    return normalized && !SPECIAL_METADATA_FIELDS.has(normalized) && hasMetadataField(normalized);
+  });
 
   function getShortcutForField(field: string) {
     const normalized = String(field || '').trim().toLowerCase();
@@ -945,6 +1016,174 @@
 
     closeMenu();
   }
+
+  function openDateMetadataFilterModal(index: number) {
+    modalMetadataField = 'date';
+    modalMetadataShortcut = 'date';
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Add Date Filter',
+      icon: 'calendar',
+      description: 'Fill only the parts you need (year, month, day, hour).',
+      targetIndex: index,
+      filterType: 'metadataDate',
+      fields: [
+        {
+          name: 'year',
+          label: 'Year',
+          type: 'number',
+          min: 1900,
+          max: 9999,
+          step: 1,
+          placeholder: 'e.g. 2026'
+        },
+        {
+          name: 'month',
+          label: 'Month',
+          type: 'number',
+          min: 1,
+          max: 12,
+          step: 1,
+          placeholder: '1-12'
+        },
+        {
+          name: 'day',
+          label: 'Day',
+          type: 'number',
+          min: 1,
+          max: 31,
+          step: 1,
+          placeholder: '1-31'
+        },
+        {
+          name: 'hour',
+          label: 'Hour',
+          type: 'number',
+          min: 0,
+          max: 23,
+          step: 1,
+          placeholder: '0-23'
+        },
+        {
+          name: 'useTimezone',
+          label: 'Timezone',
+          type: 'checkbox',
+          value: false,
+          placeholder: 'Use local timezone metadata (hour_local + timezone)'
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
+  function openCountryMetadataFilterModal(index: number) {
+    modalMetadataField = 'location_country';
+    modalMetadataShortcut = 'country';
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Add Country Filter',
+      icon: 'filter',
+      description: 'Filter by capture country (location_country).',
+      targetIndex: index,
+      filterType: 'metadataCountry',
+      fields: [
+        {
+          name: 'comparator',
+          label: 'Comparator',
+          type: 'select',
+          value: 'ilike',
+          options: [
+            { value: 'eq', label: '= (equal)' },
+            { value: 'ne', label: '!= (not equal)' },
+            { value: 'like', label: '~ (like)' },
+            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+          ]
+        },
+        {
+          name: 'value',
+          label: 'Country',
+          type: 'text',
+          value: '',
+          placeholder: 'e.g. Ireland',
+          required: true
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
+  function openLocationMetadataFilterModal(index: number) {
+    modalMetadataField = 'location';
+    modalMetadataShortcut = 'location';
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Add Location Filter',
+      icon: 'filter',
+      description: 'Filter by capture location (location).',
+      targetIndex: index,
+      filterType: 'metadataLocation',
+      fields: [
+        {
+          name: 'comparator',
+          label: 'Comparator',
+          type: 'select',
+          value: 'ilike',
+          options: [
+            { value: 'eq', label: '= (equal)' },
+            { value: 'ne', label: '!= (not equal)' },
+            { value: 'like', label: '~ (like)' },
+            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+          ]
+        },
+        {
+          name: 'value',
+          label: 'Location',
+          type: 'text',
+          value: '',
+          placeholder: 'e.g. Dublin',
+          required: true
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
+  function appendTokensToTextarea(index: number, tokens: string[]) {
+    const safeTokens = tokens.map((token) => String(token || '').trim()).filter(Boolean);
+    if (safeTokens.length === 0) return;
+
+    const currentValue = textareas[index].value || '';
+    const sep = currentValue.trim().length > 0 ? ' ' : '';
+    update(index, `${currentValue}${sep}${safeTokens.join(' ')}`.trim());
+  }
+
+  function normalizeOptionalNumber(value: unknown, min: number, max: number) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return null;
+    const floored = Math.floor(parsed);
+    if (floored < min || floored > max) return null;
+    return floored;
+  }
+
+  function quoteFilterTokenValue(value: unknown) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    if (/\s/.test(raw) || raw.includes(':')) {
+      const escaped = raw.replace(/"/g, '\\"');
+      return `"${escaped}"`;
+    }
+
+    return raw;
+  }
   
   function handleModalSubmit(event: CustomEvent<ModalSubmitData>) {
 
@@ -964,6 +1203,49 @@
           'url'
         );
       }
+    } else if (filterType === 'metadataDate') {
+      const year = normalizeOptionalNumber(data.year, 1900, 9999);
+      const month = normalizeOptionalNumber(data.month, 1, 12);
+      const day = normalizeOptionalNumber(data.day, 1, 31);
+      const hour = normalizeOptionalNumber(data.hour, 0, 23);
+      const useTimezone = !!data.useTimezone;
+
+      const tokens: string[] = [];
+      if (year !== null) tokens.push(`y:${year}`);
+      if (month !== null) tokens.push(`m:${month}`);
+      if (day !== null) tokens.push(`d:${day}`);
+
+      if (hour !== null) {
+        if (useTimezone) {
+          tokens.push(`hl:${hour}`);
+        } else {
+          tokens.push(`h:${hour}`);
+        }
+      }
+
+      if (useTimezone) {
+        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        const tz = String(browserTimezone || '').trim();
+        if (tz) {
+          tokens.push(`tz:${quoteFilterTokenValue(tz)}`);
+        }
+      }
+
+      appendTokensToTextarea(targetIndex, tokens);
+    } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
+      const rawValue = String(data.value ?? '').trim();
+      if (rawValue) {
+        const comparator = String(data.comparator || 'ilike').trim().toLowerCase();
+        const shortcut = filterType === 'metadataCountry' ? 'country' : 'location';
+        const defaultComparator = 'ilike';
+        const symbol = toComparatorSymbol(comparator, defaultComparator);
+        const tokenValue = quoteFilterTokenValue(rawValue);
+        const token = comparator === defaultComparator
+          ? `${shortcut}:${tokenValue}`
+          : `${shortcut}:${symbol}${tokenValue}`;
+
+        appendTokensToTextarea(targetIndex, [token]);
+      }
     } else if (filterType === 'metadata') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
@@ -975,9 +1257,7 @@
           ? `${shortcut}:${rawValue}`
           : `${shortcut}:${symbol}${rawValue}`;
 
-        const currentValue = textareas[targetIndex].value || '';
-        const sep = currentValue.trim().length > 0 ? ' ' : '';
-        update(targetIndex, currentValue + sep + token);
+        appendTokensToTextarea(targetIndex, [token]);
       }
     }
     
@@ -1470,7 +1750,7 @@
                       </button>
 
                       <div class="my-1 h-px bg-gray-700"></div>
-                      {#if metadataFilterFields.length > 0}
+                      {#if true}
                         <div class="my-1 h-px bg-gray-700"></div>
 
                         {#if openMetadataSubmenuIndex === i}
@@ -1494,7 +1774,61 @@
                             <span class="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">Metadata Filters</span>
                           </div>
 
-                          {#each metadataFilterFields as field}
+                            <button
+                              type="button"
+                              on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
+                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                            >
+                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                                </svg>
+                              </div>
+                              <div class="flex-1">
+                                <div class="text-xs font-medium text-white">Date</div>
+                                <div class="text-[10px] text-gray-400 font-mono">partial: year / month / day / hour</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
+                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                            >
+                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M3 7h18M3 12h18M3 17h18"/>
+                                </svg>
+                              </div>
+                              <div class="flex-1">
+                                <div class="text-xs font-medium text-white">Country</div>
+                                <div class="text-[10px] text-gray-400 font-mono">country:...</div>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              on:click|stopPropagation={() => openLocationMetadataFilterModal(i)}
+                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                            >
+                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                                  <circle cx="12" cy="9" r="2.5"/>
+                                </svg>
+                              </div>
+                              <div class="flex-1">
+                                <div class="text-xs font-medium text-white">Location</div>
+                                <div class="text-[10px] text-gray-400 font-mono">location:...</div>
+                              </div>
+                            </button>
+
+                          {#if displayMetadataFilterFields.length > 0}
+                            <div class="my-1 h-px bg-gray-700"></div>
+                          {/if}
+
+                          {#each displayMetadataFilterFields as field}
                             {@const shortcut = getShortcutForField(field)}
                             <button
                               type="button"

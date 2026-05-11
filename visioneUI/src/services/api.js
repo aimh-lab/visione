@@ -732,6 +732,8 @@ export class VisioneAPI {
       day: 'day',
       h: 'hour',
       hour: 'hour',
+      hl: 'hour_local',
+      hour_local: 'hour_local',
       hr: 'heart_rate_bpm',
       heart_rate_bpm: 'heart_rate_bpm'
     };
@@ -742,7 +744,12 @@ export class VisioneAPI {
       semantic_name: 'semantic_name',
       new_semantic_name: 'new_semantic_name',
       ns: 'new_semantic_name',
-      type: 'type'
+      type: 'type',
+      country: 'location_country',
+      location_country: 'location_country',
+      location: 'location',
+      timezone: 'timezone',
+      tz: 'timezone'
     };
 
     if (alias === 'date') {

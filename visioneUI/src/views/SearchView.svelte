@@ -62,6 +62,7 @@
   export let challengeType = "KIS";
   export let imageModalScale = 100;
   export let runtimeProfile = {};
+  export let discoveryMetadataFields: string[] = [];
   export let showLocalTimeInTitles = true;
   export let resultsetBadgeLabelMode = "both";
   export let submittedAnswers: Array<Record<string, unknown>> = [];
@@ -180,6 +181,7 @@
   {autoTranslateEnabled}
   {onToggleAutoTranslate}
   {runtimeProfile}
+  {discoveryMetadataFields}
   {textareaImages}
   {searchLoading}
   searchError={searchError as any}

@@ -58,8 +58,10 @@
           "month",
           "day",
           "hour",
-          "semantic_name",
-          "heart_rate_bpm"
+          "hour_local",
+          "timezone",
+          "location_country",
+          "location"
         ]
       },
       "timeBadge": {
