@@ -49,6 +49,10 @@
             "value": "byvideo",
             "label": "By Hour",
             "metadata": "hour_id"
+          },
+          {
+            "value": "bydate",
+            "label": "By Date"
           }
         ]
       },

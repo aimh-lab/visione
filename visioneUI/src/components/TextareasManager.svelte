@@ -176,6 +176,8 @@
   };
 
   const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'heart_rate_bpm']);
+  const DATE_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'timezone']);
+  const DATE_METADATA_FIELD_ORDER = ['year', 'month', 'day', 'hour', 'hour_local', 'timezone'];
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
     year: 'Year',
@@ -866,7 +868,7 @@
 
   // Gestione menu dropdown
   let openMenuIndex: number | null = null;
-  let openMetadataSubmenuIndex: number | null = null;
+  let openImageSubmenuIndex: number | null = null;
   let openTranslationHintIndex: number | null = null;
   let menuTriggerRefs: Array<HTMLButtonElement | null> = [];
   let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
@@ -896,7 +898,7 @@
 
   async function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
-    openMetadataSubmenuIndex = null;
+    openImageSubmenuIndex = null;
 
     if (openMenuIndex === index) {
       await tick();
@@ -906,15 +908,15 @@
 
   function closeMenu() {
     openMenuIndex = null;
-    openMetadataSubmenuIndex = null;
+    openImageSubmenuIndex = null;
   }
 
-  function openMetadataSubmenu(index: number) {
-    openMetadataSubmenuIndex = index;
+  function openImageSubmenu(index: number) {
+    openImageSubmenuIndex = index;
   }
 
-  function closeMetadataSubmenu() {
-    openMetadataSubmenuIndex = null;
+  function closeImageSubmenu() {
+    openImageSubmenuIndex = null;
   }
 
   $: if (openTranslationHintIndex !== null && !getTranslationHint(openTranslationHintIndex)) {
@@ -1131,6 +1133,7 @@
   function openDateMetadataFilterModal(index: number) {
     modalMetadataField = 'date';
     modalMetadataShortcut = 'date';
+    const prefill = getDateMetadataPrefill(index);
 
     modalConfig = {
       isOpen: true,
@@ -1144,6 +1147,7 @@
           name: 'dateExpr',
           label: 'Date expression',
           type: 'text',
+          value: prefill.dateExpr,
           placeholder: '2026-05-13 14 (or 2026, 2026-05, 14)',
           hint: 'Accepted: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, or HH only.'
         },
@@ -1151,6 +1155,7 @@
           name: 'year',
           label: 'Year',
           type: 'number',
+          value: prefill.year,
           min: 1900,
           max: 9999,
           step: 1,
@@ -1160,6 +1165,7 @@
           name: 'month',
           label: 'Month',
           type: 'number',
+          value: prefill.month,
           min: 1,
           max: 12,
           step: 1,
@@ -1169,6 +1175,7 @@
           name: 'day',
           label: 'Day',
           type: 'number',
+          value: prefill.day,
           min: 1,
           max: 31,
           step: 1,
@@ -1178,6 +1185,7 @@
           name: 'hour',
           label: 'Hour',
           type: 'number',
+          value: prefill.hour,
           min: 0,
           max: 23,
           step: 1,
@@ -1187,7 +1195,7 @@
           name: 'useTimezone',
           label: 'Timezone',
           type: 'checkbox',
-          value: false,
+          value: prefill.useTimezone,
           placeholder: 'Use local timezone metadata (hour_local + timezone)'
         },
         {
@@ -1195,10 +1203,11 @@
           label: 'Query preview',
           type: 'preview',
           computePreview: (values: ModalSubmitData) => {
-            const tokens = buildDateFilterTokens(values);
-            return tokens.length > 0 ? tokens.join(' ') : 'No tokens yet';
+            const incomingTokens = buildDateFilterTokens(values);
+            const mergedDateTokens = mergeDateMetadataTokens(index, incomingTokens);
+            return mergedDateTokens.length > 0 ? mergedDateTokens.join(' ') : 'No date tokens yet';
           },
-          hint: 'Year accepts 2 digits in the Year field (e.g. 24 -> 2024). API tokens always use full year.'
+          hint: 'Preview shows merged date filters (existing kept + new updates). Year accepts 2 digits (e.g. 24 -> 2024).'
         }
       ]
     };
@@ -1375,7 +1384,11 @@
   $: {
     textareas.forEach((textarea, index) => {
       const currentValue = String(textarea?.value || '');
-      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue, { extractTrailingToken: true });
+      const hasDOM = typeof document !== 'undefined';
+      const isFocusedTextarea = hasDOM && textareaRefs[index] && document.activeElement === textareaRefs[index];
+      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue, {
+        extractTrailingToken: !isFocusedTextarea
+      });
       if (tokens.length > 0) {
         const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
         setMetadataTokens(index, [...existing, ...tokens]);
@@ -1429,7 +1442,11 @@
     if (!rawToken) return;
 
     const currentTokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
-    setMetadataTokens(index, currentTokens.filter((entry) => entry !== rawToken));
+    const nextTokens = currentTokens.filter((entry) => entry !== rawToken);
+    if (nextTokens.length === currentTokens.length) return;
+
+    setMetadataTokens(index, nextTokens);
+    setTimeout(() => dispatchSearchWithMetadata(), 0);
   }
 
   function escapeRegex(text: string) {
@@ -1559,6 +1576,153 @@
     return { year: null, month: null, day: null, hour: null };
   }
 
+  function getMetadataTokenValuePart(token: string) {
+    const raw = String(token || '').trim();
+    const idx = raw.indexOf(':');
+    if (idx < 0) return '';
+    return raw.slice(idx + 1).trim();
+  }
+
+  function stripComparatorPrefix(value: string) {
+    return String(value || '').trim().replace(/^(>=|<=|!=|>|<|=|~)/, '').trim();
+  }
+
+  function getMetadataTokensSnapshotForIndex(index: number) {
+    const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    const rawValue = String(textareas[index]?.value || '');
+    const { tokens: inlineTokens } = parseMetadataTokensFromText(rawValue, { extractTrailingToken: true });
+    return normalizeMetadataTokens([...existing, ...inlineTokens]);
+  }
+
+  function getDateMetadataPrefill(index: number) {
+    const snapshot = getMetadataTokensSnapshotForIndex(index);
+
+    let year: number | null = null;
+    let month: number | null = null;
+    let day: number | null = null;
+    let hour: number | null = null;
+    let useTimezone = false;
+
+    snapshot.forEach((token) => {
+      const field = getFieldFromMetadataToken(token);
+      if (!DATE_METADATA_FIELDS.has(field)) return;
+
+      const normalizedValue = stripComparatorPrefix(unquoteMetadataValue(getMetadataTokenValuePart(token)));
+
+      if (field === 'year') {
+        const parsed = normalizeOptionalYear(normalizedValue);
+        if (parsed !== null) year = parsed;
+        return;
+      }
+
+      if (field === 'month') {
+        const parsed = normalizeOptionalNumber(normalizedValue, 1, 12);
+        if (parsed !== null) month = parsed;
+        return;
+      }
+
+      if (field === 'day') {
+        const parsed = normalizeOptionalNumber(normalizedValue, 1, 31);
+        if (parsed !== null) day = parsed;
+        return;
+      }
+
+      if (field === 'hour' || field === 'hour_local') {
+        const parsed = normalizeOptionalNumber(normalizedValue, 0, 23);
+        if (parsed !== null) hour = parsed;
+        if (field === 'hour_local') useTimezone = true;
+        return;
+      }
+
+      if (field === 'timezone') {
+        useTimezone = true;
+      }
+    });
+
+    const pad2 = (value: number) => String(value).padStart(2, '0');
+    let dateExpr = '';
+    if (year !== null) {
+      dateExpr = String(year);
+      if (month !== null) {
+        dateExpr += `-${pad2(month)}`;
+        if (day !== null) {
+          dateExpr += `-${pad2(day)}`;
+        }
+      }
+      if (hour !== null) {
+        dateExpr += ` ${pad2(hour)}`;
+      }
+    } else if (hour !== null) {
+      dateExpr = String(hour);
+    }
+
+    return {
+      dateExpr,
+      year: year !== null ? String(year) : '',
+      month: month !== null ? String(month) : '',
+      day: day !== null ? String(day) : '',
+      hour: hour !== null ? String(hour) : '',
+      useTimezone
+    };
+  }
+
+  function upsertDateMetadataTokens(index: number, tokens: string[]) {
+    const incomingTokens = normalizeMetadataTokens(tokens);
+    if (incomingTokens.length === 0) return;
+
+    const snapshot = getMetadataTokensSnapshotForIndex(index);
+    const nonDateTokens = snapshot.filter((token) => !DATE_METADATA_FIELDS.has(getFieldFromMetadataToken(token)));
+    const mergedDateTokens = mergeDateMetadataTokens(index, incomingTokens);
+
+    const currentValue = String(textareas[index]?.value || '');
+    const cleanedValue = removeShortcutTokensFromText(currentValue, [
+      'y', 'year',
+      'm', 'month',
+      'd', 'day',
+      'h', 'hour',
+      'hl', 'hour_local',
+      'tz', 'timezone'
+    ]);
+
+    if (cleanedValue !== currentValue) {
+      update(index, cleanedValue);
+    }
+
+    setMetadataTokens(index, [...nonDateTokens, ...mergedDateTokens]);
+  }
+
+  function mergeDateMetadataTokens(index: number, incomingTokens: string[]) {
+    const snapshot = getMetadataTokensSnapshotForIndex(index);
+    const normalizedIncoming = normalizeMetadataTokens(incomingTokens);
+    const dateByField = new Map<string, string>();
+
+    snapshot.forEach((token) => {
+      const field = getFieldFromMetadataToken(token);
+      if (!DATE_METADATA_FIELDS.has(field)) return;
+      dateByField.set(field, token);
+    });
+
+    normalizedIncoming.forEach((token) => {
+      const field = getFieldFromMetadataToken(token);
+      if (!DATE_METADATA_FIELDS.has(field)) return;
+
+      if (field === 'hour') {
+        dateByField.delete('hour_local');
+        dateByField.delete('timezone');
+      }
+
+      if (field === 'hour_local') {
+        dateByField.delete('hour');
+      }
+
+      dateByField.set(field, token);
+    });
+
+    return DATE_METADATA_FIELD_ORDER
+      .map((field) => dateByField.get(field) || '')
+      .filter(Boolean);
+  }
+
   function buildDateFilterTokens(data: ModalSubmitData) {
     const parsed = parseDateExpression(data.dateExpr);
     const explicitYear = normalizeOptionalYear(data.year);
@@ -1612,6 +1776,7 @@
 
     const data = event.detail;
     const { targetIndex, filterType } = modalConfig;
+    let shouldTriggerSearch = false;
     if (targetIndex === null) {
       modalConfig.isOpen = false;
       return;
@@ -1628,14 +1793,8 @@
       }
     } else if (filterType === 'metadataDate') {
       const tokens = buildDateFilterTokens(data);
-      upsertMetadataTokens(targetIndex, tokens, [
-        'y', 'year',
-        'm', 'month',
-        'd', 'day',
-        'h', 'hour',
-        'hl', 'hour_local',
-        'tz', 'timezone'
-      ]);
+      upsertDateMetadataTokens(targetIndex, tokens);
+      shouldTriggerSearch = tokens.length > 0;
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
@@ -1653,6 +1812,7 @@
           : ['location'];
 
         upsertMetadataTokens(targetIndex, [token], shortcutsToReplace);
+        shouldTriggerSearch = true;
       }
     } else if (filterType === 'metadata') {
       const rawValue = String(data.value ?? '').trim();
@@ -1666,12 +1826,17 @@
           : `${shortcut}:${symbol}${rawValue}`;
 
         upsertMetadataTokens(targetIndex, [token], [shortcut, modalMetadataField]);
+        shouldTriggerSearch = true;
       }
     }
     
     modalConfig.isOpen = false;
     modalMetadataField = '';
     modalMetadataShortcut = '';
+
+    if (shouldTriggerSearch) {
+      setTimeout(() => dispatchSearchWithMetadata(), 0);
+    }
   }
   
   function handleModalClose() {
@@ -2117,169 +2282,143 @@
                         <div class="my-1 h-px bg-gray-700"></div>
                       {/if}
 
-                      <!-- Image from Results -->
-                      <button
-                        type="button"
-                        on:click|stopPropagation={() => openImagePicker(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                        disabled={availableImages.length === 0}
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            <path d="M9 12l2 2 4-4"/>
-                          </svg>
-                        </div>
-                        <div class="flex-1">
-                          <div class="text-xs font-medium text-white">Pick from Results</div>
-                          <div class="text-[10px] text-gray-400">
-                            {availableImages.length > 0 
-                              ? `Click to select from ${availableImages.length} results` 
-                              : 'No results available'}
+                      {#if openImageSubmenuIndex === i}
+                        <button
+                          type="button"
+                          on:click|stopPropagation={closeImageSubmenu}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M15 18l-6-6 6-6"/>
+                            </svg>
                           </div>
-                        </div>
-                      </button>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Back</div>
+                            <div class="text-[10px] text-gray-400">Return to add menu</div>
+                          </div>
+                        </button>
 
-                      <div class="my-1 h-px bg-gray-700"></div>
-
-                      <!-- Image from file -->
-                      <button
-                        type="button"
-                        on:click|stopPropagation={() => handleImageFromFile(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                          <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <path d="M21 15l-5-5L5 21"/>
-                          </svg>
+                        <div class="px-3 py-1">
+                          <span class="text-[10px] font-semibold text-blue-300 uppercase tracking-wide">Image Inputs</span>
                         </div>
-                        <div class="flex-1">
-                          <div class="text-xs font-medium text-white">Image from File</div>
-                          <div class="text-[10px] text-gray-400">Upload from computer</div>
-                        </div>
-                      </button>
 
-                      <!-- Image from URL -->
-                      <button
-                        type="button"
-                        on:click|stopPropagation={() => openUrlModal(i)}
-                        class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                      >
-                        <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                          </svg>
-                        </div>
-                        <div class="flex-1">
-                          <div class="text-xs font-medium text-white">Image from URL</div>
-                          <div class="text-[10px] text-gray-400">Paste image link</div>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openImagePicker(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          disabled={availableImages.length === 0}
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                              <path d="M9 12l2 2 4-4"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Pick from Results</div>
+                            <div class="text-[10px] text-gray-400">
+                              {availableImages.length > 0
+                                ? `Click to select from ${availableImages.length} results`
+                                : 'No results available'}
+                            </div>
+                          </div>
+                        </button>
 
-                      <div class="my-1 h-px bg-gray-700"></div>
-                      {#if true}
-                        <div class="my-1 h-px bg-gray-700"></div>
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => handleImageFromFile(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="3" y="3" width="18" height="18" rx="2"/>
+                              <circle cx="8.5" cy="8.5" r="1.5"/>
+                              <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Image from File</div>
+                            <div class="text-[10px] text-gray-400">Upload from computer</div>
+                          </div>
+                        </button>
 
-                        {#if openMetadataSubmenuIndex === i}
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openUrlModal(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Image from URL</div>
+                            <div class="text-[10px] text-gray-400">Paste image link</div>
+                          </div>
+                        </button>
+                      {:else}
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="3" y="4" width="18" height="18" rx="2"/>
+                              <path d="M16 2v4M8 2v4M3 10h18"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Date</div>
+                            <div class="text-[10px] text-gray-400 font-mono">partial: year / month / day / hour</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 7h18M3 12h18M3 17h18"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Country</div>
+                            <div class="text-[10px] text-gray-400 font-mono">country:...</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openLocationMetadataFilterModal(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                              <circle cx="12" cy="9" r="2.5"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Location</div>
+                            <div class="text-[10px] text-gray-400 font-mono">location:...</div>
+                          </div>
+                        </button>
+
+                        {#if displayMetadataFilterFields.length > 0}
+                          <div class="my-1 h-px bg-gray-700"></div>
+                        {/if}
+
+                        {#each displayMetadataFilterFields as field}
+                          {@const shortcut = getShortcutForField(field)}
                           <button
                             type="button"
-                            on:click|stopPropagation={closeMetadataSubmenu}
-                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                          >
-                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                              <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 18l-6-6 6-6"/>
-                              </svg>
-                            </div>
-                            <div class="flex-1">
-                              <div class="text-xs font-medium text-white">Back</div>
-                              <div class="text-[10px] text-gray-400">Return to add menu</div>
-                            </div>
-                          </button>
-
-                          <div class="px-3 py-1">
-                            <span class="text-[10px] font-semibold text-cyan-300 uppercase tracking-wide">Metadata Filters</span>
-                          </div>
-
-                            <button
-                              type="button"
-                              on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
-                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                            >
-                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                                  <path d="M16 2v4M8 2v4M3 10h18"/>
-                                </svg>
-                              </div>
-                              <div class="flex-1">
-                                <div class="text-xs font-medium text-white">Date</div>
-                                <div class="text-[10px] text-gray-400 font-mono">partial: year / month / day / hour</div>
-                              </div>
-                            </button>
-
-                            <button
-                              type="button"
-                              on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
-                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                            >
-                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <path d="M3 7h18M3 12h18M3 17h18"/>
-                                </svg>
-                              </div>
-                              <div class="flex-1">
-                                <div class="text-xs font-medium text-white">Country</div>
-                                <div class="text-[10px] text-gray-400 font-mono">country:...</div>
-                              </div>
-                            </button>
-
-                            <button
-                              type="button"
-                              on:click|stopPropagation={() => openLocationMetadataFilterModal(i)}
-                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                            >
-                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                                  <circle cx="12" cy="9" r="2.5"/>
-                                </svg>
-                              </div>
-                              <div class="flex-1">
-                                <div class="text-xs font-medium text-white">Location</div>
-                                <div class="text-[10px] text-gray-400 font-mono">location:...</div>
-                              </div>
-                            </button>
-
-                          {#if displayMetadataFilterFields.length > 0}
-                            <div class="my-1 h-px bg-gray-700"></div>
-                          {/if}
-
-                          {#each displayMetadataFilterFields as field}
-                            {@const shortcut = getShortcutForField(field)}
-                            <button
-                              type="button"
-                              on:click|stopPropagation={() => openMetadataFilterModal(i, field)}
-                              class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                            >
-                              <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                                <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <path d="M4 7h16M4 12h16M4 17h16"/>
-                                </svg>
-                              </div>
-                              <div class="flex-1">
-                                <div class="text-xs font-medium text-white">{field}</div>
-                                <div class="text-[10px] text-gray-400 font-mono">{shortcut}:...</div>
-                              </div>
-                            </button>
-                          {/each}
-                        {:else}
-                          <button
-                            type="button"
-                            on:click|stopPropagation={() => openMetadataSubmenu(i)}
+                            on:click|stopPropagation={() => openMetadataFilterModal(i, field)}
                             class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                           >
                             <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
@@ -2288,14 +2427,33 @@
                               </svg>
                             </div>
                             <div class="flex-1">
-                              <div class="text-xs font-medium text-white">Metadata Filters</div>
-                              <div class="text-[10px] text-gray-400">Open metadata shortcuts</div>
+                              <div class="text-xs font-medium text-white">{field}</div>
+                              <div class="text-[10px] text-gray-400 font-mono">{shortcut}:...</div>
                             </div>
-                            <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M9 6l6 6-6 6"/>
-                            </svg>
                           </button>
-                        {/if}
+                        {/each}
+
+                        <div class="my-1 h-px bg-gray-700"></div>
+
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openImageSubmenu(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="3" y="3" width="18" height="18" rx="2"/>
+                              <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Image Inputs</div>
+                            <div class="text-[10px] text-gray-400">Open image upload/select actions</div>
+                          </div>
+                          <svg class="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 6l6 6-6 6"/>
+                          </svg>
+                        </button>
                       {/if}
                     </div>
                   </div>

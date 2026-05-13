@@ -724,22 +724,38 @@
     }
     
     if (activeGroupBy?.kind === 'date') {
-      const timestamp = firstItem.timestamp || firstItem.raw?.timestamp || 0;
-      const date = timestamp ? new Date(timestamp * 1000) : new Date();
+      const epochSeconds = getEpochSeconds(firstItem);
+      const fallbackRaw = toFiniteNumber(firstItem?.timestamp ?? firstItem?.raw?.timestamp ?? 0);
+      const fallbackSeconds = Number.isFinite(fallbackRaw)
+        ? (fallbackRaw > 1e11 ? fallbackRaw / 1000 : fallbackRaw)
+        : 0;
+      const safeEpochSeconds = epochSeconds ?? fallbackSeconds;
+      const date = safeEpochSeconds > 0 ? new Date(safeEpochSeconds * 1000) : new Date();
+      const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+
+      const dateLabel = date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: timezone === 'utc' ? 'UTC' : undefined
+      });
       
       info = {
-        type: 'date',
-        label: date.toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        }),
-        subtitle: date.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-        item: firstItem
+        type: 'grouped',
+        groupKind: 'date',
+        groupLabel: activeGroupBy.label || 'Date',
+        label: dateLabel,
+        item: firstItem,
+        showVideoBadge: true,
+        isVideoGroupStart: true,
+        isVideoGroupEnd: true,
+        continuesFromPreviousRow: false,
+        continuesToNextRow: false,
+        continuationRows: 0,
+        groupRowCount: 1,
+        groupRowOffset: 0,
+        showGroupLabelOnThisRow: true
       };
       rowInfoCache.set(cacheKey, info);
       return info;
@@ -1104,10 +1120,19 @@
           {:else}
             <div class={getVerticalVideoBadgeClass(rowInfo)} title={getGroupDisplayLabel(rowInfo)}>
               {#if rowInfo.showGroupLabelOnThisRow}
-                <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
-                  <path d="M8 9h8M8 13h8M8 17h5"/>
-                </svg>
+                {#if rowInfo.groupKind === 'date'}
+                  <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                {:else}
+                  <svg class="w-2.5 h-2.5 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
+                    <path d="M8 9h8M8 13h8M8 17h5"/>
+                  </svg>
+                {/if}
                 <span class="text-[10px] font-semibold leading-none [writing-mode:vertical-rl] rotate-180 tracking-[0.02em]">{rowInfo.label}</span>
               {/if}
             </div>
@@ -1143,10 +1168,19 @@
               class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] overflow-visible"
               title={getGroupDisplayLabel(rowInfo)}
             >
-              <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
-                <path d="M8 9h8M8 13h8M8 17h5"/>
-              </svg>
+              {#if rowInfo.groupKind === 'date'}
+                <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              {:else}
+                <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
+                  <path d="M8 9h8M8 13h8M8 17h5"/>
+                </svg>
+              {/if}
               <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
               {#if rowInfo?.continuesToNextRow}
                 <span

@@ -179,6 +179,54 @@ export class VisioneAPI {
     return `${this.baseUrl}/element-url`;
   }
 
+  #shouldUseElementUrlErrorFallback() {
+    return String(this.elementUrlHost || '').trim().length > 0;
+  }
+
+  #buildElementUrlErrorDataUrl(id, slot = 'images', reason = 'lookup-error') {
+    const safeId = String(id || '').trim() || 'unknown-id';
+    const safeSlot = String(slot || 'images').trim();
+    const safeReason = String(reason || 'lookup-error').trim();
+    const title = `Element URL error (${safeSlot})`;
+    const line1 = safeId.length > 36 ? `${safeId.slice(0, 33)}...` : safeId;
+    const line2 = safeReason.length > 36 ? `${safeReason.slice(0, 33)}...` : safeReason;
+
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">',
+      '<rect width="640" height="360" fill="#0f172a"/>',
+      '<rect x="8" y="8" width="624" height="344" rx="14" fill="#111827" stroke="#ef4444" stroke-width="2"/>',
+      `<text x="320" y="134" text-anchor="middle" fill="#fca5a5" font-family="sans-serif" font-size="24">${title}</text>`,
+      `<text x="320" y="182" text-anchor="middle" fill="#e5e7eb" font-family="monospace" font-size="17">${line1}</text>`,
+      `<text x="320" y="214" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="14">${line2}</text>`,
+      '</svg>'
+    ].join('');
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
+
+  #buildElementUrlErrorRows(ids = [], what = [], reason = 'lookup-error') {
+    const normalizedIds = (Array.isArray(ids) ? ids : [ids])
+      .map((v) => String(v || '').trim())
+      .filter(Boolean);
+    const slots = (Array.isArray(what) ? what : [what])
+      .map((v) => String(v || '').trim())
+      .filter(Boolean);
+
+    return normalizedIds.map((id) => {
+      const row = { id };
+      if (slots.includes('images')) {
+        row.images = this.#buildElementUrlErrorDataUrl(id, 'images', reason);
+      }
+      if (slots.includes('thumbnails')) {
+        row.thumbnails = this.#buildElementUrlErrorDataUrl(id, 'thumbnails', reason);
+      }
+      if (slots.includes('resized-videos-tiny')) {
+        row['resized-videos-tiny'] = null;
+      }
+      return row;
+    });
+  }
+
 
   async #makeRequest(url, options = {}) {
     const { retries = 1, timeout = 30000, ...fetchOptions } = options;
@@ -293,22 +341,32 @@ export class VisioneAPI {
     const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
     if (list.length === 0) throw new APIError('what is required', 400);
 
-    const response = await this.#makeRequest(this.#getElementUrlEndpoint(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ids: normalizedIds,
-        what: list
-      }),
-      retries: 2
-    });
+    try {
+      const response = await this.#makeRequest(this.#getElementUrlEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: normalizedIds,
+          what: list
+        }),
+        retries: 2
+      });
 
-    const payload = await response.json();
-    if (!Array.isArray(payload)) {
-      throw new APIError('Invalid response from /element-url: expected array', 500);
+      const payload = await response.json();
+      if (!Array.isArray(payload)) {
+        if (this.#shouldUseElementUrlErrorFallback()) {
+          return this.#buildElementUrlErrorRows(normalizedIds, list, 'invalid-response');
+        }
+        throw new APIError('Invalid response from /element-url: expected array', 500);
+      }
+
+      return payload;
+    } catch (error) {
+      if (this.#shouldUseElementUrlErrorFallback()) {
+        return this.#buildElementUrlErrorRows(normalizedIds, list, error?.message || 'request-failed');
+      }
+      throw error;
     }
-
-    return payload;
   }
 
   async getElementUrl(id, what = ['images']) {
