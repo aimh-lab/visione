@@ -145,6 +145,13 @@
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
+            {:else if field.type === 'preview'}
+              <div
+                id={fieldId}
+                class="w-full px-3 py-2 bg-gray-800/70 border border-gray-700 rounded-lg text-emerald-200 font-mono text-sm break-words"
+              >
+                {field.computePreview ? field.computePreview(formValues) : ''}
+              </div>
             {:else}
               <input
                 id={fieldId}

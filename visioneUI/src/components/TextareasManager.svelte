@@ -27,6 +27,13 @@
     imgId?: string | null;
   };
 
+  type MetadataChip = {
+    token: string;
+    field: string;
+    label: string;
+    value: string;
+  };
+
   type ModalOption = { value: string; label: string };
   type ModalField = {
     name: string;
@@ -41,6 +48,7 @@
     max?: number;
     step?: number;
     options?: ModalOption[];
+    computePreview?: (values: ModalSubmitData) => string;
   };
 
   type ModalConfig = {
@@ -58,6 +66,7 @@
     name?: string;
     comparator?: string;
     value?: string;
+    dateExpr?: string;
     year?: string;
     month?: string;
     day?: string;
@@ -134,6 +143,7 @@
   let displayMetadataFilterFields: string[] = [];
   let discoveryMetadataSet: Set<string> = new Set();
   let runtimeMetadataSet: Set<string> = new Set();
+  let metadataTokensByIndex: Record<number, string[]> = {};
   let hasDateFilterSupport = false;
   let hasCountryFilterSupport = false;
   let hasLocationFilterSupport = false;
@@ -166,6 +176,53 @@
   };
 
   const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'heart_rate_bpm']);
+
+  const METADATA_LABEL_BY_FIELD: Record<string, string> = {
+    year: 'Year',
+    month: 'Month',
+    day: 'Day',
+    hour: 'Hour',
+    hour_local: 'Hour (local)',
+    timezone: 'Timezone',
+    location_country: 'Country',
+    location: 'Location',
+    semantic_name: 'Semantic',
+    heart_rate_bpm: 'Heart Rate'
+  };
+
+  const FIELD_BY_METADATA_KEY: Record<string, string> = (() => {
+    const out: Record<string, string> = {
+      y: 'year',
+      year: 'year',
+      m: 'month',
+      month: 'month',
+      d: 'day',
+      day: 'day',
+      h: 'hour',
+      hour: 'hour',
+      hl: 'hour_local',
+      hour_local: 'hour_local',
+      tz: 'timezone',
+      timezone: 'timezone',
+      country: 'location_country',
+      location_country: 'location_country',
+      location: 'location',
+      semantic: 'semantic_name',
+      sem: 'semantic_name',
+      semantic_name: 'semantic_name',
+      hr: 'heart_rate_bpm',
+      heart_rate_bpm: 'heart_rate_bpm'
+    };
+
+    Object.entries(SHORTCUT_ALIAS_BY_FIELD).forEach(([field, shortcut]) => {
+      const normalizedField = String(field || '').trim().toLowerCase();
+      const normalizedShortcut = String(shortcut || '').trim().toLowerCase();
+      if (normalizedField) out[normalizedField] = normalizedField;
+      if (normalizedField && normalizedShortcut) out[normalizedShortcut] = normalizedField;
+    });
+
+    return out;
+  })();
 
   function getTextModelValueForStep(textarea: QueryTextarea) {
     const legacyModel = String(textarea?.model || '').trim();
@@ -644,7 +701,7 @@
 
     if (sourceIndex !== targetIndex) {
       dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
-      setTimeout(() => dispatch("search"), 100);
+      setTimeout(() => dispatchSearchWithMetadata(), 100);
     }
   }
 
@@ -724,29 +781,81 @@
     dispatch("toggle", { index });
 
     if (hasActiveQuery) {
-      setTimeout(() => dispatch("search"), 0);
+      setTimeout(() => dispatchSearchWithMetadata(), 0);
     }
   };
   const update = (i: number, value: string) => dispatch("update", { index: i, value });
+
+  function finalizeMetadataTokensForIndex(index: number) {
+    const currentValue = String(textareas[index]?.value || '');
+    const { cleanText, tokens } = parseMetadataTokensFromText(currentValue, { extractTrailingToken: true });
+
+    if (tokens.length > 0) {
+      const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+      setMetadataTokens(index, [...existing, ...tokens]);
+    }
+
+    if (cleanText !== currentValue) {
+      update(index, cleanText);
+    }
+  }
+
+  function finalizeMetadataTokensForAll() {
+    textareas.forEach((_, index) => {
+      finalizeMetadataTokensForIndex(index);
+    });
+  }
+
+  function dispatchSearchWithMetadata() {
+    finalizeMetadataTokensForAll();
+
+    const patches: Array<{ index: number; clean: string }> = [];
+
+    textareas.forEach((textarea, index) => {
+      const cleanValue = String(textarea?.value || '').trim();
+      const tokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+      const mergedValue = tokens.length > 0
+        ? (cleanValue ? `${cleanValue} ${tokens.join(' ')}` : tokens.join(' '))
+        : cleanValue;
+
+      if (mergedValue !== cleanValue) {
+        patches.push({ index, clean: cleanValue });
+        update(index, mergedValue);
+      }
+    });
+
+    dispatch("search");
+
+    patches.forEach(({ index, clean }) => {
+      update(index, clean);
+    });
+  }
   
   function swapQueries(indexA: number, indexB: number) {
     if (indexB < 0 || indexB >= textareas.length) return;
 
     dispatch("swap", { indexA, indexB, mode: "swap" });
-    setTimeout(() => dispatch("search"), 100);
+    setTimeout(() => dispatchSearchWithMetadata(), 100);
   }
 
 
   const handleKeyDown = (e: KeyboardEvent, textareaIndex: number) => {
     if (e.key === "Enter" && !e.shiftKey && textareas[textareaIndex]?.enabled) {
       e.preventDefault();
-      dispatch("search");
+      dispatchSearchWithMetadata();
     }
   };
 
   const handleTextareaInput = (index: number, e: Event) => {
-    const value = (e.currentTarget as HTMLTextAreaElement | null)?.value ?? "";
-    update(index, value);
+    const rawValue = (e.currentTarget as HTMLTextAreaElement | null)?.value ?? "";
+    const { cleanText, tokens } = parseMetadataTokensFromText(rawValue);
+
+    if (tokens.length > 0) {
+      const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+      setMetadataTokens(index, [...existing, ...tokens]);
+    }
+
+    update(index, cleanText);
   };
 
   function clearTextareaValue(index: number) {
@@ -1025,10 +1134,17 @@
       isOpen: true,
       title: 'Add Date Filter',
       icon: 'calendar',
-      description: 'Fill only the parts you need (year, month, day, hour).',
+      description: 'Quick mode: type a date expression. Optional fields below can override single parts.',
       targetIndex: index,
       filterType: 'metadataDate',
       fields: [
+        {
+          name: 'dateExpr',
+          label: 'Date expression',
+          type: 'text',
+          placeholder: '2026-05-13 14 (or 2026, 2026-05, 14)',
+          hint: 'Accepted: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, or HH only.'
+        },
         {
           name: 'year',
           label: 'Year',
@@ -1071,6 +1187,16 @@
           type: 'checkbox',
           value: false,
           placeholder: 'Use local timezone metadata (hour_local + timezone)'
+        },
+        {
+          name: 'datePreview',
+          label: 'Query preview',
+          type: 'preview',
+          computePreview: (values: ModalSubmitData) => {
+            const tokens = buildDateFilterTokens(values);
+            return tokens.length > 0 ? tokens.join(' ') : 'No tokens yet';
+          },
+          hint: 'Year accepts 2 digits in the Year field (e.g. 24 -> 2024). API tokens always use full year.'
         }
       ]
     };
@@ -1163,6 +1289,200 @@
     update(index, `${currentValue}${sep}${safeTokens.join(' ')}`.trim());
   }
 
+  function getFieldFromMetadataToken(token: string) {
+    const raw = String(token || '').trim();
+    const match = raw.match(/^([a-z_]+):/i);
+    if (!match) return '';
+    const key = String(match[1] || '').trim().toLowerCase();
+    return FIELD_BY_METADATA_KEY[key] || '';
+  }
+
+  function normalizeMetadataTokens(tokens: string[]) {
+    const byField = new Map<string, string>();
+    (Array.isArray(tokens) ? tokens : []).forEach((token) => {
+      const raw = String(token || '').trim();
+      if (!raw) return;
+      const field = getFieldFromMetadataToken(raw);
+      if (!field) return;
+      byField.set(field, raw);
+    });
+    return Array.from(byField.values());
+  }
+
+  function parseMetadataTokensFromText(text: string, options?: { extractTrailingToken?: boolean }) {
+    const source = String(text || '');
+    const tokenRegex = /(?:^|\s)([a-z_]+):("(?:\\.|[^"])*"|\S+)/gi;
+    const extracted: string[] = [];
+    let foundMetadataToken = false;
+    const extractTrailingToken = options?.extractTrailingToken === true;
+
+    const cleaned = source.replace(tokenRegex, (full, rawKey, rawValue, offset, str) => {
+      const key = String(rawKey || '').trim().toLowerCase();
+      const field = FIELD_BY_METADATA_KEY[key] || '';
+      if (!field) return full;
+
+      const tokenCore = `${String(rawKey || '').trim()}:${String(rawValue || '').trim()}`;
+      const tokenStart = offset + (full.length - tokenCore.length);
+      const tokenEnd = tokenStart + tokenCore.length;
+      const trailingChar = str[tokenEnd] ?? '';
+      const isTrailingToken = tokenEnd >= str.length;
+
+      // While typing, keep the last token in the textarea until user closes it
+      // (e.g., by adding whitespace), so inputs like `y:20` are not interrupted.
+      if (isTrailingToken && !extractTrailingToken) {
+        return full;
+      }
+
+      if (!isTrailingToken && trailingChar && !/\s/.test(trailingChar)) {
+        return full;
+      }
+
+      foundMetadataToken = true;
+      extracted.push(`${key}:${String(rawValue || '').trim()}`);
+      const prev = offset > 0 ? str[offset - 1] : '';
+      return prev && /\s/.test(prev) ? ' ' : '';
+    });
+
+    if (!foundMetadataToken) {
+      return {
+        cleanText: source,
+        tokens: []
+      };
+    }
+
+    const normalizedClean = cleaned
+      // Collapse only runs of 3+ spaces created by token removal, keep normal typing spaces intact.
+      .replace(/ {3,}/g, '  ')
+      // Remove one leading space only when produced by token stripping at string start.
+      .replace(/^\s/, '');
+
+    return {
+      cleanText: normalizedClean,
+      tokens: normalizeMetadataTokens(extracted)
+    };
+  }
+
+  function setMetadataTokens(index: number, tokens: string[]) {
+    const normalized = normalizeMetadataTokens(tokens);
+    metadataTokensByIndex = {
+      ...metadataTokensByIndex,
+      [index]: normalized
+    };
+  }
+
+  $: {
+    textareas.forEach((textarea, index) => {
+      const currentValue = String(textarea?.value || '');
+      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue);
+      if (tokens.length > 0) {
+        const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+        setMetadataTokens(index, [...existing, ...tokens]);
+      }
+      if (cleanText !== currentValue) {
+        update(index, cleanText);
+      }
+    });
+  }
+
+  function unquoteMetadataValue(rawValue: string) {
+    const raw = String(rawValue || '').trim();
+    if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) {
+      return raw.slice(1, -1).replace(/\\"/g, '"').trim();
+    }
+    return raw;
+  }
+
+  function getMetadataChipsForTokens(tokens: string[]): MetadataChip[] {
+    const source = Array.isArray(tokens) ? tokens.join(' ') : '';
+    const tokenRegex = /(?:^|\s)([a-z_]+):("(?:\\.|[^"])*"|\S+)/gi;
+    const chips: MetadataChip[] = [];
+    let match: RegExpExecArray | null = null;
+
+    while ((match = tokenRegex.exec(source)) !== null) {
+      const key = String(match[1] || '').trim().toLowerCase();
+      const rawValue = String(match[2] || '').trim();
+      const field = FIELD_BY_METADATA_KEY[key] || '';
+      if (!field) continue;
+
+      const token = `${key}:${rawValue}`;
+      const value = unquoteMetadataValue(rawValue);
+      chips.push({
+        token,
+        field,
+        label: METADATA_LABEL_BY_FIELD[field] || field,
+        value
+      });
+    }
+
+    return chips;
+  }
+
+  function getMetadataChipsForIndex(index: number): MetadataChip[] {
+    const tokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    return getMetadataChipsForTokens(tokens);
+  }
+
+  function removeMetadataTokenFromTextarea(index: number, token: string) {
+    const rawToken = String(token || '').trim();
+    if (!rawToken) return;
+
+    const currentTokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    setMetadataTokens(index, currentTokens.filter((entry) => entry !== rawToken));
+  }
+
+  function escapeRegex(text: string) {
+    return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function removeShortcutTokensFromText(text: string, shortcuts: string[]) {
+    const source = String(text || '');
+    const uniqueShortcuts = Array.from(new Set(
+      (Array.isArray(shortcuts) ? shortcuts : [])
+        .map((s) => String(s || '').trim().toLowerCase())
+        .filter(Boolean)
+    ));
+
+    if (uniqueShortcuts.length === 0) return source;
+
+    const alternation = uniqueShortcuts.map((s) => escapeRegex(s)).join('|');
+    // Match tokens like key:value and key:"value with spaces".
+    const tokenRegex = new RegExp(`(^|\\s)(?:${alternation}):(?:"(?:\\\\.|[^"])*"|\\S+)`, 'gi');
+
+    const stripped = source.replace(tokenRegex, (match, leading) => {
+      return leading ? ' ' : '';
+    });
+
+    return stripped.replace(/\s{2,}/g, ' ').trim();
+  }
+
+  function upsertMetadataTokens(index: number, tokens: string[], shortcutsToReplace: string[]) {
+    const safeTokens = tokens.map((token) => String(token || '').trim()).filter(Boolean);
+    if (safeTokens.length === 0) return;
+
+    const currentValue = String(textareas[index]?.value || '');
+    const baseValue = removeShortcutTokensFromText(currentValue, shortcutsToReplace);
+    if (baseValue !== currentValue) {
+      update(index, baseValue);
+    }
+
+    const normalizedShortcuts = new Set(
+      (Array.isArray(shortcutsToReplace) ? shortcutsToReplace : [])
+        .map((s) => String(s || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const existingTokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    const keptTokens = existingTokens.filter((existingToken) => {
+      const match = String(existingToken || '').trim().match(/^([a-z_]+):/i);
+      if (!match) return false;
+      const key = String(match[1] || '').trim().toLowerCase();
+      const field = FIELD_BY_METADATA_KEY[key] || '';
+      return !normalizedShortcuts.has(key) && (!field || !normalizedShortcuts.has(field));
+    });
+
+    setMetadataTokens(index, [...keptTokens, ...safeTokens]);
+  }
+
   function normalizeOptionalNumber(value: unknown, min: number, max: number) {
     const raw = String(value ?? '').trim();
     if (!raw) return null;
@@ -1171,6 +1491,107 @@
     const floored = Math.floor(parsed);
     if (floored < min || floored > max) return null;
     return floored;
+  }
+
+  function normalizeOptionalYear(value: unknown) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return null;
+
+    const floored = Math.floor(parsed);
+    if (floored >= 0 && floored <= 99) {
+      return 2000 + floored;
+    }
+    if (floored < 1900 || floored > 9999) return null;
+    return floored;
+  }
+
+  function parseYearPart(raw: string) {
+    const trimmed = String(raw || '').trim();
+    if (!/^\d{2,4}$/.test(trimmed)) return null;
+    return normalizeOptionalYear(trimmed);
+  }
+
+  function parseDateExpression(value: unknown) {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return { year: null as number | null, month: null as number | null, day: null as number | null, hour: null as number | null };
+    }
+
+    const compact = raw.replace(/\//g, '-').replace(/T/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // HH (hour only)
+    const hourOnly = compact.match(/^([01]?\d|2[0-3])$/);
+    if (hourOnly) {
+      return { year: null, month: null, day: null, hour: Number(hourOnly[1]) };
+    }
+
+    // YYYY
+    const y = compact.match(/^(\d{4})$/);
+    if (y) {
+      return { year: Number(y[1]), month: null, day: null, hour: null };
+    }
+
+    // YYYY-MM or YY-MM
+    const ym = compact.match(/^(\d{2,4})-(\d{1,2})$/);
+    if (ym) {
+      const parsedYear = parseYearPart(ym[1]);
+      return { year: parsedYear, month: Number(ym[2]), day: null, hour: null };
+    }
+
+    // YYYY-MM-DD or YY-MM-DD
+    const ymd = compact.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+      const parsedYear = parseYearPart(ymd[1]);
+      return { year: parsedYear, month: Number(ymd[2]), day: Number(ymd[3]), hour: null };
+    }
+
+    // YYYY-MM-DD HH or YY-MM-DD HH
+    const ymdh = compact.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})\s+([01]?\d|2[0-3])$/);
+    if (ymdh) {
+      const parsedYear = parseYearPart(ymdh[1]);
+      return { year: parsedYear, month: Number(ymdh[2]), day: Number(ymdh[3]), hour: Number(ymdh[4]) };
+    }
+
+    return { year: null, month: null, day: null, hour: null };
+  }
+
+  function buildDateFilterTokens(data: ModalSubmitData) {
+    const parsed = parseDateExpression(data.dateExpr);
+    const explicitYear = normalizeOptionalYear(data.year);
+    const explicitMonth = normalizeOptionalNumber(data.month, 1, 12);
+    const explicitDay = normalizeOptionalNumber(data.day, 1, 31);
+    const explicitHour = normalizeOptionalNumber(data.hour, 0, 23);
+
+    const year = explicitYear ?? normalizeOptionalYear(parsed.year);
+    const month = explicitMonth ?? normalizeOptionalNumber(parsed.month, 1, 12);
+    const day = explicitDay ?? normalizeOptionalNumber(parsed.day, 1, 31);
+    const hour = explicitHour ?? normalizeOptionalNumber(parsed.hour, 0, 23);
+    const useTimezone = !!data.useTimezone;
+
+    const tokens: string[] = [];
+    if (year !== null) tokens.push(`y:${year}`);
+    if (month !== null) tokens.push(`m:${month}`);
+    if (day !== null) tokens.push(`d:${day}`);
+
+    if (hour !== null) {
+      if (useTimezone) {
+        tokens.push(`hl:${hour}`);
+      } else {
+        tokens.push(`h:${hour}`);
+      }
+    }
+
+    if (useTimezone) {
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      const tz = String(browserTimezone || '').trim();
+      if (tz) {
+        tokens.push(`tz:${quoteFilterTokenValue(tz)}`);
+      }
+    }
+
+    return tokens;
   }
 
   function quoteFilterTokenValue(value: unknown) {
@@ -1204,34 +1625,15 @@
         );
       }
     } else if (filterType === 'metadataDate') {
-      const year = normalizeOptionalNumber(data.year, 1900, 9999);
-      const month = normalizeOptionalNumber(data.month, 1, 12);
-      const day = normalizeOptionalNumber(data.day, 1, 31);
-      const hour = normalizeOptionalNumber(data.hour, 0, 23);
-      const useTimezone = !!data.useTimezone;
-
-      const tokens: string[] = [];
-      if (year !== null) tokens.push(`y:${year}`);
-      if (month !== null) tokens.push(`m:${month}`);
-      if (day !== null) tokens.push(`d:${day}`);
-
-      if (hour !== null) {
-        if (useTimezone) {
-          tokens.push(`hl:${hour}`);
-        } else {
-          tokens.push(`h:${hour}`);
-        }
-      }
-
-      if (useTimezone) {
-        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-        const tz = String(browserTimezone || '').trim();
-        if (tz) {
-          tokens.push(`tz:${quoteFilterTokenValue(tz)}`);
-        }
-      }
-
-      appendTokensToTextarea(targetIndex, tokens);
+      const tokens = buildDateFilterTokens(data);
+      upsertMetadataTokens(targetIndex, tokens, [
+        'y', 'year',
+        'm', 'month',
+        'd', 'day',
+        'h', 'hour',
+        'hl', 'hour_local',
+        'tz', 'timezone'
+      ]);
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
@@ -1244,7 +1646,11 @@
           ? `${shortcut}:${tokenValue}`
           : `${shortcut}:${symbol}${tokenValue}`;
 
-        appendTokensToTextarea(targetIndex, [token]);
+        const shortcutsToReplace = filterType === 'metadataCountry'
+          ? ['country', 'location_country']
+          : ['location'];
+
+        upsertMetadataTokens(targetIndex, [token], shortcutsToReplace);
       }
     } else if (filterType === 'metadata') {
       const rawValue = String(data.value ?? '').trim();
@@ -1257,7 +1663,7 @@
           ? `${shortcut}:${rawValue}`
           : `${shortcut}:${symbol}${rawValue}`;
 
-        appendTokensToTextarea(targetIndex, [token]);
+        upsertMetadataTokens(targetIndex, [token], [shortcut, modalMetadataField]);
       }
     }
     
@@ -1638,6 +2044,28 @@
               </div>
             {/if}
           </div>
+
+          {#if getMetadataChipsForIndex(i).length > 0}
+            <div class="px-1.5 pb-1 pt-0.5 flex flex-wrap items-center gap-1.5 border-t border-slate-800/60">
+              {#each getMetadataChipsForIndex(i) as chip}
+                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-600/40 bg-cyan-900/25 px-2 py-0.5 text-[10px] text-cyan-100">
+                  <span class="font-semibold">{chip.label}</span>
+                  <span class="text-cyan-200/90">{chip.value}</span>
+                  <button
+                    type="button"
+                    class="ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-cyan-200 hover:bg-cyan-700/40 hover:text-white transition-colors"
+                    title={`Remove ${chip.label}`}
+                    aria-label={`Remove ${chip.label}`}
+                    on:click|stopPropagation={() => removeMetadataTokenFromTextarea(i, chip.token)}
+                  >
+                    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </span>
+              {/each}
+            </div>
+          {/if}
 
           <!-- Footer toolbar -->
           <div class="flex items-center justify-between px-1.5 py-0.5">
