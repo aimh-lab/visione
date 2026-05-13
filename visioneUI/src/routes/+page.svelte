@@ -695,7 +695,7 @@
     );
   }
 
-  function scheduleURLSync() {
+  function scheduleURLSync(textareasOverride = null) {
     if (isRestoringFromHistory || !browser) return;
 
     if (urlSyncTimer) {
@@ -703,11 +703,13 @@
       urlSyncTimer = null;
     }
 
+    const effectiveTextareas = Array.isArray(textareasOverride) ? textareasOverride : textareas;
+
     urlSyncTimer = setTimeout(() => {
       urlSyncTimer = null;
       updateURL(
         {
-          textareas,
+          textareas: effectiveTextareas,
           activeTab: get(uiStore).layoutTab,
           imageId: getSearchImageIdFromTextareas(),
           inlineQueryImages: getInlineQueryImagesForURL()
@@ -754,8 +756,8 @@
   $: _submittedIdsSet = new Set(($sessionStore.submittedImages || []).map(s => s.imgId));
   const getSubmittedIds = () => _submittedIdsSet;
 
-  const syncURL = () => {
-    scheduleURLSync();
+  const syncURL = (searchTextareas = null) => {
+    scheduleURLSync(searchTextareas);
   };
 
   function getTextareasForSearch(rawTextareas = textareas) {
@@ -1981,12 +1983,20 @@ function handleViewSubmitted() {
   // ---------------------------
   // Search
   // ---------------------------
-  async function runSearch() {
-    return searchController.runSearch();
+  async function runSearch(payloadOrEvent = null) {
+    const payload = payloadOrEvent && typeof payloadOrEvent === 'object' && 'detail' in payloadOrEvent
+      ? payloadOrEvent.detail
+      : payloadOrEvent;
+    const textareasOverride = Array.isArray(payload?.textareas) ? payload.textareas : null;
+    return searchController.runSearch({ textareasOverride });
   }
 
-  async function runSearchImmediate() {
-    return searchController.runSearchImmediate();
+  async function runSearchImmediate(payloadOrEvent = null) {
+    const payload = payloadOrEvent && typeof payloadOrEvent === 'object' && 'detail' in payloadOrEvent
+      ? payloadOrEvent.detail
+      : payloadOrEvent;
+    const textareasOverride = Array.isArray(payload?.textareas) ? payload.textareas : null;
+    return searchController.runSearchImmediate({ textareasOverride });
   }
 
 

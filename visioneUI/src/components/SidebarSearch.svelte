@@ -36,9 +36,15 @@
   const removeTA = (i) => dispatch("removeTextarea", { index: i });
   const toggleTA = (i) => dispatch("toggleTextarea", { index: i });
   const updateTA = (i, value) => dispatch("updateTextarea", { index: i, value });
-  const doSearch = () => dispatch("runSearch");
+  const doSearch = () => {
+    if (typeof textareasManagerRef?.triggerSearchWithMetadata === 'function') {
+      textareasManagerRef.triggerSearchWithMetadata();
+      return;
+    }
+    dispatch("runSearch");
+  };
   const clearQueryInputs = () => dispatch("clearQueryInputs");
-  const handleSearchFromTextarea = () => dispatch("runSearch");
+  const handleSearchFromTextarea = (e) => dispatch("runSearch", e?.detail || {});
   let isResetMenuOpen = false;
   let activeUtilityPanel = null;
 

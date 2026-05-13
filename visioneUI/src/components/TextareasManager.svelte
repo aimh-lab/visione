@@ -80,7 +80,7 @@
     toggle: { index: number };
     update: { index: number; value: string };
     updateModel: { index: number; model: string; kind: 'text' | 'image' };
-    search: void;
+    search: { textareas: QueryTextarea[] };
     swap: { indexA: number; indexB: number; mode?: "swap" | "move" };
     startImageSelection: { textareaIndex: number };
     imageSelected: void;
@@ -806,29 +806,31 @@
     });
   }
 
-  function dispatchSearchWithMetadata() {
-    finalizeMetadataTokensForAll();
-
-    const patches: Array<{ index: number; clean: string }> = [];
-
-    textareas.forEach((textarea, index) => {
-      const cleanValue = String(textarea?.value || '').trim();
-      const tokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+  function buildEffectiveTextareasForSearch() {
+    return textareas.map((textarea, index) => {
+      const rawValue = String(textarea?.value || '');
+      const { cleanText, tokens: inlineTokens } = parseMetadataTokensFromText(rawValue, { extractTrailingToken: true });
+      const cleanValue = String(cleanText || '').trim();
+      const existingTokens = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+      const tokens = normalizeMetadataTokens([...existingTokens, ...inlineTokens]);
       const mergedValue = tokens.length > 0
         ? (cleanValue ? `${cleanValue} ${tokens.join(' ')}` : tokens.join(' '))
         : cleanValue;
 
-      if (mergedValue !== cleanValue) {
-        patches.push({ index, clean: cleanValue });
-        update(index, mergedValue);
-      }
+      return {
+        ...textarea,
+        value: mergedValue
+      };
     });
+  }
 
-    dispatch("search");
+  function dispatchSearchWithMetadata() {
+    finalizeMetadataTokensForAll();
+    dispatch("search", { textareas: buildEffectiveTextareasForSearch() });
+  }
 
-    patches.forEach(({ index, clean }) => {
-      update(index, clean);
-    });
+  export function triggerSearchWithMetadata() {
+    dispatchSearchWithMetadata();
   }
   
   function swapQueries(indexA: number, indexB: number) {
@@ -1373,7 +1375,7 @@
   $: {
     textareas.forEach((textarea, index) => {
       const currentValue = String(textarea?.value || '');
-      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue);
+      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue, { extractTrailingToken: true });
       if (tokens.length > 0) {
         const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
         setMetadataTokens(index, [...existing, ...tokens]);

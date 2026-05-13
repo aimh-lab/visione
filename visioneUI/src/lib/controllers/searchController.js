@@ -25,7 +25,7 @@ export function createSearchController({
 
   // URL sync
   isRestoringFromHistory, // () => boolean
-  syncURL,                // () => void
+  syncURL,                // (searchTextareas?) => void
   onTranslatedTextareas,   // ({ textareas, translatedCount }) => void
   onSearchSnapshot        // ({ source, textareas, relevanceFeedback, resultSet, searchTime }) => void
 }) {
@@ -168,24 +168,25 @@ export function createSearchController({
     };
   }
 
-  function runSearch() {
+  function runSearch(options = {}) {
     return new Promise((resolve) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
-        resolve(_doSearch());
+        resolve(_doSearch(options));
       }, DEBOUNCE_MS);
     });
   }
 
   /** Bypass debounce — used by internal programmatic calls that already waited. */
-  function runSearchImmediate() {
+  function runSearchImmediate(options = {}) {
     if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
-    return _doSearch();
+    return _doSearch(options);
   }
 
-  async function _doSearch() {
-    const rawTextareas = getTextareas();
+  async function _doSearch(options = {}) {
+    const overrideTextareas = Array.isArray(options?.textareasOverride) ? options.textareasOverride : null;
+    const rawTextareas = overrideTextareas || getTextareas();
     if (!rawTextareas?.length) return;
     const preparedTextareas = typeof getSearchTextareas === 'function'
       ? getSearchTextareas(rawTextareas)
@@ -285,7 +286,7 @@ export function createSearchController({
         setImages(preparedItems);
 
         await tick();
-        if (!isRestoringFromHistory()) syncURL();
+        if (!isRestoringFromHistory()) syncURL(textareas);
 
         if (removedCount > 0) {
           toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);
@@ -344,7 +345,7 @@ export function createSearchController({
       setImages(preparedItems);
 
       await tick();
-      if (!isRestoringFromHistory()) syncURL();
+      if (!isRestoringFromHistory()) syncURL(textareas);
 
       if (preparedItems.length > 0) {
         if (cacheEnabled && cacheKey) {
