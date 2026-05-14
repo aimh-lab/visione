@@ -526,21 +526,21 @@
         {#if challengeType === 'Q&A'}
           <div class="bg-slate-900/30 rounded-lg p-2 border border-slate-700 shadow-lg mt-2">
             <div class="flex items-center justify-between gap-2 mb-2">
-              <h4 class="text-[11px] font-bold text-slate-100 uppercase tracking-wide">Q&A Agent Stream</h4>
+              <h4 class="text-xs font-bold text-slate-100 uppercase tracking-wide">Q&A Agent Stream</h4>
               {#if qaAgentStream?.isStreaming}
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/40 border border-blue-700/50 text-blue-200">streaming</span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-900/40 border border-blue-700/50 text-blue-200">streaming</span>
               {/if}
             </div>
 
             <textarea
-              class="w-full min-h-[64px] p-2 text-xs rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ask a question about the lifelog..."
               bind:value={qaAgentQuestion}
             ></textarea>
 
             <div class="mt-2 flex items-center gap-2">
               <input
-                class="w-20 p-2 text-xs rounded-md bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-20 p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 type="number"
                 min="1"
                 max="10"
@@ -548,14 +548,14 @@
                 bind:value={qaAgentMaxIterations}
               />
               <button
-                class="flex-1 px-3 py-2 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                class="flex-1 px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
                 on:click={runQaAgent}
               >
                 Ask agent
               </button>
               <button
-                class="px-3 py-2 text-xs font-semibold rounded-md border border-red-500/60 text-red-200 hover:bg-red-900/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                class="px-3 py-2 text-sm font-semibold rounded-md border border-red-500/60 text-red-200 hover:bg-red-900/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 disabled={!qaAgentStream?.isStreaming}
                 on:click={stopQaAgent}
               >
@@ -601,21 +601,21 @@
 
             {#if qaSubmitCandidateEffective}
               <button
-                class="mt-2 w-full px-3 py-1.5 text-[11px] font-semibold rounded-md bg-emerald-700/70 hover:bg-emerald-600/80 text-emerald-50 transition-colors"
+                class="mt-2 w-full px-3 py-1.5 text-sm font-semibold rounded-md bg-emerald-700/70 hover:bg-emerald-600/80 text-emerald-50 transition-colors"
                 on:click={submitFinalAnswer}
               >
                 Submit final answer to DRES
               </button>
-              <div class="mt-1 text-[10px] text-emerald-200/90 break-words">
+              <div class="mt-1 text-xs text-emerald-200/90 break-words">
                 Candidate: {qaSubmitCandidateEffective}
               </div>
-              <div class="text-[10px] text-slate-300/90">
+              <div class="text-[11px] text-slate-300/90">
                 Source: {qaAgentSubmitCandidate ? 'answer_submit' : 'fallback from answer'}
               </div>
             {/if}
 
             {#if qaAgentStream?.error}
-              <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-red-200 text-[11px] break-words">
+              <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-xs break-words">
                 {qaAgentStream.error}
               </div>
             {/if}
@@ -624,13 +624,13 @@
               <div class="mt-2 max-h-72 overflow-y-auto space-y-2 pr-1 qa-stream-panel">
                 {#each qaAgentStream.events as evt}
                   <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
-                    <div class="text-[10px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
+                    <div class="text-[11px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
 
                     {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
                       {@const allResults = getToolResults(evt)}
                       {@const results = getVisibleToolResults(evt)}
                       <details open={qaToolResultsExpandedByDefault}>
-                        <summary class="text-[11px] text-slate-300 cursor-pointer">Show {results.length} result(s){results.length < allResults.length ? ` of ${allResults.length}` : ''}</summary>
+                        <summary class="text-sm text-slate-300 cursor-pointer">Show {results.length} result(s){results.length < allResults.length ? ` of ${allResults.length}` : ''}</summary>
                         <div class="qa-tool-results-grid mt-2">
                           {#each results as result}
                             <div class="qa-result-card">
@@ -652,11 +652,11 @@
                         </div>
                       </details>
                     {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
-                      <pre class="text-[11px] whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
+                      <pre class="text-sm whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
                     {:else if isMarkdownEvent(evt?.type)}
-                      <div class="qa-event-body markdown-body text-[11px] text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
+                      <div class="qa-event-body markdown-body text-sm text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
                     {:else}
-                      <pre class="text-[11px] whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
+                      <pre class="text-sm whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
                     {/if}
                   </div>
                 {/each}
