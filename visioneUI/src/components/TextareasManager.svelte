@@ -49,6 +49,7 @@
     step?: number;
     options?: ModalOption[];
     computePreview?: (values: ModalSubmitData) => string;
+    advanced?: boolean;
   };
 
   type ModalConfig = {
@@ -176,10 +177,10 @@
   };
 
   const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'heart_rate_bpm']);
-  const DATE_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'timezone']);
-  const DATE_METADATA_FIELD_ORDER = ['year', 'month', 'day', 'hour', 'hour_local', 'timezone'];
+  const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'timezone']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
+    date: 'Date',
     year: 'Year',
     month: 'Month',
     day: 'Day',
@@ -194,6 +195,7 @@
 
   const FIELD_BY_METADATA_KEY: Record<string, string> = (() => {
     const out: Record<string, string> = {
+      date: 'date',
       y: 'year',
       year: 'year',
       m: 'month',
@@ -1139,7 +1141,7 @@
       isOpen: true,
       title: 'Add Date Filter',
       icon: 'calendar',
-      description: 'Quick mode: type a date expression. Optional fields below can override single parts.',
+      description: 'Set a date expression with comparator (e.g. greater than a date).',
       targetIndex: index,
       filterType: 'metadataDate',
       fields: [
@@ -1152,62 +1154,28 @@
           hint: 'Accepted: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, or HH only.'
         },
         {
-          name: 'year',
-          label: 'Year',
-          type: 'number',
-          value: prefill.year,
-          min: 1900,
-          max: 9999,
-          step: 1,
-          placeholder: 'e.g. 2026'
-        },
-        {
-          name: 'month',
-          label: 'Month',
-          type: 'number',
-          value: prefill.month,
-          min: 1,
-          max: 12,
-          step: 1,
-          placeholder: '1-12'
-        },
-        {
-          name: 'day',
-          label: 'Day',
-          type: 'number',
-          value: prefill.day,
-          min: 1,
-          max: 31,
-          step: 1,
-          placeholder: '1-31'
-        },
-        {
-          name: 'hour',
-          label: 'Hour',
-          type: 'number',
-          value: prefill.hour,
-          min: 0,
-          max: 23,
-          step: 1,
-          placeholder: '0-23'
-        },
-        {
-          name: 'useTimezone',
-          label: 'Timezone',
-          type: 'checkbox',
-          value: prefill.useTimezone,
-          placeholder: 'Use local timezone metadata (hour_local + timezone)'
+          name: 'comparator',
+          label: 'Comparator',
+          type: 'select',
+          value: prefill.comparator,
+          options: [
+            { value: 'eq', label: '= (equal)' },
+            { value: 'ne', label: '!= (not equal)' },
+            { value: 'egt', label: '>= (equal greater than)' },
+            { value: 'elt', label: '<= (equal less than)' },
+            { value: 'lt', label: '< (less than)' },
+            { value: 'gt', label: '> (greater than)' }
+          ]
         },
         {
           name: 'datePreview',
           label: 'Query preview',
           type: 'preview',
           computePreview: (values: ModalSubmitData) => {
-            const incomingTokens = buildDateFilterTokens(values);
-            const mergedDateTokens = mergeDateMetadataTokens(index, incomingTokens);
-            return mergedDateTokens.length > 0 ? mergedDateTokens.join(' ') : 'No date tokens yet';
+            const tokens = buildDateFilterTokens(values);
+            return tokens.length > 0 ? tokens.join(' ') : 'No date tokens yet';
           },
-          hint: 'Preview shows merged date filters (existing kept + new updates). Year accepts 2 digits (e.g. 24 -> 2024).'
+          hint: 'Year accepts 2 digits (e.g. 24 -> 2024).'
         }
       ]
     };
@@ -1228,9 +1196,18 @@
       filterType: 'metadataCountry',
       fields: [
         {
+          name: 'value',
+          label: 'Country',
+          type: 'text',
+          value: '',
+          placeholder: 'e.g. Ireland',
+          required: true
+        },
+        {
           name: 'comparator',
           label: 'Comparator',
           type: 'select',
+          advanced: true,
           value: 'ilike',
           options: [
             { value: 'eq', label: '= (equal)' },
@@ -1238,14 +1215,6 @@
             { value: 'like', label: '~ (like)' },
             { value: 'ilike', label: '~ (ilike, case insensitive)' }
           ]
-        },
-        {
-          name: 'value',
-          label: 'Country',
-          type: 'text',
-          value: '',
-          placeholder: 'e.g. Ireland',
-          required: true
         }
       ]
     };
@@ -1266,9 +1235,18 @@
       filterType: 'metadataLocation',
       fields: [
         {
+          name: 'value',
+          label: 'Location',
+          type: 'text',
+          value: '',
+          placeholder: 'e.g. Dublin',
+          required: true
+        },
+        {
           name: 'comparator',
           label: 'Comparator',
           type: 'select',
+          advanced: true,
           value: 'ilike',
           options: [
             { value: 'eq', label: '= (equal)' },
@@ -1276,14 +1254,6 @@
             { value: 'like', label: '~ (like)' },
             { value: 'ilike', label: '~ (ilike, case insensitive)' }
           ]
-        },
-        {
-          name: 'value',
-          label: 'Location',
-          type: 'text',
-          value: '',
-          placeholder: 'e.g. Dublin',
-          required: true
         }
       ]
     };
@@ -1597,17 +1567,50 @@
   function getDateMetadataPrefill(index: number) {
     const snapshot = getMetadataTokensSnapshotForIndex(index);
 
+    const parseComparator = (raw: string) => {
+      const source = String(raw || '').trim();
+      const operators: Array<[string, string]> = [
+        ['>=', 'egt'],
+        ['<=', 'elt'],
+        ['!=', 'ne'],
+        ['>', 'gt'],
+        ['<', 'lt'],
+        ['=', 'eq']
+      ];
+      for (const [symbol, code] of operators) {
+        if (source.startsWith(symbol)) {
+          return { comparator: code, value: source.slice(symbol.length).trim() };
+        }
+      }
+      return { comparator: 'eq', value: source };
+    };
+
+    const explicitDateToken = snapshot.find((token) => getFieldFromMetadataToken(token) === 'date');
+    if (explicitDateToken) {
+      const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(explicitDateToken));
+      const parsed = parseComparator(rawValue);
+      return {
+        dateExpr: parsed.value,
+        comparator: parsed.comparator
+      };
+    }
+
     let year: number | null = null;
     let month: number | null = null;
     let day: number | null = null;
     let hour: number | null = null;
-    let useTimezone = false;
+    let comparator = 'eq';
 
     snapshot.forEach((token) => {
       const field = getFieldFromMetadataToken(token);
       if (!DATE_METADATA_FIELDS.has(field)) return;
 
-      const normalizedValue = stripComparatorPrefix(unquoteMetadataValue(getMetadataTokenValuePart(token)));
+      const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(token));
+      const parsedComparator = parseComparator(rawValue);
+      const normalizedValue = parsedComparator.value;
+      if (comparator === 'eq' && parsedComparator.comparator !== 'eq') {
+        comparator = parsedComparator.comparator;
+      }
 
       if (field === 'year') {
         const parsed = normalizeOptionalYear(normalizedValue);
@@ -1630,12 +1633,7 @@
       if (field === 'hour' || field === 'hour_local') {
         const parsed = normalizeOptionalNumber(normalizedValue, 0, 23);
         if (parsed !== null) hour = parsed;
-        if (field === 'hour_local') useTimezone = true;
         return;
-      }
-
-      if (field === 'timezone') {
-        useTimezone = true;
       }
     });
 
@@ -1658,11 +1656,7 @@
 
     return {
       dateExpr,
-      year: year !== null ? String(year) : '',
-      month: month !== null ? String(month) : '',
-      day: day !== null ? String(day) : '',
-      hour: hour !== null ? String(hour) : '',
-      useTimezone
+      comparator
     };
   }
 
@@ -1670,12 +1664,8 @@
     const incomingTokens = normalizeMetadataTokens(tokens);
     if (incomingTokens.length === 0) return;
 
-    const snapshot = getMetadataTokensSnapshotForIndex(index);
-    const nonDateTokens = snapshot.filter((token) => !DATE_METADATA_FIELDS.has(getFieldFromMetadataToken(token)));
-    const mergedDateTokens = mergeDateMetadataTokens(index, incomingTokens);
-
-    const currentValue = String(textareas[index]?.value || '');
-    const cleanedValue = removeShortcutTokensFromText(currentValue, [
+    upsertMetadataTokens(index, incomingTokens, [
+      'date',
       'y', 'year',
       'm', 'month',
       'd', 'day',
@@ -1683,81 +1673,36 @@
       'hl', 'hour_local',
       'tz', 'timezone'
     ]);
-
-    if (cleanedValue !== currentValue) {
-      update(index, cleanedValue);
-    }
-
-    setMetadataTokens(index, [...nonDateTokens, ...mergedDateTokens]);
-  }
-
-  function mergeDateMetadataTokens(index: number, incomingTokens: string[]) {
-    const snapshot = getMetadataTokensSnapshotForIndex(index);
-    const normalizedIncoming = normalizeMetadataTokens(incomingTokens);
-    const dateByField = new Map<string, string>();
-
-    snapshot.forEach((token) => {
-      const field = getFieldFromMetadataToken(token);
-      if (!DATE_METADATA_FIELDS.has(field)) return;
-      dateByField.set(field, token);
-    });
-
-    normalizedIncoming.forEach((token) => {
-      const field = getFieldFromMetadataToken(token);
-      if (!DATE_METADATA_FIELDS.has(field)) return;
-
-      if (field === 'hour') {
-        dateByField.delete('hour_local');
-        dateByField.delete('timezone');
-      }
-
-      if (field === 'hour_local') {
-        dateByField.delete('hour');
-      }
-
-      dateByField.set(field, token);
-    });
-
-    return DATE_METADATA_FIELD_ORDER
-      .map((field) => dateByField.get(field) || '')
-      .filter(Boolean);
   }
 
   function buildDateFilterTokens(data: ModalSubmitData) {
     const parsed = parseDateExpression(data.dateExpr);
-    const explicitYear = normalizeOptionalYear(data.year);
-    const explicitMonth = normalizeOptionalNumber(data.month, 1, 12);
-    const explicitDay = normalizeOptionalNumber(data.day, 1, 31);
-    const explicitHour = normalizeOptionalNumber(data.hour, 0, 23);
+    const comparator = String(data.comparator || 'eq').trim().toLowerCase();
 
-    const year = explicitYear ?? normalizeOptionalYear(parsed.year);
-    const month = explicitMonth ?? normalizeOptionalNumber(parsed.month, 1, 12);
-    const day = explicitDay ?? normalizeOptionalNumber(parsed.day, 1, 31);
-    const hour = explicitHour ?? normalizeOptionalNumber(parsed.hour, 0, 23);
-    const useTimezone = !!data.useTimezone;
-
-    const tokens: string[] = [];
-    if (year !== null) tokens.push(`y:${year}`);
-    if (month !== null) tokens.push(`m:${month}`);
-    if (day !== null) tokens.push(`d:${day}`);
-
-    if (hour !== null) {
-      if (useTimezone) {
-        tokens.push(`hl:${hour}`);
-      } else {
-        tokens.push(`h:${hour}`);
+    let normalizedExpr = String(data.dateExpr ?? '').trim();
+    if (!normalizedExpr) {
+      const y = parsed.year;
+      const m = parsed.month;
+      const d = parsed.day;
+      const h = parsed.hour;
+      const pad2 = (value: number) => String(value).padStart(2, '0');
+      if (y !== null) {
+        normalizedExpr = String(y);
+        if (m !== null) {
+          normalizedExpr += `-${pad2(m)}`;
+          if (d !== null) normalizedExpr += `-${pad2(d)}`;
+        }
+        if (h !== null) normalizedExpr += ` ${pad2(h)}`;
+      } else if (h !== null) {
+        normalizedExpr = String(h);
       }
     }
 
-    if (useTimezone) {
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const tz = String(browserTimezone || '').trim();
-      if (tz) {
-        tokens.push(`tz:${quoteFilterTokenValue(tz)}`);
-      }
-    }
+    if (!normalizedExpr) return [];
 
-    return tokens;
+    const tokenValue = quoteFilterTokenValue(normalizedExpr);
+    const symbol = toComparatorSymbol(comparator, 'eq');
+    return [comparator === 'eq' ? `date:${tokenValue}` : `date:${symbol}${tokenValue}`];
   }
 
   function quoteFilterTokenValue(value: unknown) {
