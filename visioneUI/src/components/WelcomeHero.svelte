@@ -19,7 +19,7 @@
         Welcome to VISIONE
       </h1>
       <p class="hero-subtitle text-base sm:text-lg text-gray-400">
-        Discover videos through temporal sequences
+        Explore moments and media through temporal sequences
       </p>
     </div>
     
