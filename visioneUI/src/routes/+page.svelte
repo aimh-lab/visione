@@ -1561,6 +1561,20 @@
     }).then(refreshLogCount).catch(() => {});
   }
 
+  function adjustImageModalScale(delta = 0) {
+    const step = Number(delta) || 0;
+    if (!step) return;
+    const current = Number(get(uiStore).imageModalScale) || 160;
+    uiStore.actions.applySettings({ imageModalScale: Math.max(80, Math.round(current + step)) });
+  }
+
+  function adjustSlideshowModalScale(delta = 0) {
+    const step = Number(delta) || 0;
+    if (!step) return;
+    const current = Number(get(uiStore).slideshowModalScale) || 160;
+    uiStore.actions.applySettings({ slideshowModalScale: Math.max(80, Math.round(current + step)) });
+  }
+
   function handleChangeChallengeType(e) {
     const nextType = String(e?.detail?.type || 'KIS');
     uiStore.actions.setDresChallengeType(nextType);
@@ -2498,6 +2512,7 @@ function handleViewSubmitted() {
     isSlideshowOpen = false;
     addSimilarityAsSearchStep(e.detail.imgId);
   }}
+  on:adjustScale={(e) => adjustSlideshowModalScale(e?.detail?.delta)}
   on:close={() => {
     logVideoPlayer('closeSlideshow');
     isSlideshowOpen = false;
@@ -2732,6 +2747,7 @@ function handleViewSubmitted() {
         onCloseModal={closeModal}
         onPrev={() => navigateImage(-1)}
         onNext={() => navigateImage(1)}
+        onAdjustImageModalScale={adjustImageModalScale}
 
         on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap')}
         onLoadExample={(queries) => loadExampleQuery(queries)}
@@ -2779,6 +2795,7 @@ function handleViewSubmitted() {
         onCloseFrameModal={closeFrameModal}
         onPrevFrame={() => navigateFrame(-1)}
         onNextFrame={() => navigateFrame(1)}
+        onAdjustImageModalScale={adjustImageModalScale}
         openVideoPlayerBy={openVideoPlayerBy}
       />
 
@@ -2817,6 +2834,7 @@ function handleViewSubmitted() {
         onCloseSimModal={closeSimilarityModal}
         onPrevSim={() => moveSimilarityBy(-1)}
         onNextSim={() => moveSimilarityBy(1)}
+        onAdjustImageModalScale={adjustImageModalScale}
       />
     {/if}
   </div>

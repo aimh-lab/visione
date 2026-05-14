@@ -376,6 +376,16 @@
     dispatch("close");
   }
 
+  function zoomIn(event) {
+    event?.stopPropagation?.();
+    dispatch("adjustScale", { delta: 10 });
+  }
+
+  function zoomOut(event) {
+    event?.stopPropagation?.();
+    dispatch("adjustScale", { delta: -10 });
+  }
+
   function isDragHandleTarget(target) {
     return !target?.closest?.("button, input, select, textarea, a, [role='button']");
   }
@@ -537,16 +547,42 @@
           <h3 class="text-sm font-semibold text-slate-100 truncate">{resolvedTitle}</h3>
           <p class="text-xs text-slate-400">Use left/right arrows to navigate keyframes</p>
         </div>
-        <button
-          type="button"
-          class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
-          on:click={close}
-          aria-label="Close slideshow"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            on:click={zoomOut}
+            aria-label="Decrease slideshow image size"
+            title="Decrease slideshow image size"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            on:click={zoomIn}
+            aria-label="Increase slideshow image size"
+            title="Increase slideshow image size"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            on:click={close}
+            aria-label="Close slideshow"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="min-h-0 bg-slate-950 relative" style="height: {stageHeightPx}px;">

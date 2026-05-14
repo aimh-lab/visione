@@ -104,6 +104,7 @@
   export let onCloseModal = () => {};
   export let onPrev = () => {};
   export let onNext = () => {};
+  export let onAdjustImageModalScale = (_delta: number) => {};
 
   export let addRFPositiveByImg = (_imgId: string) => {};
   export let addRFNegativeByImg = (_imgId: string) => {};
@@ -401,6 +402,7 @@
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}
+  on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:submit={(e) => submitByImgId(e.detail.img.imgId)}
   on:videoSummary={(e) => {
     onCloseModal();

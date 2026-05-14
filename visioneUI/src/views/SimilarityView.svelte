@@ -66,6 +66,7 @@
   export let onCloseSimModal = () => {};
   export let onPrevSim = () => {};
   export let onNextSim = () => {};
+  export let onAdjustImageModalScale = (_delta: number) => {};
 
   $: similarityTotal = rows.reduce((acc, row) => acc + (row?.length || 0), 0);
   $: hasSimilarityResults = similarityTotal > 0;
@@ -191,6 +192,7 @@
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}
+  on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:openVideoPlayer={(e) => {
     onCloseSimModal();
     openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);

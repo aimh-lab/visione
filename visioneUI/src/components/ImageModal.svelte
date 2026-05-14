@@ -18,6 +18,8 @@
   const close = () => dispatch("close");
   const prev = () => dispatch("prev");
   const next = () => dispatch("next");
+  const zoomIn = (e) => { e?.stopPropagation(); dispatch("adjustScale", { delta: 10 }); };
+  const zoomOut = (e) => { e?.stopPropagation(); dispatch("adjustScale", { delta: -10 }); };
 
   // Action handlers
   const handleSubmit = (e) => { e?.stopPropagation(); dispatch("submit", { img: image }); };
@@ -314,16 +316,42 @@
         <div class="flex items-center space-x-4">
           <h3 class="text-xl font-bold text-gray-800">{modalTitle}</h3>
         </div>
-        
-        <button 
-          on:click={close} 
-          class="p-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 shadow-md transition-all hover:scale-105 active:scale-95"
-          aria-label="Close (ESC)"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            on:click={zoomOut}
+            class="w-8 h-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Decrease image size"
+            aria-label="Decrease image size"
+          >
+            <svg class="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            on:click={zoomIn}
+            class="w-8 h-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Increase image size"
+            aria-label="Increase image size"
+          >
+            <svg class="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+
+          <button 
+            on:click={close} 
+            class="p-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 shadow-md transition-all hover:scale-105 active:scale-95"
+            aria-label="Close (ESC)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Content: grid 2 colonne -->

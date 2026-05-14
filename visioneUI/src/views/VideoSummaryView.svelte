@@ -41,6 +41,7 @@
   export let onCloseFrameModal = () => {};
   export let onPrevFrame = () => {};
   export let onNextFrame = () => {};
+  export let onAdjustImageModalScale = (_delta: number) => {};
 
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
 
@@ -161,6 +162,7 @@
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}
+  on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:openVideoPlayer={(e) => {
     onCloseFrameModal();
     openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
