@@ -23,5 +23,8 @@
 		"typescript": "^5.0.0",
 		"vite": "^6.0.0",
 		"vite-plugin-mkcert": "^1.17.9"
+	},
+	"dependencies": {
+		"marked": "^18.0.3"
 	}
 }

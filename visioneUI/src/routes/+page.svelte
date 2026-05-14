@@ -220,6 +220,10 @@
   let isVideoSummaryModalOpen = false;
   let isQaAnswerModalOpen = false;
   let qaAnswerContext = { imgId: '', source: '', title: '' };
+  let qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
+  let qaAgentSubmitCandidate = '';
+  let qaAgentAbortController = null;
+  let qaAgentRequestId = '';
   let pinnedVideoSummaries = [];
   let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
   let activePinnedSummaryKey = '';
@@ -1097,6 +1101,90 @@
   const submitByImgIdRaw = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
   const submitTextAnswer = (text) => dresCtrl.submitTextAnswer(text);
   const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
+
+  async function stopQaAgent() {
+    const requestIdToCancel = String(qaAgentRequestId || '').trim();
+    if (requestIdToCancel) {
+      try {
+        await visioneAPI.cancelQaRequest(requestIdToCancel);
+      } catch {
+        // Ignore backend cancel failures and still abort local stream.
+      }
+    }
+
+    if (qaAgentAbortController) {
+      qaAgentAbortController.abort();
+      qaAgentAbortController = null;
+    }
+
+    qaAgentRequestId = '';
+    qaAgentStream = { ...qaAgentStream, isStreaming: false };
+  }
+
+  async function askQaAgent(question, maxIterations = null) {
+    const value = String(question || '').trim();
+    if (!value) {
+      return { answer: '', sources: [] };
+    }
+
+    if (qaAgentAbortController) {
+      qaAgentAbortController.abort();
+    }
+
+    qaAgentAbortController = new AbortController();
+    qaAgentRequestId = '';
+    qaAgentStream = { isStreaming: true, events: [], finalAnswer: '', error: '' };
+    qaAgentSubmitCandidate = '';
+
+    try {
+      const result = await visioneAPI.streamQaAgent({
+        question: value,
+        maxIterations,
+        signal: qaAgentAbortController.signal,
+        onRequestId: (requestId) => {
+          qaAgentRequestId = String(requestId || '').trim();
+        },
+        onEvent: (evt) => {
+          qaAgentStream = {
+            ...qaAgentStream,
+            events: [...qaAgentStream.events, evt].slice(-80),
+            finalAnswer: evt?.type === 'answer'
+              ? String(evt?.data?.content || qaAgentStream.finalAnswer || '')
+              : qaAgentStream.finalAnswer,
+            error: evt?.type === 'error'
+              ? String(evt?.data?.detail || 'QA stream error')
+              : qaAgentStream.error
+          };
+          if (evt?.type === 'answer_submit') {
+            qaAgentSubmitCandidate = String(evt?.data?.content || '').trim();
+          }
+        }
+      });
+
+      qaAgentStream = {
+        ...qaAgentStream,
+        isStreaming: false,
+        finalAnswer: String(result?.answer || qaAgentStream.finalAnswer || '')
+      };
+      if (!qaAgentSubmitCandidate) {
+        qaAgentSubmitCandidate = String(result?.submitAnswer || '').trim();
+      }
+      qaAgentRequestId = '';
+
+      return result;
+    } catch (error) {
+      const isAbort = String(error?.message || '').toLowerCase().includes('abort');
+      qaAgentStream = {
+        ...qaAgentStream,
+        isStreaming: false,
+        error: isAbort ? '' : String(error?.message || 'QA stream failed')
+      };
+      return { answer: '', sources: [] };
+    } finally {
+      qaAgentAbortController = null;
+      qaAgentRequestId = '';
+    }
+  }
 
   function isQaChallengeMode() {
     return String(get(uiStore).dresChallengeType || '').trim().toUpperCase() === 'Q&A';
@@ -2665,6 +2753,15 @@ function handleViewSubmitted() {
         showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
         resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
         submitTextAnswer={submitTextAnswer}
+        askQaAgent={askQaAgent}
+        stopQaAgent={stopQaAgent}
+        {qaAgentStream}
+        {qaAgentSubmitCandidate}
+        qaToolResultLimit={$uiStore.qaToolResultLimit}
+        qaToolResultsExpandedByDefault={$uiStore.qaToolResultsExpandedByDefault}
+        onUpdateQaAgentDisplayPrefs={(patch) => {
+          uiStore.actions.applySettings(patch || {});
+        }}
 
         on:selectRightTab={(e) => uiStore.actions.focusRightTab(e.detail.tab)}
 

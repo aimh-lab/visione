@@ -67,6 +67,18 @@
   export let resultsetBadgeLabelMode = "both";
   export let submittedAnswers: Array<Record<string, unknown>> = [];
   export let submitTextAnswer = (_text: string) => {};
+  export let askQaAgent = (_question: string, _maxIterations?: number | null) => Promise.resolve({});
+  export let stopQaAgent = () => {};
+  export let qaAgentStream: {
+    isStreaming: boolean;
+    events: Array<Record<string, unknown>>;
+    finalAnswer: string;
+    error: string;
+  } = { isStreaming: false, events: [], finalAnswer: '', error: '' };
+  export let qaAgentSubmitCandidate = '';
+  export let qaToolResultLimit = 50;
+  export let qaToolResultsExpandedByDefault = true;
+  export let onUpdateQaAgentDisplayPrefs = (_patch: { qaToolResultLimit?: number; qaToolResultsExpandedByDefault?: boolean }) => {};
 
   // Image modal
   export let selectedImage: Img | null = null;
@@ -184,6 +196,15 @@
   {runtimeProfile}
   {discoveryMetadataFields}
   {textareaImages}
+  {challengeType}
+  {submitTextAnswer}
+  {askQaAgent}
+  {stopQaAgent}
+  {qaAgentStream}
+  {qaAgentSubmitCandidate}
+  {qaToolResultLimit}
+  {qaToolResultsExpandedByDefault}
+  onUpdateQaAgentDisplayPrefs={onUpdateQaAgentDisplayPrefs}
   {searchLoading}
   searchError={searchError as any}
   searchResultSet={searchResultSet as any}

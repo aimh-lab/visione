@@ -94,6 +94,7 @@
   function toggleSidebar() {
     dispatch('toggleRightSidebar');
   }
+
 </script>
 
 <svelte:window 
