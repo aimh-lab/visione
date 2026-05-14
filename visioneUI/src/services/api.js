@@ -229,19 +229,31 @@ export class VisioneAPI {
 
 
   async #makeRequest(url, options = {}) {
-    const { retries = 1, timeout = 30000, ...fetchOptions } = options;
+    const { retries = 1, timeout = 30000, signal: externalSignal, ...fetchOptions } = options;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        const abortFromExternal = () => controller.abort();
+        if (externalSignal) {
+          if (externalSignal.aborted) {
+            controller.abort();
+          } else {
+            externalSignal.addEventListener('abort', abortFromExternal, { once: true });
+          }
+        }
+        const hasTimeout = Number(timeout) > 0;
+        const timeoutId = hasTimeout ? setTimeout(() => controller.abort(), Number(timeout)) : null;
         
         const response = await fetch(url, {
           ...fetchOptions,
           signal: controller.signal
         });
         
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
+        if (externalSignal) {
+          externalSignal.removeEventListener('abort', abortFromExternal);
+        }
         
         if (!response.ok) {
           const text = await response.text();
@@ -250,6 +262,9 @@ export class VisioneAPI {
         
         return response;
       } catch (error) {
+        if (externalSignal?.aborted) {
+          throw new APIError('Request aborted', 499);
+        }
         if (attempt === retries) {
           if (error.name === 'AbortError') {
             throw new APIError('Request timeout', 408);
@@ -521,6 +536,148 @@ export class VisioneAPI {
       return await run;
     } finally {
       this.translationInFlight.delete(cacheKey);
+    }
+  }
+
+  async streamQaAgent({ question, maxIterations = null, onEvent = null, onRequestId = null, signal = null } = {}) {
+    const safeQuestion = String(question || '').trim();
+    if (!safeQuestion) {
+      throw new APIError('question is required', 400);
+    }
+
+    const payload = { question: safeQuestion };
+    const parsedMax = Number(maxIterations);
+    if (Number.isFinite(parsedMax) && parsedMax >= 1 && parsedMax <= 10) {
+      payload.max_iterations = Math.round(parsedMax);
+    }
+
+    const response = await this.#makeRequest(`${this.baseUrl}/qa`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify(payload),
+      retries: 0,
+      timeout: 0,
+      signal
+    });
+
+    if (!response.body) {
+      throw new APIError('Streaming is not supported by this browser/environment', 500);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = null;
+    let dataLines = [];
+    let finalAnswer = '';
+    let submitAnswer = '';
+    let sources = [];
+
+    const emit = (eventName, rawData) => {
+      if (!eventName) return;
+
+      let parsedData = rawData;
+      try {
+        parsedData = JSON.parse(rawData);
+      } catch {
+        // Keep raw string payload when JSON parsing fails.
+      }
+
+      if (eventName === 'answer') {
+        finalAnswer = String(parsedData?.content || finalAnswer || '').trim();
+      }
+      if (eventName === 'answer_submit') {
+        submitAnswer = String(parsedData?.content || submitAnswer || '').trim();
+      }
+      if (eventName === 'request_id') {
+        const requestId = String(parsedData?.request_id || '').trim();
+        if (requestId && typeof onRequestId === 'function') {
+          onRequestId(requestId);
+        }
+      }
+      if (eventName === 'sources') {
+        const nextSources = Array.isArray(parsedData?.sources) ? parsedData.sources : [];
+        sources = nextSources;
+      }
+
+      if (typeof onEvent === 'function') {
+        onEvent({ type: eventName, data: parsedData, rawData });
+      }
+    };
+
+    const flushCurrent = () => {
+      if (!currentEvent) return;
+      const rawData = dataLines.join('\n');
+      emit(currentEvent, rawData);
+      currentEvent = null;
+      dataLines = [];
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex = -1;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, newlineIndex).replace(/\r$/, '');
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.startsWith('event:')) {
+            flushCurrent();
+            currentEvent = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5).trimStart());
+          } else if (line === '') {
+            flushCurrent();
+          }
+        }
+      }
+
+      if (buffer.trim() || currentEvent) {
+        if (buffer.trim()) {
+          dataLines.push(buffer.trim());
+        }
+        flushCurrent();
+      }
+
+      return {
+        answer: finalAnswer,
+        submitAnswer,
+        sources
+      };
+    } catch (error) {
+      if (error?.name === 'AbortError' || signal?.aborted) {
+        throw new APIError('QA stream aborted', 499);
+      }
+      if (error instanceof APIError) throw error;
+      throw new APIError(`QA stream failed: ${error?.message || String(error)}`, 500);
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+  }
+
+  async cancelQaRequest(requestId) {
+    const id = String(requestId || '').trim();
+    if (!id) return { cancelled: false, reason: 'missing-request-id' };
+
+    try {
+      const response = await this.#makeRequest(`${this.baseUrl}/qa/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+        retries: 0,
+        timeout: 10000
+      });
+      const payload = await response.json().catch(() => ({}));
+      return payload && typeof payload === 'object'
+        ? payload
+        : { cancelled: true, request_id: id };
+    } catch (error) {
+      return { cancelled: false, request_id: id, reason: error?.message || 'cancel-request-failed' };
     }
   }
 

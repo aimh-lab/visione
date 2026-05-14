@@ -17,6 +17,7 @@ SSE event types
 - ``tool_result`` – JSON array of search results returned by the tool
 - ``evaluation``  – plausibility assessment of current conclusions
 - ``answer``      – the final natural-language answer
+- ``answer_submit`` – concise final answer intended for DRES text submission
 - ``sources``     – deduplicated source list (sent once, after ``answer``)
 - ``error``       – an error message if something goes wrong
 """
@@ -26,6 +27,9 @@ from __future__ import annotations
 import base64
 import json
 import operator
+import re
+import asyncio
+import uuid
 from typing import Any, Dict, List, Literal, Optional, Annotated
 
 import aiohttp
@@ -662,6 +666,79 @@ def _extract_tool_result_text(content: Any) -> Any:
     return content
 
 
+def _extract_submit_candidate(text: str) -> str:
+    """Extract a concise answer candidate suitable for DRES text submit."""
+    raw = str(text or "").strip()
+    if not raw:
+        return ""
+
+    # 1) Prefer explicit entities highlighted in markdown bold.
+    bold_matches = re.findall(r"\*\*([^*]+)\*\*", raw)
+    if bold_matches:
+        candidate = bold_matches[0].strip().strip(' "\'`')
+        if candidate:
+            return candidate
+
+    # 2) Prefer quoted entities.
+    quote_matches = re.findall(r"[\"']([^\"']{2,80})[\"']", raw)
+    if quote_matches:
+        candidate = quote_matches[0].strip().strip(' "\'`')
+        if candidate:
+            return candidate
+
+    # Remove common markdown wrappers and fenced code blocks.
+    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    filtered: List[str] = []
+    in_fence = False
+    for ln in lines:
+        if ln.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if ln.lower().startswith(("plan", "reasoning", "evidence", "sources")):
+            continue
+        filtered.append(ln)
+
+    candidate = " ".join(filtered).strip() or raw
+
+    # 3) Extract entity from common answer templates.
+    patterns = [
+        r"(?:located at|is|was|were|named|called)\s+(.+?)(?:\s+in\s+|\s+on\s+|\s+at\s+|,|\.|$)",
+        r"(?:answer is|answer:|it is)\s+(.+?)(?:,|\.|$)",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, candidate, flags=re.IGNORECASE)
+        if not m:
+            continue
+        extracted = m.group(1).strip().strip(' "\'`')
+        extracted = re.sub(r"^(the)\s+", "", extracted, flags=re.IGNORECASE).strip()
+        if extracted:
+            return extracted
+
+    # 4) Fallback: first sentence/chunk, cleaned.
+    for sep in [". ", "\n", ";"]:
+        if sep in candidate:
+            candidate = candidate.split(sep, 1)[0].strip()
+            break
+
+    candidate = candidate.strip(' "\'`')
+    candidate = re.sub(r"^(the)\s+", "", candidate, flags=re.IGNORECASE).strip()
+    return candidate
+
+
+def _get_qa_runtime_registry(request: Request) -> Dict[str, Dict[str, Any]]:
+    """Ensure and return in-memory registry for active QA streaming requests."""
+    runtime = getattr(request.app.state, "qa_runtime", None)
+    if not isinstance(runtime, dict):
+        runtime = {"tasks": {}, "cancel_events": {}}
+        request.app.state.qa_runtime = runtime
+
+    runtime.setdefault("tasks", {})
+    runtime.setdefault("cancel_events", {})
+    return runtime
+
+
 # ── Streaming endpoint ──────────────────────────────────────────────────────
 @router.post("/qa")
 async def qa_endpoint(payload: QARequest, request: Request):
@@ -706,16 +783,34 @@ async def qa_endpoint(payload: QARequest, request: Request):
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
 
+    request_id = uuid.uuid4().hex
+    runtime = _get_qa_runtime_registry(request)
+    cancel_event = asyncio.Event()
+    runtime["cancel_events"][request_id] = cancel_event
+    current_task = asyncio.current_task()
+    if current_task is not None:
+        runtime["tasks"][request_id] = current_task
+
     async def _event_generator():
         """Yield SSE strings as the agent graph executes."""
         try:
+            yield _sse_event("request_id", {"request_id": request_id})
+
             all_sources: List[Dict[str, Any]] = []
             final_answer: Optional[str] = None
             last_agent_text: Optional[str] = None
 
             async for event in agent.astream(initial_state, stream_mode="updates"):
+                if cancel_event.is_set():
+                    yield _sse_event("cancelled", {"request_id": request_id})
+                    return
+
                 # *event* is a dict mapping node-name → state-update produced by that node
                 for node_name, update in event.items():
+                    if cancel_event.is_set():
+                        yield _sse_event("cancelled", {"request_id": request_id})
+                        return
+
                     messages = update.get("messages", [])
 
                     # -- Plan node -------------------------------------------------
@@ -789,6 +884,9 @@ async def qa_endpoint(payload: QARequest, request: Request):
 
             if final_answer:
                 yield _sse_event("answer", {"content": final_answer})
+                submit_candidate = _extract_submit_candidate(final_answer)
+                if submit_candidate:
+                    yield _sse_event("answer_submit", {"content": submit_candidate})
 
             # Deduplicate and emit sources
             seen: set = set()
@@ -800,8 +898,14 @@ async def qa_endpoint(payload: QARequest, request: Request):
                     unique.append(src)
             yield _sse_event("sources", {"sources": unique[:100]})
 
+        except asyncio.CancelledError:
+            # Request was cancelled via DELETE /qa/{request_id}.
+            return
         except Exception as exc:
             yield _sse_event("error", {"detail": str(exc)})
+        finally:
+            runtime["tasks"].pop(request_id, None)
+            runtime["cancel_events"].pop(request_id, None)
 
     return StreamingResponse(
         _event_generator(),
@@ -812,6 +916,25 @@ async def qa_endpoint(payload: QARequest, request: Request):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.delete("/qa/{request_id}")
+async def qa_cancel_endpoint(request_id: str, request: Request):
+    """Cancel an in-flight streaming QA request by its request_id."""
+    runtime = _get_qa_runtime_registry(request)
+    cancel_event = runtime["cancel_events"].get(request_id)
+    task = runtime["tasks"].get(request_id)
+
+    if cancel_event is None and task is None:
+        return {"cancelled": False, "request_id": request_id, "reason": "not-found"}
+
+    if cancel_event is not None:
+        cancel_event.set()
+
+    if task is not None and not task.done():
+        task.cancel()
+
+    return {"cancelled": True, "request_id": request_id}
 
 
 # ── Non-streaming endpoint (kept for backward compatibility) ────────────────

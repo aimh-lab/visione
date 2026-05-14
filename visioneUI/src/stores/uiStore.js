@@ -42,6 +42,8 @@ const DEFAULT = {
   videoPlayerModalMode: 'profile',
   imageModalScale: 160,
   slideshowModalScale: 160,
+  qaToolResultLimit: 50,
+  qaToolResultsExpandedByDefault: true,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'
@@ -91,6 +93,13 @@ function normalizeElementUrlHost(value, fallback = '') {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   return raw.replace(/\/+$/, '') || fallback;
+}
+
+function normalizeQaToolResultLimit(value, fallback = 50) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  const rounded = Math.round(numeric);
+  return Math.min(500, Math.max(0, rounded));
 }
 
 function createUIStore() {
@@ -146,6 +155,8 @@ function createUIStore() {
           : u.videoPlayerModalMode,
         imageModalScale: normalizeModalSizePx(s.imageModalScale, u.imageModalScale),
         slideshowModalScale: normalizeModalSizePx(s.slideshowModalScale, u.slideshowModalScale),
+        qaToolResultLimit: normalizeQaToolResultLimit(s.qaToolResultLimit, u.qaToolResultLimit),
+        qaToolResultsExpandedByDefault: s.qaToolResultsExpandedByDefault ?? u.qaToolResultsExpandedByDefault,
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
         defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
@@ -189,6 +200,8 @@ function createUIStore() {
         videoPlayerModalMode: DEFAULT.videoPlayerModalMode,
         imageModalScale: DEFAULT.imageModalScale,
         slideshowModalScale: DEFAULT.slideshowModalScale,
+        qaToolResultLimit: DEFAULT.qaToolResultLimit,
+        qaToolResultsExpandedByDefault: DEFAULT.qaToolResultsExpandedByDefault,
         modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
         defaultTextModel: DEFAULT.defaultTextModel,
         defaultImageModel: DEFAULT.defaultImageModel
@@ -296,6 +309,12 @@ function createUIStore() {
         const safeSlideshowModalScale = patch.slideshowModalScale == null
           ? u.slideshowModalScale
           : normalizeModalSizePx(patch.slideshowModalScale, u.slideshowModalScale || DEFAULT.slideshowModalScale);
+        const safeQaToolResultLimit = patch.qaToolResultLimit == null
+          ? u.qaToolResultLimit
+          : normalizeQaToolResultLimit(patch.qaToolResultLimit, u.qaToolResultLimit || DEFAULT.qaToolResultLimit);
+        const safeQaToolResultsExpandedByDefault = patch.qaToolResultsExpandedByDefault == null
+          ? u.qaToolResultsExpandedByDefault
+          : !!patch.qaToolResultsExpandedByDefault;
         const safeDefaultTextModel = String(patch.defaultTextModel ?? '').trim() || u.defaultTextModel || DEFAULT.defaultTextModel;
         const safeDefaultImageModel = String(patch.defaultImageModel ?? '').trim() || u.defaultImageModel || DEFAULT.defaultImageModel;
 
@@ -327,6 +346,8 @@ function createUIStore() {
           videoPlayerModalMode: safeVideoPlayerModalMode,
           imageModalScale: safeImageModalScale,
           slideshowModalScale: safeSlideshowModalScale,
+          qaToolResultLimit: safeQaToolResultLimit,
+          qaToolResultsExpandedByDefault: safeQaToolResultsExpandedByDefault,
           modelSelectionPerStepEnabled: patch.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
           defaultTextModel: safeDefaultTextModel,
           defaultImageModel: safeDefaultImageModel
@@ -363,6 +384,8 @@ function createUIStore() {
           videoPlayerModalMode: nextState.videoPlayerModalMode,
           imageModalScale: nextState.imageModalScale,
           slideshowModalScale: nextState.slideshowModalScale,
+          qaToolResultLimit: nextState.qaToolResultLimit,
+          qaToolResultsExpandedByDefault: nextState.qaToolResultsExpandedByDefault,
           modelSelectionPerStepEnabled: nextState.modelSelectionPerStepEnabled,
           defaultTextModel: nextState.defaultTextModel,
           defaultImageModel: nextState.defaultImageModel

@@ -7,6 +7,7 @@
   import QueryTemplatesPanel from './QueryTemplatesPanel.svelte';
   import { recentSearches } from "../stores/recentSearches.js";
   import { queryTemplates } from "../stores/queryTemplates.js";
+  import { marked } from 'marked';
 
   export let isSidebarOpen = true;
   export let textareas = [];
@@ -24,11 +25,27 @@
   export let width = 18;
   export let images = []; 
   export let textareaImages = {};
+  export let challengeType = 'KIS';
+  export let submitTextAnswer = (_text) => {};
+  export let askQaAgent = (_question, _maxIterations) => Promise.resolve({});
+  export let stopQaAgent = () => {};
+  export let qaAgentSubmitCandidate = '';
+  export let qaToolResultLimit = 50;
+  export let qaToolResultsExpandedByDefault = true;
+  export let onUpdateQaAgentDisplayPrefs = (_patch) => {};
+  export let qaAgentStream = /** @type {{ isStreaming: boolean, events: Array<Record<string, unknown>>, finalAnswer: string, error: string }} */ ({
+    isStreaming: false,
+    events: [],
+    finalAnswer: '',
+    error: ''
+  });
 
   
   let isSelectingImage = false;
   let selectingForTextarea = null;
   let textareasManagerRef;
+  let qaAgentQuestion = '';
+  let qaAgentMaxIterations = '';
 
   const dispatch = createEventDispatcher();
 
@@ -154,6 +171,167 @@
     pushState(newUrl, {});
 
     dispatch('restoreFromURL');
+  }
+
+  function toEventLabel(type) {
+    const normalized = String(type || '').trim().toLowerCase();
+    if (!normalized) return 'EVENT';
+    return normalized.replace(/_/g, ' ').toUpperCase();
+  }
+
+  function toEventText(evt) {
+    const data = evt?.data;
+    if (typeof data === 'string') return data;
+    if (!data || typeof data !== 'object') return '';
+    if (typeof data.content === 'string') return data.content;
+    if (typeof data.plan === 'string') return data.plan;
+    if (typeof data.review === 'string') return data.review;
+    if (typeof data.detail === 'string') return data.detail;
+    if (Array.isArray(data.results)) return `${data.results.length} result(s)`;
+    if (Array.isArray(data.sources)) return `${data.sources.length} source(s)`;
+    try {
+      return JSON.stringify(data, null, 2);
+    } catch {
+      return String(data);
+    }
+  }
+
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = String(value ?? '');
+    return div.innerHTML;
+  }
+
+  function renderMarkdown(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    return marked.parse(text, { breaks: true });
+  }
+
+  function getEventTypeClass(type) {
+    const normalized = String(type || '').trim().toLowerCase();
+    if (normalized === 'plan') return 'qa-event-plan';
+    if (normalized === 'plan_review') return 'qa-event-plan-review';
+    if (normalized === 'thinking') return 'qa-event-thinking';
+    if (normalized === 'tool_call') return 'qa-event-tool-call';
+    if (normalized === 'tool_result') return 'qa-event-tool-result';
+    if (normalized === 'evaluation') return 'qa-event-evaluation';
+    if (normalized === 'answer') return 'qa-event-answer';
+    if (normalized === 'error') return 'qa-event-error';
+    return 'qa-event-default';
+  }
+
+  function isMarkdownEvent(type) {
+    const normalized = String(type || '').trim().toLowerCase();
+    return normalized === 'plan' || normalized === 'plan_review' || normalized === 'thinking' || normalized === 'evaluation' || normalized === 'answer';
+  }
+
+  function getEventMarkdownContent(evt) {
+    const data = evt?.data;
+    if (!data || typeof data !== 'object') return String(data || '');
+    if (typeof data.plan === 'string') return data.plan;
+    if (typeof data.review === 'string') return data.review;
+    if (typeof data.content === 'string') return data.content;
+    if (typeof data.detail === 'string') return data.detail;
+    return JSON.stringify(data, null, 2);
+  }
+
+  function getToolResults(evt) {
+    const results = evt?.data?.results;
+    return Array.isArray(results) ? results : [];
+  }
+
+  function getVisibleToolResults(evt) {
+    const allResults = getToolResults(evt);
+    if (qaToolResultLimit <= 0) return allResults;
+    return allResults.slice(0, qaToolResultLimit);
+  }
+
+  function extractSubmitCandidateFromText(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return '';
+
+    const boldMatch = raw.match(/\*\*([^*]+)\*\*/);
+    if (boldMatch?.[1]) {
+      return String(boldMatch[1]).trim().replace(/^['"`\s]+|['"`\s]+$/g, '');
+    }
+
+    const quoteMatch = raw.match(/["']([^"']{2,80})["']/);
+    if (quoteMatch?.[1]) {
+      return String(quoteMatch[1]).trim().replace(/^['"`\s]+|['"`\s]+$/g, '');
+    }
+
+    const lines = raw
+      .split('\n')
+      .map((ln) => ln.trim())
+      .filter(Boolean)
+      .filter((ln) => !ln.startsWith('```'));
+
+    const compact = lines
+      .filter((ln) => {
+        const lower = ln.toLowerCase();
+        return !(lower.startsWith('plan') || lower.startsWith('reasoning') || lower.startsWith('evidence') || lower.startsWith('sources'));
+      })
+      .join(' ')
+      .trim();
+
+    const candidate = compact || raw;
+
+    const patterns = [
+      /(?:located at|is|was|were|named|called)\s+(.+?)(?:\s+in\s+|\s+on\s+|\s+at\s+|,|\.|$)/i,
+      /(?:answer is|answer:|it is)\s+(.+?)(?:,|\.|$)/i
+    ];
+    for (const pattern of patterns) {
+      const m = candidate.match(pattern);
+      if (m?.[1]) {
+        return String(m[1])
+          .trim()
+          .replace(/^the\s+/i, '')
+          .replace(/^['"`\s]+|['"`\s]+$/g, '');
+      }
+    }
+
+    const firstSentence = candidate.split(/\.\s|\n|;/, 1)[0]?.trim() || candidate;
+    return firstSentence
+      .replace(/^the\s+/i, '')
+      .replace(/^['"`\s]+|['"`\s]+$/g, '')
+      .trim();
+  }
+
+  $: qaSubmitCandidateEffective = String(qaAgentSubmitCandidate || '').trim()
+    || extractSubmitCandidateFromText(qaAgentStream?.finalAnswer);
+
+  function setQaToolResultLimit(nextLimit) {
+    const normalized = Number(nextLimit);
+    if (!Number.isFinite(normalized)) return;
+    qaToolResultLimit = normalized;
+    onUpdateQaAgentDisplayPrefs({ qaToolResultLimit: normalized });
+  }
+
+  function setQaToolResultsExpandedByDefault(nextValue) {
+    const safe = !!nextValue;
+    qaToolResultsExpandedByDefault = safe;
+    onUpdateQaAgentDisplayPrefs({ qaToolResultsExpandedByDefault: safe });
+  }
+
+  function getToolCallArgs(evt) {
+    const data = evt?.data;
+    if (!data || typeof data !== 'object') return '';
+    const { script, ...other } = data.arguments || {};
+    return JSON.stringify(other, null, 2);
+  }
+
+  async function runQaAgent() {
+    const question = String(qaAgentQuestion || '').trim();
+    if (!question) return;
+    const maxIterations = Number(qaAgentMaxIterations);
+    await askQaAgent(question, Number.isFinite(maxIterations) && maxIterations > 0 ? maxIterations : null);
+  }
+
+  async function submitFinalAnswer() {
+    const answer = String(qaSubmitCandidateEffective || '').trim();
+    if (!answer) return;
+    await submitTextAnswer(answer);
   }
 
 </script>
@@ -344,6 +522,148 @@
             {/if}
           </div>
         </div>
+
+        {#if challengeType === 'Q&A'}
+          <div class="bg-slate-900/30 rounded-lg p-2 border border-slate-700 shadow-lg mt-2">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <h4 class="text-[11px] font-bold text-slate-100 uppercase tracking-wide">Q&A Agent Stream</h4>
+              {#if qaAgentStream?.isStreaming}
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/40 border border-blue-700/50 text-blue-200">streaming</span>
+              {/if}
+            </div>
+
+            <textarea
+              class="w-full min-h-[64px] p-2 text-xs rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ask a question about the lifelog..."
+              bind:value={qaAgentQuestion}
+            ></textarea>
+
+            <div class="mt-2 flex items-center gap-2">
+              <input
+                class="w-20 p-2 text-xs rounded-md bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                type="number"
+                min="1"
+                max="10"
+                placeholder="iter"
+                bind:value={qaAgentMaxIterations}
+              />
+              <button
+                class="flex-1 px-3 py-2 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
+                on:click={runQaAgent}
+              >
+                Ask agent
+              </button>
+              <button
+                class="px-3 py-2 text-xs font-semibold rounded-md border border-red-500/60 text-red-200 hover:bg-red-900/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={!qaAgentStream?.isStreaming}
+                on:click={stopQaAgent}
+              >
+                Stop
+              </button>
+            </div>
+
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit === 50 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
+                  on:click={() => setQaToolResultLimit(50)}
+                >
+                  Top 50
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit === 20 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
+                  on:click={() => setQaToolResultLimit(20)}
+                >
+                  Top 20
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit <= 0 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
+                  on:click={() => setQaToolResultLimit(0)}
+                >
+                  All
+                </button>
+              </div>
+
+              <label class="inline-flex items-center gap-1 text-[10px] text-slate-300">
+                <input
+                  type="checkbox"
+                  class="accent-blue-500"
+                  bind:checked={qaToolResultsExpandedByDefault}
+                  on:change={(e) => setQaToolResultsExpandedByDefault(e.currentTarget.checked)}
+                />
+                Expand results
+              </label>
+            </div>
+
+            {#if qaSubmitCandidateEffective}
+              <button
+                class="mt-2 w-full px-3 py-1.5 text-[11px] font-semibold rounded-md bg-emerald-700/70 hover:bg-emerald-600/80 text-emerald-50 transition-colors"
+                on:click={submitFinalAnswer}
+              >
+                Submit final answer to DRES
+              </button>
+              <div class="mt-1 text-[10px] text-emerald-200/90 break-words">
+                Candidate: {qaSubmitCandidateEffective}
+              </div>
+              <div class="text-[10px] text-slate-300/90">
+                Source: {qaAgentSubmitCandidate ? 'answer_submit' : 'fallback from answer'}
+              </div>
+            {/if}
+
+            {#if qaAgentStream?.error}
+              <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-red-200 text-[11px] break-words">
+                {qaAgentStream.error}
+              </div>
+            {/if}
+
+            {#if Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0}
+              <div class="mt-2 max-h-72 overflow-y-auto space-y-2 pr-1 qa-stream-panel">
+                {#each qaAgentStream.events as evt}
+                  <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
+                    <div class="text-[10px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
+
+                    {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
+                      {@const allResults = getToolResults(evt)}
+                      {@const results = getVisibleToolResults(evt)}
+                      <details open={qaToolResultsExpandedByDefault}>
+                        <summary class="text-[11px] text-slate-300 cursor-pointer">Show {results.length} result(s){results.length < allResults.length ? ` of ${allResults.length}` : ''}</summary>
+                        <div class="qa-tool-results-grid mt-2">
+                          {#each results as result}
+                            <div class="qa-result-card">
+                              {#if result?.image_url}
+                                <img src={result.image_url} alt={String(result?.id || 'result')} loading="lazy" />
+                              {/if}
+                              {#if result?.id}
+                                <div class="qa-result-id">{result.id}</div>
+                              {/if}
+                              {#if result?.metadata && typeof result.metadata === 'object'}
+                                <div class="qa-result-meta">
+                                  {#each Object.entries(result.metadata).slice(0, 8) as [k, v]}
+                                    <div><strong>{k}:</strong> {String(v)}</div>
+                                  {/each}
+                                </div>
+                              {/if}
+                            </div>
+                          {/each}
+                        </div>
+                      </details>
+                    {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
+                      <pre class="text-[11px] whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
+                    {:else if isMarkdownEvent(evt?.type)}
+                      <div class="qa-event-body markdown-body text-[11px] text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
+                    {:else}
+                      <pre class="text-[11px] whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
 
         <!-- Recent + Templates compact row -->
         {#if !searchLoading}
@@ -579,5 +899,124 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
+}
+
+.qa-stream-panel {
+  scrollbar-width: thin;
+}
+
+.qa-event-block {
+  border-left-width: 3px;
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(71, 85, 105, 0.55);
+}
+
+.qa-event-label {
+  color: #cbd5e1;
+}
+
+.qa-event-plan {
+  background: #1a2533;
+  border-color: #60a5fa;
+}
+
+.qa-event-plan-review {
+  background: #1f1a33;
+  border-color: #9575cd;
+}
+
+.qa-event-thinking {
+  background: #1a1f2c;
+  border-color: #b39ddb;
+}
+
+.qa-event-tool-call {
+  background: #1f2618;
+  border-color: #f59e0b;
+}
+
+.qa-event-tool-result {
+  background: #1a1f2c;
+  border-color: #94a3b8;
+}
+
+.qa-event-evaluation {
+  background: #1a2020;
+  border-color: #4dd0e1;
+}
+
+.qa-event-answer {
+  background: #162216;
+  border-color: #66bb6a;
+}
+
+.qa-event-error {
+  background: #2a1515;
+  border-color: #ef5350;
+}
+
+.qa-tool-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.qa-result-card {
+  background: #1f2937;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.qa-result-card img {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.qa-result-id {
+  font-weight: 700;
+  color: #93c5fd;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.qa-result-meta {
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.qa-event-body :global(p) {
+  margin: 0 0 6px 0;
+}
+
+.qa-event-body :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.qa-event-body :global(ul),
+.qa-event-body :global(ol) {
+  margin: 4px 0 6px 16px;
+}
+
+.qa-event-body :global(code) {
+  background: #1f2937;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.qa-event-body :global(pre) {
+  background: #1f2937;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px;
+  overflow-x: auto;
+  margin: 6px 0;
 }
 </style>
