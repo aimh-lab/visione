@@ -13,9 +13,19 @@
   const dispatch = createEventDispatcher();
   
   let formValues = {};
+  let showAdvancedFields = false;
+
+  $: visibleFields = Array.isArray(fields)
+    ? fields.filter((field) => showAdvancedFields || !field?.advanced)
+    : [];
+
+  $: hasAdvancedFields = Array.isArray(fields)
+    ? fields.some((field) => !!field?.advanced)
+    : false;
   
   // Inizializza form values dai fields
   $: if (isOpen && fields.length > 0) {
+    showAdvancedFields = false;
     formValues = fields.reduce((acc, field) => {
       if (field.type === 'checkbox') {
         acc[field.name] = !!field.value;
@@ -107,7 +117,7 @@
       
       <!-- Content -->
       <div class="px-6 py-5 space-y-4">
-        {#each fields as field}
+        {#each visibleFields as field}
           {@const fieldId = `input-modal-${field.name}`}
           <div>
             <label for={fieldId} class="block text-sm font-medium text-gray-300 mb-2">
@@ -170,6 +180,22 @@
             {/if}
           </div>
         {/each}
+
+        {#if hasAdvancedFields}
+          <div class="pt-1">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              on:click={() => (showAdvancedFields = !showAdvancedFields)}
+              aria-expanded={showAdvancedFields}
+            >
+              <svg class="w-3.5 h-3.5 transition-transform {showAdvancedFields ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 6l6 6-6 6"/>
+              </svg>
+              <span>{showAdvancedFields ? 'Hide advanced options' : 'Show advanced options'}</span>
+            </button>
+          </div>
+        {/if}
       </div>
       
       <!-- Footer -->
