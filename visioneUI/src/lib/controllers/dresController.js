@@ -15,10 +15,11 @@ import { get } from 'svelte/store';
  * @param {() => Object|null} deps.findFrame        - (imgId, fallback) => frameObj | null
  * @param {(id: string, verdict: string) => void} deps.updateVerdictInViews
  * @param {(id: string) => void} deps.markSubmittedInViews
+ * @param {() => Object|null} [deps.getRuntimeProfile]
  * @param {(data: any) => void} [deps.onFrameSubmitEvent]
  * @param {(data: any) => void} [deps.onTextSubmitEvent]
  */
-export function createDresController({ sessionStore, findFrame, updateVerdictInViews, markSubmittedInViews, onFrameSubmitEvent, onTextSubmitEvent }) {
+export function createDresController({ sessionStore, findFrame, updateVerdictInViews, markSubmittedInViews, getRuntimeProfile, onFrameSubmitEvent, onTextSubmitEvent }) {
   let clientInstance = null;
   let clientSignature = '';
 
@@ -140,6 +141,22 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     }
   }
 
+  function shouldSubmitFrameByImageId() {
+    const profile = typeof getRuntimeProfile === 'function' ? getRuntimeProfile() : null;
+    if (profile?.dres?.submitByImageId === true) return true;
+
+    const normalizedMode = String(profile?.dres?.submitMode || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+
+    return normalizedMode === 'byimgid'
+      || normalizedMode === 'byimageid'
+      || normalizedMode === 'imgid'
+      || normalizedMode === 'imageid'
+      || normalizedMode === 'mediaitemname';
+  }
+
   // ---- Low-level submit to DRES ----------------------------------------
 
   async function submitFrameToDres(frameObj, evaluationId) {
@@ -154,13 +171,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       if (!imgId) {
         throw new Error('Missing imgId for DRES submission');
       }
-
-      const localMiddleSeconds = resolveFrameMiddleSeconds(frameObj);
-      const middleSeconds = localMiddleSeconds != null
-        ? localMiddleSeconds
-        : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
-      const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
-      const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
+      const submitByImageId = shouldSubmitFrameByImageId();
 
       const safeEvaluationId = String(evaluationId ?? '').trim();
       if (!safeEvaluationId) {
@@ -169,10 +180,32 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
       const submitByEvaluationId = async (evaluationId) => {
         try {
+          if (submitByImageId) {
+            return await client.submitResultByImgId(String(imgId), evaluationId);
+          }
+
+          const localMiddleSeconds = resolveFrameMiddleSeconds(frameObj);
+          const middleSeconds = localMiddleSeconds != null
+            ? localMiddleSeconds
+            : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
+          const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
+          const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
+
           return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
         } catch (submitError) {
           if (submitError instanceof DresClientError && submitError.statusCode === 401) {
             await client.login();
+            if (submitByImageId) {
+              return await client.submitResultByImgId(String(imgId), evaluationId);
+            }
+
+            const localMiddleSeconds = resolveFrameMiddleSeconds(frameObj);
+            const middleSeconds = localMiddleSeconds != null
+              ? localMiddleSeconds
+              : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
+            const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
+            const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
+
             return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
           }
           throw submitError;

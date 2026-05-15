@@ -161,6 +161,33 @@ export class DresClient {
     }
   }
 
+  async submitResultByImgId(
+    imageFilename: string,
+    evaluationId: string
+  ): Promise<SuccessfulSubmissionsStatus> {
+    const session = this.requireSession();
+
+    try {
+      return await this.submissionApi.postApiV2SubmitByEvaluationId({
+        evaluationId,
+        session,
+        apiClientSubmission: {
+          answerSets: [
+            {
+              answers: [
+                {
+                  mediaItemName: String(imageFilename)
+                }
+              ]
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      throw await this.mapSubmissionError(error);
+    }
+  }
+
   async submitTextAnswer(text: string, evaluationId: string): Promise<SuccessfulSubmissionsStatus> {
     const session = this.requireSession();
 

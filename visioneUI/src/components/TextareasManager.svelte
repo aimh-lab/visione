@@ -67,7 +67,8 @@
     name?: string;
     comparator?: string;
     value?: string;
-    dateExpr?: string;
+    dateFrom?: string;
+    dateTo?: string;
     year?: string;
     month?: string;
     day?: string;
@@ -364,8 +365,8 @@
 
   function toComparatorSymbol(comparator: string, fallback: string) {
     const normalized = String(comparator || '').trim().toLowerCase();
-    if (normalized === 'egt') return '>=';
-    if (normalized === 'elt') return '<=';
+    if (normalized === 'gte') return '>=';
+    if (normalized === 'lte') return '<=';
     if (normalized === 'gt') return '>';
     if (normalized === 'lt') return '<';
     if (normalized === 'eq') return '=';
@@ -373,8 +374,8 @@
     if (normalized === 'like' || normalized === 'ilike') return '~';
 
     const normalizedFallback = String(fallback || '').trim().toLowerCase();
-    if (normalizedFallback === 'egt') return '>=';
-    if (normalizedFallback === 'elt') return '<=';
+    if (normalizedFallback === 'gte') return '>=';
+    if (normalizedFallback === 'lte') return '<=';
     if (normalizedFallback === 'gt') return '>';
     if (normalizedFallback === 'lt') return '<';
     if (normalizedFallback === 'ne') return '!=';
@@ -868,6 +869,12 @@
     update(index, "");
   }
 
+  function handleModelSelectionChange(index: number, model: string, kind: 'text' | 'image') {
+    dispatch('updateModel', { index, model, kind });
+    // Keep metadata filters in the effective query when re-running after model changes.
+    setTimeout(() => dispatchSearchWithMetadata(), 0);
+  }
+
   // Gestione menu dropdown
   let openMenuIndex: number | null = null;
   let openImageSubmenuIndex: number | null = null;
@@ -1109,8 +1116,8 @@
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
-            { value: 'egt', label: '>= (equal greater than)' },
-            { value: 'elt', label: '<= (equal less than)' },
+            { value: 'gte', label: '>= (equal greater than)' },
+            { value: 'lte', label: '<= (equal less than)' },
             { value: 'lt', label: '< (less than)' },
             { value: 'gt', label: '> (greater than)' },
             { value: 'like', label: '~ (like)' },
@@ -1141,31 +1148,41 @@
       isOpen: true,
       title: 'Add Date Filter',
       icon: 'calendar',
-      description: 'Set a date expression with comparator (e.g. greater than a date).',
+      description: 'Set a date interval (from/to). If only Date from is set, it matches that exact date.',
       targetIndex: index,
       filterType: 'metadataDate',
       fields: [
         {
-          name: 'dateExpr',
-          label: 'Date expression',
+          name: 'dateFrom',
+          label: 'Date from',
           type: 'text',
-          value: prefill.dateExpr,
-          placeholder: '2026-05-13 14 (or 2026, 2026-05, 14)',
-          hint: 'Accepted: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH, or HH only.'
+          value: prefill.dateFrom,
+          placeholder: '01/01/2022 or 2022-01-01',
+          hint: 'If Date to is empty: exact date (=). If Date to is set: inclusive lower bound (>=).'
+        },
+        {
+          name: 'dateTo',
+          label: 'Date to',
+          type: 'text',
+          value: prefill.dateTo,
+          placeholder: '10/04/2023 or 2023-04-10',
+          hint: 'Inclusive upper bound (<=). Supports DD/MM/YYYY and YYYY-MM-DD, with optional hour.'
         },
         {
           name: 'comparator',
-          label: 'Comparator',
+          label: 'Comparator (single date)',
           type: 'select',
+          advanced: true,
           value: prefill.comparator,
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
-            { value: 'egt', label: '>= (equal greater than)' },
-            { value: 'elt', label: '<= (equal less than)' },
+            { value: 'gte', label: '>= (equal greater than)' },
+            { value: 'lte', label: '<= (equal less than)' },
             { value: 'lt', label: '< (less than)' },
             { value: 'gt', label: '> (greater than)' }
-          ]
+          ],
+          hint: 'Applied only when Date to is empty.'
         },
         {
           name: 'datePreview',
@@ -1285,7 +1302,12 @@
       if (!raw) return;
       const field = getFieldFromMetadataToken(raw);
       if (!field) return;
-      byField.set(field, raw);
+      const valuePart = getMetadataTokenValuePart(raw);
+      const comparatorMatch = String(valuePart || '').match(/^(>=|<=|!=|>|<|=|~)/);
+      const comparatorKey = comparatorMatch ? comparatorMatch[1] : '=';
+      // Keep both date bounds for same field (e.g. year:>=2022 and year:<=2023).
+      const dedupeKey = DATE_METADATA_FIELDS.has(field) ? `${field}__${comparatorKey}` : field;
+      byField.set(dedupeKey, raw);
     });
     return Array.from(byField.values());
   }
@@ -1508,42 +1530,85 @@
       return { year: null as number | null, month: null as number | null, day: null as number | null, hour: null as number | null };
     }
 
-    const compact = raw.replace(/\//g, '-').replace(/T/g, ' ').replace(/\s+/g, ' ').trim();
+    const compact = raw.replace(/T/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // DD/MM/YYYY or DD-MM-YYYY with optional HH
+    const dmy = compact.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:\s+([01]?\d|2[0-3]))?$/);
+    if (dmy) {
+      const parsedDay = normalizeOptionalNumber(dmy[1], 1, 31);
+      const parsedMonth = normalizeOptionalNumber(dmy[2], 1, 12);
+      const parsedYear = parseYearPart(dmy[3]);
+      const parsedHour = dmy[4] ? normalizeOptionalNumber(dmy[4], 0, 23) : null;
+      if (parsedDay !== null && parsedMonth !== null && parsedYear !== null) {
+        return { year: parsedYear, month: parsedMonth, day: parsedDay, hour: parsedHour };
+      }
+    }
+
+    const normalized = compact.replace(/\//g, '-');
 
     // HH (hour only)
-    const hourOnly = compact.match(/^([01]?\d|2[0-3])$/);
+    const hourOnly = normalized.match(/^([01]?\d|2[0-3])$/);
     if (hourOnly) {
       return { year: null, month: null, day: null, hour: Number(hourOnly[1]) };
     }
 
     // YYYY
-    const y = compact.match(/^(\d{4})$/);
+    const y = normalized.match(/^(\d{4})$/);
     if (y) {
       return { year: Number(y[1]), month: null, day: null, hour: null };
     }
 
     // YYYY-MM or YY-MM
-    const ym = compact.match(/^(\d{2,4})-(\d{1,2})$/);
+    const ym = normalized.match(/^(\d{2,4})-(\d{1,2})$/);
     if (ym) {
       const parsedYear = parseYearPart(ym[1]);
-      return { year: parsedYear, month: Number(ym[2]), day: null, hour: null };
+      const parsedMonth = normalizeOptionalNumber(ym[2], 1, 12);
+      return { year: parsedYear, month: parsedMonth, day: null, hour: null };
     }
 
     // YYYY-MM-DD or YY-MM-DD
-    const ymd = compact.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})$/);
+    const ymd = normalized.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})$/);
     if (ymd) {
       const parsedYear = parseYearPart(ymd[1]);
-      return { year: parsedYear, month: Number(ymd[2]), day: Number(ymd[3]), hour: null };
+      const parsedMonth = normalizeOptionalNumber(ymd[2], 1, 12);
+      const parsedDay = normalizeOptionalNumber(ymd[3], 1, 31);
+      return { year: parsedYear, month: parsedMonth, day: parsedDay, hour: null };
     }
 
     // YYYY-MM-DD HH or YY-MM-DD HH
-    const ymdh = compact.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})\s+([01]?\d|2[0-3])$/);
+    const ymdh = normalized.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})\s+([01]?\d|2[0-3])$/);
     if (ymdh) {
       const parsedYear = parseYearPart(ymdh[1]);
-      return { year: parsedYear, month: Number(ymdh[2]), day: Number(ymdh[3]), hour: Number(ymdh[4]) };
+      const parsedMonth = normalizeOptionalNumber(ymdh[2], 1, 12);
+      const parsedDay = normalizeOptionalNumber(ymdh[3], 1, 31);
+      const parsedHour = normalizeOptionalNumber(ymdh[4], 0, 23);
+      return { year: parsedYear, month: parsedMonth, day: parsedDay, hour: parsedHour };
     }
 
     return { year: null, month: null, day: null, hour: null };
+  }
+
+  function buildDateExprFromParts(parts: { year: number | null; month: number | null; day: number | null; hour: number | null }) {
+    const pad2 = (value: number) => String(value).padStart(2, '0');
+    if (parts.year !== null) {
+      let dateExpr = String(parts.year);
+      if (parts.month !== null) {
+        dateExpr += `-${pad2(parts.month)}`;
+        if (parts.day !== null) {
+          dateExpr += `-${pad2(parts.day)}`;
+        }
+      }
+      if (parts.hour !== null) {
+        dateExpr += ` ${pad2(parts.hour)}`;
+      }
+      return dateExpr;
+    }
+
+    if (parts.hour !== null) {
+      return String(parts.hour);
+    }
+
+    return '';
   }
 
   function getMetadataTokenValuePart(token: string) {
@@ -1570,8 +1635,8 @@
     const parseComparator = (raw: string) => {
       const source = String(raw || '').trim();
       const operators: Array<[string, string]> = [
-        ['>=', 'egt'],
-        ['<=', 'elt'],
+        ['>=', 'gte'],
+        ['<=', 'lte'],
         ['!=', 'ne'],
         ['>', 'gt'],
         ['<', 'lt'],
@@ -1589,18 +1654,24 @@
     if (explicitDateToken) {
       const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(explicitDateToken));
       const parsed = parseComparator(rawValue);
+      const parsedComparator = String(parsed.comparator || 'eq').toLowerCase();
       return {
-        dateExpr: parsed.value,
-        comparator: parsed.comparator
+        dateFrom: parsedComparator === 'lte' || parsedComparator === 'lt' ? '' : parsed.value,
+        dateTo: parsedComparator === 'lte' || parsedComparator === 'lt' ? parsed.value : '',
+        comparator: parsedComparator
       };
     }
 
-    let year: number | null = null;
-    let month: number | null = null;
-    let day: number | null = null;
-    let hour: number | null = null;
-    let comparator = 'eq';
-
+    type DateParts = { year: number | null; month: number | null; day: number | null; hour: number | null };
+    const emptyParts = (): DateParts => ({ year: null, month: null, day: null, hour: null });
+    const partsByComparator: Record<string, DateParts> = {
+      gte: emptyParts(),
+      gt: emptyParts(),
+      lte: emptyParts(),
+      lt: emptyParts(),
+      eq: emptyParts(),
+      ne: emptyParts()
+    };
     snapshot.forEach((token) => {
       const field = getFieldFromMetadataToken(token);
       if (!DATE_METADATA_FIELDS.has(field)) return;
@@ -1608,54 +1679,54 @@
       const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(token));
       const parsedComparator = parseComparator(rawValue);
       const normalizedValue = parsedComparator.value;
-      if (comparator === 'eq' && parsedComparator.comparator !== 'eq') {
-        comparator = parsedComparator.comparator;
-      }
+      const normalizedComparator = String(parsedComparator.comparator || 'eq').toLowerCase();
+      const target = partsByComparator[normalizedComparator] || partsByComparator.eq;
 
       if (field === 'year') {
         const parsed = normalizeOptionalYear(normalizedValue);
-        if (parsed !== null) year = parsed;
+        if (parsed !== null) target.year = parsed;
         return;
       }
 
       if (field === 'month') {
         const parsed = normalizeOptionalNumber(normalizedValue, 1, 12);
-        if (parsed !== null) month = parsed;
+        if (parsed !== null) target.month = parsed;
         return;
       }
 
       if (field === 'day') {
         const parsed = normalizeOptionalNumber(normalizedValue, 1, 31);
-        if (parsed !== null) day = parsed;
+        if (parsed !== null) target.day = parsed;
         return;
       }
 
       if (field === 'hour' || field === 'hour_local') {
         const parsed = normalizeOptionalNumber(normalizedValue, 0, 23);
-        if (parsed !== null) hour = parsed;
+        if (parsed !== null) target.hour = parsed;
         return;
       }
     });
 
-    const pad2 = (value: number) => String(value).padStart(2, '0');
-    let dateExpr = '';
-    if (year !== null) {
-      dateExpr = String(year);
-      if (month !== null) {
-        dateExpr += `-${pad2(month)}`;
-        if (day !== null) {
-          dateExpr += `-${pad2(day)}`;
-        }
-      }
-      if (hour !== null) {
-        dateExpr += ` ${pad2(hour)}`;
-      }
-    } else if (hour !== null) {
-      dateExpr = String(hour);
+    const dateFromEgt = buildDateExprFromParts(partsByComparator.gte);
+    const dateFromGt = buildDateExprFromParts(partsByComparator.gt);
+    const dateToElt = buildDateExprFromParts(partsByComparator.lte);
+    const dateToLt = buildDateExprFromParts(partsByComparator.lt);
+    const dateEq = buildDateExprFromParts(partsByComparator.eq);
+    const dateNe = buildDateExprFromParts(partsByComparator.ne);
+
+    const dateFrom = dateFromEgt || dateFromGt;
+    const dateTo = dateToElt || dateToLt;
+
+    let comparator = 'eq';
+    if (dateFrom && !dateTo) {
+      comparator = dateFromEgt ? 'gte' : 'gt';
+    } else if (!dateFrom && !dateTo && dateNe) {
+      comparator = 'ne';
     }
 
     return {
-      dateExpr,
+      dateFrom: dateFrom || (!dateTo ? (dateEq || dateNe) : ''),
+      dateTo,
       comparator
     };
   }
@@ -1676,33 +1747,45 @@
   }
 
   function buildDateFilterTokens(data: ModalSubmitData) {
-    const parsed = parseDateExpression(data.dateExpr);
+    const dateFrom = String(data.dateFrom ?? '').trim();
+    const dateTo = String(data.dateTo ?? '').trim();
     const comparator = String(data.comparator || 'eq').trim().toLowerCase();
 
-    let normalizedExpr = String(data.dateExpr ?? '').trim();
-    if (!normalizedExpr) {
-      const y = parsed.year;
-      const m = parsed.month;
-      const d = parsed.day;
-      const h = parsed.hour;
-      const pad2 = (value: number) => String(value).padStart(2, '0');
-      if (y !== null) {
-        normalizedExpr = String(y);
-        if (m !== null) {
-          normalizedExpr += `-${pad2(m)}`;
-          if (d !== null) normalizedExpr += `-${pad2(d)}`;
-        }
-        if (h !== null) normalizedExpr += ` ${pad2(h)}`;
-      } else if (h !== null) {
-        normalizedExpr = String(h);
+    const buildTokensForExpr = (expr: string, comparator: string) => {
+      const parsed = parseDateExpression(expr);
+      const hasParts = parsed.year !== null || parsed.month !== null || parsed.day !== null || parsed.hour !== null;
+      if (!hasParts) return [];
+
+      const normalizedComparator = String(comparator || 'eq').trim().toLowerCase();
+      const symbol = toComparatorSymbol(normalizedComparator, 'eq');
+      const prefix = normalizedComparator === 'eq' ? '' : symbol;
+      const tokens: string[] = [];
+
+      if (parsed.year !== null) {
+        tokens.push(`year:${prefix}${quoteFilterTokenValue(parsed.year)}`);
       }
+      if (parsed.month !== null) {
+        tokens.push(`month:${prefix}${quoteFilterTokenValue(parsed.month)}`);
+      }
+      if (parsed.day !== null) {
+        tokens.push(`day:${prefix}${quoteFilterTokenValue(parsed.day)}`);
+      }
+      if (parsed.hour !== null) {
+        tokens.push(`hour:${prefix}${quoteFilterTokenValue(parsed.hour)}`);
+      }
+
+      return tokens;
+    };
+
+    if (!dateFrom && !dateTo) return [];
+
+    if (dateFrom && !dateTo) {
+      return normalizeMetadataTokens(buildTokensForExpr(dateFrom, comparator));
     }
 
-    if (!normalizedExpr) return [];
-
-    const tokenValue = quoteFilterTokenValue(normalizedExpr);
-    const symbol = toComparatorSymbol(comparator, 'eq');
-    return [comparator === 'eq' ? `date:${tokenValue}` : `date:${symbol}${tokenValue}`];
+    const fromTokens = dateFrom ? buildTokensForExpr(dateFrom, 'gte') : [];
+    const toTokens = dateTo ? buildTokensForExpr(dateTo, 'lte') : [];
+    return normalizeMetadataTokens([...fromTokens, ...toTokens]);
   }
 
   function quoteFilterTokenValue(value: unknown) {
@@ -1738,6 +1821,11 @@
       }
     } else if (filterType === 'metadataDate') {
       const tokens = buildDateFilterTokens(data);
+      const hasDateInput = [data.dateFrom, data.dateTo].some((v) => String(v ?? '').trim().length > 0);
+      if (hasDateInput && tokens.length === 0) {
+        toasts.error('Invalid date filter. Use formats like 01/01/2022, 2022-01-01, 2022-01, 2022, or 14.');
+        return;
+      }
       upsertDateMetadataTokens(targetIndex, tokens);
       shouldTriggerSearch = tokens.length > 0;
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
@@ -2052,7 +2140,7 @@
                             title="Image embedding model for this similarity step"
                             on:change={(e) => {
                               const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                              dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                              handleModelSelectionChange(i, target.value, 'image');
                             }}
                           >
                             {#each imageModelOptions as m}
@@ -2107,7 +2195,7 @@
                           title="Image embedding model for this query"
                           on:change={(e) => {
                             const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                            dispatch('updateModel', { index: i, model: target.value, kind: 'image' });
+                            handleModelSelectionChange(i, target.value, 'image');
                           }}
                         >
                           {#each imageModelOptions as m}
@@ -2416,7 +2504,7 @@
                     title="Text embedding model for this query"
                     on:change={(e) => {
                       const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                      dispatch('updateModel', { index: i, model: target.value, kind: 'text' });
+                      handleModelSelectionChange(i, target.value, 'text');
                     }}
                   >
                     {#each textModelOptions as m}

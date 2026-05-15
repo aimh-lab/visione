@@ -5,7 +5,7 @@
   export let submittedCount = 0;
   export let rfPositiveCount = 0;
   export let rfNegativeCount = 0;
-  export let currentView = 'View1';
+  export let challengeType = 'KIS';
   export let viewMode = 'byrank';
   export let searchTime = 0;
   export let isLoading = false;
@@ -18,15 +18,13 @@
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
 
-  const viewLabels = tabLabels;
-  
   const sortLabels = {
     'byrank': 'By Relevance',
     'byvideo': 'By Video',
     'bydate': 'By Date'
   };
-  
-  $: viewLabel = viewLabels[currentView] || currentView;
+
+  $: challengeLabel = String(challengeType || 'KIS').trim() || 'KIS';
   $: sortLabel = sortLabels[viewMode] || viewMode;
 </script>
 
@@ -141,13 +139,11 @@
 
         <div class="flex items-center space-x-1.5">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
+            <path d="M4 7h16M7 4v16"/>
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
           </svg>
-          <span>View:</span>
-          <span class="text-white font-semibold">{viewLabel}</span>
+          <span>Challenge:</span>
+          <span class="text-white font-semibold">{challengeLabel}</span>
         </div>
         
         <span class="text-gray-700">•</span>
