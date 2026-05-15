@@ -12,6 +12,7 @@
   export let showSubmitted = false;
   export let dresEnabled = false;
   export let dresUsername = '';
+  export let dresEvaluationLabel = '';
   
   // Events for quick actions
   export let onViewSubmitted = () => {};
@@ -122,6 +123,18 @@
             </svg>
             <span>DRES:</span>
             <span class="text-cyan-200 font-semibold">{dresUsername}</span>
+          </div>
+          <span class="text-gray-700">•</span>
+        {/if}
+
+        {#if dresEnabled && String(dresEvaluationLabel || '').trim()}
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h16v12H4z"/>
+              <path d="M8 10h8M8 14h5"/>
+            </svg>
+            <span>Evaluation:</span>
+            <span class="text-amber-200 font-semibold">{dresEvaluationLabel}</span>
           </div>
           <span class="text-gray-700">•</span>
         {/if}

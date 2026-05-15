@@ -22,6 +22,8 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
   let clientInstance = null;
   let clientSignature = '';
 
+  const CHALLENGE_TYPES = ['KIS', 'AVS', 'Q&A'];
+
   // ---- Singleton client ------------------------------------------------
 
   function getClient() {
@@ -61,6 +63,34 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     if (type === 'AVS') return 'AVS';
     if (type === 'Q&A') return 'Q&A';
     return 'KIS';
+  }
+
+  function normalizeEvaluationMap(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const normalizeEntry = (entry) => {
+      if (Array.isArray(entry)) {
+        for (const candidate of entry) {
+          const id = String(candidate ?? '').trim();
+          if (id) return id;
+        }
+        return '';
+      }
+      return String(entry ?? '').trim();
+    };
+
+    return {
+      KIS: normalizeEntry(source.KIS),
+      AVS: normalizeEntry(source.AVS),
+      'Q&A': normalizeEntry(source['Q&A'])
+    };
+  }
+
+  function getSelectedEvaluationId(settings, challengeType) {
+    const map = normalizeEvaluationMap(
+      settings?.dresEvaluationIdByChallenge ?? settings?.dresEvaluationIdsByChallenge
+    );
+    if (!CHALLENGE_TYPES.includes(challengeType)) return '';
+    return String(map[challengeType] || '').trim();
   }
 
   function normalizeVerdict(value) {
@@ -112,7 +142,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
   // ---- Low-level submit to DRES ----------------------------------------
 
-  async function submitFrameToDres(frameObj) {
+  async function submitFrameToDres(frameObj, evaluationId) {
     try {
       const client = getClient();
 
@@ -132,32 +162,48 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
       const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
 
-      let result;
-      try {
-        result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
-      } catch (submitError) {
-        if (submitError instanceof DresClientError && submitError.statusCode === 401) {
-          await client.login();
-          result = await client.submitResultByTime(videoId, timestampMs, timestampMs);
-        } else {
+      const safeEvaluationId = String(evaluationId ?? '').trim();
+      if (!safeEvaluationId) {
+        throw new DresClientError('No evaluationId selected for current challenge.');
+      }
+
+      const submitByEvaluationId = async (evaluationId) => {
+        try {
+          return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
+        } catch (submitError) {
+          if (submitError instanceof DresClientError && submitError.statusCode === 401) {
+            await client.login();
+            return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
+          }
           throw submitError;
         }
+      };
+
+      const response = await submitByEvaluationId(safeEvaluationId);
+
+      if (response?.status === false) {
+        const rejectionDescription = response?.description ?? 'rejected';
+        toasts.error(`DRES submission rejected (${safeEvaluationId}): ${rejectionDescription}`);
+        return {
+          accepted: false,
+          verdict: normalizeVerdict(response?.submission),
+          description: rejectionDescription,
+          evaluationId: safeEvaluationId
+        };
       }
 
-      const verdict = normalizeVerdict(result?.submission);
-      const description = result?.description ?? 'sent';
-
-      if (result?.status === false) {
-        toasts.error(`DRES submission rejected: ${description}`);
-        return { accepted: false, verdict, description };
-      }
-      return { accepted: true, verdict, description };
+      return {
+        accepted: true,
+        verdict: normalizeVerdict(response?.submission),
+        description: `${response?.description ?? 'sent'}`,
+        evaluationId: safeEvaluationId
+      };
     } catch (error) {
       const message = error instanceof DresClientError || error instanceof Error
         ? error.message
         : 'Unknown error during DRES submission';
       toasts.error(`DRES submission failed: ${message}`);
-      return { accepted: false, verdict: '', description: message };
+      return { accepted: false, verdict: '', description: message, evaluationId: '' };
     }
   }
 
@@ -192,11 +238,20 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       return { accepted: false, verdict: '', description: 'Frame not found' };
     }
 
-    const dresResult = await submitFrameToDres(frameObj);
+    const selectedEvaluationId = getSelectedEvaluationId(settings, challengeType);
+    if (!selectedEvaluationId) {
+      const message = `No evaluationId selected for ${challengeType}.`;
+      toasts.error(message);
+      onFrameSubmitEvent?.({ imgId, challengeType, accepted: false, reason: 'missing-evaluation-id', description: message });
+      return { accepted: false, verdict: '', description: message, evaluationId: '' };
+    }
+
+    const dresResult = await submitFrameToDres(frameObj, selectedEvaluationId);
     if (!dresResult?.accepted) {
       onFrameSubmitEvent?.({
         imgId,
         challengeType,
+        evaluationId: dresResult?.evaluationId || selectedEvaluationId,
         accepted: false,
         verdict: normalizeVerdict(dresResult?.verdict),
         description: dresResult?.description ?? ''
@@ -204,7 +259,8 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       return {
         accepted: false,
         verdict: normalizeVerdict(dresResult?.verdict),
-        description: dresResult?.description ?? 'Submission rejected'
+        description: dresResult?.description ?? 'Submission rejected',
+        evaluationId: dresResult?.evaluationId || selectedEvaluationId
       };
     }
 
@@ -225,7 +281,8 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       const response = {
         accepted: true,
         verdict: verdictForStore,
-        description: dresResult?.description ?? 'queued'
+        description: dresResult?.description ?? 'queued',
+        evaluationId: dresResult?.evaluationId || selectedEvaluationId
       };
       onFrameSubmitEvent?.({ imgId, challengeType, ...response });
       return response;
@@ -233,7 +290,12 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
     const description = dresResult?.description ?? 'sent';
     notifyVerdict(verdictForStore, description, 'DRES submission');
-    const response = { accepted: true, verdict: verdictForStore, description };
+    const response = {
+      accepted: true,
+      verdict: verdictForStore,
+      description,
+      evaluationId: dresResult?.evaluationId || selectedEvaluationId
+    };
     onFrameSubmitEvent?.({ imgId, challengeType, ...response });
     return response;
   }
@@ -269,28 +331,51 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
         await client.login();
       }
 
-      let result;
-      try {
-        result = await client.submitTextAnswer(value);
-      } catch (submitError) {
-        if (submitError instanceof DresClientError && submitError.statusCode === 401) {
-          await client.login();
-          result = await client.submitTextAnswer(value);
-        } else {
-          throw submitError;
-        }
-      }
-
-      const verdict = normalizeVerdict(result?.submission);
-      const description = result?.description ?? 'sent';
-
-      if (result?.status === false) {
-        toasts.error(`DRES answer rejected: ${description}`);
-        sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict, description });
-        const response = { accepted: false, verdict, description };
+      const selectedEvaluationId = getSelectedEvaluationId(settings, challengeType);
+      if (!selectedEvaluationId) {
+        const message = `No evaluationId selected for ${challengeType}.`;
+        toasts.error(message);
+        sessionStore.actions.submitAnswer({ text: value, status: 'FAILED', verdict: '', description: message });
+        const response = { accepted: false, verdict: '', description: message, evaluationId: '' };
         onTextSubmitEvent?.({ text: value, challengeType, ...response });
         return response;
       }
+
+      const submitByEvaluationId = async (evaluationId) => {
+        try {
+          return await client.submitTextAnswer(value, evaluationId);
+        } catch (submitError) {
+          if (submitError instanceof DresClientError && submitError.statusCode === 401) {
+            await client.login();
+            return await client.submitTextAnswer(value, evaluationId);
+          }
+          throw submitError;
+        }
+      };
+
+      const result = await submitByEvaluationId(selectedEvaluationId);
+
+      if (result?.status === false) {
+        const rejectedDescription = result?.description ?? 'rejected';
+        toasts.error(`DRES answer rejected (${selectedEvaluationId}): ${rejectedDescription}`);
+        sessionStore.actions.submitAnswer({
+          text: value,
+          status: 'FAILED',
+          verdict: normalizeVerdict(result?.submission),
+          description: rejectedDescription
+        });
+        const response = {
+          accepted: false,
+          verdict: normalizeVerdict(result?.submission),
+          description: rejectedDescription,
+          evaluationId: selectedEvaluationId
+        };
+        onTextSubmitEvent?.({ text: value, challengeType, ...response });
+        return response;
+      }
+
+      const verdict = normalizeVerdict(result?.submission);
+      const description = `${result?.description ?? 'sent'}`;
 
       sessionStore.actions.submitAnswer({ text: value, status: 'SUBMITTED', verdict, description });
       if (verdict === 'WRONG') {
@@ -301,7 +386,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
         toasts.success(`DRES answer submitted: ${description}`);
       }
 
-      const response = { accepted: true, verdict, description };
+      const response = { accepted: true, verdict, description, evaluationId: selectedEvaluationId };
       onTextSubmitEvent?.({ text: value, challengeType, ...response });
       return response;
     } catch (error) {
@@ -324,8 +409,14 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       const client = createDresClientFromSettings(config);
 
       await client.login();
-      const evaluationId = await client.getEvaluationId();
-      toasts.success(`DRES connected. Active evaluation: ${evaluationId}`);
+      const evaluations = await client.listEvaluations();
+      const activeEvaluations = evaluations.filter((item) => item?.status === 'ACTIVE');
+      const activeList = activeEvaluations.map((item) => item.id).join(', ');
+      toasts.success(
+        activeEvaluations.length > 0
+          ? `DRES connected. Active evaluations: ${activeList}`
+          : 'DRES connected. No ACTIVE evaluations available for this user.'
+      );
 
       try { await client.logout(); } catch { /* ignore logout errors after test */ }
     } catch (error) {
@@ -336,10 +427,33 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     }
   }
 
+  async function listEvaluations() {
+    const settings = get(uiStore);
+    if (!settings?.dresEnabled) return [];
+
+    const client = getClient();
+    if (!client.getSessionId()) {
+      await client.login();
+    }
+
+    try {
+      const evaluations = await client.listEvaluations();
+      return Array.isArray(evaluations) ? evaluations : [];
+    } catch (error) {
+      if (error instanceof DresClientError && error.statusCode === 401) {
+        await client.login();
+        const retry = await client.listEvaluations();
+        return Array.isArray(retry) ? retry : [];
+      }
+      throw error;
+    }
+  }
+
   return {
     submitByImgId,
     submitTextAnswer,
     testConnection,
+    listEvaluations,
     applySubmissionVerdict,
     getClient
   };

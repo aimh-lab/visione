@@ -32,6 +32,11 @@ const DEFAULT = {
 
   dresEnabled: false,
   dresChallengeType: 'KIS',
+  dresEvaluationIdByChallenge: {
+    KIS: '',
+    AVS: '',
+    'Q&A': ''
+  },
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
@@ -100,6 +105,37 @@ function normalizeElementUrlHost(value, fallback = '') {
   return raw.replace(/\/+$/, '') || fallback;
 }
 
+function normalizeEvaluationIdByChallenge(value, fallback = DEFAULT.dresEvaluationIdByChallenge) {
+  const source = value && typeof value === 'object' ? value : {};
+
+  const firstFromArray = (entry) => {
+    if (!Array.isArray(entry)) return '';
+    for (const candidate of entry) {
+      const id = String(candidate ?? '').trim();
+      if (id) return id;
+    }
+    return '';
+  };
+
+  const normalizeEntry = (entry, fallbackEntry = '') => {
+    if (Array.isArray(entry)) {
+      const fromArray = firstFromArray(entry);
+      if (fromArray) return fromArray;
+      return String(fallbackEntry ?? '').trim();
+    }
+
+    const id = String(entry ?? '').trim();
+    if (id) return id;
+    return String(fallbackEntry ?? '').trim();
+  };
+
+  return {
+    KIS: normalizeEntry(source.KIS, fallback.KIS),
+    AVS: normalizeEntry(source.AVS, fallback.AVS),
+    'Q&A': normalizeEntry(source['Q&A'], fallback['Q&A'])
+  };
+}
+
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
 
@@ -139,6 +175,10 @@ function createUIStore() {
 
         dresEnabled: s.dresEnabled ?? u.dresEnabled,
         dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(s.dresChallengeType) ? s.dresChallengeType : u.dresChallengeType,
+        dresEvaluationIdByChallenge: normalizeEvaluationIdByChallenge(
+          s.dresEvaluationIdByChallenge ?? s.dresEvaluationIdsByChallenge,
+          u.dresEvaluationIdByChallenge
+        ),
         dresSubmitServer: s.dresSubmitServer ?? u.dresSubmitServer,
         dresUsername: s.dresUsername ?? u.dresUsername,
         dresPassword: s.dresPassword ?? u.dresPassword,
@@ -187,6 +227,7 @@ function createUIStore() {
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
         dresEnabled: DEFAULT.dresEnabled,
         dresChallengeType: DEFAULT.dresChallengeType,
+        dresEvaluationIdByChallenge: DEFAULT.dresEvaluationIdByChallenge,
         dresSubmitServer: DEFAULT.dresSubmitServer,
         dresUsername: DEFAULT.dresUsername,
         dresPassword: DEFAULT.dresPassword,
@@ -225,6 +266,26 @@ function createUIStore() {
       const safe = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
       update((u) => ({ ...u, dresChallengeType: safe }));
       persist({ dresChallengeType: safe });
+    },
+
+    setDresEvaluationId(challengeType, evaluationId) {
+      const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(challengeType) ? challengeType : null;
+      const safeEvaluationId = String(evaluationId ?? '').trim();
+      if (!safeChallengeType) return;
+
+      update((u) => {
+        const normalized = normalizeEvaluationIdByChallenge(
+          u.dresEvaluationIdByChallenge,
+          DEFAULT.dresEvaluationIdByChallenge
+        );
+        const nextMap = {
+          ...normalized,
+          [safeChallengeType]: safeEvaluationId
+        };
+
+        persist({ dresEvaluationIdByChallenge: nextMap });
+        return { ...u, dresEvaluationIdByChallenge: nextMap };
+      });
     },
 
     setAutoTranslateQueries(enabled) {
@@ -293,6 +354,10 @@ function createUIStore() {
         const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
+        const patchEvaluationMap = patch.dresEvaluationIdByChallenge ?? patch.dresEvaluationIdsByChallenge;
+        const safeEvaluationIdByChallenge = patchEvaluationMap == null
+          ? normalizeEvaluationIdByChallenge(u.dresEvaluationIdByChallenge, DEFAULT.dresEvaluationIdByChallenge)
+          : normalizeEvaluationIdByChallenge(patchEvaluationMap, u.dresEvaluationIdByChallenge);
         const safeTemporalWindowSeconds = patch.temporalWindowSeconds == null
           ? u.temporalWindowSeconds
           : Math.min(99999, Math.max(1, Number(patch.temporalWindowSeconds) || u.temporalWindowSeconds || DEFAULT.temporalWindowSeconds));
@@ -329,6 +394,7 @@ function createUIStore() {
           virtualizationThreshold: patch.virtualizationThreshold ?? u.virtualizationThreshold,
           dresEnabled: patch.dresEnabled ?? u.dresEnabled,
           dresChallengeType: safeChallengeType,
+          dresEvaluationIdByChallenge: safeEvaluationIdByChallenge,
           dresSubmitServer: patch.dresSubmitServer == null ? u.dresSubmitServer : (patch.dresSubmitServer ?? '').trim(),
           dresUsername: patch.dresUsername == null ? u.dresUsername : (patch.dresUsername ?? '').trim(),
           dresPassword: patch.dresPassword ?? u.dresPassword,
@@ -366,6 +432,7 @@ function createUIStore() {
           virtualizationThreshold: nextState.virtualizationThreshold,
           dresEnabled: nextState.dresEnabled,
           dresChallengeType: nextState.dresChallengeType,
+          dresEvaluationIdByChallenge: nextState.dresEvaluationIdByChallenge,
           dresSubmitServer: nextState.dresSubmitServer,
           dresUsername: nextState.dresUsername,
           dresPassword: nextState.dresPassword,

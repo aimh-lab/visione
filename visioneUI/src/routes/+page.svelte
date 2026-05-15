@@ -218,6 +218,9 @@
   // Settings modal (open/close state only)
   let isSettingsOpen = false;
   let isVideoSummaryModalOpen = false;
+  let dresEvaluationOptions = [];
+  let selectedDresEvaluationLabel = '';
+  let isLoadingDresEvaluationOptions = false;
   let isQaAnswerModalOpen = false;
   let qaAnswerContext = { imgId: '', source: '', title: '' };
   let qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
@@ -256,6 +259,12 @@
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
+  $: {
+    const challengeType = String($uiStore.dresChallengeType || 'KIS');
+    const selectedId = String($uiStore.dresEvaluationIdByChallenge?.[challengeType] || '').trim();
+    const match = dresEvaluationOptions.find((item) => item.id === selectedId);
+    selectedDresEvaluationLabel = String(match?.displayName || match?.name || '').trim();
+  }
   $: {
     const safeViewMode = resolveViewMode($uiStore.viewMode, runtimeProfile);
     if (safeViewMode !== $uiStore.viewMode) {
@@ -1067,10 +1076,11 @@
         images = [...images];
       }
     },
-    onFrameSubmitEvent: ({ imgId, challengeType, accepted, verdict, description, reason }) => {
+    onFrameSubmitEvent: ({ imgId, challengeType, accepted, verdict, description, reason, evaluationId }) => {
       const payload = [
         `imgId:${String(imgId || '')}`,
         `challenge:${String(challengeType || get(uiStore).dresChallengeType || 'KIS')}`,
+        `evaluationId:${String(evaluationId || '')}`,
         `accepted:${accepted ? 'true' : 'false'}`,
         `verdict:${String(verdict || '')}`,
         `reason:${String(reason || '')}`,
@@ -1082,9 +1092,10 @@
         value: payload
       }).then(refreshLogCount).catch(() => {});
     },
-    onTextSubmitEvent: ({ text, challengeType, accepted, verdict, description }) => {
+    onTextSubmitEvent: ({ text, challengeType, accepted, verdict, description, evaluationId }) => {
       const payload = [
         `challenge:${String(challengeType || 'Q&A')}`,
+        `evaluationId:${String(evaluationId || '')}`,
         `accepted:${accepted ? 'true' : 'false'}`,
         `verdict:${String(verdict || '')}`,
         `desc:${String(description || '')}`,
@@ -1101,6 +1112,62 @@
   const submitByImgIdRaw = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
   const submitTextAnswer = (text) => dresCtrl.submitTextAnswer(text);
   const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
+
+  function normalizeEvaluationOptions(entries) {
+    if (!Array.isArray(entries)) return [];
+
+    return entries
+      .map((item) => {
+        const id = String(item?.id ?? '').trim();
+        if (!id) return null;
+
+        return {
+          id,
+          name: String(item?.name ?? '').trim(),
+          displayName: String(item?.name ?? '').trim() || `Evaluation ${String(item?.status ?? '').trim() || String(item?.type ?? '').trim() || ''}`.trim(),
+          status: String(item?.status ?? '').trim(),
+          type: String(item?.type ?? '').trim()
+        };
+      })
+      .filter((item) => !!item)
+      .sort((a, b) => {
+        const aActive = a.status === 'ACTIVE' ? 0 : 1;
+        const bActive = b.status === 'ACTIVE' ? 0 : 1;
+        if (aActive !== bActive) return aActive - bActive;
+        return a.id.localeCompare(b.id);
+      });
+  }
+
+  async function refreshDresEvaluationOptions() {
+    if (!get(uiStore).dresEnabled) {
+      dresEvaluationOptions = [];
+      return;
+    }
+
+    isLoadingDresEvaluationOptions = true;
+    try {
+      const entries = await dresCtrl.listEvaluations();
+      dresEvaluationOptions = normalizeEvaluationOptions(entries);
+
+      const challengeType = String(get(uiStore).dresChallengeType || 'KIS');
+      const selectedEvaluationId = String(get(uiStore).dresEvaluationIdByChallenge?.[challengeType] || '').trim();
+      const firstAvailable = String(dresEvaluationOptions[0]?.id || '').trim();
+
+      if (!firstAvailable) {
+        return;
+      }
+
+      const selectedStillAvailable = dresEvaluationOptions.some((item) => item.id === selectedEvaluationId);
+      if (!selectedEvaluationId || !selectedStillAvailable) {
+        uiStore.actions.setDresEvaluationId(challengeType, firstAvailable);
+      }
+    } catch (error) {
+      const message = error?.message || String(error || 'Unknown error while loading evaluations');
+      toasts.error(`Unable to load DRES evaluations: ${message}`);
+    } finally {
+      isLoadingDresEvaluationOptions = false;
+    }
+  }
 
   async function stopQaAgent() {
     const requestIdToCancel = String(qaAgentRequestId || '').trim();
@@ -1665,6 +1732,7 @@
   function handleChangeChallengeType(e) {
     const nextType = String(e?.detail?.type || 'KIS');
     uiStore.actions.setDresChallengeType(nextType);
+    refreshDresEvaluationOptions().catch(() => {});
     vbsLogger.initSession(getLoggerContext()).then(async () => {
       await vbsLogger.logInteractionEvent({
         category: 'OTHER',
@@ -1673,6 +1741,14 @@
       });
       await refreshLogCount();
     }).catch(() => {});
+  }
+
+  function handleSetEvaluationId(e) {
+    const challengeType = String(e?.detail?.challengeType || get(uiStore).dresChallengeType || 'KIS');
+    const evaluationId = String(e?.detail?.evaluationId || '').trim();
+    if (!evaluationId) return;
+
+    uiStore.actions.setDresEvaluationId(challengeType, evaluationId);
   }
 
   function handleToggleAutoTranslate() {
@@ -2686,6 +2762,9 @@ function handleViewSubmitted() {
   {runtimeProfile}
   dresEnabled={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  evaluationOptions={dresEvaluationOptions}
+  selectedEvaluationId={$uiStore.dresEvaluationIdByChallenge?.[$uiStore.dresChallengeType] || ''}
+  loadingEvaluationOptions={isLoadingDresEvaluationOptions}
   {pinnedVideoSummaries}
   {activePinnedSummaryKey}
   on:change={(e) => uiStore.actions.setLayoutTab(e.detail.tab)}
@@ -2700,6 +2779,8 @@ function handleViewSubmitted() {
   }}
   on:openSettings={() => (isSettingsOpen = true)}
   on:changeChallengeType={handleChangeChallengeType}
+  on:requestEvaluationOptions={refreshDresEvaluationOptions}
+  on:setEvaluationId={handleSetEvaluationId}
   on:reset={resetApp}
   on:openPinnedVideoSummary={(e) => openPinnedVideoSummary(e.detail.item)}
   on:unpinVideoSummary={(e) => unpinVideoSummary(e.detail.item)}
@@ -2948,6 +3029,7 @@ function handleViewSubmitted() {
     showSubmitted={$uiStore.dresEnabled}
     dresEnabled={$uiStore.dresEnabled}
     dresUsername={$uiStore.dresUsername}
+    dresEvaluationLabel={selectedDresEvaluationLabel}
     onViewSubmitted={handleViewSubmitted}
     onViewRF={handleViewRF}
   />
