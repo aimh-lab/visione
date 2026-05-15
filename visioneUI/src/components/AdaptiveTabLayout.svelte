@@ -15,6 +15,9 @@
   export let keyframeSize = 130;
   export let dresEnabled = false;
   export let challengeType = "KIS";
+  export let evaluationOptions = [];
+  export let selectedEvaluationId = '';
+  export let loadingEvaluationOptions = false;
   export let pinnedVideoSummaries = [];
   export let activePinnedSummaryKey = '';
   
@@ -48,7 +51,19 @@
 
   function setChallengeType(type) {
     dispatch('changeChallengeType', { type });
+    dispatch('requestEvaluationOptions');
     isChallengeDropdownOpen = false;
+  }
+
+  function toggleChallengeDropdown() {
+    isChallengeDropdownOpen = !isChallengeDropdownOpen;
+    if (isChallengeDropdownOpen) {
+      dispatch('requestEvaluationOptions');
+    }
+  }
+
+  function setEvaluationId(evaluationId) {
+    dispatch('setEvaluationId', { challengeType, evaluationId });
   }
 
   function openPinnedSummary(item) {
@@ -109,6 +124,9 @@
         {keyframeSize}
         {dresEnabled}
         {challengeType}
+        {evaluationOptions}
+        {selectedEvaluationId}
+        {loadingEvaluationOptions}
         pinnedSummaries={pinnedVideoSummaries}
         {activePinnedSummaryKey}
         on:change
@@ -117,6 +135,8 @@
         on:changeViewMode
         on:adjustKeyframeSize
         on:changeChallengeType
+        on:requestEvaluationOptions
+        on:setEvaluationId
         on:openSettings
         on:reset
         on:openPinnedVideoSummary
@@ -406,7 +426,7 @@
 
       <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
         <button
-          on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+          on:click|stopPropagation={toggleChallengeDropdown}
           class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
           title="Challenge type"
           aria-label="Challenge type"
@@ -415,7 +435,7 @@
         </button>
 
         {#if isChallengeDropdownOpen}
-          <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-32 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
+          <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-72 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
             {#each challengeOptions as option}
               <button
                 on:click={() => setChallengeType(option)}
@@ -429,6 +449,37 @@
                 {/if}
               </button>
             {/each}
+
+            {#if dresEnabled}
+              <div class="px-3 pt-2 pb-1 border-t border-gray-200 mt-1">
+                <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Evaluations</div>
+              </div>
+
+              {#if loadingEvaluationOptions}
+                <div class="px-3 py-2 text-xs text-gray-500">Loading evaluations...</div>
+              {:else if evaluationOptions.length === 0}
+                <div class="px-3 py-2 text-xs text-gray-500">No evaluations available.</div>
+              {:else}
+                {#each evaluationOptions as item}
+                  <button
+                    type="button"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                    on:click={() => setEvaluationId(item.id)}
+                    title={item.displayName || item.name || 'Evaluation'}
+                  >
+                    <div class="min-w-0 flex-1">
+                      <div class="text-xs font-medium text-gray-800 truncate">{item.displayName || item.name || 'Evaluation'}</div>
+                      <div class="text-[10px] text-gray-500 truncate">{item.status || item.type || ''}</div>
+                    </div>
+                    {#if selectedEvaluationId === item.id}
+                      <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
+            {/if}
           </div>
         {/if}
       </div>
@@ -703,7 +754,7 @@
 
       <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
         <button
-          on:click|stopPropagation={() => isChallengeDropdownOpen = !isChallengeDropdownOpen}
+          on:click|stopPropagation={toggleChallengeDropdown}
           class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
           title="Challenge type"
           aria-label="Challenge type"
@@ -712,7 +763,7 @@
         </button>
 
         {#if isChallengeDropdownOpen}
-          <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-32 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
+          <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-72 rounded-lg shadow-xl border py-1 z-50 challenge-dropdown-container">
             {#each challengeOptions as option}
               <button
                 on:click={() => setChallengeType(option)}
@@ -726,6 +777,37 @@
                 {/if}
               </button>
             {/each}
+
+            {#if dresEnabled}
+              <div class="px-3 pt-2 pb-1 border-t border-gray-200 mt-1">
+                <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Evaluations</div>
+              </div>
+
+              {#if loadingEvaluationOptions}
+                <div class="px-3 py-2 text-xs text-gray-500">Loading evaluations...</div>
+              {:else if evaluationOptions.length === 0}
+                <div class="px-3 py-2 text-xs text-gray-500">No evaluations available.</div>
+              {:else}
+                {#each evaluationOptions as item}
+                  <button
+                    type="button"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                    on:click={() => setEvaluationId(item.id)}
+                    title={item.displayName || item.name || 'Evaluation'}
+                  >
+                    <div class="min-w-0 flex-1">
+                      <div class="text-xs font-medium text-gray-800 truncate">{item.displayName || item.name || 'Evaluation'}</div>
+                      <div class="text-[10px] text-gray-500 truncate">{item.status || item.type || ''}</div>
+                    </div>
+                    {#if selectedEvaluationId === item.id}
+                      <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
+            {/if}
           </div>
         {/if}
       </div>

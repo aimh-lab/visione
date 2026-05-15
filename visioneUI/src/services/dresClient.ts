@@ -120,9 +120,23 @@ export class DresClient {
     return active.id;
   }
 
-  async submitResultByTime(videoId: string, startMs: number, endMs: number = startMs): Promise<SuccessfulSubmissionsStatus> {
+  async listEvaluations(): Promise<ApiClientEvaluationInfo[]> {
     const session = this.requireSession();
-    const evaluationId = await this.getEvaluationId();
+
+    try {
+      return await this.evaluationClientApi.getApiV2ClientEvaluationList({ session });
+    } catch (error) {
+      throw await this.mapApiError(error, 'Error while fetching evaluations');
+    }
+  }
+
+  async submitResultByTime(
+    videoId: string,
+    startMs: number,
+    endMs: number = startMs,
+    evaluationId: string
+  ): Promise<SuccessfulSubmissionsStatus> {
+    const session = this.requireSession();
 
     try {
       return await this.submissionApi.postApiV2SubmitByEvaluationId({
@@ -147,9 +161,8 @@ export class DresClient {
     }
   }
 
-  async submitTextAnswer(text: string): Promise<SuccessfulSubmissionsStatus> {
+  async submitTextAnswer(text: string, evaluationId: string): Promise<SuccessfulSubmissionsStatus> {
     const session = this.requireSession();
-    const evaluationId = await this.getEvaluationId();
 
     try {
       return await this.submissionApi.postApiV2SubmitByEvaluationId({
@@ -172,9 +185,8 @@ export class DresClient {
     }
   }
 
-  async submitResultLog(resultsLog: QueryResultLog): Promise<SuccessStatus> {
+  async submitResultLog(resultsLog: QueryResultLog, evaluationId: string): Promise<SuccessStatus> {
     const session = this.requireSession();
-    const evaluationId = await this.getEvaluationId();
 
     try {
       return await this.logApi.postApiV2LogResultByEvaluationId({

@@ -118,6 +118,11 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   virtualizationThreshold: 40,
   dresEnabled: false,
   dresChallengeType: 'KIS',
+  dresEvaluationIdByChallenge: {
+    KIS: '',
+    AVS: '',
+    'Q&A': ''
+  },
   dresSubmitServer: '',
   dresUsername: '',
   dresPassword: '',
