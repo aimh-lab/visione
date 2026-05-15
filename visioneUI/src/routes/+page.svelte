@@ -220,6 +220,7 @@
   let isVideoSummaryModalOpen = false;
   let dresEvaluationOptions = [];
   let selectedDresEvaluationLabel = '';
+  let dresEvaluationLoadKey = '';
   let isLoadingDresEvaluationOptions = false;
   let isQaAnswerModalOpen = false;
   let qaAnswerContext = { imgId: '', source: '', title: '' };
@@ -1023,6 +1024,7 @@
   // DRES submission controller
   const dresCtrl = createDresController({
     sessionStore,
+    getRuntimeProfile: () => runtimeProfile,
     findFrame: (imgId, fallback) => {
       const gIdx = _imagesIdx.get(imgId);
       if (gIdx !== undefined) return images[gIdx];
@@ -1138,8 +1140,28 @@
       });
   }
 
+  function canLoadDresEvaluations(settingsLike) {
+    const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
+    return !!settings?.dresEnabled
+      && !!String(settings?.dresSubmitServer || '').trim()
+      && !!String(settings?.dresUsername || '').trim()
+      && !!String(settings?.dresPassword || '').trim();
+  }
+
+  function computeDresEvaluationLoadKey(settingsLike) {
+    const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
+    return [
+      String(!!settings?.dresEnabled),
+      String(settings?.dresSubmitServer || '').trim(),
+      String(settings?.dresUsername || '').trim(),
+      String(settings?.dresPassword || '').trim(),
+      String(settings?.dresChallengeType || 'KIS').trim()
+    ].join('|');
+  }
+
   async function refreshDresEvaluationOptions() {
-    if (!get(uiStore).dresEnabled) {
+    const currentSettings = get(uiStore);
+    if (!canLoadDresEvaluations(currentSettings)) {
       dresEvaluationOptions = [];
       return;
     }
@@ -1166,6 +1188,23 @@
       toasts.error(`Unable to load DRES evaluations: ${message}`);
     } finally {
       isLoadingDresEvaluationOptions = false;
+    }
+  }
+
+  $: {
+    if (browser) {
+      const settings = $uiStore;
+      const nextKey = computeDresEvaluationLoadKey(settings);
+
+      if (nextKey !== dresEvaluationLoadKey) {
+        dresEvaluationLoadKey = nextKey;
+
+        if (!canLoadDresEvaluations(settings)) {
+          dresEvaluationOptions = [];
+        } else {
+          refreshDresEvaluationOptions().catch(() => {});
+        }
+      }
     }
   }
 
@@ -2877,7 +2916,6 @@ function handleViewSubmitted() {
           const { index: i, model: m, kind } = e.detail;
           const targetField = kind === 'image' ? 'imageModel' : 'textModel';
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, [targetField]: m } : t));
-          setTimeout(() => runSearchImmediate(), 0);
         }}
         onRunSearch={runSearch}
         onClearResults={() => {
@@ -3022,7 +3060,7 @@ function handleViewSubmitted() {
     submittedCount={submittedImages.length}
     rfPositiveCount={rfPositive.length}
     rfNegativeCount={rfNegative.length}
-    currentView={$uiStore.layoutTab}
+    challengeType={$uiStore.dresChallengeType}
     viewMode={$uiStore.viewMode}
     searchTime={searchTime}
     isLoading={searchLoading || similarityLoading || view2Loading}

@@ -39,6 +39,9 @@
       "media": {
         "hasVideos": false
       },
+      "dres": {
+        "submitMode": "byImageId"
+      },
       "groupBy": {
         "modes": [
           {

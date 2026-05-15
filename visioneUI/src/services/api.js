@@ -1004,9 +1004,9 @@ export class VisioneAPI {
     const value = String(raw || '').trim();
     if (!value) return { comparator: fallbackComparator, value: '' };
 
-    const namedMatch = value.match(/^(eq|ne|lt|gt|egt|elt|like|ilike):(.*)$/i);
+    const namedMatch = value.match(/^(eq|ne|lt|gt|gte|lte|like|ilike):(.*)$/i);
     if (namedMatch) {
-      return { comparator: namedMatch[1].toLowerCase(), value: this.#unquoteValue(namedMatch[2]) };
+      return { comparator: String(namedMatch[1] || '').toLowerCase(), value: this.#unquoteValue(namedMatch[2]) };
     }
 
     const symbolicMatch = value.match(/^(>=|<=|!=|>|<|=|~)(.*)$/);
@@ -1015,11 +1015,11 @@ export class VisioneAPI {
       const mapped = symbol === '>'
         ? 'gt'
         : symbol === '>='
-          ? 'egt'
+          ? 'gte'
         : symbol === '<'
           ? 'lt'
           : symbol === '<='
-            ? 'elt'
+              ? 'lte'
           : symbol === '!='
             ? 'ne'
             : symbol === '~'
