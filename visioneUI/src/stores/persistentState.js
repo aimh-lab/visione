@@ -128,8 +128,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   videoPlayerModalMode: 'profile',
   imageModalScale: 160,
   slideshowModalScale: 160,
-  qaToolResultLimit: 50,
-  qaToolResultsExpandedByDefault: true,
+  qaStreamPanelHeight: 288,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
   defaultImageModel: 'dinov2_base'

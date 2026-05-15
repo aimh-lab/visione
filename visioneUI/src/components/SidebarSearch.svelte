@@ -27,12 +27,11 @@
   export let textareaImages = {};
   export let challengeType = 'KIS';
   export let submitTextAnswer = (_text) => {};
-  export let askQaAgent = (_question, _maxIterations) => Promise.resolve({});
+  export let askQaAgent = (_question) => Promise.resolve({});
   export let stopQaAgent = () => {};
   export let qaAgentSubmitCandidate = '';
-  export let qaToolResultLimit = 50;
-  export let qaToolResultsExpandedByDefault = true;
-  export let onUpdateQaAgentDisplayPrefs = (_patch) => {};
+  export let qaStreamPanelHeight = 288;
+  export let onUpdateQaAgentPanelPrefs = (_patch) => {};
   export let qaAgentStream = /** @type {{ isStreaming: boolean, events: Array<Record<string, unknown>>, finalAnswer: string, error: string }} */ ({
     isStreaming: false,
     events: [],
@@ -45,7 +44,33 @@
   let selectingForTextarea = null;
   let textareasManagerRef;
   let qaAgentQuestion = '';
-  let qaAgentMaxIterations = '';
+  let qaStreamPanelRef;
+  let qaStreamScrollKey = '';
+  let qaStreamAutoScrollEnabled = true;
+  let qaStreamWasStreaming = false;
+  let isQaPanelResizing = false;
+  let qaPanelResizeStartX = 0;
+  let qaPanelResizeStartY = 0;
+  let qaPanelResizeStartSidebarWidthPx = 0;
+  let qaPanelResizeStartHeight = 0;
+
+  const QA_STREAM_BOTTOM_TOLERANCE_PX = 24;
+  const QA_STREAM_PANEL_MIN_HEIGHT_PX = 160;
+  const QA_STREAM_PANEL_MAX_HEIGHT_PX = 720;
+  const SIDEBAR_MIN_WIDTH_VW = 12;
+  const SIDEBAR_MAX_WIDTH_VW = 55;
+
+  function normalizeQaStreamPanelHeight(value, fallback = 288) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return fallback;
+    return Math.max(QA_STREAM_PANEL_MIN_HEIGHT_PX, Math.min(QA_STREAM_PANEL_MAX_HEIGHT_PX, Math.round(numeric)));
+  }
+
+  function clampSidebarWidthVw(value, fallback = 18) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return fallback;
+    return Math.max(SIDEBAR_MIN_WIDTH_VW, Math.min(SIDEBAR_MAX_WIDTH_VW, numeric));
+  }
 
   const dispatch = createEventDispatcher();
 
@@ -137,7 +162,36 @@
     e.preventDefault();
   }
 
+  function startQaPanelResize(e) {
+    if (typeof window === 'undefined') return;
+    isQaPanelResizing = true;
+    qaPanelResizeStartX = e.clientX;
+    qaPanelResizeStartY = e.clientY;
+    qaPanelResizeStartSidebarWidthPx = (Number(width) / 100) * window.innerWidth;
+    qaPanelResizeStartHeight = normalizeQaStreamPanelHeight(qaStreamPanelHeight, 288);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   function handleMouseMove(e) {
+    if (isQaPanelResizing) {
+      if (typeof window === 'undefined' || !window.innerWidth) return;
+
+      const deltaX = e.clientX - qaPanelResizeStartX;
+      const deltaY = e.clientY - qaPanelResizeStartY;
+
+      const nextSidebarWidthPx = qaPanelResizeStartSidebarWidthPx + deltaX;
+      const currentSidebarWidthVw = Number(width) || 18;
+      const nextSidebarWidthVw = clampSidebarWidthVw((nextSidebarWidthPx / window.innerWidth) * 100, currentSidebarWidthVw);
+      if (Math.abs(nextSidebarWidthVw - currentSidebarWidthVw) >= 0.05) {
+        width = nextSidebarWidthVw;
+        dispatch('resize', { width: nextSidebarWidthVw });
+      }
+
+      qaStreamPanelHeight = normalizeQaStreamPanelHeight(qaPanelResizeStartHeight + deltaY, qaStreamPanelHeight);
+      return;
+    }
+
     if (!isResizing) return;
     
     const viewportWidth = window.innerWidth;
@@ -145,11 +199,15 @@
     const newWidthPx = mouseX;
     const newWidthVw = (newWidthPx / viewportWidth) * 100;
     
-    width = Math.max(12, Math.min(40, newWidthVw));
+    width = Math.max(12, Math.min(55, newWidthVw));
     dispatch('resize', { width });
   }
 
   function stopResize() {
+    if (isQaPanelResizing) {
+      isQaPanelResizing = false;
+      onUpdateQaAgentPanelPrefs({ qaStreamPanelHeight: qaStreamPanelHeight });
+    }
     isResizing = false;
   }
 
@@ -241,29 +299,12 @@
     return Array.isArray(results) ? results : [];
   }
 
-  function getVisibleToolResults(evt) {
-    const allResults = getToolResults(evt);
-    if (qaToolResultLimit <= 0) return allResults;
-    return allResults.slice(0, qaToolResultLimit);
-  }
-
-  function extractSubmitCandidateFromText(text) {
-    const raw = String(text || '').trim();
+  function extractSubmitCandidateFromText(rawText) {
+    const raw = String(rawText || '').trim();
     if (!raw) return '';
 
-    const boldMatch = raw.match(/\*\*([^*]+)\*\*/);
-    if (boldMatch?.[1]) {
-      return String(boldMatch[1]).trim().replace(/^['"`\s]+|['"`\s]+$/g, '');
-    }
-
-    const quoteMatch = raw.match(/["']([^"']{2,80})["']/);
-    if (quoteMatch?.[1]) {
-      return String(quoteMatch[1]).trim().replace(/^['"`\s]+|['"`\s]+$/g, '');
-    }
-
     const lines = raw
-      .split('\n')
-      .map((ln) => ln.trim())
+      .split(/\r?\n/)
       .filter(Boolean)
       .filter((ln) => !ln.startsWith('```'));
 
@@ -301,17 +342,39 @@
   $: qaSubmitCandidateEffective = String(qaAgentSubmitCandidate || '').trim()
     || extractSubmitCandidateFromText(qaAgentStream?.finalAnswer);
 
-  function setQaToolResultLimit(nextLimit) {
-    const normalized = Number(nextLimit);
-    if (!Number.isFinite(normalized)) return;
-    qaToolResultLimit = normalized;
-    onUpdateQaAgentDisplayPrefs({ qaToolResultLimit: normalized });
+  function isQaStreamNearBottom() {
+    if (!qaStreamPanelRef) return true;
+    const distanceFromBottom = qaStreamPanelRef.scrollHeight - qaStreamPanelRef.scrollTop - qaStreamPanelRef.clientHeight;
+    return distanceFromBottom <= QA_STREAM_BOTTOM_TOLERANCE_PX;
   }
 
-  function setQaToolResultsExpandedByDefault(nextValue) {
-    const safe = !!nextValue;
-    qaToolResultsExpandedByDefault = safe;
-    onUpdateQaAgentDisplayPrefs({ qaToolResultsExpandedByDefault: safe });
+  function handleQaStreamScroll() {
+    qaStreamAutoScrollEnabled = isQaStreamNearBottom();
+  }
+
+  $: {
+    const isStreaming = !!qaAgentStream?.isStreaming;
+    if (isStreaming && !qaStreamWasStreaming) {
+      // New run: start pinned to bottom until user scrolls up.
+      qaStreamAutoScrollEnabled = true;
+    }
+    qaStreamWasStreaming = isStreaming;
+  }
+
+  $: qaStreamScrollKey = [
+    Array.isArray(qaAgentStream?.events) ? qaAgentStream.events.length : 0,
+    String(qaAgentStream?.finalAnswer || ''),
+    String(qaAgentStream?.error || ''),
+    qaAgentStream?.isStreaming ? 1 : 0
+  ].join('|');
+
+  $: qaStreamPanelHeight = normalizeQaStreamPanelHeight(qaStreamPanelHeight, 288);
+
+  $: if (qaStreamPanelRef && qaStreamScrollKey && qaStreamAutoScrollEnabled) {
+    requestAnimationFrame(() => {
+      if (!qaStreamPanelRef) return;
+      qaStreamPanelRef.scrollTop = qaStreamPanelRef.scrollHeight;
+    });
   }
 
   function getToolCallArgs(evt) {
@@ -324,8 +387,14 @@
   async function runQaAgent() {
     const question = String(qaAgentQuestion || '').trim();
     if (!question) return;
-    const maxIterations = Number(qaAgentMaxIterations);
-    await askQaAgent(question, Number.isFinite(maxIterations) && maxIterations > 0 ? maxIterations : null);
+    await askQaAgent(question);
+  }
+
+  function handleQaQuestionKeydown(e) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    if (qaAgentStream?.isStreaming) return;
+    runQaAgent();
   }
 
   async function submitFinalAnswer() {
@@ -346,7 +415,7 @@
 
 <div 
   class="sidebar-left bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col shadow-2xl border-r border-gray-700 relative"
-  style="width: {isSidebarOpen ? `${width}vw` : '12px'}; min-width: {isSidebarOpen ? '200px' : '12px'}; max-width: {isSidebarOpen ? '600px' : '12px'};"
+  style="width: {isSidebarOpen ? `${width}vw` : '12px'}; min-width: {isSidebarOpen ? '200px' : '12px'}; max-width: {isSidebarOpen ? '900px' : '12px'};"
 >
   
   {#if isSidebarOpen}
@@ -536,17 +605,10 @@
               class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ask a question about the lifelog..."
               bind:value={qaAgentQuestion}
+              on:keydown={handleQaQuestionKeydown}
             ></textarea>
 
             <div class="mt-2 flex items-center gap-2">
-              <input
-                class="w-20 p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                type="number"
-                min="1"
-                max="10"
-                placeholder="iter"
-                bind:value={qaAgentMaxIterations}
-              />
               <button
                 class="flex-1 px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
@@ -561,42 +623,6 @@
               >
                 Stop
               </button>
-            </div>
-
-            <div class="mt-2 flex items-center justify-between gap-2">
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit === 50 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
-                  on:click={() => setQaToolResultLimit(50)}
-                >
-                  Top 50
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit === 20 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
-                  on:click={() => setQaToolResultLimit(20)}
-                >
-                  Top 20
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 text-[10px] rounded border transition-colors {qaToolResultLimit <= 0 ? 'bg-blue-900/45 border-blue-600/70 text-blue-100' : 'bg-slate-800 border-slate-600 text-slate-200 hover:bg-slate-700'}"
-                  on:click={() => setQaToolResultLimit(0)}
-                >
-                  All
-                </button>
-              </div>
-
-              <label class="inline-flex items-center gap-1 text-[10px] text-slate-300">
-                <input
-                  type="checkbox"
-                  class="accent-blue-500"
-                  bind:checked={qaToolResultsExpandedByDefault}
-                  on:change={(e) => setQaToolResultsExpandedByDefault(e.currentTarget.checked)}
-                />
-                Expand results
-              </label>
             </div>
 
             {#if qaSubmitCandidateEffective}
@@ -620,48 +646,68 @@
               </div>
             {/if}
 
-            {#if Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0}
-              <div class="mt-2 max-h-72 overflow-y-auto space-y-2 pr-1 qa-stream-panel">
-                {#each qaAgentStream.events as evt}
-                  <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
-                    <div class="text-[11px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
+            <div
+              class="mt-2 qa-stream-shell qa-stream-resizable"
+              style="height: {qaStreamPanelHeight}px; width: 100%;"
+            >
+              <div
+                class="overflow-auto space-y-2 pr-1 qa-stream-panel"
+                role="log"
+                bind:this={qaStreamPanelRef}
+                on:scroll={handleQaStreamScroll}
+              >
+                {#if Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0}
+                  {#each qaAgentStream.events as evt}
+                    <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
+                      <div class="text-[11px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
 
-                    {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
-                      {@const allResults = getToolResults(evt)}
-                      {@const results = getVisibleToolResults(evt)}
-                      <details open={qaToolResultsExpandedByDefault}>
-                        <summary class="text-sm text-slate-300 cursor-pointer">Show {results.length} result(s){results.length < allResults.length ? ` of ${allResults.length}` : ''}</summary>
-                        <div class="qa-tool-results-grid mt-2">
-                          {#each results as result}
-                            <div class="qa-result-card">
-                              {#if result?.image_url}
-                                <img src={result.image_url} alt={String(result?.id || 'result')} loading="lazy" />
-                              {/if}
-                              {#if result?.id}
-                                <div class="qa-result-id">{result.id}</div>
-                              {/if}
-                              {#if result?.metadata && typeof result.metadata === 'object'}
-                                <div class="qa-result-meta">
-                                  {#each Object.entries(result.metadata).slice(0, 8) as [k, v]}
-                                    <div><strong>{k}:</strong> {String(v)}</div>
-                                  {/each}
-                                </div>
-                              {/if}
-                            </div>
-                          {/each}
-                        </div>
-                      </details>
-                    {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
-                      <pre class="text-sm whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
-                    {:else if isMarkdownEvent(evt?.type)}
-                      <div class="qa-event-body markdown-body text-sm text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
-                    {:else}
-                      <pre class="text-sm whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
-                    {/if}
-                  </div>
-                {/each}
+                      {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
+                        {@const allResults = getToolResults(evt)}
+                        {@const results = allResults}
+                        <details open>
+                          <summary class="text-sm text-slate-300 cursor-pointer">Show {results.length} result(s)</summary>
+                          <div class="qa-tool-results-grid mt-2">
+                            {#each results as result}
+                              <div class="qa-result-card">
+                                {#if result?.image_url}
+                                  <img src={result.image_url} alt={String(result?.id || 'result')} loading="lazy" />
+                                {/if}
+                                {#if result?.id}
+                                  <div class="qa-result-id">{result.id}</div>
+                                {/if}
+                                {#if result?.metadata && typeof result.metadata === 'object'}
+                                  <div class="qa-result-meta">
+                                    {#each Object.entries(result.metadata).slice(0, 8) as [k, v]}
+                                      <div><strong>{k}:</strong> {String(v)}</div>
+                                    {/each}
+                                  </div>
+                                {/if}
+                              </div>
+                            {/each}
+                          </div>
+                        </details>
+                      {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
+                        <pre class="text-sm whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
+                      {:else if isMarkdownEvent(evt?.type)}
+                        <div class="qa-event-body markdown-body text-sm text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
+                      {:else}
+                        <pre class="text-sm whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
+                      {/if}
+                    </div>
+                  {/each}
+                {:else}
+                  <div class="text-xs text-slate-400 italic px-1 py-1">Agent output will appear here.</div>
+                {/if}
               </div>
-            {/if}
+
+              <button
+                type="button"
+                class="qa-panel-resize-grip"
+                aria-label="Resize agent panel"
+                title="Drag to resize"
+                on:mousedown={startQaPanelResize}
+              ></button>
+            </div>
           </div>
         {/if}
 
@@ -903,6 +949,63 @@
 
 .qa-stream-panel {
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  padding-right: 10px;
+  padding-bottom: 18px;
+  box-sizing: border-box;
+}
+
+.qa-stream-shell {
+  position: relative;
+}
+
+.qa-stream-resizable {
+  min-height: 160px;
+  min-width: 0;
+  max-height: 70vh;
+  box-sizing: border-box;
+  resize: none;
+}
+
+.qa-panel-resize-grip {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  appearance: none;
+  cursor: nwse-resize;
+  z-index: 4;
+  padding: 0;
+}
+
+.qa-panel-resize-grip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0) 0 2px,
+    rgba(148, 163, 184, 0.75) 2px 3px,
+    rgba(148, 163, 184, 0) 3px 5px
+  );
+  opacity: 0.75;
+}
+
+.qa-panel-resize-grip:hover::before {
+  opacity: 1;
+}
+
+.qa-panel-resize-grip:focus-visible {
+  outline: 1px solid rgba(148, 163, 184, 0.85);
+  outline-offset: 1px;
 }
 
 .qa-event-block {
