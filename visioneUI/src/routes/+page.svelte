@@ -1121,7 +1121,7 @@
     qaAgentStream = { ...qaAgentStream, isStreaming: false };
   }
 
-  async function askQaAgent(question, maxIterations = null) {
+  async function askQaAgent(question) {
     const value = String(question || '').trim();
     if (!value) {
       return { answer: '', sources: [] };
@@ -1139,7 +1139,6 @@
     try {
       const result = await visioneAPI.streamQaAgent({
         question: value,
-        maxIterations,
         signal: qaAgentAbortController.signal,
         onRequestId: (requestId) => {
           qaAgentRequestId = String(requestId || '').trim();
@@ -2757,9 +2756,8 @@ function handleViewSubmitted() {
         stopQaAgent={stopQaAgent}
         {qaAgentStream}
         {qaAgentSubmitCandidate}
-        qaToolResultLimit={$uiStore.qaToolResultLimit}
-        qaToolResultsExpandedByDefault={$uiStore.qaToolResultsExpandedByDefault}
-        onUpdateQaAgentDisplayPrefs={(patch) => {
+        qaStreamPanelHeight={$uiStore.qaStreamPanelHeight}
+        onUpdateQaAgentPanelPrefs={(patch) => {
           uiStore.actions.applySettings(patch || {});
         }}
 

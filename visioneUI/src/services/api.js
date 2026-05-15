@@ -539,17 +539,13 @@ export class VisioneAPI {
     }
   }
 
-  async streamQaAgent({ question, maxIterations = null, onEvent = null, onRequestId = null, signal = null } = {}) {
+  async streamQaAgent({ question, onEvent = null, onRequestId = null, signal = null } = {}) {
     const safeQuestion = String(question || '').trim();
     if (!safeQuestion) {
       throw new APIError('question is required', 400);
     }
 
     const payload = { question: safeQuestion };
-    const parsedMax = Number(maxIterations);
-    if (Number.isFinite(parsedMax) && parsedMax >= 1 && parsedMax <= 10) {
-      payload.max_iterations = Math.round(parsedMax);
-    }
 
     const response = await this.#makeRequest(`${this.baseUrl}/qa`, {
       method: 'POST',
