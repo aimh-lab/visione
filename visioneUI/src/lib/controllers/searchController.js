@@ -33,6 +33,43 @@ export function createSearchController({
   let debounceTimer = null;
   const DEBOUNCE_MS = 250;
 
+  async function hydrateMediaUrls(items = []) {
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) return list;
+
+    const ids = Array.from(new Set(
+      list
+        .map((item) => String(item?.imgId || '').trim())
+        .filter(Boolean)
+    ));
+    if (ids.length === 0) return list;
+
+    const rows = await api.getElementUrlsBatch(ids, ['images']);
+    const urlById = new Map(
+      (Array.isArray(rows) ? rows : [])
+        .map((row) => [
+          String(row?.id || '').trim(),
+          String(row?.images || '').trim() || null
+        ])
+        .filter(([id, url]) => !!id && !!url)
+    );
+
+    return list.map((item) => {
+      const id = String(item?.imgId || '').trim();
+      if (!id) return item;
+
+      const resolved = urlById.get(id);
+      if (!resolved) return item;
+
+      return {
+        ...item,
+        url: resolved,
+        imageUrl: resolved,
+        thumbnailUrl: resolved
+      };
+    });
+  }
+
   function hasQueryFilterShortcuts(rawValue) {
     const value = String(rawValue || '').trim();
     if (!value) return false;
@@ -283,7 +320,9 @@ export function createSearchController({
           toasts.info(`Translated ${translatedCount} query step${translatedCount > 1 ? 's' : ''} to English.`);
         }
 
-        setImages(preparedItems);
+        const hydratedItems = await hydrateMediaUrls(preparedItems);
+        if (req !== reqId) return;
+        setImages(hydratedItems);
 
         await tick();
         if (!isRestoringFromHistory()) syncURL(textareas);
@@ -296,7 +335,7 @@ export function createSearchController({
           toasts.info(`Detected ${duplicateCount} duplicate result${duplicateCount > 1 ? 's' : ''} (dedupe disabled).`);
         }
 
-        toasts.success(`📦 Loaded ${preparedItems.length} cached results!`);
+        toasts.success(`📦 Loaded ${hydratedItems.length} cached results!`);
         return;
       }
 
@@ -342,17 +381,19 @@ export function createSearchController({
       const submittedIds = getSubmittedIds();
       const transformed = transformSearchResults(resultSet, submittedIds);
       const { items: preparedItems, removedCount, duplicateCount, dedupeEnabled } = prepareResultItems(transformed);
-      setImages(preparedItems);
+      const hydratedItems = await hydrateMediaUrls(preparedItems);
+      if (req !== reqId) return;
+      setImages(hydratedItems);
 
       await tick();
       if (!isRestoringFromHistory()) syncURL(textareas);
 
-      if (preparedItems.length > 0) {
+      if (hydratedItems.length > 0) {
         if (cacheEnabled && cacheKey) {
           const similarityPreview = typeof getSimilarityPreview === 'function'
             ? getSimilarityPreview(rawTextareas)
             : null;
-          recentSearches.add(cacheKey, preparedItems.length, resultSet, rawTextareas, similarityPreview);
+          recentSearches.add(cacheKey, hydratedItems.length, resultSet, rawTextareas, similarityPreview);
         }
         if (removedCount > 0) {
           toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);
@@ -362,7 +403,7 @@ export function createSearchController({
           toasts.info(`Detected ${duplicateCount} duplicate result${duplicateCount > 1 ? 's' : ''} (dedupe disabled).`);
         }
 
-        toasts.success(`🌐 Found ${preparedItems.length} new results!`);
+        toasts.success(`🌐 Found ${hydratedItems.length} new results!`);
       } else {
         toasts.warning('No results found. Try different keywords.');
       }

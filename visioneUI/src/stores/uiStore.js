@@ -21,7 +21,7 @@ const DEFAULT = {
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
-  elementUrlHost: '',
+  dataserverHost: '',
   justifyResultRows: false,
   tupleIndicatorMode: 'badge+bar',
   videoBadgeOrientation: 'vertical',
@@ -99,7 +99,7 @@ function normalizeResultsetBadgeLabelMode(value, fallback = 'both') {
   return fallback;
 }
 
-function normalizeElementUrlHost(value, fallback = '') {
+function normalizeDataserverHost(value, fallback = '') {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   return raw.replace(/\/+$/, '') || fallback;
@@ -164,7 +164,7 @@ function createUIStore() {
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
-        elementUrlHost: normalizeElementUrlHost(s.elementUrlHost, u.elementUrlHost),
+        dataserverHost: normalizeDataserverHost(s.dataserverHost, u.dataserverHost),
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         tupleIndicatorMode: normalizeTupleIndicatorMode(s.tupleIndicatorMode, u.tupleIndicatorMode),
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
@@ -217,7 +217,7 @@ function createUIStore() {
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
-        elementUrlHost: DEFAULT.elementUrlHost,
+        dataserverHost: DEFAULT.dataserverHost,
         justifyResultRows: DEFAULT.justifyResultRows,
         tupleIndicatorMode: DEFAULT.tupleIndicatorMode,
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
@@ -348,9 +348,9 @@ function createUIStore() {
           : u.videoBadgeOrientation;
         const safeTupleIndicatorMode = normalizeTupleIndicatorMode(patch.tupleIndicatorMode, u.tupleIndicatorMode);
         const safeResultsetBadgeLabelMode = normalizeResultsetBadgeLabelMode(patch.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode);
-        const safeElementUrlHost = patch.elementUrlHost == null
-          ? u.elementUrlHost
-          : normalizeElementUrlHost(patch.elementUrlHost, u.elementUrlHost);
+        const safeDataserverHost = patch.dataserverHost == null
+          ? u.dataserverHost
+          : normalizeDataserverHost(patch.dataserverHost, u.dataserverHost);
         const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
@@ -384,7 +384,7 @@ function createUIStore() {
           resultsAutoFit: patch.resultsAutoFit ?? u.resultsAutoFit,
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
-          elementUrlHost: safeElementUrlHost,
+          dataserverHost: safeDataserverHost,
           justifyResultRows: patch.justifyResultRows ?? u.justifyResultRows,
           tupleIndicatorMode: safeTupleIndicatorMode,
           videoBadgeOrientation: safeVideoBadgeOrientation,
@@ -422,7 +422,7 @@ function createUIStore() {
           resultsAutoFit: nextState.resultsAutoFit,
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,
-          elementUrlHost: nextState.elementUrlHost,
+          dataserverHost: nextState.dataserverHost,
           justifyResultRows: nextState.justifyResultRows,
           tupleIndicatorMode: nextState.tupleIndicatorMode,
           videoBadgeOrientation: nextState.videoBadgeOrientation,

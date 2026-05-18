@@ -174,8 +174,8 @@
 
       const initialFrames = sortedEntries.map((entry) => ({
         ...entry,
-        thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || null,
-        imageUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, normalizedVideoId) || null
+        thumbnailUrl: null,
+        imageUrl: null
       }));
 
       frames = initialFrames;
