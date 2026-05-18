@@ -1211,8 +1211,8 @@
                     {isSelectionMode 
                       ? 'ring-4 ring-green-500 hover:ring-green-600 shadow-lg shadow-green-500/30 hover:scale-105' 
                       : isSelected(item)
-                        ? 'ring-8 ring-sky-500 shadow-lg shadow-sky-500/30'
-                        : 'ring-2 ring-gray-200 hover:ring-blue-400 hover:shadow-md'}"
+                        ? 'border border-sky-500/80 ring-2 ring-sky-300/45 shadow-md shadow-sky-500/15'
+                        : 'border border-slate-300/70 hover:border-slate-400/80 hover:shadow-sm'}"
               style="height: var(--kf-size, 160px); min-width: var(--min-card-w, 140px);"
               title={isSelectionMode ? `✓ Click to select: ${getTitle(item)}` : getTitle(item)}
               role="button"
