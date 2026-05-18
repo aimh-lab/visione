@@ -78,6 +78,7 @@
   export let qaAgentSubmitCandidate = '';
   export let qaStreamPanelHeight = 288;
   export let onUpdateQaAgentPanelPrefs = (_patch: { qaStreamPanelHeight?: number }) => {};
+  export let sessionResetKey = 0;
 
   // Image modal
   export let selectedImage: Img | null = null;
@@ -203,6 +204,7 @@
   {qaAgentSubmitCandidate}
   {qaStreamPanelHeight}
   onUpdateQaAgentPanelPrefs={onUpdateQaAgentPanelPrefs}
+  {sessionResetKey}
   {searchLoading}
   searchError={searchError as any}
   searchResultSet={searchResultSet as any}

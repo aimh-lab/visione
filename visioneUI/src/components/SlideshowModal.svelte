@@ -25,6 +25,8 @@
   let autoPlayDelayMs = 300;
   let timelineContainer = null;
   let keyframeStripEl = null;
+  let lastNavigationReason = "seek";
+  let hasInitializedKeyframeStripPosition = false;
   let hoveredIndex = null;
   let hoveredFrame = null;
   let dragOffsetX = 0;
@@ -37,6 +39,7 @@
 
   const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
   const SLIDESHOW_SPEED_OPTIONS = [50, 100, 200, 300, 400];
+  const KEYFRAME_PAGE_FACTOR = 0.85;
 
   function normalizeVideoId(value) {
     return String(value || "");
@@ -219,6 +222,7 @@
   function move(offset, reason = "step") {
     if (!frames.length) return;
     currentIndex = (currentIndex + offset + frames.length) % frames.length;
+    lastNavigationReason = reason;
     const frame = frames[currentIndex] || null;
     dispatch("playerAction", {
       action: reason,
@@ -233,6 +237,7 @@
     const safe = Math.max(0, Math.min(frames.length - 1, Number(index) || 0));
     if (safe === currentIndex) return;
     currentIndex = safe;
+    lastNavigationReason = reason;
     const frame = frames[currentIndex] || null;
     dispatch("playerAction", {
       action: reason,
@@ -342,14 +347,54 @@
     }
   }
 
-  function scrollToActiveKeyframe() {
+  function scrollToActiveKeyframe(options = {}) {
     if (!keyframeStripEl || !frames.length) return;
     const active = keyframeStripEl.querySelector(`[data-kf-index="${currentIndex}"]`);
     if (!active) return;
 
     const el = active;
-    const left = el.offsetLeft - keyframeStripEl.clientWidth / 2 + el.clientWidth / 2;
-    keyframeStripEl.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    const initial = options?.initial === true;
+
+    if (initial) {
+      const centeredLeft = el.offsetLeft - keyframeStripEl.clientWidth / 2 + el.clientWidth / 2;
+      const maxLeft = Math.max(0, keyframeStripEl.scrollWidth - keyframeStripEl.clientWidth);
+      keyframeStripEl.scrollTo({ left: Math.max(0, Math.min(maxLeft, centeredLeft)), behavior: "auto" });
+      return;
+    }
+
+    const containerLeft = keyframeStripEl.scrollLeft;
+    const containerRight = containerLeft + keyframeStripEl.clientWidth;
+    const elementLeft = el.offsetLeft;
+    const elementRight = elementLeft + el.clientWidth;
+
+    // Scroll only when the active frame exits the currently visible strip area.
+    // Move by one visual block to avoid jittery per-frame scrolling.
+    if (elementLeft >= containerLeft && elementRight <= containerRight) {
+      return;
+    }
+
+    const pageSize = Math.max(1, Math.round(keyframeStripEl.clientWidth * KEYFRAME_PAGE_FACTOR));
+    let left = containerLeft;
+
+    if (elementRight > containerRight) {
+      left = containerLeft + pageSize;
+    } else if (elementLeft < containerLeft) {
+      left = containerLeft - pageSize;
+    }
+
+    const maxLeft = Math.max(0, keyframeStripEl.scrollWidth - keyframeStripEl.clientWidth);
+    left = Math.max(0, Math.min(maxLeft, left));
+
+    const behavior = lastNavigationReason === "autoplay" ? "auto" : "smooth";
+    keyframeStripEl.scrollTo({ left, behavior });
+  }
+
+  function handleKeyframeStripWheel(event) {
+    if (!keyframeStripEl) return;
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!Number.isFinite(delta) || delta === 0) return;
+    event.preventDefault();
+    keyframeStripEl.scrollLeft += delta;
   }
 
   function captureFrameForSimilarity() {
@@ -484,20 +529,33 @@
     dragOffsetX = 0;
     dragOffsetY = 0;
     dragPointerId = null;
+    hasInitializedKeyframeStripPosition = false;
     stopAutoPlay();
   }
 
   $: if (isOpen && normalizedVideoId && loadedVideoId !== normalizedVideoId) {
+    lastNavigationReason = "seek";
+    hasInitializedKeyframeStripPosition = false;
     void loadFramesForVideo(normalizedVideoId, normalizedSelectedImgId);
   }
 
   $: if (isOpen && normalizedVideoId && loadedVideoId === normalizedVideoId && normalizedSelectedImgId && frames.length > 0) {
     const nextIndex = frames.findIndex((frame) => frame.imgId === normalizedSelectedImgId);
-    if (nextIndex >= 0) currentIndex = nextIndex;
+    if (nextIndex >= 0) {
+      currentIndex = nextIndex;
+      lastNavigationReason = "seek";
+    }
   }
 
-  $: if (isOpen && frames.length > 0) {
-    tick().then(() => scrollToActiveKeyframe());
+  $: if (isOpen && frames.length > 0 && currentIndex >= 0) {
+    tick().then(() => {
+      if (!hasInitializedKeyframeStripPosition) {
+        scrollToActiveKeyframe({ initial: true });
+        hasInitializedKeyframeStripPosition = true;
+        return;
+      }
+      scrollToActiveKeyframe();
+    });
   }
 
   $: shouldAutoPlay = isOpen && isAutoPlaying && !loading && frames.length > 1;
@@ -796,6 +854,7 @@
           <div
             bind:this={keyframeStripEl}
             class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-800/50"
+            on:wheel={handleKeyframeStripWheel}
           >
             <div class="flex items-center gap-2 min-w-max py-1">
               {#each frames as frame, idx}
