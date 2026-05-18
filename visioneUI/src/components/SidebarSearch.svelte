@@ -30,6 +30,7 @@
   export let askQaAgent = (_question) => Promise.resolve({});
   export let stopQaAgent = () => {};
   export let qaAgentSubmitCandidate = '';
+  export let sessionResetKey = 0;
   export let qaStreamPanelHeight = 288;
   export let onUpdateQaAgentPanelPrefs = (_patch) => {};
   export let qaAgentStream = /** @type {{ isStreaming: boolean, events: Array<Record<string, unknown>>, finalAnswer: string, error: string }} */ ({
@@ -53,6 +54,7 @@
   let qaPanelResizeStartY = 0;
   let qaPanelResizeStartSidebarWidthPx = 0;
   let qaPanelResizeStartHeight = 0;
+  let lastHandledSessionResetKey = sessionResetKey;
 
   const QA_STREAM_BOTTOM_TOLERANCE_PX = 24;
   const QA_STREAM_PANEL_MIN_HEIGHT_PX = 160;
@@ -229,6 +231,16 @@
     pushState(newUrl, {});
 
     dispatch('restoreFromURL');
+  }
+
+  $: if (sessionResetKey !== lastHandledSessionResetKey) {
+    lastHandledSessionResetKey = sessionResetKey;
+    isSelectingImage = false;
+    selectingForTextarea = null;
+    isResetMenuOpen = false;
+    activeUtilityPanel = null;
+    qaAgentQuestion = '';
+    textareasManagerRef?.clearMetadataFilters?.();
   }
 
   function toEventLabel(type) {

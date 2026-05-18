@@ -228,6 +228,7 @@
   let qaAgentSubmitCandidate = '';
   let qaAgentAbortController = null;
   let qaAgentRequestId = '';
+  let sessionResetKey = 0;
   let pinnedVideoSummaries = [];
   let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
   let activePinnedSummaryKey = '';
@@ -2464,11 +2465,20 @@ function handleViewSubmitted() {
   // ---------------------------
   // Reset search session (preserva settings utente)
   // ---------------------------
-  function resetApp() {
+  async function resetApp() {
     const ok = window.confirm(
       "Reset current search session? This will clear queries, results, RF and submitted items, but keep your app settings."
     );
     if (!ok) return;
+
+    try {
+      await stopQaAgent();
+    } catch {
+      // Ignore agent stop errors during full reset.
+    }
+
+    qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
+    qaAgentSubmitCandidate = '';
 
     uiStore.actions.setLayoutTab('View1');
 
@@ -2513,6 +2523,7 @@ function handleViewSubmitted() {
     }
 
     sessionStore.actions.clearAll();
+    sessionResetKey += 1;
     toasts.success("🔄 Search session cleared (settings preserved)");
   }
 
@@ -2876,6 +2887,7 @@ function handleViewSubmitted() {
         stopQaAgent={stopQaAgent}
         {qaAgentStream}
         {qaAgentSubmitCandidate}
+        {sessionResetKey}
         qaStreamPanelHeight={$uiStore.qaStreamPanelHeight}
         onUpdateQaAgentPanelPrefs={(patch) => {
           uiStore.actions.applySettings(patch || {});

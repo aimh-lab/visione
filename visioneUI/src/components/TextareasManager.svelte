@@ -837,6 +837,13 @@
   export function triggerSearchWithMetadata() {
     dispatchSearchWithMetadata();
   }
+
+  export function clearMetadataFilters() {
+    metadataTokensByIndex = {};
+    modalConfig.isOpen = false;
+    modalMetadataField = '';
+    modalMetadataShortcut = '';
+  }
   
   function swapQueries(indexA: number, indexB: number) {
     if (indexB < 0 || indexB >= textareas.length) return;
@@ -1094,6 +1101,14 @@
   }
   
   function openMetadataFilterModal(index: number, field: string) {
+    return openMetadataFilterModalWithPrefill(index, field);
+  }
+
+  function openMetadataFilterModalWithPrefill(
+    index: number,
+    field: string,
+    prefill?: { comparator?: string; value?: string }
+  ) {
     const normalizedField = String(field || '').trim();
     if (!normalizedField) return;
 
@@ -1112,7 +1127,7 @@
           name: 'comparator',
           label: 'Comparator',
           type: 'select',
-          value: getDefaultComparatorForField(normalizedField),
+          value: String(prefill?.comparator || getDefaultComparatorForField(normalizedField)).trim().toLowerCase(),
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
@@ -1128,7 +1143,7 @@
           name: 'value',
           label: 'Value',
           type: 'text',
-          value: '',
+          value: String(prefill?.value ?? ''),
           placeholder: 'Filter value',
           required: true,
           hint: getMetadataFieldHint(normalizedField)
@@ -1201,6 +1216,13 @@
   }
 
   function openCountryMetadataFilterModal(index: number) {
+    return openCountryMetadataFilterModalWithPrefill(index);
+  }
+
+  function openCountryMetadataFilterModalWithPrefill(
+    index: number,
+    prefill?: { comparator?: string; value?: string }
+  ) {
     modalMetadataField = 'location_country';
     modalMetadataShortcut = 'country';
 
@@ -1216,7 +1238,7 @@
           name: 'value',
           label: 'Country',
           type: 'text',
-          value: '',
+          value: String(prefill?.value ?? ''),
           placeholder: 'e.g. Ireland',
           required: true
         },
@@ -1225,7 +1247,7 @@
           label: 'Comparator',
           type: 'select',
           advanced: true,
-          value: 'ilike',
+          value: String(prefill?.comparator || 'ilike').trim().toLowerCase(),
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
@@ -1240,6 +1262,13 @@
   }
 
   function openLocationMetadataFilterModal(index: number) {
+    return openLocationMetadataFilterModalWithPrefill(index);
+  }
+
+  function openLocationMetadataFilterModalWithPrefill(
+    index: number,
+    prefill?: { comparator?: string; value?: string }
+  ) {
     modalMetadataField = 'location';
     modalMetadataShortcut = 'location';
 
@@ -1255,7 +1284,7 @@
           name: 'value',
           label: 'Location',
           type: 'text',
-          value: '',
+          value: String(prefill?.value ?? ''),
           placeholder: 'e.g. Dublin',
           required: true
         },
@@ -1264,7 +1293,7 @@
           label: 'Comparator',
           type: 'select',
           advanced: true,
-          value: 'ilike',
+          value: String(prefill?.comparator || 'ilike').trim().toLowerCase(),
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
@@ -1620,6 +1649,58 @@
 
   function stripComparatorPrefix(value: string) {
     return String(value || '').trim().replace(/^(>=|<=|!=|>|<|=|~)/, '').trim();
+  }
+
+  function parseComparatorValue(value: string, fallbackComparator = 'eq') {
+    const raw = String(value || '').trim();
+    const fallback = String(fallbackComparator || 'eq').trim().toLowerCase();
+
+    if (raw.startsWith('>=')) return { comparator: 'gte', value: raw.slice(2).trim() };
+    if (raw.startsWith('<=')) return { comparator: 'lte', value: raw.slice(2).trim() };
+    if (raw.startsWith('!=')) return { comparator: 'ne', value: raw.slice(2).trim() };
+    if (raw.startsWith('>')) return { comparator: 'gt', value: raw.slice(1).trim() };
+    if (raw.startsWith('<')) return { comparator: 'lt', value: raw.slice(1).trim() };
+    if (raw.startsWith('=')) return { comparator: 'eq', value: raw.slice(1).trim() };
+    if (raw.startsWith('~')) {
+      const stringFallback = fallback === 'like' ? 'like' : 'ilike';
+      return { comparator: stringFallback, value: raw.slice(1).trim() };
+    }
+
+    return { comparator: fallback, value: raw };
+  }
+
+  function getComparatorAndValueFromToken(token: string, field: string) {
+    const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(token));
+    const fallbackComparator = getDefaultComparatorForField(field);
+    const parsed = parseComparatorValue(rawValue, fallbackComparator);
+    return {
+      comparator: parsed.comparator,
+      value: stripComparatorPrefix(parsed.value)
+    };
+  }
+
+  function editMetadataChip(index: number, chip: MetadataChip) {
+    const field = String(chip?.field || '').trim().toLowerCase();
+    if (!field) return;
+
+    if (DATE_METADATA_FIELDS.has(field)) {
+      openDateMetadataFilterModal(index);
+      return;
+    }
+
+    const parsed = getComparatorAndValueFromToken(chip.token, field);
+
+    if (field === 'location_country') {
+      openCountryMetadataFilterModalWithPrefill(index, parsed);
+      return;
+    }
+
+    if (field === 'location') {
+      openLocationMetadataFilterModalWithPrefill(index, parsed);
+      return;
+    }
+
+    openMetadataFilterModalWithPrefill(index, field, parsed);
   }
 
   function getMetadataTokensSnapshotForIndex(index: number) {
@@ -2248,9 +2329,17 @@
           {#if getMetadataChipsForIndex(i).length > 0}
             <div class="px-1.5 pb-1 pt-0.5 flex flex-wrap items-center gap-1.5 border-t border-slate-800/60">
               {#each getMetadataChipsForIndex(i) as chip}
-                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-600/40 bg-cyan-900/25 px-2 py-0.5 text-[10px] text-cyan-100">
-                  <span class="font-semibold">{chip.label}</span>
-                  <span class="text-cyan-200/90">{chip.value}</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-600/40 bg-cyan-900/25 px-1 py-0.5 text-[10px] text-cyan-100">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-cyan-700/35 transition-colors"
+                    title={`Edit ${chip.label}`}
+                    aria-label={`Edit ${chip.label}`}
+                    on:click|stopPropagation={() => editMetadataChip(i, chip)}
+                  >
+                    <span class="font-semibold">{chip.label}</span>
+                    <span class="text-cyan-200/90">{chip.value}</span>
+                  </button>
                   <button
                     type="button"
                     class="ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-cyan-200 hover:bg-cyan-700/40 hover:text-white transition-colors"
