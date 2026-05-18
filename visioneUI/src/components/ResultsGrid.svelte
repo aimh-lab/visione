@@ -768,7 +768,7 @@
   function getVideoRowShellClass(rowInfo, rowIndex) {
     if (rowInfo?.type !== 'grouped') return '';
 
-    const palette = 'bg-gradient-to-b from-white to-gray-100 border-gray-300 border-l-gray-500 ring-1 ring-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(15,23,42,0.12)]';
+    const palette = 'bg-white border-slate-300/70 shadow-none';
 
     const radius = rowInfo.isVideoGroupStart && rowInfo.isVideoGroupEnd
       ? 'rounded-xl'
@@ -779,11 +779,11 @@
           : 'rounded-none';
 
     const margin = rowInfo.isVideoGroupEnd ? 'mb-1' : 'mb-0';
-    const joinTop = rowInfo.continuesFromPreviousRow ? 'border-t-0 -mt-[2px]' : '';
+    const joinTop = rowInfo.continuesFromPreviousRow ? 'border-t-0 -mt-px' : '';
     const joinBottom = rowInfo.continuesToNextRow ? 'border-b-0' : '';
     const groupChrome = '';
 
-    return `relative ml-2 mr-2.5 ${margin} border border-l-2 ${groupChrome} ${palette} ${radius} ${joinTop} ${joinBottom}`;
+    return `relative ml-2 mr-2.5 ${margin} border ${groupChrome} ${palette} ${radius} ${joinTop} ${joinBottom}`;
   }
 
   function getVerticalVideoBadgeClass(rowInfo) {
