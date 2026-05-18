@@ -8,7 +8,6 @@ from hydra.utils import instantiate
 
 from langchain_postgres import PGEngine
 
-from endpoints.element_url import router as element_url_router
 from endpoints.discovery import router as discovery_router
 from endpoints.field import router as field_router
 from endpoints.llm_query import router as llm_query_router
@@ -129,7 +128,6 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(search_router)
 app.include_router(llm_query_router)
 app.include_router(qa_router)
-app.include_router(element_url_router)
 app.include_router(field_router)
 app.include_router(discovery_router)
 app.include_router(translate_router)
