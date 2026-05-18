@@ -10,7 +10,7 @@
   export let justifyResultRows = false;
   export let cacheEnabled = true;
   export let dedupeResults = true;
-  export let elementUrlHost = '';
+  export let dataserverHost = '';
   export let virtualizationEnabled = true;
   export let tupleIndicatorMode = 'badge+bar';
   export let resultsetBadgeLabelMode = 'both';
@@ -101,7 +101,7 @@
       resultsAutoFit,
       cacheEnabled,
       dedupeResults,
-      elementUrlHost,
+      dataserverHost,
       justifyResultRows,
       tupleIndicatorMode,
       videoBadgeOrientation,
@@ -206,7 +206,7 @@
       resultsAutoFit: !!local.resultsAutoFit,
       cacheEnabled: !!local.cacheEnabled,
       dedupeResults: !!local.dedupeResults,
-      elementUrlHost: String(local.elementUrlHost ?? '').trim(),
+      dataserverHost: String(local.dataserverHost ?? '').trim(),
       justifyResultRows: !!local.justifyResultRows,
       tupleIndicatorMode: safeTupleIndicatorMode,
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
@@ -610,17 +610,17 @@
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Network</h4>
 
             <div>
-              <label for="settings-element-url-host" class="ui-settings-label block text-sm font-medium mb-1">Element URL host override</label>
+              <label for="settings-dataserver-host" class="ui-settings-label block text-sm font-medium mb-1">Dataserver host override</label>
               <input
-                id="settings-element-url-host"
+                id="settings-dataserver-host"
                 type="text"
-                placeholder="http://localhost:8000"
+                placeholder="https://visione.isti.cnr.it:43333"
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                bind:value={local.elementUrlHost}
+                bind:value={local.dataserverHost}
                 on:change={() => save()}
               />
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
-                Applied only to /element-url requests. Leave empty to use the default services host.
+                Used to build media URLs. Leave empty to use default_dataserver from core /discovery.
               </p>
             </div>
 

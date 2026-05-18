@@ -37,31 +37,25 @@ export function createVideoController({
     const ids = rawFrames
       .map((entry) => String(entry?.imgId || entry?.id || entry?.content || entry || '').trim())
       .filter(Boolean);
-    let urlById = new Map();
-
-    try {
-      const urlRows = await api.getElementUrlsBatch(ids, ['images', 'thumbnails']);
-      urlById = new Map(
-        (Array.isArray(urlRows) ? urlRows : [])
-          .map((row) => [
-            String(row?.id || '').trim(),
-            {
-              imageUrl: String(row?.images || '').trim() || null,
-              thumbnailUrl: String(row?.thumbnails || '').trim() || null
-            }
-          ])
-          .filter(([id]) => !!id)
-      );
-    } catch {
-      // Keep fallback URLs below when batch lookup fails.
-    }
+    const urlRows = await api.getElementUrlsBatch(ids, ['images', 'thumbnails']);
+    const urlById = new Map(
+      (Array.isArray(urlRows) ? urlRows : [])
+        .map((row) => [
+          String(row?.id || '').trim(),
+          {
+            imageUrl: String(row?.images || '').trim() || null,
+            thumbnailUrl: String(row?.thumbnails || '').trim() || null
+          }
+        ])
+        .filter(([id]) => !!id)
+    );
 
     const enrichedFrames = rawFrames.map((entry) => {
       const imgId = String(entry?.imgId || entry?.id || entry?.content || entry || '').trim();
       if (!imgId) return entry;
 
       const resolved = urlById.get(imgId) || {};
-      const thumbnailUrl = String(resolved?.thumbnailUrl || '').trim() || api.getThumbnailUrlByImgId(imgId, videoId) || null;
+      const thumbnailUrl = String(resolved?.thumbnailUrl || '').trim() || null;
       const imageUrl = String(resolved?.imageUrl || '').trim() || null;
       return {
         ...(typeof entry === 'object' && entry ? entry : { imgId }),

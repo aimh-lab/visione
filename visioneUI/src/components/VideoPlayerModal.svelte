@@ -376,15 +376,14 @@
         timestamp: entry.timestamp != null
           ? entry.timestamp
           : (index / Math.max(1, entries.length)) * fallbackDuration,
-        thumbnailUrl: visioneAPI.getThumbnailUrlByImgId(entry.imgId, vid)
-          || ''
+        thumbnailUrl: ''
       }));
 
       // Show timeline immediately with positions from epochs.
       keyframes = initial;
       loadingKeyframes = false;
 
-      // Resolve real thumbnail URLs via batch /element-url POST.
+      // Resolve thumbnail/image URLs from dataserver-aware URL builder.
       const imgIds = entries.map((e: { imgId: string }) => e.imgId);
       const urlRows = await visioneAPI.getElementUrlsBatch(imgIds, ['images', 'thumbnails']);
 

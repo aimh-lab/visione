@@ -35,9 +35,12 @@ export class VisioneAPI {
     this.elementUrlInFlight = new Map();
     this.elementUrlCacheMax = 3000;
     this.elementUrlTtlMs = 10 * 60 * 1000;
-    this.elementUrlHost = '';
+    this.dataserverHost = '';
     this.discoveryCache = null;
     this.discoveryInFlight = null;
+    this.dataserverDiscoveryCache = null;
+    this.dataserverDiscoveryInFlight = null;
+    this.activeCollectionName = '';
     this.translationCache = new Map();
     this.translationInFlight = new Map();
     this.translationCacheMax = 1000;
@@ -61,6 +64,26 @@ export class VisioneAPI {
       return await run;
     } finally {
       this.discoveryInFlight = null;
+    }
+  }
+
+  async dataserverDiscovery() {
+    if (this.dataserverDiscoveryCache) return this.dataserverDiscoveryCache;
+    if (this.dataserverDiscoveryInFlight) return this.dataserverDiscoveryInFlight;
+
+    const run = (async () => {
+      const dataserverBaseUrl = await this.#resolveDataserverBaseUrl();
+      const response = await this.#makeRequest(`${dataserverBaseUrl}/discovery`, { retries: 1, timeout: 12000 });
+      const data = await response.json();
+      this.dataserverDiscoveryCache = data;
+      return data;
+    })();
+
+    this.dataserverDiscoveryInFlight = run;
+    try {
+      return await run;
+    } finally {
+      this.dataserverDiscoveryInFlight = null;
     }
   }
 
@@ -149,84 +172,119 @@ export class VisioneAPI {
     this.supportsVideos = Boolean(enabled);
   }
 
-  getThumbnailUrlByImgId(imgId, videoId = '') {
-    const rawId = String(imgId || '').trim();
-    if (!rawId) return null;
+  setDataserverHost(host = '') {
+    const normalized = String(host || '').trim().replace(/\/+$/, '');
+    if (normalized === this.dataserverHost) return;
 
-    const rawVideoId = String(videoId || '').trim();
-    if (rawVideoId) {
-      return `${this.baseUrl}/thumbnails/${rawVideoId}/${rawId}`;
-    }
-
-    const hour = rawId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i)?.[1] || '';
-    if (!hour) return null;
-    return `${this.baseUrl}/thumbnails/${hour}/${rawId}`;
+    this.dataserverHost = normalized;
+    this.elementUrlCache.clear();
+    this.elementUrlInFlight.clear();
+    this.dataserverDiscoveryCache = null;
+    this.dataserverDiscoveryInFlight = null;
   }
 
-  setElementUrlHost(host = '') {
-    const normalized = String(host || '').trim().replace(/\/+$/, '');
-    if (normalized === this.elementUrlHost) return;
-
-    this.elementUrlHost = normalized;
+  setActiveCollectionName(collectionName = '') {
+    const normalized = String(collectionName || '').trim().toLowerCase();
+    if (normalized === this.activeCollectionName) return;
+    this.activeCollectionName = normalized;
     this.elementUrlCache.clear();
     this.elementUrlInFlight.clear();
   }
 
-  #getElementUrlEndpoint() {
-    if (this.elementUrlHost) {
-      return `${this.elementUrlHost}/element-url`;
+  #normalizeDataserverBaseUrl(rawHost = '') {
+    const raw = String(rawHost || '').trim().replace(/\/+$/, '');
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  }
+
+  async #resolveDataserverBaseUrl() {
+    const manual = this.#normalizeDataserverBaseUrl(this.dataserverHost);
+    if (manual) return manual;
+
+    const coreDiscovery = await this.discovery();
+    const fromCore = this.#extractDefaultDataserverFromCoreDiscovery(coreDiscovery);
+    const normalized = this.#normalizeDataserverBaseUrl(fromCore);
+
+    if (!normalized) {
+      throw new APIError('Unable to resolve dataserver host from /discovery', 500);
     }
-    return `${this.baseUrl}/element-url`;
+
+    return normalized;
   }
 
-  #shouldUseElementUrlErrorFallback() {
-    return String(this.elementUrlHost || '').trim().length > 0;
+  #extractDefaultDataserverFromCoreDiscovery(payload) {
+    const direct = String(payload?.default_dataserver || '').trim();
+    if (direct) return direct;
+
+    const dataField = payload?.data;
+    if (dataField && typeof dataField === 'object') {
+      const nested = String(dataField?.default_dataserver || '').trim();
+      if (nested) return nested;
+    }
+
+    const collections = Array.isArray(payload?.collections)
+      ? payload.collections
+      : (Array.isArray(payload?.data?.collections) ? payload.data.collections : []);
+
+    for (const entry of collections) {
+      const candidate = String(entry?.default_dataserver || '').trim();
+      if (candidate) return candidate;
+    }
+
+    return '';
   }
 
-  #buildElementUrlErrorDataUrl(id, slot = 'images', reason = 'lookup-error') {
-    const safeId = String(id || '').trim() || 'unknown-id';
-    const safeSlot = String(slot || 'images').trim();
-    const safeReason = String(reason || 'lookup-error').trim();
-    const title = `Element URL error (${safeSlot})`;
-    const line1 = safeId.length > 36 ? `${safeId.slice(0, 33)}...` : safeId;
-    const line2 = safeReason.length > 36 ? `${safeReason.slice(0, 33)}...` : safeReason;
+  #extractDataserverCollectionsMap(payload) {
+    if (!payload || typeof payload !== 'object') return {};
 
-    const svg = [
-      '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">',
-      '<rect width="640" height="360" fill="#0f172a"/>',
-      '<rect x="8" y="8" width="624" height="344" rx="14" fill="#111827" stroke="#ef4444" stroke-width="2"/>',
-      `<text x="320" y="134" text-anchor="middle" fill="#fca5a5" font-family="sans-serif" font-size="24">${title}</text>`,
-      `<text x="320" y="182" text-anchor="middle" fill="#e5e7eb" font-family="monospace" font-size="17">${line1}</text>`,
-      `<text x="320" y="214" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="14">${line2}</text>`,
-      '</svg>'
-    ].join('');
+    const looksLikeMap = Object.values(payload).every((v) => Array.isArray(v));
+    if (looksLikeMap) {
+      return payload;
+    }
 
-    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    if (payload.data && typeof payload.data === 'object') {
+      const nested = payload.data;
+      const nestedLooksLikeMap = Object.values(nested).every((v) => Array.isArray(v));
+      if (nestedLooksLikeMap) return nested;
+    }
+
+    return {};
   }
 
-  #buildElementUrlErrorRows(ids = [], what = [], reason = 'lookup-error') {
-    const normalizedIds = (Array.isArray(ids) ? ids : [ids])
-      .map((v) => String(v || '').trim())
+  async #getDataserverCollectionAndTypes() {
+    const discovery = await this.dataserverDiscovery();
+    const map = this.#extractDataserverCollectionsMap(discovery);
+    const collectionNames = Object.keys(map);
+    if (collectionNames.length === 0) {
+      throw new APIError('Dataserver /discovery returned no collections', 500);
+    }
+
+    const active = String(this.activeCollectionName || '').trim().toLowerCase();
+    const selectedCollection = collectionNames.find((name) => String(name || '').trim().toLowerCase() === active)
+      || collectionNames[0];
+
+    const availableTypes = (Array.isArray(map[selectedCollection]) ? map[selectedCollection] : [])
+      .map((t) => String(t || '').trim())
       .filter(Boolean);
-    const slots = (Array.isArray(what) ? what : [what])
-      .map((v) => String(v || '').trim())
-      .filter(Boolean);
 
-    return normalizedIds.map((id) => {
-      const row = { id };
-      if (slots.includes('images')) {
-        row.images = this.#buildElementUrlErrorDataUrl(id, 'images', reason);
-      }
-      if (slots.includes('thumbnails')) {
-        row.thumbnails = this.#buildElementUrlErrorDataUrl(id, 'thumbnails', reason);
-      }
-      if (slots.includes('resized-videos-tiny')) {
-        row['resized-videos-tiny'] = null;
-      }
-      return row;
-    });
+    return { collectionName: selectedCollection, availableTypes };
   }
 
+  async #buildCollectionElementUrl(id, requestedType, availableTypes, collectionName) {
+    const safeId = String(id || '').trim();
+    if (!safeId) return null;
+
+    const normalizedRequested = String(requestedType || '').trim();
+    const list = Array.isArray(availableTypes) ? availableTypes : [];
+
+    const selectedType = list.find((t) => t === normalizedRequested) || null;
+
+    if (!selectedType) return null;
+
+    const dataserverBaseUrl = await this.#resolveDataserverBaseUrl();
+    return `${dataserverBaseUrl}/${encodeURIComponent(collectionName)}/${encodeURIComponent(safeId)}/${encodeURIComponent(selectedType)}`;
+  }
 
   async #makeRequest(url, options = {}) {
     const { retries = 1, timeout = 30000, signal: externalSignal, ...fetchOptions } = options;
@@ -327,7 +385,6 @@ export class VisioneAPI {
         model: this.defaultImageModel,
         k: this.defaultSingleK
       },
-      urls_to_retrieve: this.#buildUrlsToRetrieve(),
       metadata_to_retrieve: this.defaultMetadataToRetrieve
     };
     const payloadText = JSON.stringify(payload);
@@ -356,32 +413,19 @@ export class VisioneAPI {
     const list = (Array.isArray(what) ? what : [what]).map((w) => String(w).trim()).filter(Boolean);
     if (list.length === 0) throw new APIError('what is required', 400);
 
-    try {
-      const response = await this.#makeRequest(this.#getElementUrlEndpoint(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: normalizedIds,
-          what: list
-        }),
-        retries: 2
-      });
-
-      const payload = await response.json();
-      if (!Array.isArray(payload)) {
-        if (this.#shouldUseElementUrlErrorFallback()) {
-          return this.#buildElementUrlErrorRows(normalizedIds, list, 'invalid-response');
-        }
-        throw new APIError('Invalid response from /element-url: expected array', 500);
-      }
-
-      return payload;
-    } catch (error) {
-      if (this.#shouldUseElementUrlErrorFallback()) {
-        return this.#buildElementUrlErrorRows(normalizedIds, list, error?.message || 'request-failed');
-      }
-      throw error;
-    }
+    const { collectionName, availableTypes } = await this.#getDataserverCollectionAndTypes();
+    const rows = await Promise.all(
+      normalizedIds.map(async (id) => {
+        const row = { id };
+        await Promise.all(
+          list.map(async (slot) => {
+            row[slot] = await this.#buildCollectionElementUrl(id, slot, availableTypes, collectionName);
+          })
+        );
+        return row;
+      })
+    );
+    return rows;
   }
 
   async getElementUrl(id, what = ['images']) {
@@ -764,7 +808,6 @@ export class VisioneAPI {
 
       return {
         query: singleTextareaNode,
-        urls_to_retrieve: this.#buildUrlsToRetrieve(),
         metadata_to_retrieve: metadataToRetrieve
       };
     }
@@ -779,8 +822,7 @@ export class VisioneAPI {
         aggregation_type: 'temporal',
         window_seconds: safeTemporalWindowSeconds,
         k: this.defaultAggregatedK
-      },
-      urls_to_retrieve: this.#buildUrlsToRetrieve()
+      }
     };
 
     const metadataToRetrieve = this.#buildMetadataToRetrieve(temporalQuery.query);
@@ -819,12 +861,6 @@ export class VisioneAPI {
       aggregation_type: 'rrf',
       k: groupK
     };
-  }
-
-  #buildUrlsToRetrieve() {
-    return this.supportsVideos
-      ? ['images', 'thumbnails', 'videos']
-      : ['images', 'thumbnails'];
   }
 
   #expandTextareaToItems(textarea) {

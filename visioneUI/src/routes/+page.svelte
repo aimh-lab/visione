@@ -275,7 +275,8 @@
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
-  $: visioneAPI.setElementUrlHost($uiStore.elementUrlHost);
+  $: visioneAPI.setDataserverHost($uiStore.dataserverHost);
+  $: visioneAPI.setActiveCollectionName(activeCollectionName);
 
   // ---------------------------
   // CSS vars (driven only by uiStore)
@@ -583,11 +584,10 @@
       const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
       const videoId = hourMatch?.[1] || rawImgId.split('-')[0] || '';
       if (!videoId) return;
-      const fallbackThumbUrl = visioneAPI.getThumbnailUrlByImgId(rawImgId, videoId);
 
       nextTextareaImages[idx] = [
         {
-          url: fallbackThumbUrl || '',
+          url: '',
           name: rawImgId,
           type: 'result',
           imgId: rawImgId
@@ -2772,7 +2772,7 @@ function handleViewSubmitted() {
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}
-  elementUrlHost={$uiStore.elementUrlHost}
+  dataserverHost={$uiStore.dataserverHost}
   justifyResultRows={$uiStore.justifyResultRows}
   tupleIndicatorMode={$uiStore.tupleIndicatorMode}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
