@@ -6,10 +6,10 @@ from pydantic import BaseModel
 
 class DiscoveryResponse(BaseModel):
     name: str
+    default_dataserver: str
     metadata: List[str]
     groupby_attribute: str
     video_time_reference_attribute: List[str]
-    collection_items: List[str]
     available_models: List[Dict]
 
 
@@ -20,9 +20,10 @@ router = APIRouter()
 def discovery(request: Request):
     """
     Return collection-level information from the active loader:
+    - name: name of the collection/loader
+    - default_dataserver: default data server URL for this collection (can be used by clients
     - metadata: list of available metadata field names
     - groupby_attribute: temporal grouping key
-    - collection_items: available collection element types (collection_paths keys)
     - available_models: list of available embedding models (from config)
     """
     try:
@@ -32,14 +33,13 @@ def discovery(request: Request):
         metadata = [column.name for column in loader.get_column_schema()]
         groupby_attribute = loader.get_temporal_groupby_column()
         video_time_reference_attribute = loader.get_video_time_reference_columns()
-        collection_items = list(loader.collection_paths.keys())
 
         return DiscoveryResponse(
             name = name,
+            default_dataserver=request.app.state.config.data.server_url,
             metadata=metadata,
             groupby_attribute=groupby_attribute,
             video_time_reference_attribute=video_time_reference_attribute,
-            collection_items=collection_items,
             available_models=request.app.state.available_models,
         )
     except Exception as exc:

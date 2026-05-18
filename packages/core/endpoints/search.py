@@ -67,10 +67,6 @@ class RelevanceFeedback(BaseModel):
 
 class SearchRequest(BaseModel):
     query: TemporalQueryNode = Field(..., description="Structured query with 'items' and optional filters.")
-    urls_to_retrieve: Optional[List[str]] = Field(
-        default=None,
-        description="List of element types to retrieve (e.g., ['images', 'thumbnails']).",
-    )
     metadata_to_retrieve: Optional[List[str]] = Field(
         default=None,
         description="List of metadata fields to include in results (e.g., ['month', 'city']). If None, only default metadata is included.",
@@ -270,24 +266,12 @@ async def search_endpoint(payload: SearchRequest, request: Request):
             metadata_to_retrieve=metadata_to_retrieve,
         )
 
-        urls_to_retrieve = query_dict.get("urls_to_retrieve")
         results = []
         for group in doc_groups:
             group_items = []
             for doc in group:
                 score = doc.metadata.pop("score")
-                metadata = (
-                    doc.metadata
-                    | {
-                        item_type: request.app.state.loader.get_collection_element_url_from_id(
-                            doc.page_content,
-                            item_type,
-                        )
-                        for item_type in urls_to_retrieve
-                    }
-                    if urls_to_retrieve
-                    else doc.metadata
-                )
+                metadata = doc.metadata
                 group_items.append(
                     SearchResult(
                         score=score,

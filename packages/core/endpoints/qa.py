@@ -362,8 +362,8 @@ Do not infer activities from biases – LOOK at images first.
 - Before saying metadata cannot confirm a hypothesis, ask for images to verify.
 - Always use "ilike" with wildcards (e.g., "%Text%") for string matching. Use eq only for \
 numeric fields.
-- If results are empty, check your operator (likely using eq instead of ilike) or ask for \
-images to verify.
+- If results are empty, assume that the value used for searching string fields with the ilike operator \
+are not present in the database. So either try more generic ones or directly remove them.
 - In semantic queries, write natural language descriptions, not logic operators or keywords.
 - Always give a clear, definitive natural-language answer at the end. Show reasoning briefly.
 - When providing the final answer, DO NOT repeat the full list of results or metadata. \

@@ -7,11 +7,10 @@ from langchain_postgres.v2.engine import Column
 
 
 class LSC26Loader:
-    def __init__(self, name, data_server_url, metadata_file, collection_paths):
+    def __init__(self, name, data_server_url, metadata_file):
         self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
-        self.collection_paths = collection_paths
 
     def _generate_metadata(self):
         # 1. Read the CSV, keeping only the columns we need
@@ -130,20 +129,15 @@ class LSC26Loader:
 
         return documents, ids
 
+    # TODO: no more collection-specific, move this to a utility class (or to a base class for loaders)
     def get_collection_element_url_from_id(self, id_str, what="images"):
         """
         Given an image name (e.g. '20190101_205237.webp'), construct its URL.
-        The relative path is '{year}/{month}/{day}/{image_name}'.
+        The relative path is what/id_str, where what is the collection path (e.g. 'images') and id_str is the image name.
         """
-        stem = id_str.rsplit(".", 1)[0]
-        year = stem[0:4]
-        month = stem[4:6]
-        day = stem[6:8]
-
-        base_path = self.collection_paths[what]
-        path = os.path.join(base_path, year, month, day, id_str)
-        return self.data_server_url + "/" + path
-
+        path = id_str + "/" + what 
+        return self.data_server_url + "/" + self.name + "/" + path
+                
     def get_retrieved_metadata_columns(self):
         return ["epoch"]
 
@@ -217,9 +211,8 @@ class LSC26Loader:
 if __name__ == "__main__":
     data_server_url = "http://localhost:8000"
     metadata_file = "/data1/lsc-common-data/lsc26-data/lsc26_metadata.csv"
-    collection_paths = {"images": "lsc26/images"}
 
-    loader = LSC26Loader("lsc26", data_server_url, metadata_file, collection_paths)
+    loader = LSC26Loader("lsc26", data_server_url, metadata_file)
 
     url = loader.get_collection_element_url_from_id("20190101_205237.webp")
     print(url)
