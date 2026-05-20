@@ -134,11 +134,21 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
   function notifyVerdict(verdict, description = 'sent', prefix = 'DRES submission') {
     if (verdict === 'WRONG') {
       toasts.error(`${prefix} WRONG: ${description}`);
+    } else if (verdict === 'PENDING') {
+      toasts.warning(`${prefix} PENDING: ${description}`);
     } else if (verdict === 'INDETERMINATE' || verdict === 'UNDECIDABLE') {
       toasts.warning(`${prefix} ${verdict}: ${description}`);
     } else {
       toasts.success(`${prefix} OK: ${description}`);
     }
+  }
+
+  function isSuccessfulDresStatus(value) {
+    if (value === true) return true;
+    if (value === false || value == null) return false;
+
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === 'true' || normalized === 'ok' || normalized === 'success' || normalized === 'accepted' || normalized === '1';
   }
 
   function shouldSubmitFrameByImageId() {
@@ -214,7 +224,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
       const response = await submitByEvaluationId(safeEvaluationId);
 
-      if (response?.status === false) {
+      if (!isSuccessfulDresStatus(response?.status)) {
         const rejectionDescription = response?.description ?? 'rejected';
         toasts.error(`DRES submission rejected (${safeEvaluationId}): ${rejectionDescription}`);
         return {
@@ -297,9 +307,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       };
     }
 
-    const verdictForStore = challengeType === 'AVS'
-      ? 'PENDING'
-      : normalizeVerdict(dresResult?.verdict);
+    const verdictForStore = normalizeVerdict(dresResult?.verdict) || 'PENDING';
 
     applySubmissionVerdict(imgId, verdictForStore);
 
@@ -308,18 +316,6 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       frameObj: { ...frameObj, submissionVerdict: verdictForStore },
       markSubmitted: (id) => markSubmittedInViews(id)
     });
-
-    if (challengeType === 'AVS') {
-      toasts.warning('DRES submission queued: waiting for async verdict.');
-      const response = {
-        accepted: true,
-        verdict: verdictForStore,
-        description: dresResult?.description ?? 'queued',
-        evaluationId: dresResult?.evaluationId || selectedEvaluationId
-      };
-      onFrameSubmitEvent?.({ imgId, challengeType, ...response });
-      return response;
-    }
 
     const description = dresResult?.description ?? 'sent';
     notifyVerdict(verdictForStore, description, 'DRES submission');
@@ -388,7 +384,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
 
       const result = await submitByEvaluationId(selectedEvaluationId);
 
-      if (result?.status === false) {
+      if (!isSuccessfulDresStatus(result?.status)) {
         const rejectedDescription = result?.description ?? 'rejected';
         toasts.error(`DRES answer rejected (${selectedEvaluationId}): ${rejectedDescription}`);
         sessionStore.actions.submitAnswer({
