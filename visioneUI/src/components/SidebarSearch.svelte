@@ -139,6 +139,10 @@
     textareasManagerRef?.focusPrimaryTextarea();
   }
 
+  export function triggerSearchWithMetadata() {
+    doSearch();
+  }
+
   function handleSelectRecentSearch(e) {
     const { textareas: savedTextareas } = e.detail;
 

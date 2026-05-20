@@ -75,6 +75,10 @@ export class DresClient {
     return this.sessionId;
   }
 
+  private normalizeMediaItemName(mediaItemName: string): string {
+    return String(mediaItemName).replace(/\.webp$/i, '');
+  }
+
   async login(): Promise<ApiUser> {
     const payload: LoginRequest = {
       username: this.options.username,
@@ -137,24 +141,32 @@ export class DresClient {
     evaluationId: string
   ): Promise<SuccessfulSubmissionsStatus> {
     const session = this.requireSession();
+    const normalizedMediaItemName = this.normalizeMediaItemName(videoId);
+    const apiClientSubmission = {
+      answerSets: [
+        {
+          answers: [
+            {
+              mediaItemName: normalizedMediaItemName,
+              start: Math.floor(startMs),
+              end: Math.floor(endMs)
+            }
+          ]
+        }
+      ]
+    };
+
+    console.info('[DRES] submitResultByTime payload', {
+      evaluationId,
+      session,
+      apiClientSubmission
+    });
 
     try {
       return await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
-        apiClientSubmission: {
-          answerSets: [
-            {
-              answers: [
-                {
-                  mediaItemName: String(videoId),
-                  start: Math.floor(startMs),
-                  end: Math.floor(endMs)
-                }
-              ]
-            }
-          ]
-        }
+        apiClientSubmission
       });
     } catch (error) {
       throw await this.mapSubmissionError(error);
@@ -166,22 +178,30 @@ export class DresClient {
     evaluationId: string
   ): Promise<SuccessfulSubmissionsStatus> {
     const session = this.requireSession();
+    const normalizedMediaItemName = this.normalizeMediaItemName(imageFilename);
+    const apiClientSubmission = {
+      answerSets: [
+        {
+          answers: [
+            {
+              mediaItemName: normalizedMediaItemName
+            }
+          ]
+        }
+      ]
+    };
+
+    console.info('[DRES] submitResultByImgId payload', {
+      evaluationId,
+      session,
+      apiClientSubmission
+    });
 
     try {
       return await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
-        apiClientSubmission: {
-          answerSets: [
-            {
-              answers: [
-                {
-                  mediaItemName: String(imageFilename)
-                }
-              ]
-            }
-          ]
-        }
+        apiClientSubmission
       });
     } catch (error) {
       throw await this.mapSubmissionError(error);
@@ -190,22 +210,29 @@ export class DresClient {
 
   async submitTextAnswer(text: string, evaluationId: string): Promise<SuccessfulSubmissionsStatus> {
     const session = this.requireSession();
+    const apiClientSubmission = {
+      answerSets: [
+        {
+          answers: [
+            {
+              text
+            }
+          ]
+        }
+      ]
+    };
+
+    console.info('[DRES] submitTextAnswer payload', {
+      evaluationId,
+      session,
+      apiClientSubmission
+    });
 
     try {
       return await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
-        apiClientSubmission: {
-          answerSets: [
-            {
-              answers: [
-                {
-                  text
-                }
-              ]
-            }
-          ]
-        }
+        apiClientSubmission
       });
     } catch (error) {
       throw await this.mapSubmissionError(error);

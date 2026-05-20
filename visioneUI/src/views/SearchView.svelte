@@ -129,6 +129,7 @@
     handleImageSelected: (image: Img) => void;
     cancelImageSelection: () => void;
     focusSearchInput: () => void;
+    triggerSearchWithMetadata: () => void;
   };
 
   let sidebarSearchRef: SidebarSearchRef | null = null;
@@ -137,6 +138,10 @@
 
   function focusLeftTextarea() {
     sidebarSearchRef?.focusSearchInput?.();
+  }
+
+  export function triggerSearchLikeButton() {
+    sidebarSearchRef?.triggerSearchWithMetadata?.();
   }
 
   $: {

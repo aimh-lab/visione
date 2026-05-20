@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { focusTrap } from '../utils/ui';
   
   export let isOpen = false;
@@ -9,11 +9,15 @@
   export let description = '';
   export let submitLabel = 'Submit';
   export let cancelLabel = 'Cancel';
+  export let submitOnEnter = false;
+  export let autoFocusFirstTextInput = false;
   
   const dispatch = createEventDispatcher();
   
   let formValues = {};
   let showAdvancedFields = false;
+  let contentEl;
+  let wasOpen = false;
 
   $: visibleFields = Array.isArray(fields)
     ? fields.filter((field) => showAdvancedFields || !field?.advanced)
@@ -22,6 +26,12 @@
   $: hasAdvancedFields = Array.isArray(fields)
     ? fields.some((field) => !!field?.advanced)
     : false;
+
+  $: if (isOpen && !wasOpen && autoFocusFirstTextInput) {
+    void focusFirstTextInput();
+  }
+
+  $: wasOpen = isOpen;
   
   // Inizializza form values dai fields
   $: if (isOpen && fields.length > 0) {
@@ -44,10 +54,46 @@
   function close() {
     dispatch('close');
   }
+
+  function isTextLikeField(field) {
+    const type = String(field?.type || 'text').trim().toLowerCase();
+    return type === 'text' || type === 'search' || type === 'url' || type === 'number' || type === 'textarea';
+  }
+
+  async function focusFirstTextInput() {
+    await tick();
+    // focusTrap sets focus after ~50ms on modal open; run after that to keep text input focused.
+    setTimeout(() => {
+      if (!contentEl) return;
+
+      const field = contentEl.querySelector('input[type="text"], input[type="search"], input[type="url"], input[type="number"], textarea');
+      if (!field || field.disabled) return;
+
+      field.focus();
+      if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+        field.select?.();
+      }
+    }, 90);
+  }
   
   function handleKeyDown(e) {
     if (e.key === 'Escape') close();
-    if (e.key === 'Enter' && e.ctrlKey) handleSubmit();
+
+    if (e.key !== 'Enter') return;
+
+    const target = e.target;
+    const isTextarea = target instanceof HTMLTextAreaElement;
+
+    if (submitOnEnter && !isTextarea) {
+      e.preventDefault();
+      handleSubmit();
+      return;
+    }
+
+    if (e.ctrlKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   }
   
   const iconMap = {
@@ -116,9 +162,10 @@
       </div>
       
       <!-- Content -->
-      <div class="px-6 py-5 space-y-4">
-        {#each visibleFields as field}
+      <div bind:this={contentEl} class="px-6 py-5 space-y-4">
+        {#each visibleFields as field, fieldIndex}
           {@const fieldId = `input-modal-${field.name}`}
+          {@const shouldAutofocus = autoFocusFirstTextInput && fieldIndex === 0 && isTextLikeField(field)}
           <div>
             <label for={fieldId} class="block text-sm font-medium text-gray-300 mb-2">
               {field.label}
@@ -130,6 +177,7 @@
             {#if field.type === 'textarea'}
               <textarea
                 id={fieldId}
+                autofocus={shouldAutofocus}
                 bind:value={formValues[field.name]}
                 placeholder={field.placeholder || ''}
                 rows={field.rows || 3}
@@ -166,6 +214,7 @@
               <input
                 id={fieldId}
                 type={field.type || 'text'}
+                autofocus={shouldAutofocus}
                 bind:value={formValues[field.name]}
                 placeholder={field.placeholder || ''}
                 min={field.min}
@@ -201,7 +250,11 @@
       <!-- Footer -->
       <div class="px-6 py-4 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between rounded-b-xl">
         <div class="text-xs text-gray-500">
-          <kbd class="px-2 py-1 bg-gray-700 rounded text-xs font-mono">Ctrl+Enter</kbd> to submit
+          {#if submitOnEnter}
+            <kbd class="px-2 py-1 bg-gray-700 rounded text-xs font-mono">Enter</kbd> to apply
+          {:else}
+            <kbd class="px-2 py-1 bg-gray-700 rounded text-xs font-mono">Ctrl+Enter</kbd> to submit
+          {/if}
         </div>
         <div class="flex space-x-3">
           <button

@@ -340,6 +340,7 @@
   // Similarity UI
   let similarityDisplayRows = [];
   let focusSearchInputHandler = () => {};
+  let searchViewRef;
 
   // Separate variables for each view
   let lastViewedSearchIndex = 0;
@@ -2381,7 +2382,13 @@ function handleViewSubmitted() {
     textareaImages = result.textareaImages;
     if (result.shouldSearch) {
       toasts.info("Query step removed, updating results...");
-      setTimeout(() => runSearchImmediate(), 0);
+      setTimeout(() => {
+        if (typeof searchViewRef?.triggerSearchLikeButton === 'function') {
+          searchViewRef.triggerSearchLikeButton();
+        } else {
+          runSearchImmediate();
+        }
+      }, 0);
     } else if (result.textareas !== previousTextareas) {
       toasts.info("Query step removed");
     }
@@ -2842,6 +2849,7 @@ function handleViewSubmitted() {
   >
     {#if $uiStore.layoutTab === "View1"}
       <SearchView
+        bind:this={searchViewRef}
         registerContainer={registerContainer}
         isSidebarOpen={$uiStore.isSidebarOpen}
         isSidebarRightOpen={$uiStore.isSidebarRightOpen}
