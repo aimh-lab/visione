@@ -89,10 +89,12 @@
   let metadataError = "";
   let metadataRequestToken = 0;
   let loadedMetadataImageId = "";
+  let tuplePreviewUrls = new Map();
+  let tuplePreviewRequestToken = 0;
 
   $: modalImageId = String(image?.imgId || "").trim();
   $: metadataEntries = buildMetadataEntries(metadataFields, metadataValues);
-  $: tupleMembers = normalizeTupleItems(image?.tupleItems);
+  $: tupleMembers = normalizeTupleItems(image?.tupleItems, tuplePreviewUrls);
   $: hasTupleMembers = tupleMembers.length > 1;
 
   $: if (!isOpen) {
@@ -101,10 +103,15 @@
     dragOffsetX = 0;
     dragOffsetY = 0;
     dragPointerId = null;
+    tuplePreviewUrls = new Map();
   }
 
   $: if (isOpen && modalImageId && loadedMetadataImageId !== modalImageId) {
     void loadMetadataForImage(modalImageId);
+  }
+
+  $: if (isOpen && Array.isArray(image?.tupleItems) && image.tupleItems.length > 0) {
+    void ensureTuplePreviewUrls(image.tupleItems);
   }
   
   let imageContainer;
@@ -210,13 +217,21 @@
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
-  function normalizeTupleItems(rawTupleItems) {
+  function normalizeTupleItems(rawTupleItems, previewMap = new Map()) {
     const tuple = Array.isArray(rawTupleItems) ? rawTupleItems : [];
     return tuple.map((entry, idx) => {
       const metadata = entry && typeof entry.metadata === 'object' ? entry.metadata : {};
       const imgId = String(entry?.id || entry?.imgId || entry?.imageId || '').trim();
       const videoId = String(metadata?.hour_id || metadata?.video_id || metadata?.videoId || '').trim();
-      const imageUrl = String(metadata?.images || metadata?.thumbnails || '').trim();
+      const imageUrl = String(
+        metadata?.images
+        || entry?.imageUrl
+        || entry?.url
+        || previewMap.get(imgId)
+        || metadata?.thumbnails
+        || entry?.thumbnailUrl
+        || ''
+      ).trim();
       const selectedFrameUrl = toSelectedFramesUrl(imageUrl);
       const score = toNumberOrNull(entry?.score);
       const middleTime = toNumberOrNull(metadata?.hour_msb_middletime);
@@ -233,6 +248,39 @@
   }
 
   $: modalImageUrl = toSelectedFramesUrl(image?.url);
+
+  async function ensureTuplePreviewUrls(rawTupleItems) {
+    const tuple = Array.isArray(rawTupleItems) ? rawTupleItems : [];
+    if (tuple.length === 0) return;
+
+    const ids = Array.from(new Set(
+      tuple
+        .map((entry) => String(entry?.id || entry?.imgId || entry?.imageId || '').trim())
+        .filter(Boolean)
+    ));
+    if (ids.length === 0) return;
+
+    const missing = ids.filter((id) => !tuplePreviewUrls.has(id));
+    if (missing.length === 0) return;
+
+    const requestToken = ++tuplePreviewRequestToken;
+
+    try {
+      const rows = await visioneAPI.getElementUrlsBatch(missing, ['images']);
+      if (requestToken !== tuplePreviewRequestToken) return;
+
+      const next = new Map(tuplePreviewUrls);
+      for (const row of Array.isArray(rows) ? rows : []) {
+        const id = String(row?.id || '').trim();
+        const imageUrl = String(row?.images || '').trim();
+        if (!id || !imageUrl) continue;
+        next.set(id, imageUrl);
+      }
+      tuplePreviewUrls = next;
+    } catch {
+      // Keep modal usable if tuple image URL enrichment fails.
+    }
+  }
 
   async function loadMetadataForImage(imgId) {
     const normalizedId = String(imgId || "").trim();

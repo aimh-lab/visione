@@ -439,8 +439,39 @@
     return parsed > 1e11 ? parsed / 1000 : parsed;
   }
 
-  function formatEpochHHmm(epochSeconds) {
+  function getUtcOffsetHours(item) {
+    const metadata = getRawMetadata(item);
+    const imageTitleCfg = runtimeProfile?.titleFormatting?.imageTitle;
+    const offsetField = String(imageTitleCfg?.utcOffsetField || 'utc_offset_hours').trim() || 'utc_offset_hours';
+
+    const rawOffset =
+      metadata?.[offsetField]
+      ?? item?.raw?.[offsetField]
+      ?? item?.[offsetField]
+      ?? metadata?.utc_offset_hours
+      ?? item?.raw?.utc_offset_hours
+      ?? item?.utc_offset_hours;
+
+    const parsed = toFiniteNumber(rawOffset);
+    return parsed == null ? 0 : parsed;
+  }
+
+  function formatEpochHHmm(item, epochSeconds) {
     if (!Number.isFinite(epochSeconds)) return null;
+
+    const imageTitleCfg = runtimeProfile?.titleFormatting?.imageTitle;
+    const useMetadataOffset =
+      !!showLocalTimeInTitles
+      && imageTitleCfg
+      && imageTitleCfg.enabled !== false
+      && imageTitleCfg.applyUtcOffsetHours !== false;
+
+    if (useMetadataOffset) {
+      const offsetHours = getUtcOffsetHours(item);
+      const adjustedDate = new Date(Math.max(0, epochSeconds + offsetHours * 3600) * 1000);
+      return `${String(adjustedDate.getUTCHours()).padStart(2, '0')}:${String(adjustedDate.getUTCMinutes()).padStart(2, '0')}`;
+    }
+
     const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
     const date = new Date(Math.max(0, epochSeconds) * 1000);
 
@@ -458,7 +489,7 @@
     if (badgeSource === 'epoch') {
       const epochSeconds = getEpochSeconds(item);
       if (epochSeconds == null) return null;
-      if (badgeFormat === 'HH:mm') return formatEpochHHmm(epochSeconds);
+      if (badgeFormat === 'HH:mm') return formatEpochHHmm(item, epochSeconds);
       return formatTimecode(epochSeconds);
     }
 

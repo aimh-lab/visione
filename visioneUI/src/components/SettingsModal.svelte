@@ -134,6 +134,7 @@
   let wasOpen = false;
   let themeTouched = false;
   let hasLocalEdits = false;
+  let showDresPassword = false;
   const settingsTabs = [
     { id: 'appearance', label: 'Appearance' },
     { id: 'search', label: 'Search' },
@@ -150,6 +151,7 @@
     hasLocalEdits = false;
     themeTouched = false;
     activeSettingsTab = 'appearance';
+    showDresPassword = false;
   }
 
   $: wasOpen = isOpen;
@@ -793,14 +795,38 @@
 
             <div>
               <label for="dres-password" class="ui-settings-label block text-sm font-medium mb-1">Password</label>
-              <input
-                id="dres-password"
-                type="password"
-                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                bind:value={local.dresPassword}
-                disabled={!local.dresEnabled}
-                on:change={() => save()}
-              />
+              <div class="relative">
+                <input
+                  id="dres-password"
+                  type={showDresPassword ? 'text' : 'password'}
+                  class="ui-settings-input w-full pr-10 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
+                  bind:value={local.dresPassword}
+                  disabled={!local.dresEnabled}
+                  on:change={() => save()}
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  on:click={() => (showDresPassword = !showDresPassword)}
+                  disabled={!local.dresEnabled}
+                  aria-label={showDresPassword ? 'Hide DRES password' : 'Show DRES password'}
+                  title={showDresPassword ? 'Hide password' : 'Show password'}
+                >
+                  {#if showDresPassword}
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3.11-11-7.5a11.8 11.8 0 0 1 5.08-5.94"/>
+                      <path d="M10.58 10.58a2 2 0 1 0 2.83 2.83"/>
+                      <path d="M1 1l22 22"/>
+                      <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 7.5a11.78 11.78 0 0 1-1.67 2.68"/>
+                    </svg>
+                  {:else}
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  {/if}
+                </button>
+              </div>
             </div>
 
             <div>

@@ -597,7 +597,26 @@
   }
   
   const add = (i: number) => dispatch("add", { index: i });
-  const remove = (i: number) => dispatch("remove", { index: i });
+
+  function reindexMetadataTokensAfterRemove(removedIndex: number) {
+    const next: Record<number, string[]> = {};
+
+    Object.entries(metadataTokensByIndex).forEach(([key, tokens]) => {
+      const idx = Number(key);
+      if (!Number.isFinite(idx)) return;
+      if (idx === removedIndex) return;
+
+      const targetIndex = idx > removedIndex ? idx - 1 : idx;
+      next[targetIndex] = normalizeMetadataTokens(Array.isArray(tokens) ? tokens : []);
+    });
+
+    metadataTokensByIndex = next;
+  }
+
+  const remove = (i: number) => {
+    reindexMetadataTokensAfterRemove(i);
+    dispatch("remove", { index: i });
+  };
   let openStepActionsIndex: number | null = null;
 
   function toggleStepActions(index: number) {
@@ -2630,6 +2649,9 @@
   icon={modalConfig.icon}
   description={modalConfig.description}
   fields={modalConfig.fields}
+  submitLabel={modalConfig.filterType.startsWith('metadata') ? 'Apply' : 'Submit'}
+  submitOnEnter={modalConfig.filterType.startsWith('metadata')}
+  autoFocusFirstTextInput={modalConfig.filterType.startsWith('metadata')}
   on:submit={handleModalSubmit}
   on:close={handleModalClose}
 />
