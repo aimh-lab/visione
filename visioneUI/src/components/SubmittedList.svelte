@@ -21,8 +21,9 @@
     <!-- Grid of submitted images -->
     <div class="grid grid-cols-2 gap-3">
       {#each submittedImages as s, idx}
-        {@const isWrongSubmission = String(s?.submissionVerdict ?? '').toUpperCase() === 'WRONG'}
-        {@const isPendingSubmission = String(s?.submissionVerdict ?? '').toUpperCase() === 'PENDING'}
+        {@const normalizedVerdict = String(s?.submissionVerdict ?? '').toUpperCase()}
+        {@const isWrongSubmission = normalizedVerdict === 'WRONG'}
+        {@const isAmberSubmission = normalizedVerdict === 'PENDING' || normalizedVerdict === 'INDETERMINATE' || normalizedVerdict === 'UNDECIDABLE'}
         <button
           data-index={s.index}
           class="group relative bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
@@ -62,20 +63,16 @@
           <!-- Submitted badge -->
           <div
             class={`absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-bold rounded-full shadow-lg ${
-              isPendingSubmission
+              isAmberSubmission
                 ? 'bg-amber-900/45 border border-amber-700/50 text-amber-200'
                 : isWrongSubmission
                 ? 'bg-red-900/45 border border-red-700/50 text-red-200'
                 : 'bg-green-900/40 border border-green-700/40 text-green-200'
             }`}
           >
-            {isPendingSubmission ? '…' : '✓'}
+            ✓
           </div>
 
-          <!-- Index number -->
-          <div class="absolute top-2 left-2 w-5 h-5 bg-gray-900/80 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            {idx + 1}
-          </div>
         </button>
       {/each}
     </div>

@@ -3,9 +3,12 @@
   export let label = "Submitted"; // testo visualizzato (personalizzabile)
   export let verdict = "";
 
-  $: isWrongSubmission = String(verdict ?? "").toUpperCase() === "WRONG";
-  $: isPendingSubmission = String(verdict ?? "").toUpperCase() === "PENDING";
-  $: badgeClass = isPendingSubmission
+  $: normalizedVerdict = String(verdict ?? "").toUpperCase();
+  $: isWrongSubmission = normalizedVerdict === "WRONG";
+  $: isAmberSubmission = normalizedVerdict === "PENDING"
+    || normalizedVerdict === "INDETERMINATE"
+    || normalizedVerdict === "UNDECIDABLE";
+  $: badgeClass = isAmberSubmission
     ? 'bg-amber-500/90'
     : isWrongSubmission
       ? 'bg-red-600/90'

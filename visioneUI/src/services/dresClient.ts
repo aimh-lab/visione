@@ -75,6 +75,14 @@ export class DresClient {
     return this.sessionId;
   }
 
+  private logDresResponse(operation: string, response: unknown): void {
+    console.info(`[DRES] ${operation} response`, response);
+  }
+
+  private logDresError(operation: string, error: unknown): void {
+    console.error(`[DRES] ${operation} error`, error);
+  }
+
   private normalizeMediaItemName(mediaItemName: string): string {
     return String(mediaItemName).replace(/\.webp$/i, '');
   }
@@ -100,8 +108,11 @@ export class DresClient {
         createdAt: new Date().toISOString()
       });
 
+      this.logDresResponse('login', user);
+
       return user;
     } catch (error) {
+      this.logDresError('login', error);
       throw await this.mapApiError(error, 'Error during DRES login');
     }
   }
@@ -112,7 +123,9 @@ export class DresClient {
     let runs: ApiClientEvaluationInfo[];
     try {
       runs = await this.evaluationClientApi.getApiV2ClientEvaluationList({ session });
+      this.logDresResponse('getEvaluationList', runs);
     } catch (error) {
+      this.logDresError('getEvaluationList', error);
       throw await this.mapApiError(error, 'Error while fetching evaluations');
     }
 
@@ -128,8 +141,11 @@ export class DresClient {
     const session = this.requireSession();
 
     try {
-      return await this.evaluationClientApi.getApiV2ClientEvaluationList({ session });
+      const response = await this.evaluationClientApi.getApiV2ClientEvaluationList({ session });
+      this.logDresResponse('listEvaluations', response);
+      return response;
     } catch (error) {
+      this.logDresError('listEvaluations', error);
       throw await this.mapApiError(error, 'Error while fetching evaluations');
     }
   }
@@ -163,12 +179,15 @@ export class DresClient {
     });
 
     try {
-      return await this.submissionApi.postApiV2SubmitByEvaluationId({
+      const response = await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
         apiClientSubmission
       });
+      this.logDresResponse('submitResultByTime', response);
+      return response;
     } catch (error) {
+      this.logDresError('submitResultByTime', error);
       throw await this.mapSubmissionError(error);
     }
   }
@@ -198,12 +217,15 @@ export class DresClient {
     });
 
     try {
-      return await this.submissionApi.postApiV2SubmitByEvaluationId({
+      const response = await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
         apiClientSubmission
       });
+      this.logDresResponse('submitResultByImgId', response);
+      return response;
     } catch (error) {
+      this.logDresError('submitResultByImgId', error);
       throw await this.mapSubmissionError(error);
     }
   }
@@ -229,12 +251,15 @@ export class DresClient {
     });
 
     try {
-      return await this.submissionApi.postApiV2SubmitByEvaluationId({
+      const response = await this.submissionApi.postApiV2SubmitByEvaluationId({
         evaluationId,
         session,
         apiClientSubmission
       });
+      this.logDresResponse('submitTextAnswer', response);
+      return response;
     } catch (error) {
+      this.logDresError('submitTextAnswer', error);
       throw await this.mapSubmissionError(error);
     }
   }
@@ -243,12 +268,15 @@ export class DresClient {
     const session = this.requireSession();
 
     try {
-      return await this.logApi.postApiV2LogResultByEvaluationId({
+      const response = await this.logApi.postApiV2LogResultByEvaluationId({
         evaluationId,
         session,
         queryResultLog: resultsLog
       });
+      this.logDresResponse('submitResultLog', response);
+      return response;
     } catch (error) {
+      this.logDresError('submitResultLog', error);
       throw await this.mapApiError(error, 'Error while sending result log');
     }
   }
@@ -259,8 +287,10 @@ export class DresClient {
     try {
       const response = await this.userApi.getApiV2Logout({ session });
       this.sessionId = null;
+      this.logDresResponse('logout', response);
       return response;
     } catch (error) {
+      this.logDresError('logout', error);
       throw await this.mapApiError(error, 'Error during DRES logout');
     }
   }
