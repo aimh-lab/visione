@@ -19,8 +19,25 @@
   let contentEl;
   let wasOpen = false;
 
+  const DATE_PART_KEYS = ['day', 'month', 'year', 'hour'];
+  const DATE_PART_MAX = { day: 2, month: 2, year: 4, hour: 2 };
+  const DATE_PART_LABEL = { day: 'DD', month: 'MM', year: 'YYYY', hour: 'HH' };
+
   $: visibleFields = Array.isArray(fields)
-    ? fields.filter((field) => showAdvancedFields || !field?.advanced)
+    ? fields.filter((field) => {
+        const passesAdvanced = showAdvancedFields || !field?.advanced;
+        if (!passesAdvanced) return false;
+
+        if (typeof field?.visibleWhen === 'function') {
+          try {
+            return !!field.visibleWhen(formValues);
+          } catch {
+            return true;
+          }
+        }
+
+        return true;
+      })
     : [];
 
   $: hasAdvancedFields = Array.isArray(fields)
@@ -39,11 +56,78 @@
     formValues = fields.reduce((acc, field) => {
       if (field.type === 'checkbox') {
         acc[field.name] = !!field.value;
+      } else if (field.type === 'dateParts') {
+        const raw = field.value && typeof field.value === 'object' ? field.value : {};
+        acc[field.name] = {
+          day: String(raw.day || ''),
+          month: String(raw.month || ''),
+          year: String(raw.year || ''),
+          hour: String(raw.hour || '')
+        };
       } else {
         acc[field.name] = field.value || '';
       }
       return acc;
     }, {});
+  }
+
+  function getDatePartsValue(fieldName) {
+    const raw = formValues?.[fieldName];
+    return raw && typeof raw === 'object'
+      ? {
+          day: String(raw.day || ''),
+          month: String(raw.month || ''),
+          year: String(raw.year || ''),
+          hour: String(raw.hour || '')
+        }
+      : { day: '', month: '', year: '', hour: '' };
+  }
+
+  function updateDatePart(fieldName, part, value) {
+    const next = getDatePartsValue(fieldName);
+    next[part] = value;
+    formValues = { ...formValues, [fieldName]: next };
+  }
+
+  function focusDatePart(fieldName, partIndex) {
+    if (!contentEl) return;
+    const target = contentEl.querySelector(
+      `[data-date-parts-field="${fieldName}"][data-part-index="${partIndex}"]`
+    );
+    if (!target || target.disabled) return;
+    target.focus();
+    target.select?.();
+  }
+
+  function handleDatePartInput(fieldName, part, partIndex, event) {
+    const input = event.currentTarget;
+    const digitsOnly = String(input?.value || '').replace(/\D+/g, '');
+    const maxLen = DATE_PART_MAX[part] || 2;
+    const nextValue = digitsOnly.slice(0, maxLen);
+
+    updateDatePart(fieldName, part, nextValue);
+
+    if (nextValue.length >= maxLen && partIndex < DATE_PART_KEYS.length - 1) {
+      setTimeout(() => focusDatePart(fieldName, partIndex + 1), 0);
+    }
+  }
+
+  function handleDatePartKeyDown(fieldName, partIndex, event) {
+    const input = event.currentTarget;
+    const valueLength = String(input?.value || '').length;
+    const caretStart = typeof input?.selectionStart === 'number' ? input.selectionStart : valueLength;
+    const caretEnd = typeof input?.selectionEnd === 'number' ? input.selectionEnd : valueLength;
+
+    if (event.key === 'ArrowRight' && caretStart === valueLength && caretEnd === valueLength && partIndex < DATE_PART_KEYS.length - 1) {
+      event.preventDefault();
+      focusDatePart(fieldName, partIndex + 1);
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' && caretStart === 0 && caretEnd === 0 && partIndex > 0) {
+      event.preventDefault();
+      focusDatePart(fieldName, partIndex - 1);
+    }
   }
   
   function handleSubmit() {
@@ -209,6 +293,25 @@
                 class="w-full px-3 py-2 bg-gray-800/70 border border-gray-700 rounded-lg text-emerald-200 font-mono text-sm break-words"
               >
                 {field.computePreview ? field.computePreview(formValues) : ''}
+              </div>
+            {:else if field.type === 'dateParts'}
+              {@const datePartsValue = getDatePartsValue(field.name)}
+              <div id={fieldId} class="grid grid-cols-4 gap-2">
+                {#each DATE_PART_KEYS as part, partIndex}
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    maxlength={DATE_PART_MAX[part]}
+                    data-date-parts-field={field.name}
+                    data-part-index={partIndex}
+                    value={datePartsValue[part]}
+                    placeholder={DATE_PART_LABEL[part]}
+                    on:input={(event) => handleDatePartInput(field.name, part, partIndex, event)}
+                    on:keydown={(event) => handleDatePartKeyDown(field.name, partIndex, event)}
+                    class="w-full px-2.5 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-sm text-center"
+                    aria-label={`${field.label} ${DATE_PART_LABEL[part]}`}
+                  />
+                {/each}
               </div>
             {:else}
               <input
