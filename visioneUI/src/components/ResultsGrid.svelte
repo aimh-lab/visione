@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import SubmitBadge from "./SubmitBadge.svelte";
   import { visioneAPI } from "../services/api.js";
+  import { uiStore } from "../stores/uiStore.js";
   import VideoOverlay from "./VideoOverlay.svelte";
   import { resolveGroupByConfig } from "$lib/groupByConfig.js";
   import { formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
@@ -25,6 +26,9 @@
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let resultsetBadgeLabelMode = "both";
+
+  $: timeBadgeTimezoneOverride = String($uiStore?.timeBadgeTimezoneOverride || 'profile').trim().toLowerCase();
+
   function getVideoBadgeModeOverride() {
     if (resultsetBadgeLabelMode === 'id') return 'raw';
     if (resultsetBadgeLabelMode === 'date') return 'formatted';
@@ -441,8 +445,13 @@
 
   function getUtcOffsetHours(item) {
     const metadata = getRawMetadata(item);
+    const timeBadgeCfg = runtimeProfile?.timeBadge;
     const imageTitleCfg = runtimeProfile?.titleFormatting?.imageTitle;
-    const offsetField = String(imageTitleCfg?.utcOffsetField || 'utc_offset_hours').trim() || 'utc_offset_hours';
+    const offsetField = String(
+      timeBadgeCfg?.utcOffsetField
+      || imageTitleCfg?.utcOffsetField
+      || 'utc_offset_hours'
+    ).trim() || 'utc_offset_hours';
 
     const rawOffset =
       metadata?.[offsetField]
@@ -459,24 +468,25 @@
   function formatEpochHHmm(item, epochSeconds) {
     if (!Number.isFinite(epochSeconds)) return null;
 
-    const imageTitleCfg = runtimeProfile?.titleFormatting?.imageTitle;
-    const useMetadataOffset =
-      !!showLocalTimeInTitles
-      && imageTitleCfg
-      && imageTitleCfg.enabled !== false
-      && imageTitleCfg.applyUtcOffsetHours !== false;
+    const configuredTimezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+    const timezone = timeBadgeTimezoneOverride === 'utc'
+      ? 'utc'
+      : timeBadgeTimezoneOverride === 'local'
+        ? 'local'
+        : (showLocalTimeInTitles ? configuredTimezone : 'utc');
+    const date = new Date(Math.max(0, epochSeconds) * 1000);
+
+    // Honor explicit timeBadge timezone preference first.
+    if (timezone === 'utc') {
+      return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+    }
+
+    const useMetadataOffset = timezone === 'local';
 
     if (useMetadataOffset) {
       const offsetHours = getUtcOffsetHours(item);
       const adjustedDate = new Date(Math.max(0, epochSeconds + offsetHours * 3600) * 1000);
       return `${String(adjustedDate.getUTCHours()).padStart(2, '0')}:${String(adjustedDate.getUTCMinutes()).padStart(2, '0')}`;
-    }
-
-    const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
-    const date = new Date(Math.max(0, epochSeconds) * 1000);
-
-    if (timezone === 'utc') {
-      return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
     }
 
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -494,6 +504,11 @@
     }
 
     if (badgeSource === 'hour_msb_middletime') {
+      if (badgeFormat === 'HH:mm') {
+        const epochSeconds = getEpochSeconds(item);
+        if (epochSeconds != null) return formatEpochHHmm(item, epochSeconds);
+      }
+
       const middle = getMiddleTimeSeconds(item);
       if (middle == null) return null;
       return formatTimecode(middle);
