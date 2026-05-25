@@ -150,9 +150,56 @@
   --ui-status-chip-bg: #ffffff;
   --ui-status-chip-border: #cbd5e1;
   --ui-status-chip-hover-bg: #f1f5f9;
+  --ui-status-chip-rf-hover-border: #93c5fd;
+  --ui-status-chip-results-icon: #2563eb;
+  --ui-status-chip-submitted-bg: #eef8f2;
+  --ui-status-chip-submitted-border: #9ad3b0;
+  --ui-status-chip-submitted-hover-bg: #e2f2e8;
+  --ui-status-chip-submitted-icon: #1f8f54;
+  --ui-status-chip-submitted-text: #225d3f;
+  --ui-status-chip-submitted-muted: #2c6b49;
+  --ui-status-chip-loading-bg: #f2f6fd;
+  --ui-status-chip-loading-border: #a8c3e8;
+  --ui-status-chip-loading-hover-bg: #e5eef9;
+  --ui-status-chip-loading-icon: #3f74c9;
+  --ui-status-chip-loading-text: #2c5fae;
+  --ui-status-chip-positive-icon: #2b8c55;
+  --ui-status-chip-positive-text: #2b6a47;
+  --ui-status-chip-negative-icon: #c24a4a;
+  --ui-status-chip-negative-text: #8f2f2f;
+  --ui-status-accent-dres: #0f766e;
+  --ui-status-accent-eval: #9b5e2d;
+  --ui-status-progress-track: rgba(37, 99, 235, 0.25);
+  --ui-status-progress-fill: #4b78c2;
   --ui-status-chip-time-bg: #dbeafe;
   --ui-status-chip-time-border: #93c5fd;
   --ui-status-chip-time-text: #1d4ed8;
+
+  /* ---- Image modal actions ---- */
+  --ui-modal-close-btn-bg: color-mix(in srgb, var(--ui-danger-600) 92%, black 8%);
+  --ui-modal-close-btn-hover-bg: var(--ui-danger-600);
+  --ui-modal-nav-bg: rgba(15, 23, 42, 0.46);
+  --ui-modal-nav-hover-bg: rgba(15, 23, 42, 0.64);
+  --ui-modal-actionbar-bg: rgba(15, 23, 42, 0.74);
+  --ui-modal-actionbar-text: #f8fafc;
+  --ui-modal-actionbar-hover-bg: rgba(255, 255, 255, 0.16);
+  --ui-modal-actionbar-positive: #34a269;
+  --ui-modal-actionbar-positive-hover-bg: rgba(34, 197, 94, 0.22);
+  --ui-modal-actionbar-negative: #d35a5a;
+  --ui-modal-actionbar-negative-hover-bg: rgba(239, 68, 68, 0.22);
+  --ui-modal-submit-btn-bg: color-mix(in srgb, var(--ui-success-600) 76%, transparent 24%);
+  --ui-modal-submit-btn-hover-bg: color-mix(in srgb, var(--ui-success-600) 88%, black 12%);
+
+  /* ---- Submit badge ---- */
+  --ui-submit-badge-success-bg: #1f8f54;
+  --ui-submit-badge-success-text: #ffffff;
+  --ui-submit-badge-success-ring: rgba(255, 255, 255, 0.38);
+  --ui-submit-badge-warning-bg: #c27a29;
+  --ui-submit-badge-warning-text: #ffffff;
+  --ui-submit-badge-warning-ring: rgba(255, 255, 255, 0.36);
+  --ui-submit-badge-error-bg: #c44747;
+  --ui-submit-badge-error-text: #ffffff;
+  --ui-submit-badge-error-ring: rgba(255, 255, 255, 0.36);
 
   /* ---- RF (relevance feedback) ---- */
   --ui-rf-title-positive: #166534;
@@ -353,6 +400,74 @@ html[data-dres-enabled='false'] .ui-challenge-control {
   --ui-query-timeline-line: rgba(148, 163, 184, 0.75);
   --ui-query-step-index-bg: #ffffff;
   --ui-query-step-index-shadow: 0 0 0 3px rgba(226, 232, 240, 0.9);
+
+  /* ---- Status bar ---- */
+  --ui-statusbar-bg: linear-gradient(to right, rgba(251, 253, 255, 0.98), rgba(244, 248, 252, 0.98), rgba(251, 253, 255, 0.98));
+  --ui-statusbar-border-top: rgba(168, 185, 205, 0.5);
+  --ui-statusbar-shadow: 0 -8px 24px rgba(15, 23, 42, 0.07);
+  --ui-statusbar-text: #0f172a;
+  --ui-statusbar-muted: #53667e;
+  --ui-status-chip-bg: #ffffff;
+  --ui-status-chip-border: #b9c9dc;
+  --ui-status-chip-hover-bg: #e8f1fa;
+  --ui-status-chip-rf-hover-border: #92afd5;
+  --ui-status-chip-results-icon: #2f5895;
+  --ui-status-chip-submitted-bg: #edf8f2;
+  --ui-status-chip-submitted-border: #93c7a8;
+  --ui-status-chip-submitted-hover-bg: #e4f3ea;
+  --ui-status-chip-submitted-icon: #2a8a57;
+  --ui-status-chip-submitted-text: #2a6949;
+  --ui-status-chip-submitted-muted: #347655;
+  --ui-status-chip-loading-bg: #f1f6fd;
+  --ui-status-chip-loading-border: #9fb8db;
+  --ui-status-chip-loading-hover-bg: #e5eef9;
+  --ui-status-chip-loading-icon: #416eaf;
+  --ui-status-chip-loading-text: #274d80;
+  --ui-status-chip-positive-icon: #2f8f57;
+  --ui-status-chip-positive-text: #2f6f4c;
+  --ui-status-chip-negative-icon: #c25656;
+  --ui-status-chip-negative-text: #913c3c;
+  --ui-status-accent-dres: #0f6f69;
+  --ui-status-accent-eval: #986032;
+  --ui-status-progress-track: rgba(63, 116, 201, 0.24);
+  --ui-status-progress-fill: #3b619d;
+  --ui-status-chip-time-bg: #e7f0fb;
+  --ui-status-chip-time-border: #9fbadd;
+  --ui-status-chip-time-text: #2b568f;
+
+  /* ---- Submit badge ---- */
+  --ui-submit-badge-success-bg: #2a8a57;
+  --ui-submit-badge-success-text: #ffffff;
+  --ui-submit-badge-success-ring: rgba(255, 255, 255, 0.36);
+  --ui-submit-badge-warning-bg: #b67833;
+  --ui-submit-badge-warning-text: #ffffff;
+  --ui-submit-badge-warning-ring: rgba(255, 255, 255, 0.34);
+  --ui-submit-badge-error-bg: #c25151;
+  --ui-submit-badge-error-text: #ffffff;
+  --ui-submit-badge-error-ring: rgba(255, 255, 255, 0.34);
+
+  /* ---- Video badge ---- */
+  --ui-video-badge-bg: linear-gradient(to right, #e1ebfa, #c6d8f3);
+  --ui-video-badge-border: rgba(52, 95, 159, 0.5);
+  --ui-video-badge-text: #244d87;
+  --ui-video-badge-shadow: 0 5px 12px rgba(52, 95, 159, 0.2);
+  --ui-video-badge-hover-bg: linear-gradient(to right, #d2e1f7, #b4caee);
+  --ui-video-badge-hover-text: #1f4578;
+
+  /* ---- Image modal actions ---- */
+  --ui-modal-close-btn-bg: color-mix(in srgb, #dc2626 88%, #7f1d1d 12%);
+  --ui-modal-close-btn-hover-bg: #dc2626;
+  --ui-modal-nav-bg: rgba(30, 41, 59, 0.34);
+  --ui-modal-nav-hover-bg: rgba(30, 41, 59, 0.5);
+  --ui-modal-actionbar-bg: rgba(30, 41, 59, 0.62);
+  --ui-modal-actionbar-text: #f8fafc;
+  --ui-modal-actionbar-hover-bg: rgba(255, 255, 255, 0.14);
+  --ui-modal-actionbar-positive: #34a269;
+  --ui-modal-actionbar-positive-hover-bg: rgba(52, 162, 105, 0.22);
+  --ui-modal-actionbar-negative: #d35a5a;
+  --ui-modal-actionbar-negative-hover-bg: rgba(211, 90, 90, 0.22);
+  --ui-modal-submit-btn-bg: color-mix(in srgb, #16a34a 72%, transparent 28%);
+  --ui-modal-submit-btn-hover-bg: color-mix(in srgb, #16a34a 84%, black 16%);
 }
 
 /* ================================================================
@@ -482,9 +597,54 @@ html[data-dres-enabled='false'] .ui-challenge-control {
   --ui-status-chip-bg: #1e293b;
   --ui-status-chip-border: #475569;
   --ui-status-chip-hover-bg: #334155;
+  --ui-status-chip-rf-hover-border: #64748b;
+  --ui-status-chip-results-icon: #93c5fd;
+  --ui-status-chip-submitted-bg: rgba(22, 101, 52, 0.3);
+  --ui-status-chip-submitted-border: rgba(34, 197, 94, 0.45);
+  --ui-status-chip-submitted-hover-bg: rgba(22, 101, 52, 0.45);
+  --ui-status-chip-submitted-icon: #4ade80;
+  --ui-status-chip-submitted-text: #86efac;
+  --ui-status-chip-submitted-muted: #bbf7d0;
+  --ui-status-chip-loading-bg: rgba(30, 58, 138, 0.35);
+  --ui-status-chip-loading-border: #475569;
+  --ui-status-chip-loading-hover-bg: rgba(30, 64, 175, 0.45);
+  --ui-status-chip-loading-icon: #60a5fa;
+  --ui-status-chip-loading-text: #93c5fd;
+  --ui-status-chip-positive-icon: #86efac;
+  --ui-status-chip-positive-text: #86efac;
+  --ui-status-chip-negative-icon: #fca5a5;
+  --ui-status-chip-negative-text: #fca5a5;
+  --ui-status-accent-dres: #67e8f9;
+  --ui-status-accent-eval: #fcd34d;
+  --ui-status-progress-track: rgba(59, 130, 246, 0.3);
+  --ui-status-progress-fill: #60a5fa;
   --ui-status-chip-time-bg: rgba(30, 58, 138, 0.35);
   --ui-status-chip-time-border: #475569;
   --ui-status-chip-time-text: #93c5fd;
+
+  --ui-modal-close-btn-bg: color-mix(in srgb, #ef4444 82%, #7f1d1d 18%);
+  --ui-modal-close-btn-hover-bg: #ef4444;
+  --ui-modal-nav-bg: rgba(2, 6, 23, 0.56);
+  --ui-modal-nav-hover-bg: rgba(2, 6, 23, 0.74);
+  --ui-modal-actionbar-bg: rgba(2, 6, 23, 0.8);
+  --ui-modal-actionbar-text: #e2e8f0;
+  --ui-modal-actionbar-hover-bg: rgba(148, 163, 184, 0.2);
+  --ui-modal-actionbar-positive: #4ade80;
+  --ui-modal-actionbar-positive-hover-bg: rgba(74, 222, 128, 0.2);
+  --ui-modal-actionbar-negative: #f87171;
+  --ui-modal-actionbar-negative-hover-bg: rgba(248, 113, 113, 0.2);
+  --ui-modal-submit-btn-bg: color-mix(in srgb, #16a34a 78%, #14532d 22%);
+  --ui-modal-submit-btn-hover-bg: #16a34a;
+
+  --ui-submit-badge-success-bg: rgba(22, 163, 74, 0.88);
+  --ui-submit-badge-success-text: #f8fafc;
+  --ui-submit-badge-success-ring: rgba(148, 163, 184, 0.4);
+  --ui-submit-badge-warning-bg: rgba(217, 119, 6, 0.9);
+  --ui-submit-badge-warning-text: #f8fafc;
+  --ui-submit-badge-warning-ring: rgba(148, 163, 184, 0.4);
+  --ui-submit-badge-error-bg: rgba(220, 38, 38, 0.9);
+  --ui-submit-badge-error-text: #f8fafc;
+  --ui-submit-badge-error-ring: rgba(148, 163, 184, 0.4);
 
   /* ---- RF ---- */
   --ui-rf-title-positive: #86efac;
@@ -882,18 +1042,198 @@ body {
   background: var(--ui-status-chip-bg);
   border-color: var(--ui-status-chip-border);
 }
+.ui-status-chip-results-icon {
+  color: var(--ui-status-chip-results-icon);
+}
 .ui-status-chip-rf:hover,
 .ui-status-chip-submitted:hover,
 .ui-status-chip:hover {
   background: var(--ui-status-chip-hover-bg);
 }
+.ui-status-chip-rf:hover {
+  border-color: var(--ui-status-chip-rf-hover-border);
+}
+.ui-status-chip-submitted {
+  background: var(--ui-status-chip-submitted-bg);
+  border-color: var(--ui-status-chip-submitted-border);
+}
+.ui-status-chip-submitted:hover {
+  background: var(--ui-status-chip-submitted-hover-bg);
+}
+.ui-status-chip-submitted-icon {
+  color: var(--ui-status-chip-submitted-icon);
+}
+.ui-status-chip-submitted-text {
+  color: var(--ui-status-chip-submitted-text);
+}
+.ui-status-chip-submitted-muted {
+  color: var(--ui-status-chip-submitted-muted);
+}
+.ui-status-chip-loading {
+  background: var(--ui-status-chip-loading-bg);
+  border-color: var(--ui-status-chip-loading-border);
+}
+.ui-status-chip-loading:hover {
+  background: var(--ui-status-chip-loading-hover-bg);
+}
+.ui-status-chip-loading-icon {
+  color: var(--ui-status-chip-loading-icon);
+}
+.ui-status-chip-loading-text {
+  color: var(--ui-status-chip-loading-text);
+}
 .ui-status-chip-time {
   background: var(--ui-status-chip-time-bg);
   border-color: var(--ui-status-chip-time-border);
 }
+.ui-status-chip-time .ui-status-chip-time-icon,
+.ui-status-chip-time .ui-status-chip-time-value,
 .ui-status-chip-time .text-purple-300,
 .ui-status-chip-time .text-purple-400 {
   color: var(--ui-status-chip-time-text);
+}
+.ui-status-chip-positive-icon {
+  color: var(--ui-status-chip-positive-icon);
+}
+.ui-status-chip-positive-text {
+  color: var(--ui-status-chip-positive-text);
+}
+.ui-status-chip-negative-icon {
+  color: var(--ui-status-chip-negative-icon);
+}
+.ui-status-chip-negative-text {
+  color: var(--ui-status-chip-negative-text);
+}
+.ui-status-accent-dres {
+  color: var(--ui-status-accent-dres);
+}
+.ui-status-accent-eval {
+  color: var(--ui-status-accent-eval);
+}
+.ui-status-progress-track {
+  background: var(--ui-status-progress-track);
+}
+.ui-status-progress-fill {
+  background: var(--ui-status-progress-fill);
+}
+
+/* ---- Submit badge ---- */
+.ui-submit-badge {
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+}
+.ui-submit-badge-success {
+  background: var(--ui-submit-badge-success-bg);
+  color: var(--ui-submit-badge-success-text);
+  border-color: var(--ui-submit-badge-success-ring);
+}
+.ui-submit-badge-warning {
+  background: var(--ui-submit-badge-warning-bg);
+  color: var(--ui-submit-badge-warning-text);
+  border-color: var(--ui-submit-badge-warning-ring);
+}
+.ui-submit-badge-error {
+  background: var(--ui-submit-badge-error-bg);
+  color: var(--ui-submit-badge-error-text);
+  border-color: var(--ui-submit-badge-error-ring);
+}
+
+/* ---- Image modal ---- */
+.ui-image-modal {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.ui-image-modal .bg-white {
+  background-color: var(--ui-surface);
+}
+.ui-image-modal .bg-gray-50,
+.ui-image-modal .from-gray-50,
+.ui-image-modal .to-white {
+  background-image: none;
+  background-color: var(--ui-surface-muted);
+}
+.ui-image-modal .bg-gray-100 {
+  background-color: color-mix(in srgb, var(--ui-surface-muted) 75%, var(--ui-border) 25%);
+}
+.ui-image-modal .border-gray-200,
+.ui-image-modal .border-gray-300,
+.ui-image-modal .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--ui-border);
+}
+.ui-image-modal .text-gray-800,
+.ui-image-modal .text-gray-700 {
+  color: var(--ui-text);
+}
+.ui-image-modal .text-gray-600,
+.ui-image-modal .text-gray-500,
+.ui-image-modal .text-gray-400 {
+  color: var(--ui-text-muted);
+}
+.ui-image-modal-btn {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+}
+.ui-image-modal-btn:hover {
+  background: var(--ui-surface-muted);
+}
+.ui-image-modal-close-btn {
+  background: var(--ui-modal-close-btn-bg);
+  color: #fff;
+}
+.ui-image-modal-close-btn:hover {
+  background: var(--ui-modal-close-btn-hover-bg);
+}
+.ui-image-modal-nav-btn {
+  background: var(--ui-modal-nav-bg);
+  color: #fff;
+}
+.ui-image-modal-nav-btn:hover {
+  background: var(--ui-modal-nav-hover-bg);
+}
+.ui-image-modal-play-btn {
+  background: color-mix(in srgb, var(--ui-surface) 86%, var(--ui-border) 14%);
+  border-color: color-mix(in srgb, var(--ui-border) 82%, transparent 18%);
+  color: var(--ui-text);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.22);
+}
+.ui-image-modal-play-btn:hover {
+  background: var(--ui-surface);
+}
+.ui-image-modal-play-icon {
+  color: var(--ui-text);
+}
+.ui-image-modal-actionbar {
+  background: var(--ui-modal-actionbar-bg);
+}
+.ui-image-modal-action-btn {
+  color: var(--ui-modal-actionbar-text);
+}
+.ui-image-modal-action-btn:hover {
+  background: var(--ui-modal-actionbar-hover-bg);
+}
+.ui-image-modal-action-btn-positive {
+  color: var(--ui-modal-actionbar-positive);
+}
+.ui-image-modal-action-btn-positive:hover {
+  background: var(--ui-modal-actionbar-positive-hover-bg);
+}
+.ui-image-modal-action-btn-negative {
+  color: var(--ui-modal-actionbar-negative);
+}
+.ui-image-modal-action-btn-negative:hover {
+  background: var(--ui-modal-actionbar-negative-hover-bg);
+}
+.ui-image-modal-submit-btn {
+  background: var(--ui-modal-submit-btn-bg);
+  color: #fff;
+}
+.ui-image-modal-submit-btn:hover {
+  background: var(--ui-modal-submit-btn-hover-bg);
+}
+.ui-image-modal-kbd {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
 }
 
 /* ---- RF ---- */
