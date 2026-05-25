@@ -833,7 +833,7 @@
     const joinTop = rowInfo.continuesFromPreviousRow ? 'border-t-0 -mt-[2px]' : '';
     const joinBottom = rowInfo.continuesToNextRow ? 'border-b-0' : '';
 
-    return `ui-video-badge group/video absolute left-1.5 ${top} ${bottom} z-20 w-5 inline-flex flex-col items-center justify-center gap-1 border border-slate-500/70 bg-gradient-to-b from-slate-700 to-slate-900 text-slate-50 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.28)] transition-colors ${radius} ${joinTop} ${joinBottom}`;
+    return `ui-video-badge group/video absolute left-1.5 ${top} ${bottom} z-20 w-5 inline-flex flex-col items-center justify-center gap-1 border transition-colors ${radius} ${joinTop} ${joinBottom}`;
   }
 
   function getEstimatedColumns(rowInfo) {
@@ -1174,10 +1174,10 @@
           {#if rowInfo.groupKind === 'video'}
             <button
               on:click={(e) => handleOpenVideoPlayerFromStart(e, rowInfo.item)}
-              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 hover:from-slate-600 hover:to-slate-800 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] transition-colors overflow-visible"
+              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 transition-colors overflow-visible"
               title={`Open ${getGroupDisplayLabel(rowInfo)}`}
             >
-              <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
               </svg>
               <span class="text-[11px] font-semibold leading-none tracking-[0.02em]">{rowInfo.label}</span>
@@ -1196,18 +1196,18 @@
             </button>
           {:else}
             <div
-              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border border-slate-500/70 bg-gradient-to-r from-slate-700 to-slate-900 px-2.5 py-1 text-slate-50 ring-1 ring-white/10 shadow-[0_4px_10px_rgba(2,6,23,0.24)] overflow-visible"
+              class="ui-video-badge group/video absolute left-2 top-1.5 z-20 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 overflow-visible"
               title={getGroupDisplayLabel(rowInfo)}
             >
               {#if rowInfo.groupKind === 'date'}
-                <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                   <line x1="16" y1="2" x2="16" y2="6"/>
                   <line x1="8" y1="2" x2="8" y2="6"/>
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
               {:else}
-                <svg class="w-3 h-3 text-slate-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
                   <path d="M8 9h8M8 13h8M8 17h5"/>
                 </svg>

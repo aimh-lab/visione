@@ -9,16 +9,16 @@
     || normalizedVerdict === "INDETERMINATE"
     || normalizedVerdict === "UNDECIDABLE";
   $: badgeClass = isAmberSubmission
-    ? 'bg-amber-500/90'
+    ? 'ui-submit-badge-warning'
     : isWrongSubmission
-      ? 'bg-red-600/90'
-      : 'bg-green-600/90';
+      ? 'ui-submit-badge-error'
+      : 'ui-submit-badge-success';
 </script>
 
 {#if submitted}
   <div class="absolute top-2 right-2 z-30">
     <span
-      class={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold text-white shadow-md ring-1 ring-white/40 select-none ${
+      class={`ui-submit-badge inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold border select-none ${
         badgeClass
       }`}
     >

@@ -28,14 +28,14 @@
   $: sortLabel = sortLabels[viewMode] || viewMode;
 </script>
 
-<div class="ui-statusbar fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900/98 via-gray-800/98 to-gray-900/98 backdrop-blur-md border-t border-gray-700/50 shadow-2xl z-[100]">
+<div class="ui-statusbar fixed bottom-0 left-0 right-0 backdrop-blur-md border-t z-[100]">
   <div class="px-4 py-1">
     <div class="flex items-center justify-between max-w-screen-2xl mx-auto">
       <!-- Left side: Stats -->
       <div class="flex items-center space-x-3 text-[11px]">
         <!-- Total results (non cliccabile) -->
-        <div class="ui-status-chip flex items-center space-x-1.5 px-2 py-0.5 bg-gray-800/50 rounded-full border border-gray-700/50">
-          <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="ui-status-chip ui-status-chip-results flex items-center space-x-1.5 px-2 py-0.5 rounded-full border">
+          <svg class="w-3.5 h-3.5 ui-status-chip-results-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
             <rect x="14" y="14" width="7" height="7"/>
@@ -49,15 +49,14 @@
         {#if showSubmitted && submittedCount > 0}
           <button
             on:click={onViewSubmitted}
-            class="ui-status-chip ui-status-chip-submitted flex items-center space-x-1.5 px-2 py-0.5 bg-green-900/30 rounded-full border border-green-700/50 
-                   hover:bg-green-900/50 hover:border-green-600 transition-all cursor-pointer active:scale-95"
+            class="ui-status-chip ui-status-chip-submitted flex items-center space-x-1.5 px-2 py-0.5 rounded-full border transition-all cursor-pointer active:scale-95"
             title="Click to view submitted frames"
           >
-            <svg class="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg class="w-3.5 h-3.5 ui-status-chip-submitted-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span class="font-bold text-green-300">{submittedCount}</span>
-            <span class="text-green-400/80">submitted</span>
+            <span class="font-bold ui-status-chip-submitted-text">{submittedCount}</span>
+            <span class="ui-status-chip-submitted-muted">submitted</span>
           </button>
         {/if}
         
@@ -65,14 +64,13 @@
         {#if rfPositiveCount > 0 || rfNegativeCount > 0}
           <button
             on:click={onViewRF}
-            class="ui-status-chip ui-status-chip-rf flex items-center space-x-2 px-2 py-0.5 bg-gray-800/50 rounded-full border border-gray-700/50
-                   hover:bg-gray-800 hover:border-blue-600 transition-all cursor-pointer active:scale-95"
+            class="ui-status-chip ui-status-chip-rf flex items-center space-x-2 px-2 py-0.5 rounded-full border transition-all cursor-pointer active:scale-95"
             title="Click to view relevance feedback"
           >
             {#if rfPositiveCount > 0}
               <div class="flex items-center space-x-1">
-                <span class="text-green-400 font-bold">👍</span>
-                <span class="text-green-300 font-semibold">{rfPositiveCount}</span>
+                <span class="ui-status-chip-positive-icon font-bold">👍</span>
+                <span class="ui-status-chip-positive-text font-semibold">{rfPositiveCount}</span>
               </div>
             {/if}
             
@@ -82,8 +80,8 @@
             
             {#if rfNegativeCount > 0}
               <div class="flex items-center space-x-1">
-                <span class="text-red-400 font-bold">👎</span>
-                <span class="text-red-300 font-semibold">{rfNegativeCount}</span>
+                <span class="ui-status-chip-negative-icon font-bold">👎</span>
+                <span class="ui-status-chip-negative-text font-semibold">{rfNegativeCount}</span>
               </div>
             {/if}
           </button>
@@ -91,22 +89,22 @@
         
         <!-- Search time (non cliccabile) -->
         {#if searchTime > 0}
-          <div class="ui-status-chip ui-status-chip-time flex items-center space-x-1.5 px-2 py-0.5 bg-purple-900/30 rounded-full border border-purple-700/50">
-            <svg class="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="ui-status-chip ui-status-chip-time flex items-center space-x-1.5 px-2 py-0.5 rounded-full border">
+            <svg class="w-3.5 h-3.5 ui-status-chip-time-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <path d="M12 6v6l4 2"/>
             </svg>
-            <span class="text-purple-300 font-semibold">{(searchTime / 1000).toFixed(2)}s</span>
+            <span class="ui-status-chip-time-value font-semibold">{(searchTime / 1000).toFixed(2)}s</span>
           </div>
         {/if}
         
         <!-- Loading indicator -->
         {#if isLoading}
-          <div class="ui-status-chip ui-status-chip-loading flex items-center space-x-1.5 px-2 py-0.5 bg-blue-900/30 rounded-full border border-blue-700/50">
-            <svg class="w-3.5 h-3.5 text-blue-400 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="ui-status-chip ui-status-chip-loading flex items-center space-x-1.5 px-2 py-0.5 rounded-full border">
+            <svg class="w-3.5 h-3.5 ui-status-chip-loading-icon animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
             </svg>
-            <span class="text-blue-300 font-medium">Loading...</span>
+            <span class="ui-status-chip-loading-text font-medium">Loading...</span>
           </div>
         {/if}
       </div>
@@ -115,24 +113,24 @@
       <div class="flex items-center space-x-2.5 text-[11px] text-gray-400">
         {#if dresEnabled && String(dresUsername || '').trim()}
           <div class="flex items-center space-x-1.5">
-            <svg class="w-3.5 h-3.5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="w-3.5 h-3.5 ui-status-accent-dres" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="8" r="4"/>
               <path d="M4 20c1.8-3.2 4.7-5 8-5s6.2 1.8 8 5"/>
             </svg>
             <span>DRES:</span>
-            <span class="text-cyan-200 font-semibold">{dresUsername}</span>
+            <span class="ui-status-accent-dres font-semibold">{dresUsername}</span>
           </div>
           <span class="text-gray-700">•</span>
         {/if}
 
         {#if dresEnabled && String(dresEvaluationLabel || '').trim()}
           <div class="flex items-center space-x-1.5">
-            <svg class="w-3.5 h-3.5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="w-3.5 h-3.5 ui-status-accent-eval" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 6h16v12H4z"/>
               <path d="M8 10h8M8 14h5"/>
             </svg>
             <span>Evaluation:</span>
-            <span class="text-amber-200 font-semibold">{dresEvaluationLabel}</span>
+            <span class="ui-status-accent-eval font-semibold">{dresEvaluationLabel}</span>
           </div>
           <span class="text-gray-700">•</span>
         {/if}
@@ -169,8 +167,8 @@
   </div>
   
   {#if isLoading}
-    <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-600/30">
-      <div class="h-full bg-blue-500 animate-progress"></div>
+    <div class="ui-status-progress-track absolute top-0 left-0 right-0 h-0.5">
+      <div class="ui-status-progress-fill h-full animate-progress"></div>
     </div>
   {/if}
 </div>
