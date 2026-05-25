@@ -22,6 +22,50 @@
   const DATE_PART_KEYS = ['day', 'month', 'year', 'hour'];
   const DATE_PART_MAX = { day: 2, month: 2, year: 4, hour: 2 };
   const DATE_PART_LABEL = { day: 'DD', month: 'MM', year: 'YYYY', hour: 'HH' };
+  const DATE_FIX_PARTS = ['year', 'month', 'day', 'hour'];
+  const DATE_FIX_LABEL = { year: 'Year', month: 'Month', day: 'Day', hour: 'Hour' };
+  const DATE_FIX_MAX = { year: 4, month: 2, day: 2, hour: 2 };
+
+  function defaultDateFixes() {
+    return {
+      year: { enabled: false, comparator: 'eq', value: '' },
+      month: { enabled: false, comparator: 'eq', value: '' },
+      day: { enabled: false, comparator: 'eq', value: '' },
+      hour: { enabled: false, comparator: 'eq', value: '' }
+    };
+  }
+
+  function mergePinnedIntoDateParts(partsValue, fixedValue) {
+    const toPaddedVisual = (part, raw) => {
+      const value = String(raw || '').trim();
+      if (!value) return '';
+      if (part === 'year') return value;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return value;
+      return String(Math.floor(parsed)).padStart(2, '0');
+    };
+
+    const parts = partsValue && typeof partsValue === 'object'
+      ? {
+          day: String(partsValue.day || ''),
+          month: String(partsValue.month || ''),
+          year: String(partsValue.year || ''),
+          hour: String(partsValue.hour || '')
+        }
+      : { day: '', month: '', year: '', hour: '' };
+
+    const fixed = fixedValue && typeof fixedValue === 'object' ? fixedValue : {};
+    DATE_FIX_PARTS.forEach((part) => {
+      const entry = fixed?.[part] && typeof fixed[part] === 'object' ? fixed[part] : {};
+      const enabled = !!entry.enabled;
+      const value = String(entry.value || '').trim();
+      if (enabled && value && !parts[part]) {
+        parts[part] = toPaddedVisual(part, value);
+      }
+    });
+
+    return parts;
+  }
 
   $: visibleFields = Array.isArray(fields)
     ? fields.filter((field) => {
@@ -58,12 +102,23 @@
         acc[field.name] = !!field.value;
       } else if (field.type === 'dateParts') {
         const raw = field.value && typeof field.value === 'object' ? field.value : {};
-        acc[field.name] = {
-          day: String(raw.day || ''),
-          month: String(raw.month || ''),
-          year: String(raw.year || ''),
-          hour: String(raw.hour || '')
-        };
+        const pinTarget = typeof field.pinTarget === 'string' ? field.pinTarget : '';
+        const fixedRaw = pinTarget && acc[pinTarget] && typeof acc[pinTarget] === 'object'
+          ? acc[pinTarget]
+          : null;
+        acc[field.name] = mergePinnedIntoDateParts(raw, fixedRaw);
+      } else if (field.type === 'dateFixes') {
+        const base = defaultDateFixes();
+        const raw = field.value && typeof field.value === 'object' ? field.value : {};
+        DATE_FIX_PARTS.forEach((part) => {
+          const source = raw?.[part] && typeof raw[part] === 'object' ? raw[part] : {};
+          base[part] = {
+            enabled: !!source.enabled,
+            comparator: String(source.comparator || 'eq').trim().toLowerCase() || 'eq',
+            value: String(source.value || '')
+          };
+        });
+        acc[field.name] = base;
       } else {
         acc[field.name] = field.value || '';
       }
@@ -99,13 +154,24 @@
     target.select?.();
   }
 
-  function handleDatePartInput(fieldName, part, partIndex, event) {
+  function handleDatePartInput(fieldName, part, partIndex, pinTarget, event) {
     const input = event.currentTarget;
     const digitsOnly = String(input?.value || '').replace(/\D+/g, '');
     const maxLen = DATE_PART_MAX[part] || 2;
     const nextValue = digitsOnly.slice(0, maxLen);
 
     updateDatePart(fieldName, part, nextValue);
+
+    if (pinTarget) {
+      const currentPin = getDateFixesValue(pinTarget)?.[part];
+      if (currentPin?.enabled) {
+        if (nextValue) {
+          updateDateFix(pinTarget, part, { value: nextValue });
+        } else {
+          updateDateFix(pinTarget, part, { enabled: false, value: '' });
+        }
+      }
+    }
 
     if (nextValue.length >= maxLen && partIndex < DATE_PART_KEYS.length - 1) {
       setTimeout(() => focusDatePart(fieldName, partIndex + 1), 0);
@@ -128,6 +194,66 @@
       event.preventDefault();
       focusDatePart(fieldName, partIndex - 1);
     }
+  }
+
+  function getDateFixesValue(fieldName) {
+    const raw = formValues?.[fieldName];
+    const base = defaultDateFixes();
+    if (!raw || typeof raw !== 'object') return base;
+
+    DATE_FIX_PARTS.forEach((part) => {
+      const source = raw?.[part] && typeof raw[part] === 'object' ? raw[part] : {};
+      base[part] = {
+        enabled: !!source.enabled,
+        comparator: String(source.comparator || 'eq').trim().toLowerCase() || 'eq',
+        value: String(source.value || '')
+      };
+    });
+
+    return base;
+  }
+
+  function updateDateFix(fieldName, part, patch) {
+    const next = getDateFixesValue(fieldName);
+    next[part] = { ...next[part], ...patch };
+    formValues = { ...formValues, [fieldName]: next };
+  }
+
+  function toggleDateFix(fieldName, part) {
+    const current = getDateFixesValue(fieldName)[part];
+    const enabled = !current.enabled;
+    updateDateFix(fieldName, part, {
+      enabled,
+      comparator: current.comparator || 'eq',
+      value: enabled ? current.value : ''
+    });
+  }
+
+  function handleDateFixValueInput(fieldName, part, event) {
+    const input = event.currentTarget;
+    const digitsOnly = String(input?.value || '').replace(/\D+/g, '');
+    const maxLen = DATE_FIX_MAX[part] || 2;
+    updateDateFix(fieldName, part, { value: digitsOnly.slice(0, maxLen) });
+  }
+
+  function togglePinnedDatePart(fieldName, pinTarget, part) {
+    if (!pinTarget) return;
+
+    const partValue = getDatePartsValue(fieldName)?.[part] || '';
+    const current = getDateFixesValue(pinTarget)?.[part] || { enabled: false, comparator: 'eq', value: '' };
+
+    if (current.enabled) {
+      updateDateFix(pinTarget, part, { enabled: false, value: '' });
+      return;
+    }
+
+    if (!partValue) return;
+
+    updateDateFix(pinTarget, part, {
+      enabled: true,
+      comparator: 'eq',
+      value: partValue
+    });
   }
   
   function handleSubmit() {
@@ -294,10 +420,64 @@
               >
                 {field.computePreview ? field.computePreview(formValues) : ''}
               </div>
+            {:else if field.type === 'dateFixes'}
+              {@const dateFixesValue = getDateFixesValue(field.name)}
+              <div id={fieldId} class="space-y-2.5 rounded-lg border border-gray-700 bg-gray-800/50 p-2.5">
+                <div class="flex flex-wrap gap-2">
+                  {#each DATE_FIX_PARTS as part}
+                    <button
+                      type="button"
+                      on:click={() => toggleDateFix(field.name, part)}
+                      class={`px-2.5 py-1 rounded-full text-xs border transition-colors ${dateFixesValue[part].enabled
+                        ? 'bg-blue-600/25 border-blue-500 text-blue-200'
+                        : 'bg-gray-800 border-gray-600 text-gray-300 hover:border-gray-500'}`}
+                      aria-pressed={dateFixesValue[part].enabled}
+                    >
+                      {DATE_FIX_LABEL[part]}
+                    </button>
+                  {/each}
+                </div>
+
+                {#each DATE_FIX_PARTS as part}
+                  {#if dateFixesValue[part].enabled}
+                    <div class="grid grid-cols-[86px_1fr] gap-2 items-center">
+                      <div class="text-xs text-gray-300">{DATE_FIX_LABEL[part]}</div>
+                      <div class="grid grid-cols-[92px_1fr] gap-2">
+                        <select
+                          value={dateFixesValue[part].comparator}
+                          on:change={(event) => updateDateFix(field.name, part, { comparator: String(event.currentTarget?.value || 'eq') })}
+                          class="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                          aria-label={`${DATE_FIX_LABEL[part]} comparator`}
+                        >
+                          <option value="eq">=</option>
+                          <option value="ne">!=</option>
+                          <option value="gte">&gt;=</option>
+                          <option value="lte">&lt;=</option>
+                          <option value="gt">&gt;</option>
+                          <option value="lt">&lt;</option>
+                        </select>
+                        <input
+                          type="text"
+                          inputmode="numeric"
+                          maxlength={DATE_FIX_MAX[part]}
+                          value={dateFixesValue[part].value}
+                          placeholder={part === 'year' ? 'YYYY' : part === 'month' ? 'MM' : part === 'day' ? 'DD' : 'HH'}
+                          on:input={(event) => handleDateFixValueInput(field.name, part, event)}
+                          class="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 font-mono text-sm"
+                          aria-label={`${DATE_FIX_LABEL[part]} value`}
+                        />
+                      </div>
+                    </div>
+                  {/if}
+                {/each}
+              </div>
             {:else if field.type === 'dateParts'}
               {@const datePartsValue = getDatePartsValue(field.name)}
+              {@const pinTarget = typeof field.pinTarget === 'string' ? field.pinTarget : ''}
+              {@const datePinned = pinTarget ? getDateFixesValue(pinTarget) : null}
               <div id={fieldId} class="grid grid-cols-4 gap-2">
                 {#each DATE_PART_KEYS as part, partIndex}
+                  {@const isPinned = !!datePinned?.[part]?.enabled}
                   <input
                     type="text"
                     inputmode="numeric"
@@ -306,13 +486,28 @@
                     data-part-index={partIndex}
                     value={datePartsValue[part]}
                     placeholder={DATE_PART_LABEL[part]}
-                    on:input={(event) => handleDatePartInput(field.name, part, partIndex, event)}
+                    on:input={(event) => handleDatePartInput(field.name, part, partIndex, pinTarget, event)}
                     on:keydown={(event) => handleDatePartKeyDown(field.name, partIndex, event)}
-                    class="w-full px-2.5 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-sm text-center"
+                    on:dblclick={() => togglePinnedDatePart(field.name, pinTarget, part)}
+                    class={`w-full px-2.5 py-2 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-sm text-center ${isPinned
+                      ? 'bg-amber-900/20 border border-amber-500/70 focus:border-amber-400'
+                      : 'bg-gray-800 border border-gray-700 focus:border-blue-500'}`}
                     aria-label={`${field.label} ${DATE_PART_LABEL[part]}`}
+                    title={isPinned ? 'Pinned (double-click to unpin)' : 'Double-click to pin this field as fixed'}
                   />
                 {/each}
               </div>
+              {#if pinTarget}
+                {@const pinnedParts = DATE_PART_KEYS.filter((part) => !!datePinned?.[part]?.enabled)}
+                {#if pinnedParts.length > 0}
+                  <p class="text-[11px] text-amber-300/90 mt-1">
+                    Pinned: {pinnedParts.map((part) => DATE_FIX_LABEL[part]).join(', ')}
+                  </p>
+                {/if}
+                {#if field.pinHint}
+                  <p class="text-[11px] text-gray-500 mt-1">{field.pinHint}</p>
+                {/if}
+              {/if}
             {:else}
               <input
                 id={fieldId}
