@@ -15,6 +15,7 @@
   export let tupleIndicatorMode = 'badge+bar';
   export let resultsetBadgeLabelMode = 'both';
   export let showLocalTimeInTitles = true;
+  export let timeBadgeTimezoneOverride = 'profile';
   export let virtualizationThreshold = 40;
   export let dresEnabled = false;
   export let dresChallengeType = 'KIS';
@@ -107,6 +108,7 @@
       videoBadgeOrientation,
       resultsetBadgeLabelMode,
       showLocalTimeInTitles,
+      timeBadgeTimezoneOverride,
       virtualizationEnabled,
       virtualizationThreshold,
       dresEnabled,
@@ -196,6 +198,9 @@
     const safeResultsetBadgeLabelMode = ['both', 'id', 'date'].includes(local.resultsetBadgeLabelMode)
       ? local.resultsetBadgeLabelMode
       : 'both';
+    const safeTimeBadgeTimezoneOverride = ['profile', 'utc', 'local'].includes(local.timeBadgeTimezoneOverride)
+      ? local.timeBadgeTimezoneOverride
+      : 'profile';
     const currentTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
     const safeTheme = themeTouched
       ? (['default', 'dark', 'light'].includes(local.theme) ? local.theme : currentTheme)
@@ -214,6 +219,7 @@
       videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
       resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
       showLocalTimeInTitles: !!local.showLocalTimeInTitles,
+      timeBadgeTimezoneOverride: safeTimeBadgeTimezoneOverride,
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       dresEnabled: !!local.dresEnabled,
@@ -516,6 +522,23 @@
                 on:change={() => save()}
               />
             </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-time-badge-timezone" class="ui-settings-label text-sm font-medium text-gray-700">Time badge timezone</label>
+              <select
+                id="settings-time-badge-timezone"
+                class="ui-settings-input ui-settings-select w-44 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.timeBadgeTimezoneOverride}
+                on:change={() => save()}
+              >
+                <option value="profile">Use profile</option>
+                <option value="utc">Force UTC</option>
+                <option value="local">Force local (utc_offset_hours)</option>
+              </select>
+            </div>
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              Profile follows runtime config; UTC ignores offsets; Local applies <code>utc_offset_hours</code> when available.
+            </p>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-video-player-modal-mode" class="ui-settings-label text-sm font-medium text-gray-700">Player modal mode (testing)</label>

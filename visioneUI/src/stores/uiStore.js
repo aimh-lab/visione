@@ -27,6 +27,7 @@ const DEFAULT = {
   videoBadgeOrientation: 'vertical',
   resultsetBadgeLabelMode: 'both',
   showLocalTimeInTitles: true,
+  timeBadgeTimezoneOverride: 'profile',
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
 
@@ -96,6 +97,12 @@ function normalizeTupleIndicatorMode(value, fallback = 'badge+bar') {
 function normalizeResultsetBadgeLabelMode(value, fallback = 'both') {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === 'id' || raw === 'date' || raw === 'both') return raw;
+  return fallback;
+}
+
+function normalizeTimeBadgeTimezoneOverride(value, fallback = 'profile') {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'profile' || raw === 'utc' || raw === 'local') return raw;
   return fallback;
 }
 
@@ -170,6 +177,7 @@ function createUIStore() {
         videoBadgeOrientation: ['horizontal', 'vertical'].includes(s.videoBadgeOrientation) ? s.videoBadgeOrientation : u.videoBadgeOrientation,
         resultsetBadgeLabelMode: normalizeResultsetBadgeLabelMode(s.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode),
         showLocalTimeInTitles: s.showLocalTimeInTitles ?? u.showLocalTimeInTitles,
+        timeBadgeTimezoneOverride: normalizeTimeBadgeTimezoneOverride(s.timeBadgeTimezoneOverride, u.timeBadgeTimezoneOverride),
         virtualizationEnabled: s.virtualizationEnabled ?? u.virtualizationEnabled,
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
 
@@ -223,6 +231,7 @@ function createUIStore() {
         videoBadgeOrientation: DEFAULT.videoBadgeOrientation,
         resultsetBadgeLabelMode: DEFAULT.resultsetBadgeLabelMode,
         showLocalTimeInTitles: DEFAULT.showLocalTimeInTitles,
+        timeBadgeTimezoneOverride: DEFAULT.timeBadgeTimezoneOverride,
         virtualizationEnabled: DEFAULT.virtualizationEnabled,
         virtualizationThreshold: DEFAULT.virtualizationThreshold,
         dresEnabled: DEFAULT.dresEnabled,
@@ -348,6 +357,7 @@ function createUIStore() {
           : u.videoBadgeOrientation;
         const safeTupleIndicatorMode = normalizeTupleIndicatorMode(patch.tupleIndicatorMode, u.tupleIndicatorMode);
         const safeResultsetBadgeLabelMode = normalizeResultsetBadgeLabelMode(patch.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode);
+        const safeTimeBadgeTimezoneOverride = normalizeTimeBadgeTimezoneOverride(patch.timeBadgeTimezoneOverride, u.timeBadgeTimezoneOverride);
         const safeDataserverHost = patch.dataserverHost == null
           ? u.dataserverHost
           : normalizeDataserverHost(patch.dataserverHost, u.dataserverHost);
@@ -390,6 +400,7 @@ function createUIStore() {
           videoBadgeOrientation: safeVideoBadgeOrientation,
           resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
           showLocalTimeInTitles: patch.showLocalTimeInTitles ?? u.showLocalTimeInTitles,
+          timeBadgeTimezoneOverride: safeTimeBadgeTimezoneOverride,
           virtualizationEnabled: patch.virtualizationEnabled ?? u.virtualizationEnabled,
           virtualizationThreshold: patch.virtualizationThreshold ?? u.virtualizationThreshold,
           dresEnabled: patch.dresEnabled ?? u.dresEnabled,
@@ -428,6 +439,7 @@ function createUIStore() {
           videoBadgeOrientation: nextState.videoBadgeOrientation,
           resultsetBadgeLabelMode: nextState.resultsetBadgeLabelMode,
           showLocalTimeInTitles: nextState.showLocalTimeInTitles,
+          timeBadgeTimezoneOverride: nextState.timeBadgeTimezoneOverride,
           virtualizationEnabled: nextState.virtualizationEnabled,
           virtualizationThreshold: nextState.virtualizationThreshold,
           dresEnabled: nextState.dresEnabled,

@@ -2785,6 +2785,7 @@ function handleViewSubmitted() {
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+  timeBadgeTimezoneOverride={$uiStore.timeBadgeTimezoneOverride}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
   dresEnabled={$uiStore.dresEnabled}

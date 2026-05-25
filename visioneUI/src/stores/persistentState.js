@@ -114,6 +114,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   videoBadgeOrientation: 'vertical',
   resultsetBadgeLabelMode: 'both',
   showLocalTimeInTitles: true,
+  timeBadgeTimezoneOverride: 'profile',
   virtualizationEnabled: true,
   virtualizationThreshold: 40,
   dresEnabled: false,
