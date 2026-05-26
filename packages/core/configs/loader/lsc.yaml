@@ -1,14 +1,3 @@
 _target_: loaders.LSCLoader
 name: lsc
-metadata_file: "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
-old_new_file_mapping_csv: "/data1/lsc-collection/mapping.csv"
-hour_video_msb_path: "/data1/lsc-collection/msb"
-day_video_msb_path: "/data1/lsc-collection/full-day-msb"
-
-collection_paths:
-  images: "selected-frames"
-  videos: "videos"
-  resized-videos-full-day: "resized-videos/full-day-videos"
-  resized-videos-medium: "resized-videos/medium"
-  resized-videos-tiny: "resized-videos/tiny"
-  thumbnails: "thumbnails"
+metadata_file: "/data1/lsc-common-data/lsc25-data/lsc25_metadata_clean_v2.csv"

@@ -1,363 +1,227 @@
 import pandas as pd
-import ast
 import os
 import csv
 from tqdm import tqdm
-# Assuming you are using LangChain or similar for the Document class
-from langchain_core.documents import Document 
+from langchain_core.documents import Document
 from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
-from pathlib import Path
+
 
 class LSCLoader:
     def __init__(
-            self, 
-            name, 
-            data_server_url, 
-            metadata_file, 
-            collection_paths, 
-            old_new_file_mapping_csv, 
-            hour_video_msb_path, 
-            day_video_msb_path):
+            self,
+            name,
+            data_server_url,
+            metadata_file
+            ):
         self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
-        self.collection_paths = collection_paths
-        self.hour_video_msb_path = hour_video_msb_path
-        self.day_video_msb_path = day_video_msb_path
-        with open(old_new_file_mapping_csv, mode='r') as f:
-            rows = list(csv.DictReader(f))
-            self.old_to_new_id_map = {row['Original Filename']: row['New Filename'] for row in rows}
-            self.new_to_old_id_map = {row['New Filename']: row['Original Filename'] for row in rows}
-
-    def _read_hour_video_msbs(self):
-        """
-        Reads tsv files contained in the self.hour_video_msb_path folder in a single pandas DataFrame.
-        The folder contains files named like "20191231_13.tsv", which contain 
-        "startframe", "starttime", "endframe", "endtime", "middleframe", "middletime" columns, 
-        where the times are in seconds (float) from the start of the hour.
-        It also creates a new column "image_name" by taking the csv base name (e.g., "20191231_13") and appending "-{id}",
-        then converting the obtained name using the new_to_old_id_map to get the original image name.
-        """
-        hour_video_msb_path = Path(self.hour_video_msb_path)
-        all_files = list(hour_video_msb_path.glob("*.tsv"))
-
-        df_list = []
-        for file_path in tqdm(all_files, desc="Reading hour video MSBs"):
-            hour_id = file_path.stem  # filename without .tsv
-            temp_df = pd.read_csv(
-                file_path, sep="\t", 
-                usecols=['startframe', 'starttime', 'endframe', 'endtime', 'middleframe', 'middletime', 'id'],
-                dtype={
-                    'startframe': int,
-                    'starttime': float,
-                    'endframe': int,
-                    'endtime': float,
-                    'middleframe': int,
-                    'middletime': float,
-                    "id": str
-                }
-            )
-
-            temp_df["image_name"] = temp_df.apply(
-                lambda row: self.new_to_old_id_map[f"{hour_id}-{row['id']}.jpg"],
-                axis=1,
-            )
-            df_list.append(temp_df)
-
-        final_df = pd.concat(df_list, ignore_index=True)
-        # remove id column as it's no longer needed
-        final_df.drop(columns=["id"], inplace=True)
-        # rename all columns to have a prefix "hour_msb_" to avoid confusion with metadata columns
-        final_df.rename(columns=lambda x: f"hour_msb_{x}" if x != "image_name" else x, inplace=True)
-
-        return final_df
-    
-    def read_day_video_msbs(self):
-        """
-        Reads tsv files contained in the self.day_video_msb_path folder in a single pandas DataFrame.
-        The folder contains files named like "20191231.tsv", which contain 
-        "startframe", "starttime", "endframe", "endtime", "middleframe", "middletime" columns, 
-        where the times are in seconds (float) from the start of the day.
-        """
-        day_video_msb_path = Path(self.day_video_msb_path)
-        all_files = list(day_video_msb_path.glob("*.tsv"))
-
-        df_list = []
-        for file_path in tqdm(all_files, desc="Reading day video MSBs"):
-            temp_df = pd.read_csv(
-                file_path, sep="\t", 
-                usecols=['startframe', 'starttime', 'endframe', 'endtime', 'middleframe', 'middletime', 'idLSC'],
-                dtype={
-                    'startframe': int,
-                    'starttime': float,
-                    'endframe': int,
-                    'endtime': float,
-                    'middleframe': int,
-                    'middletime': float,
-                    "idLSC": str
-                }
-            )
-            df_list.append(temp_df)
-
-        final_df = pd.concat(df_list, ignore_index=True)
-        # rename idLSC to image_name
-        final_df.rename(columns={"idLSC": "image_name"}, inplace=True)
-        # rename all columns to have a prefix "day_msb_" to avoid confusion with metadata
-        final_df.rename(columns=lambda x: f"day_msb_{x}" if x != "image_name" else x, inplace=True)
-
-        return final_df
 
     def _generate_metadata(self):
-        # 1. Read the CSV
-        df = pd.read_csv(self.metadata_file, dtype={
-            'minute_id': str, 
-            'utc_time_epoch': 'Int64', 
-            'local_time_epoch': 'Int64',
-            'position': str,
-            'altitude': float,
-            'semantic_name': str,
-            'heart_rate_bpm': float,
-            'now_playing': str,
-            'sleep_level': str,
-            'time_in_bed': float,
-            'new_position': str,
-            'new_semantic_name': str,
-            'original_name': str,
-            'categories': str,
-            'movement': str,
-            'city': str,
-            'country': str,
-            'new_timezone': str,
-            'ImageID': str
+        df = pd.read_csv(
+            self.metadata_file,
+            usecols=[
+                "image_key",
+                "Caption",
+                "OCR",
+                "Tags",
+                "heart_rate_bpm",
+                "local_time",
+                "utc_offset_hours",
+                "location",
+                "location.gps.elevation",
+                "location.gps.latitude",
+                "location.gps.longitude",
+                "location.vaisl.country",
+                "location.vaisl.stop",
+                "time.timezone",
+            ],
+            dtype={
+                "image_key": str,
+                "Caption": str,
+                "OCR": str,
+                "Tags": str,
+                "heart_rate_bpm": float,
+                "local_time": str,
+                "utc_offset_hours": float,
+                "location": str,
+                "location.gps.elevation": float,
+                "location.gps.latitude": float,
+                "location.gps.longitude": float,
+                "location.vaisl.country": str,
+                "location.vaisl.stop": str,
+                "time.timezone": str,
+            },
+        )
+
+        # Rename columns to follow lsc26 naming conventions
+        df = df.rename(columns={
+            "image_key": "image_name",
+            "Caption": "caption",
+            "OCR": "ocr",
+            "Tags": "tags",
+            "location.vaisl.stop": "location_stop",
+            "location.vaisl.country": "location_country",
+            "location.gps.elevation": "gps_elevation",
+            "time.timezone": "timezone",
         })
 
-        # 2. Filter: Remove rows where minute_id is missing (Vectorized equivalent of your check)
-        df = df.dropna(subset=['minute_id'])
-        
-        # 3. Rename Columns: Map CSV headers to your desired Metadata keys
-        column_map = {
-            'ImageID': 'image_name',
-            'timeInBed': 'time_in_bed',
-            # Columns that share names (e.g., 'city', 'altitude') don't need mapping
-        }
-        df = df.rename(columns=column_map)
-
-        # --- TIME CONVERSION ---
-        # Convert strings "2020-06-30 21:22:49" to Python datetime objects
-        # errors='coerce' turns invalid strings into NaT (which we later turn to None)
-        # df['utc_time'] = pd.to_datetime(df['utc_time_epoch'], errors='coerce')
-        # df['local_time'] = pd.to_datetime(df['local_time_epoch'], errors='coerce')
-
-        # 4. Enforce Data Types (Vectorized "get_float" and "clean_str")
-        
-        # Ensure ID is string
-        df['image_name'] = df['image_name'].astype(str)
-
-        # Force numeric columns, coercing errors to NaN
-        numeric_cols = ['altitude', 'heart_rate_bpm', 'time_in_bed']
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        # Position is converted from "lat lon" into "(lat, lon)" as required by the point data type in PostgreSQL
-        df['position'] = df['position'].apply(lambda x: ast.literal_eval(f"({x.replace(' ', ',')})") if pd.notnull(x) else None) 
-        df['new_position'] = df['new_position'].apply(lambda x: ast.literal_eval(f"({x.replace(' ', ',')})") if pd.notnull(x) else None) 
-
-        def datetime_str_to_epoch(dt_str):
-            """
-            Convert datetime in YYYYMMDD_HHMMSS format (20190101_121948) into epoch time (int).
-            """
-            dt = pd.to_datetime('_'.join(dt_str.split('_')[:2]), format="%Y%m%d_%H%M%S", errors='coerce')
+        # Derive epoch from filename stem (YYYYMMDD_HHMMSS)
+        def stem_to_epoch(image_key):
+            stem = image_key.rsplit(".", 1)[0]
+            dt = pd.to_datetime("_".join(stem.split("_")[:2]), format="%Y%m%d_%H%M%S", errors="coerce")
+            # if pd.isnull(dt):
+            #     return None
             return int(dt.timestamp())
 
-        # Reconstruct utc_time_epoch from ImageID (sometimes utc_time_epoch is null)
-        df['epoch'] = df['image_name'].apply(datetime_str_to_epoch)
+        df["epoch"] = df["image_name"].apply(stem_to_epoch)
 
-        # Get hour id
-        df['hour_id'] = df['image_name'].str[:11]
+        # hour_local: hour of day in local time
+        local_times = pd.to_datetime(df["local_time"], format="mixed", dayfirst=False, errors="coerce")
+        df["hour_local"] = local_times.apply(lambda x: x.hour if pd.notnull(x) else None)
+        df = df.drop(columns=["local_time"])
 
-        # Get year, month, day, hour
-        df['year'] = df['image_name'].str[0:4].astype(int)
-        df['month'] = df['image_name'].str[4:6].astype(int)
-        df['day'] = df['image_name'].str[6:8].astype(int)
-        df['hour'] = df['image_name'].str[9:11].astype(int)
+        # hour_id: YYYYMMDD_hh (first 11 chars of image_name)
+        df["hour_id"] = df["image_name"].str[:11]
 
-        # 5. Select only the columns you strictly need for metadata
+        # Temporal components from filename
+        df["year"] = df["image_name"].str[0:4].astype(int)
+        df["month"] = df["image_name"].str[4:6].astype(int)
+        df["day"] = df["image_name"].str[6:8].astype(int)
+        df["hour"] = df["image_name"].str[9:11].astype(int)
+
+        # location_stop as boolean
+        df["location_stop"] = df["location_stop"].map(
+            lambda x: True if str(x).strip().lower() == "true" else (False if str(x).strip().lower() == "false" else None)
+        )
+
+        # GPS position: combine lat/lon into a (lat, lon) tuple for PostgreSQL point type
+        def make_point(row):
+            lat = row["location.gps.latitude"]
+            lon = row["location.gps.longitude"]
+            if pd.isnull(lat) or pd.isnull(lon):
+                return None
+            return (lat, lon)
+
+        df["gps_position"] = df.apply(make_point, axis=1)
+        df = df.drop(columns=["location.gps.latitude", "location.gps.longitude"])
+
+        # Select final columns
         target_cols = [
-            "hour_id", "minute_id", "epoch", 
-            "position", "altitude", "semantic_name", 
-            "heart_rate_bpm", "now_playing", 
-            "sleep_level", "time_in_bed", 
-            "new_position", "new_semantic_name", "original_name", 
-            "categories", "movement", "city", "country", "new_timezone", 
-            "image_name", "year", "month", "day", "hour"
+            "image_name",
+            "epoch",
+            "hour_id",
+            "year",
+            "month",
+            "day",
+            "hour",
+            "hour_local",
+            "timezone",
+            "utc_offset_hours",
+            "location",
+            "location_stop",
+            "location_country",
+            "gps_position",
+            "gps_elevation",
+            "caption",
+            "ocr",
+            "tags",
+            "heart_rate_bpm",
         ]
-                
-        # Filter DataFrame to only these columns
         df = df[target_cols]
 
-        # 6. Handle NaNs: Replace NaN with Python's None 
-        # (Crucial because Vector Stores often crash on NaN floats in metadata)
+        # Replace NaN with None
         df = df.where(pd.notnull(df), None)
         return df
-    
+
     def generate_docs(self):
-        day_video_msbs = self.read_day_video_msbs()
-        hour_video_msbs = self._read_hour_video_msbs()
-        metadata_records = self._generate_metadata()
+        metadata_df = self._generate_metadata()
+        final_records = metadata_df.to_dict(orient="records")
 
-        # Merge metadata with MSB data on image_name, using left join to keep all metadata records
-        final_data = pd.merge(metadata_records, hour_video_msbs, on='image_name', how='left')
-        final_data = pd.merge(final_data, day_video_msbs, on='image_name', how='left')
-
-        # Bulk Convert to Dictionary
-        # 'records' produces: [{'minute_id': '...', 'city': '...'}, {...}]
-        final_records = final_data.to_dict(orient='records')
-
-        # Generate Documents
-        # List comprehensions are significantly faster than appending in a loop
         documents = [
-            Document(page_content=record['image_name'], metadata=record)
+            Document(page_content=record["image_name"], metadata=record)
             for record in tqdm(final_records)
         ]
-        
-        # Extract IDs directly
-        ids = [record['image_name'] for record in final_records]
+        ids = [record["image_name"] for record in final_records]
 
         return documents, ids
-    
+
+    # TODO: no more collection-specific, move this to a utility class (or to a base class for loaders)
     def get_collection_element_url_from_id(self, id_str, what="images"):
         """
-        Given an image name (ID), construct its URL.
-        In case of LSC, if "20190101_121948_000.jpg" is the name, the relative path should be "201901/01/20190101_121948_000.jpg"
+        Given an image name (e.g. '20190101_205237.webp'), construct its URL.
+        The relative path is what/id_str, where what is the collection path (e.g. 'images') and id_str is the image name.
         """
-        date_part = id_str.split('_')[0]
-        year = date_part[:4]
-        month = date_part[4:6]
-        day = date_part[6:8]
-        hour = id_str.split('_')[1][:2]
-
-        # construct the base path
-        base_path = self.collection_paths[what]
-
-        if what in ["images", "thumbnails"]:
-            new_name = self.old_to_new_id_map[id_str]
-            path = os.path.join(base_path, f"{year}{month}{day}_{hour}", new_name)
-        elif what == "videos":
-            name = f"{year}{month}{day}_{hour}.mp4"
-            path = os.path.join(base_path, name)
-        elif what == "resized-videos-full-day":
-            name = f"{year}{month}{day}.mp4"
-            path = os.path.join(base_path, name)
-        elif what in ["resized-videos-medium", "resized-videos-tiny"]:
-            kind = "medium" if what == "resized-videos-medium" else "tiny"
-            name = f"{year}{month}{day}_{hour}-{kind}.mp4"
-            path = os.path.join(base_path, name)
-        else:
-            raise ValueError(f"Unknown collection type: {what}")
-
-        url = self.data_server_url + '/' + path
-        return url
+        path = id_str + "/" + what
+        return self.data_server_url + "/" + self.name + "/" + path
     
     def get_retrieved_metadata_columns(self):
-        # Return the list of metadata keys that will be returned from a query
-        return [
-            "epoch"
-        ]
-    
+        return ["epoch"]
+
     def get_table_name(self):
-        # Return the name of the database table to store LSC data
         return "lsc"
-    
+
     def get_temporal_column(self):
-        # Return the name of the temporal column to be used for time-based queries
         return "epoch"
-    
+
     def get_temporal_groupby_column(self):
-        # Return the name of the column to group by for temporal queries (e.g., hourly)
         return "hour_id"
-    
+
     def get_video_time_reference_columns(self):
-        # Return the names of the columns that provide time references for video frames
-        return ["hour_msb_starttime", "day_msb_starttime"]
+        return []
 
     def get_column_schema(self):
-        # --- Define Metadata Schema ---
-        # This matches the dictionary keys produced by LSCLoader
-        metadata_columns = [
-            # Metadata columns
-            Column(name="minute_id", data_type="text"),
+        return [
+            Column(name="image_name", data_type="text"),
+            Column(name="epoch", data_type="bigint"),
             Column(name="hour_id", data_type="text"),
             Column(name="year", data_type="integer"),
             Column(name="month", data_type="integer"),
             Column(name="day", data_type="integer"),
             Column(name="hour", data_type="integer"),
-            Column(name="epoch", data_type="bigint"), 
-            Column(name="position", data_type="point"),
-            Column(name="altitude", data_type="float"),
-            Column(name="semantic_name", data_type="text"),
+            Column(name="hour_local", data_type="integer"),
+            Column(name="timezone", data_type="text"),
+            Column(name="utc_offset_hours", data_type="float"),
+            Column(name="location", data_type="text"),
+            Column(name="location_stop", data_type="boolean"),
+            Column(name="location_country", data_type="text"),
+            Column(name="gps_position", data_type="point"),
+            Column(name="gps_elevation", data_type="float"),
+            Column(name="caption", data_type="text"),
+            Column(name="ocr", data_type="text"),
+            Column(name="tags", data_type="text"),
             Column(name="heart_rate_bpm", data_type="float"),
-            Column(name="now_playing", data_type="text"),
-            Column(name="sleep_level", data_type="text"),
-            Column(name="time_in_bed", data_type="float"),
-            Column(name="new_position", data_type="point"),
-            Column(name="new_semantic_name", data_type="text"),
-            Column(name="original_name", data_type="text"),
-            Column(name="categories", data_type="text"),
-            Column(name="movement", data_type="text"),
-            Column(name="city", data_type="text"),
-            Column(name="country", data_type="text"),
-            Column(name="new_timezone", data_type="text"),
-            Column(name="image_name", data_type="text"),
-            # Hour MSB columns
-            Column(name="hour_msb_startframe", data_type="integer"),
-            Column(name="hour_msb_starttime", data_type="float"),
-            Column(name="hour_msb_endframe", data_type="integer"),
-            Column(name="hour_msb_endtime", data_type="float"),
-            Column(name="hour_msb_middleframe", data_type="integer"),
-            Column(name="hour_msb_middletime", data_type="float"),
-            # Day MSB columns
-            Column(name="day_msb_startframe", data_type="integer"),
-            Column(name="day_msb_starttime", data_type="float"),
-            Column(name="day_msb_endframe", data_type="integer"),
-            Column(name="day_msb_endtime", data_type="float"),
-            Column(name="day_msb_middleframe", data_type="integer"),
-            Column(name="day_msb_middletime", data_type="float"),
         ]
-        return metadata_columns
 
     def get_attribute_info(self):
         column_descriptions = {
-            "minute_id": "Identifier of the minute segment that contains the image.",
-            "hour_id": "Identifier of the hour segment that contains the image.",
+            "image_name": "Image filename in the collection, formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
+            "epoch": "Unix timestamp in seconds for the image capture time (UTC, derived from filename).",
+            "hour_id": "Identifier of the hour segment containing the image, formatted as YYYYMMDD_hh.",
             "year": "Four-digit year extracted from the image timestamp.",
             "month": "Month number extracted from the image timestamp.",
-            # "day": "Day of month extracted from the image timestamp.",
-            "hour": "Hour of day in 24-hour format extracted from the image timestamp.",
-            "epoch": "Unix timestamp in seconds for the image capture time.",
-            # "position": "Original geographic coordinates stored as a point.",
-            "altitude": "Altitude associated with the image, as a numeric value.",
-            # "semantic_name": "Original semantic place or scene label.",
-            "heart_rate_bpm": "Heart rate in beats per minute.",
-            # "now_playing": "Audio track playing at capture time on my mp3 player.",
-            "sleep_level": "Sleep stage annotation associated with the moment.",
-            "time_in_bed": "Time spent in bed, expressed as a numeric duration.",
-            "new_position": "Refined geographic coordinates stored as a point.",
-            "new_semantic_name": "Semantic place where the photo was taken (like the name of a store), or 'car', or 'HOME'.",
-            # "original_name": "Original image filename or identifier before remapping.",
-            # "categories": "Category labels associated with the image.",
-            # "movement": "Movement or activity label associated with the image.",
-            "city": "City (e.g., Dublin), without any additional information. Does not include the state or country, just the city name.",
-            "country": "Country in which the image has been taken (e.g., Ireland), without any additional information.",
-            # "new_timezone": "Timezone associated with the image.",
-            "image_name": "Image filename in the collection, typically formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
+            "day": "Day of month extracted from the image timestamp.",
+            "hour": "Hour of day in 24-hour format (UTC) extracted from the image timestamp.",
+            "hour_local": "Hour of day in 24-hour format in local time.",
+            "timezone": "Timezone in which the image was captured (e.g., Europe/Dublin).",
+            "utc_offset_hours": "UTC offset in hours at the time of capture.",
+            "location": "Semantic location description (e.g., 'Inside; HOME; Dublin, Ireland, Leinster; Ireland').",
+            "location_country": "Country of the capture location.",
+            "gps_position": "GPS coordinates as a (latitude, longitude) point.",
+            "gps_elevation": "GPS elevation in meters.",
+            # "caption": "Auto-generated textual description of the image content.",
+            "ocr": "Text extracted from the image via optical character recognition.",
+            # "tags": "Comma-separated semantic tags associated with the image.",
+            "heart_rate_bpm": "Heart rate in beats per minute at the time of capture.",
+            # "location_stop": "Whether the location is a recognized semantic stop.",
         }
         type_map = {
             "text": "string",
             "integer": "integer",
             "bigint": "integer",
             "float": "float",
+            "boolean": "boolean",
             "point": "string",
         }
         return [
@@ -369,28 +233,17 @@ class LSCLoader:
             for column in self.get_column_schema() if column.name in column_descriptions
         ]
 
+
 if __name__ == "__main__":
     data_server_url = "http://localhost:8000"
-    metadata_file = "/data1/lsc-common-data/lsc22_vaisl_image_metadata.csv"
-    old_new_file_mapping_csv = "/data1/lsc-collection/mapping.csv"
-    hour_video_msb_path = "/data1/lsc-collection/msb"
-    day_video_msb_path = "/data1/lsc-collection/full-day-msb"
+    metadata_file = "/data1/lsc-common-data/lsc25-data/lsc25_metadata_clean.csv"
 
-    collection_paths = {
-        "images": "selected-frames",
-        "videos": "videos",
-        "resized-videos-full-day": "resized-videos/full-day-videos",
-        "resized-videos-medium": "resized-videos/medium",
-        "resized-videos-tiny": "resized-videos/tiny",
-        "thumbnails": "thumbnails"
-    }
-    
-    lsc = LSCLoader("lsc", data_server_url, metadata_file, collection_paths, old_new_file_mapping_csv, hour_video_msb_path, day_video_msb_path)
+    lsc = LSCLoader("lsc", data_server_url, metadata_file)
     url = lsc.get_collection_element_url_from_id("20190101_121948_000.jpg")
     print(url)
 
     docs, ids = lsc.generate_docs()
-    
+
     print(f"Generated {len(docs)} documents.")
     if len(docs) > 0:
         print("Sample Doc Metadata:", docs[0].metadata)
