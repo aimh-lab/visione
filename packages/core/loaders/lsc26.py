@@ -57,8 +57,8 @@ class LSC26Loader:
         def stem_to_epoch(image_key):
             stem = image_key.rsplit(".", 1)[0]  # remove extension
             dt = pd.to_datetime(stem, format="%Y%m%d_%H%M%S", errors="coerce")
-            if pd.isnull(dt):
-                return None
+            # if pd.isnull(dt):
+            #     return None
             return int(dt.timestamp())
 
         df["epoch"] = df["image_name"].apply(stem_to_epoch)

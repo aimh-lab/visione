@@ -281,10 +281,13 @@ Operators: and, or, not.
 **Epoch range (temporal succession):**
 ```json
 {{"operator": "and", "arguments": [
-    {{"comparator": "gt", "attribute": "epoch", "value": PREV_EPOCH}},
-    {{"comparator": "lt", "attribute": "epoch", "value": PREV_EPOCH_PLUS_WINDOW}}
+    {{"comparator": "gt", "attribute": "epoch", "value": 1570000000}},
+    {{"comparator": "lt", "attribute": "epoch", "value": 1570003600}}
 ]}}
 ```
+(Replace `1570000000` / `1570003600` with the actual pre-computed integer epoch values from prior \
+results. IMPORTANT: JSON values must always be literal numbers — never write arithmetic \
+expressions such as `1570000000 + 3600` inside JSON, as that is invalid JSON.)
 
 **Look at a specific image (leave query empty):**
 ```json
@@ -338,7 +341,9 @@ print(json.dumps({{"per_day": per_day.to_dict(orient='records')}}, default=str))
 2. **Temporal succession**: to find what happened AFTER a result, issue a new search \
 with epoch filters: gt(epoch, prev_epoch) and lt(epoch, prev_epoch + window). \
 Same for BEFORE: lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window). \
-A reasonable window is 60-3600 s depending on context.
+A reasonable window is 60-3600 s depending on context. \
+Compute the bound yourself first (e.g. 1570000000 + 3600 = 1570003600) and put only \
+the resulting integer literal in the JSON — never write arithmetic expressions as JSON values.
 3. **Counting & aggregation**: Most likely you need large result sets (k ≥ 200). In this case, use **search_and_analyze_frames** \
    with a Python aggregation script instead of loading all records into context. Group by ``hour_id`` or by \
 day (same year+month+day). Consecutive frames within the same hour belong to the same \
