@@ -346,17 +346,17 @@ class Qwen3VLEmbedder():
     
 
 @serve.deployment(
-    autoscaling_config={
-        "min_replicas": 0,
-        "initial_replicas": 0,
-        "max_replicas": 1,
-        "metrics_interval_s": 10,
-        "look_back_period_s": 30,
-        "smoothing_factor": 1.0,
-        "downscale_delay_s": 3600,
-        "upscale_delay_s": 0,
-    },
-    ray_actor_options={"num_cpus": 4, "num_gpus": 1.0},
+    #autoscaling_config={
+    #    "min_replicas": 0,
+    #    "initial_replicas": 1,
+    #    "max_replicas": 1,
+    #    "metrics_interval_s": 10,
+    #    "look_back_period_s": 30,
+    #    "smoothing_factor": 1.0,
+        #"downscale_delay_s": 3600,
+    #    "upscale_delay_s": 0,
+    #},
+    ray_actor_options={"num_cpus": 4, "num_gpus": 0.1},
     max_concurrent_queries=50,
 )
 class QwenFeatureExtractor:
