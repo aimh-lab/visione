@@ -4,6 +4,9 @@ from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
 from PIL import Image
 import requests
+import requests_cache
+
+requests_cache.install_cache('feature_xtractor_cache', expire_after=60)
 
 def decode_image_data(image_data: str) -> Image.Image:
     """

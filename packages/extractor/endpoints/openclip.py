@@ -14,17 +14,17 @@ logger = logging.getLogger(__name__)
 
 import open_clip
 @serve.deployment(
-    autoscaling_config={
-        "min_replicas": 0,           # Può scendere a 0 repliche
-        "initial_replicas": 0,       # Inizia con 0 repliche
-        "max_replicas": 1,
-        "metrics_interval_s": 10,    # Frequenza metriche per decisioni autoscaling
-        "look_back_period_s": 30,    # Periodo per analizzare trend
-        "smoothing_factor": 1.0,     # Reattività alle variazioni (1.0 = molto reattivo)
-        "downscale_delay_s": 3600,     # Attesa prima di deallocare (1 ora)
-        "upscale_delay_s": 0,        # Nessuna attesa per allocare nuove repliche
-    },
-    ray_actor_options={"num_cpus": 1, "num_gpus": 0.3},
+    #autoscaling_config={
+    #    "min_replicas": 0,           # Può scendere a 0 repliche
+    #    "initial_replicas": 1,       # Inizia con 0 repliche
+    #    "max_replicas": 1,
+    #    "metrics_interval_s": 10,    # Frequenza metriche per decisioni autoscaling
+    #    "look_back_period_s": 30,    # Periodo per analizzare trend
+    #    "smoothing_factor": 1.0,     # Reattività alle variazioni (1.0 = molto reattivo)
+    #    # "downscale_delay_s": 3600,     # Attesa prima di deallocare (1 ora)
+    #    "upscale_delay_s": 0,        # Nessuna attesa per allocare nuove repliche
+    #},
+    ray_actor_options={"num_cpus": 1, "num_gpus": 0.1},
     max_concurrent_queries=100,
 )
 class OpenCLIPFeatureExtractor:

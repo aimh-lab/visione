@@ -130,12 +130,13 @@ class ModelRouter:
 
 # Configurazione dei modelli disponibili
 MODELS_CONFIG = {
-    "clip_base": {"name": "openai/clip-vit-base-patch32", "modalities": ["image", "text"]},
-    "clip_large": {"name": "openai/clip-vit-large-patch14", "modalities": ["image", "text"]},
-    "openclip_clip_vit_b_32": {"name": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K", "modalities": ["image", "text"]},
+    #"clip_base": {"name": "openai/clip-vit-base-patch32", "modalities": ["image", "text"]},
+    #"clip_large": {"name": "openai/clip-vit-large-patch14", "modalities": ["image", "text"]},
+    #"openclip_clip_vit_b_32": {"name": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K", "modalities": ["image", "text"]},
     "openclip_clip_vit_l_14": {"name": "hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K", "modalities": ["image", "text"]},
+    "openclip_clip_vit_h_14": {"name": "hf-hub:laion/CLIP-ViT-H-14-laion2B-s32B-b79K", "modalities": ["image", "text"]},
     "qwen_embedding_8B": {"name": "Qwen/Qwen3-VL-Embedding-8B", "modalities": ["image", "text", "image+text"]},
-    "qwen_embedding_2B": {"name": "Qwen/Qwen3-VL-Embedding-2B", "modalities": ["image", "text", "image+text"]},
+    #"qwen_embedding_2B": {"name": "Qwen/Qwen3-VL-Embedding-2B", "modalities": ["image", "text", "image+text"]},
     "dinov2_base": {"name": "facebook/dinov2-base", "modalities": ["image"]}
     # "base16": "openai/clip-vit-base-patch16",
     # "large14": "openai/clip-vit-large-patch14-336"
