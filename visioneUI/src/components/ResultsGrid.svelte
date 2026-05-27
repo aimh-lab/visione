@@ -708,7 +708,8 @@
   function getRowInfo(row, rowIndex = -1) {
     if (!row || row.length === 0) return null;
     const firstItem = row[0];
-    const cacheKey = `${viewMode}::${resultsetBadgeLabelMode}::${showLocalTimeInTitles ? 1 : 0}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}`;
+    const rowChunkBoundary = !!row?.__visioneChunkBoundary;
+    const cacheKey = `${viewMode}::${resultsetBadgeLabelMode}::${showLocalTimeInTitles ? 1 : 0}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}::${rowChunkBoundary ? 1 : 0}`;
     if (rowInfoCache.has(cacheKey)) return rowInfoCache.get(cacheKey);
     
     let info = null;
@@ -721,22 +722,28 @@
       const nextRow = rowIndex >= 0 && rowIndex < items.length - 1 && Array.isArray(items[rowIndex + 1]) ? items[rowIndex + 1] : null;
       const nextFirstItem = nextRow && nextRow.length > 0 ? nextRow[0] : null;
       const nextGroupValue = nextFirstItem ? getGroupValueForItem(nextFirstItem) : null;
+      const prevChunkBoundary = !!prevRow?.__visioneChunkBoundary;
+      const nextChunkBoundary = !!nextRow?.__visioneChunkBoundary;
+      const sameAsPrev = !rowChunkBoundary && !prevChunkBoundary && prevGroupValue === groupValue;
+      const sameAsNext = !rowChunkBoundary && !nextChunkBoundary && nextGroupValue === groupValue;
       let continuationRows = 0;
 
-      if (nextGroupValue === groupValue) {
+      if (sameAsNext) {
         for (let index = rowIndex + 1; index < items.length; index += 1) {
           const candidateRow = Array.isArray(items[index]) ? items[index] : null;
           const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+          if (candidateRow?.__visioneChunkBoundary) break;
           if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
           continuationRows += 1;
         }
       }
 
       let precedingRows = 0;
-      if (prevGroupValue === groupValue) {
+      if (sameAsPrev) {
         for (let index = rowIndex - 1; index >= 0; index -= 1) {
           const candidateRow = Array.isArray(items[index]) ? items[index] : null;
           const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+          if (candidateRow?.__visioneChunkBoundary) break;
           if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
           precedingRows += 1;
         }
@@ -755,11 +762,11 @@
         groupLabel: activeGroupBy.label || 'Group',
         label: displayGroupValue,
         item: firstItem,
-        showVideoBadge: prevGroupValue !== groupValue,
-        isVideoGroupStart: prevGroupValue !== groupValue,
-        isVideoGroupEnd: nextGroupValue !== groupValue,
-        continuesFromPreviousRow: prevGroupValue === groupValue,
-        continuesToNextRow: nextGroupValue === groupValue,
+        showVideoBadge: !sameAsPrev,
+        isVideoGroupStart: !sameAsPrev,
+        isVideoGroupEnd: !sameAsNext,
+        continuesFromPreviousRow: sameAsPrev,
+        continuesToNextRow: sameAsNext,
         continuationRows,
         groupRowCount,
         groupRowOffset: precedingRows,

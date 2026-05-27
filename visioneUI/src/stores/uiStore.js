@@ -17,7 +17,7 @@ const DEFAULT = {
   sidebarRightTab: 'RF',       // 'RF' | 'Submitted'
 
   keyframeSize: 130,
-  resultsPerRow: 8,
+  resultsPerGroup: 8,
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
@@ -170,8 +170,8 @@ function createUIStore() {
         sidebarRightTab: s.sidebarRightTab ?? u.sidebarRightTab,
 
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
-        resultsPerRow: s.resultsPerRow ?? u.resultsPerRow,
-        resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
+        resultsPerGroup: (s.resultsPerGroup ?? s.resultsPerRow) ?? u.resultsPerGroup,
+        resultsAutoFit: true,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
         apiServicesHostOverrideEnabled: s.apiServicesHostOverrideEnabled ?? !!String(s.apiServicesHost || '').trim(),
@@ -227,7 +227,7 @@ function createUIStore() {
         sidebarRightWidth: DEFAULT.sidebarRightWidth,
         sidebarRightTab: DEFAULT.sidebarRightTab,
         keyframeSize: DEFAULT.keyframeSize,
-        resultsPerRow: DEFAULT.resultsPerRow,
+        resultsPerGroup: DEFAULT.resultsPerGroup,
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
@@ -408,8 +408,8 @@ function createUIStore() {
           ...u,
           theme: safeTheme,
           keyframeSize: patch.keyframeSize ?? u.keyframeSize,
-          resultsPerRow: patch.resultsPerRow ?? u.resultsPerRow,
-          resultsAutoFit: patch.resultsAutoFit ?? u.resultsAutoFit,
+          resultsPerGroup: patch.resultsPerGroup ?? patch.resultsPerRow ?? u.resultsPerGroup,
+          resultsAutoFit: true,
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
           apiServicesHostOverrideEnabled: safeApiServicesHostOverrideEnabled,
@@ -450,7 +450,7 @@ function createUIStore() {
         persist({
           theme: nextState.theme,
           keyframeSize: nextState.keyframeSize,
-          resultsPerRow: nextState.resultsPerRow,
+          resultsPerGroup: nextState.resultsPerGroup,
           resultsAutoFit: nextState.resultsAutoFit,
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,

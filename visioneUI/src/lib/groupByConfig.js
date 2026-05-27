@@ -49,11 +49,12 @@ function normalizeKind(kind, value, metadata) {
     return normalizedKind;
   }
 
+  if (toSafeString(metadata)) return 'metadata';
+
   const normalizedValue = toSafeString(value).toLowerCase();
   if (normalizedValue === 'byrank') return 'rank';
   if (normalizedValue === 'byvideo') return 'video';
   if (normalizedValue === 'bydate') return 'date';
-  if (metadata) return 'metadata';
   if (normalizedValue.startsWith('metadata:')) return 'metadata';
   return 'video';
 }
