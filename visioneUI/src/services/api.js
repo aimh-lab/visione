@@ -903,6 +903,12 @@ export class VisioneAPI {
       }
     }
 
+    // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
+    // We emit a wildcard text clause and let filters constrain the result set.
+    if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
+      out.push({ type: 'text', value: '*', model: textModel, filters });
+    }
+
     return out;
   }
 

@@ -870,7 +870,7 @@
     getTextareas: () => textareas,
     getSearchTextareas: getTextareasForSearch,
     setTextareas: (t) => { textareas = t; },
-    getFramesPerRow: () => get(uiStore).resultsPerRow,
+    getFramesPerRow: () => get(uiStore).resultsPerGroup,
     getCacheEnabled: () => get(uiStore).cacheEnabled,
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
@@ -2165,7 +2165,7 @@ function handleViewSubmitted() {
   }
 
   function moveSelectionRows(deltaRows) {
-    const cols = get(uiStore).resultsPerRow || 5;
+    const cols = get(uiStore).resultsPerGroup || 5;
     moveSelection(deltaRows * cols);
   }
 
@@ -2540,16 +2540,16 @@ function handleViewSubmitted() {
   // ---------------------------
   $: displayRows = buildRows(images, {
     viewMode: $uiStore.viewMode,
-    resultsPerRow: $uiStore.resultsPerRow,
-    resultsAutoFit: $uiStore.resultsAutoFit,
+    resultsPerGroup: $uiStore.resultsPerGroup,
+    resultsAutoFit: true,
     runtimeProfile
   });
 
 
   $: similarityDisplayRows = buildRows(similarityImages, {
     viewMode: $uiStore.viewMode,
-    resultsPerRow: $uiStore.resultsPerRow,
-    resultsAutoFit: $uiStore.resultsAutoFit,
+    resultsPerGroup: $uiStore.resultsPerGroup,
+    resultsAutoFit: true,
     runtimeProfile
   });
 
@@ -2776,7 +2776,7 @@ function handleViewSubmitted() {
   isOpen={isSettingsOpen}
   theme={$uiStore.theme}
   keyframeSize={$uiStore.keyframeSize}
-  resultsPerRow={$uiStore.resultsPerRow}
+  resultsPerGroup={$uiStore.resultsPerGroup}
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}

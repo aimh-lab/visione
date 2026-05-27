@@ -1,7 +1,7 @@
 // src/lib/ui/buildRows.js
 import { resolveGroupByConfig } from '$lib/groupByConfig.js';
 
-export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit, runtimeProfile = {} }) {
+export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, resultsAutoFit, runtimeProfile = {} }) {
   if (!Array.isArray(items) || items.length === 0) return [];
 
   const chunk = (arr, n) => {
@@ -14,7 +14,7 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit, runt
   const mode = String(groupBy?.mode || viewMode || 'byrank');
   const kind = String(groupBy?.kind || '').trim().toLowerCase();
   const metadataField = String(groupBy?.metadata || '').trim();
-  const perRow = Math.max(1, Number(resultsPerRow) || 5);
+  const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
   const toFiniteNumber = (value) => {
@@ -85,6 +85,17 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit, runt
   const groupByVideo = (arr) =>
     groupByKey(arr, (img) => img.videoId, 'vid');
 
+  const splitGroupedRows = (rows) =>
+    rows.flatMap((row) => {
+      const parts = chunk(row, perRow);
+      if (parts.length <= 1) return parts;
+
+      return parts.map((part) => {
+        part.__visioneChunkBoundary = true;
+        return part;
+      });
+    });
+
   const groupByMetadata = (arr, field) =>
     groupByKey(
       arr,
@@ -111,20 +122,20 @@ export function buildRows(items, { viewMode, resultsPerRow, resultsAutoFit, runt
     if (mode === "byrank") return [items];
 
     if (groupedRows) {
-      // One visual container per group; cards wrap inside the same row.
-      return groupedRows;
+      // One logical group can span multiple visual rows, capped by per-group size.
+      return splitGroupedRows(groupedRows);
     }
 
     if (mode === "bydate" && dateGroupedRows) {
-      return dateGroupedRows;
+      return splitGroupedRows(dateGroupedRows);
     }
   }
 
   if (mode === "byrank") return chunk(items, perRow);
-  if (mode === "bydate" && dateGroupedRows) return dateGroupedRows;
+  if (mode === "bydate" && dateGroupedRows) return splitGroupedRows(dateGroupedRows);
 
-  // Grouped modes (video or metadata): one row per group, independent from resultsPerRow.
-  if (groupedRows) return groupedRows;
+  // Grouped modes (video or metadata): respect per-group cap.
+  if (groupedRows) return splitGroupedRows(groupedRows);
 
   return chunk(items, perRow);
 }

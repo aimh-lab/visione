@@ -6,7 +6,7 @@
   export let theme = 'default';
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
-  export let resultsPerRow = 8;
+  export let resultsPerGroup = 8;
   export let justifyResultRows = false;
   export let cacheEnabled = true;
   export let dedupeResults = true;
@@ -101,7 +101,7 @@
     return {
       theme,
       keyframeSize,
-      resultsPerRow,
+      resultsPerGroup,
       resultsAutoFit,
       cacheEnabled,
       dedupeResults,
@@ -182,7 +182,7 @@
   function save() {
     hasLocalEdits = true;
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
-    const perRow = Math.min(10, Math.max(1, Number(local.resultsPerRow) || 8));
+    const perGroup = Math.max(1, Number(local.resultsPerGroup) || 8);
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 50));
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
@@ -215,8 +215,8 @@
     const newSettings = {
       theme: safeTheme,
       keyframeSize: kf,
-      resultsPerRow: perRow,
-      resultsAutoFit: !!local.resultsAutoFit,
+      resultsPerGroup: perGroup,
+      resultsAutoFit: true,
       cacheEnabled: !!local.cacheEnabled,
       dedupeResults: !!local.dedupeResults,
       apiServicesHostOverrideEnabled: !!local.apiServicesHostOverrideEnabled,
@@ -423,48 +423,36 @@
             </div>
 
             <div class="flex items-center justify-between py-2">
-              <label for="settings-results-per-row" class="ui-settings-label text-sm font-medium text-gray-700">Results per row</label>
-              <div class="flex items-center space-x-3">
+              <label for="settings-results-per-row" class="ui-settings-label text-sm font-medium text-gray-700">Results per group</label>
+              <div class="flex items-center">
                 <div class="relative">
                   <input
                     id="settings-results-per-row"
                     type="number"
                     min="1"
-                    max="10"
                     step="1"
-                    class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
-                    bind:value={local.resultsPerRow}
-                    disabled={local.resultsAutoFit}
+                    class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    bind:value={local.resultsPerGroup}
                     on:input={(e) => {
-                      const n = Math.min(10, Math.max(1, Number(e.currentTarget.value)||8));
-                      local.resultsPerRow = n;
+                      const n = Math.max(1, Number(e.currentTarget.value)||8);
+                      local.resultsPerGroup = n;
                       save();
                     }}
                   />
                   <div class="ui-settings-stepper">
-                    <button type="button" class="ui-settings-stepper-btn" aria-label="Increase results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', 1, 1, 10)}>
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Increase results per group" on:click={() => adjustNumber('resultsPerGroup', 1, 1, Number.MAX_SAFE_INTEGER)}>
                       <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                     </button>
-                    <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease results per row" disabled={local.resultsAutoFit} on:click={() => adjustNumber('resultsPerRow', -1, 1, 10)}>
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease results per group" on:click={() => adjustNumber('resultsPerGroup', -1, 1, Number.MAX_SAFE_INTEGER)}>
                       <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                     </button>
                   </div>
-                </div>
-                <div class="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-                  <input
-                    type="checkbox"
-                    id="autofit"
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    bind:checked={local.resultsAutoFit}
-                    on:change={() => save()}
-                  />
-                  <label for="autofit" class="ui-settings-hint text-xs font-medium text-gray-600 cursor-pointer">Auto-fit</label>
                 </div>
               </div>
             </div>
 
             <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
-              In by video mode, rows are still capped by Results per row even when Auto-fit is enabled.
+              Applies to grouped modes (date, hour, metadata): max items shown per group row.
             </p>
 
             <div class="flex items-center justify-between py-2">
