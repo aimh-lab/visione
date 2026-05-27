@@ -21,6 +21,9 @@ const DEFAULT = {
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
+  apiServicesHostOverrideEnabled: false,
+  apiServicesHost: '',
+  dataserverHostOverrideEnabled: false,
   dataserverHost: '',
   justifyResultRows: false,
   tupleIndicatorMode: 'badge+bar',
@@ -171,6 +174,9 @@ function createUIStore() {
         resultsAutoFit: s.resultsAutoFit ?? u.resultsAutoFit,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
+        apiServicesHostOverrideEnabled: s.apiServicesHostOverrideEnabled ?? !!String(s.apiServicesHost || '').trim(),
+        apiServicesHost: normalizeDataserverHost(s.apiServicesHost, u.apiServicesHost),
+        dataserverHostOverrideEnabled: s.dataserverHostOverrideEnabled ?? !!String(s.dataserverHost || '').trim(),
         dataserverHost: normalizeDataserverHost(s.dataserverHost, u.dataserverHost),
         justifyResultRows: s.justifyResultRows ?? u.justifyResultRows,
         tupleIndicatorMode: normalizeTupleIndicatorMode(s.tupleIndicatorMode, u.tupleIndicatorMode),
@@ -225,6 +231,9 @@ function createUIStore() {
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
+        apiServicesHostOverrideEnabled: DEFAULT.apiServicesHostOverrideEnabled,
+        apiServicesHost: DEFAULT.apiServicesHost,
+        dataserverHostOverrideEnabled: DEFAULT.dataserverHostOverrideEnabled,
         dataserverHost: DEFAULT.dataserverHost,
         justifyResultRows: DEFAULT.justifyResultRows,
         tupleIndicatorMode: DEFAULT.tupleIndicatorMode,
@@ -357,7 +366,16 @@ function createUIStore() {
           : u.videoBadgeOrientation;
         const safeTupleIndicatorMode = normalizeTupleIndicatorMode(patch.tupleIndicatorMode, u.tupleIndicatorMode);
         const safeResultsetBadgeLabelMode = normalizeResultsetBadgeLabelMode(patch.resultsetBadgeLabelMode, u.resultsetBadgeLabelMode);
+        const safeApiServicesHostOverrideEnabled = patch.apiServicesHostOverrideEnabled == null
+          ? u.apiServicesHostOverrideEnabled
+          : !!patch.apiServicesHostOverrideEnabled;
+        const safeApiServicesHost = patch.apiServicesHost == null
+          ? u.apiServicesHost
+          : normalizeDataserverHost(patch.apiServicesHost, u.apiServicesHost);
         const safeTimeBadgeTimezoneOverride = normalizeTimeBadgeTimezoneOverride(patch.timeBadgeTimezoneOverride, u.timeBadgeTimezoneOverride);
+        const safeDataserverHostOverrideEnabled = patch.dataserverHostOverrideEnabled == null
+          ? u.dataserverHostOverrideEnabled
+          : !!patch.dataserverHostOverrideEnabled;
         const safeDataserverHost = patch.dataserverHost == null
           ? u.dataserverHost
           : normalizeDataserverHost(patch.dataserverHost, u.dataserverHost);
@@ -394,6 +412,9 @@ function createUIStore() {
           resultsAutoFit: patch.resultsAutoFit ?? u.resultsAutoFit,
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
+          apiServicesHostOverrideEnabled: safeApiServicesHostOverrideEnabled,
+          apiServicesHost: safeApiServicesHost,
+          dataserverHostOverrideEnabled: safeDataserverHostOverrideEnabled,
           dataserverHost: safeDataserverHost,
           justifyResultRows: patch.justifyResultRows ?? u.justifyResultRows,
           tupleIndicatorMode: safeTupleIndicatorMode,
@@ -433,6 +454,9 @@ function createUIStore() {
           resultsAutoFit: nextState.resultsAutoFit,
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,
+          apiServicesHostOverrideEnabled: nextState.apiServicesHostOverrideEnabled,
+          apiServicesHost: nextState.apiServicesHost,
+          dataserverHostOverrideEnabled: nextState.dataserverHostOverrideEnabled,
           dataserverHost: nextState.dataserverHost,
           justifyResultRows: nextState.justifyResultRows,
           tupleIndicatorMode: nextState.tupleIndicatorMode,

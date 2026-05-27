@@ -275,7 +275,8 @@
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
-  $: visioneAPI.setDataserverHost($uiStore.dataserverHost);
+  $: visioneAPI.setServicesHost($uiStore.apiServicesHostOverrideEnabled ? $uiStore.apiServicesHost : (runtimeProfile?.api?.servicesHost || ''));
+  $: visioneAPI.setDataserverHost($uiStore.dataserverHostOverrideEnabled ? $uiStore.dataserverHost : '');
   $: visioneAPI.setActiveCollectionName(activeCollectionName);
 
   // ---------------------------
@@ -2779,6 +2780,9 @@ function handleViewSubmitted() {
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}
+  apiServicesHostOverrideEnabled={$uiStore.apiServicesHostOverrideEnabled}
+  apiServicesHost={$uiStore.apiServicesHost}
+  dataserverHostOverrideEnabled={$uiStore.dataserverHostOverrideEnabled}
   dataserverHost={$uiStore.dataserverHost}
   justifyResultRows={$uiStore.justifyResultRows}
   tupleIndicatorMode={$uiStore.tupleIndicatorMode}

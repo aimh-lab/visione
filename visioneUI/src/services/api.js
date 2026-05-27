@@ -15,6 +15,8 @@ class APIError extends Error {
 // src/services/api.js
 export class VisioneAPI {
   constructor(baseUrl = VISIONE_SERVICES_URL, videosBase = VISIONE_VIDEOS_URL, searchUrl = VISIONE_SEARCH_URL) {
+    this.defaultBaseUrl = String(baseUrl || '').trim().replace(/\/+$/, '');
+    this.defaultSearchUrl = String(searchUrl || '').trim();
     this.baseUrl = baseUrl;
     this.videosBase = videosBase;
     this.searchUrl = searchUrl;
@@ -170,6 +172,17 @@ export class VisioneAPI {
 
   setSupportsVideos(enabled) {
     this.supportsVideos = Boolean(enabled);
+  }
+
+  setServicesHost(host = '') {
+    const normalized = this.#normalizeDataserverBaseUrl(host);
+    const nextBaseUrl = normalized || this.defaultBaseUrl;
+    if (!nextBaseUrl || nextBaseUrl === this.baseUrl) return;
+
+    this.baseUrl = nextBaseUrl;
+    this.searchUrl = `${nextBaseUrl}/search`;
+    this.discoveryCache = null;
+    this.discoveryInFlight = null;
   }
 
   setDataserverHost(host = '') {

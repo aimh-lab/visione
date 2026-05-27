@@ -10,6 +10,9 @@
   export let justifyResultRows = false;
   export let cacheEnabled = true;
   export let dedupeResults = true;
+  export let apiServicesHostOverrideEnabled = false;
+  export let apiServicesHost = '';
+  export let dataserverHostOverrideEnabled = false;
   export let dataserverHost = '';
   export let virtualizationEnabled = true;
   export let tupleIndicatorMode = 'badge+bar';
@@ -102,6 +105,9 @@
       resultsAutoFit,
       cacheEnabled,
       dedupeResults,
+      apiServicesHostOverrideEnabled,
+      apiServicesHost,
+      dataserverHostOverrideEnabled,
       dataserverHost,
       justifyResultRows,
       tupleIndicatorMode,
@@ -213,6 +219,9 @@
       resultsAutoFit: !!local.resultsAutoFit,
       cacheEnabled: !!local.cacheEnabled,
       dedupeResults: !!local.dedupeResults,
+      apiServicesHostOverrideEnabled: !!local.apiServicesHostOverrideEnabled,
+      apiServicesHost: String(local.apiServicesHost ?? '').trim(),
+      dataserverHostOverrideEnabled: !!local.dataserverHostOverrideEnabled,
       dataserverHost: String(local.dataserverHost ?? '').trim(),
       justifyResultRows: !!local.justifyResultRows,
       tupleIndicatorMode: safeTupleIndicatorMode,
@@ -635,6 +644,42 @@
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Network</h4>
 
             <div>
+              <div class="mb-2 flex items-center justify-between">
+                <label for="settings-api-services-host-override-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable API services override</label>
+                <input
+                  id="settings-api-services-host-override-enabled"
+                  type="checkbox"
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  bind:checked={local.apiServicesHostOverrideEnabled}
+                  on:change={() => save()}
+                />
+              </div>
+              <label for="settings-api-services-host" class="ui-settings-label block text-sm font-medium mb-1">API services host override</label>
+              <input
+                id="settings-api-services-host"
+                type="text"
+                placeholder="https://visione.isti.cnr.it:48123"
+                class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                bind:value={local.apiServicesHost}
+                disabled={!local.apiServicesHostOverrideEnabled}
+                on:change={() => save()}
+              />
+              <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
+                Used for core/search endpoints. Leave empty to use runtime profile or app default.
+              </p>
+            </div>
+
+            <div>
+              <div class="mb-2 flex items-center justify-between">
+                <label for="settings-dataserver-host-override-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable dataserver override</label>
+                <input
+                  id="settings-dataserver-host-override-enabled"
+                  type="checkbox"
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  bind:checked={local.dataserverHostOverrideEnabled}
+                  on:change={() => save()}
+                />
+              </div>
               <label for="settings-dataserver-host" class="ui-settings-label block text-sm font-medium mb-1">Dataserver host override</label>
               <input
                 id="settings-dataserver-host"
@@ -642,6 +687,7 @@
                 placeholder="https://visione.isti.cnr.it:43333"
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.dataserverHost}
+                disabled={!local.dataserverHostOverrideEnabled}
                 on:change={() => save()}
               />
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">

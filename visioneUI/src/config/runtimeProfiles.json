@@ -1,5 +1,8 @@
 {
   "defaults": {
+    "api": {
+      "servicesHost": ""
+    },
     "media": {
       "hasVideos": true
     },
