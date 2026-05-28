@@ -819,10 +819,16 @@ export class VisioneAPI {
 
       const metadataToRetrieve = this.#buildMetadataToRetrieve(singleTextareaNode);
 
-      return {
+      const payload = {
         query: singleTextareaNode,
         metadata_to_retrieve: metadataToRetrieve
       };
+
+      if (this.#isFilterOnlyQueryNode(singleTextareaNode)) {
+        payload.reorder_by = { columns: ['epoch'] };
+      }
+
+      return payload;
     }
 
     const safeTemporalWindowSeconds = Number.isFinite(Number(temporalWindowSeconds))
@@ -840,10 +846,30 @@ export class VisioneAPI {
 
     const metadataToRetrieve = this.#buildMetadataToRetrieve(temporalQuery.query);
 
-    return {
+    const payload = {
       ...temporalQuery,
       metadata_to_retrieve: metadataToRetrieve
     };
+
+    if (this.#isFilterOnlyQueryNode(temporalQuery.query)) {
+      payload.reorder_by = { columns: ['epoch'] };
+    }
+
+    return payload;
+  }
+
+  #isFilterOnlyQueryNode(node) {
+    if (!node || typeof node !== 'object') return false;
+
+    const item = node.item;
+
+    if (Array.isArray(item)) {
+      return item.length > 0 && item.every((child) => this.#isFilterOnlyQueryNode(child));
+    }
+
+    const value = typeof item === 'string' ? item.trim() : '';
+    const hasFilters = Array.isArray(node?.filters?.arguments) && node.filters.arguments.length > 0;
+    return value === '' && hasFilters;
   }
 
   #buildTextareaQueryNode(textarea, leafK, groupK) {
@@ -904,9 +930,9 @@ export class VisioneAPI {
     }
 
     // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
-    // We emit a wildcard text clause and let filters constrain the result set.
+    // Emit an empty item and rely on filters + reorder_by for deterministic ordering.
     if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
-      out.push({ type: 'text', value: '*', model: textModel, filters });
+      out.push({ type: 'text', value: '', model: textModel, filters });
     }
 
     return out;
@@ -989,6 +1015,24 @@ export class VisioneAPI {
     const value = this.#unquoteValue(rawValue);
     if (!value) return null;
 
+    if (alias === 'epoch_from' || alias === 'ef') {
+      const parsed = this.#extractComparatorValue(value, 'gte');
+      const numericValue = Number(parsed.value);
+      if (!Number.isFinite(numericValue)) return null;
+      return {
+        arguments: [{ comparator: parsed.comparator, attribute: 'epoch', value: Math.floor(numericValue) }]
+      };
+    }
+
+    if (alias === 'epoch_to' || alias === 'et') {
+      const parsed = this.#extractComparatorValue(value, 'lte');
+      const numericValue = Number(parsed.value);
+      if (!Number.isFinite(numericValue)) return null;
+      return {
+        arguments: [{ comparator: parsed.comparator, attribute: 'epoch', value: Math.floor(numericValue) }]
+      };
+    }
+
     const numericShortcuts = {
       y: 'year',
       year: 'year',
@@ -1000,6 +1044,7 @@ export class VisioneAPI {
       hour: 'hour',
       hl: 'hour_local',
       hour_local: 'hour_local',
+      epoch: 'epoch',
       hr: 'heart_rate_bpm',
       heart_rate_bpm: 'heart_rate_bpm'
     };
@@ -1145,16 +1190,33 @@ export class VisioneAPI {
 
   #toEpochStart(rawDate) {
     const normalized = String(rawDate || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return NaN;
-    const epochMs = Date.parse(`${normalized}T00:00:00Z`);
+    const withHour = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+([01]\d|2[0-3]))?$/);
+    if (!withHour) return NaN;
+
+    const year = Number(withHour[1]);
+    const month = Number(withHour[2]);
+    const day = Number(withHour[3]);
+    const hour = withHour[4] != null ? Number(withHour[4]) : 0;
+
+    const epochMs = Date.UTC(year, month - 1, day, hour, 0, 0, 0);
     if (!Number.isFinite(epochMs)) return NaN;
     return Math.floor(epochMs / 1000);
   }
 
   #toEpochEnd(rawDate) {
     const normalized = String(rawDate || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return NaN;
-    const epochMs = Date.parse(`${normalized}T23:59:59Z`);
+    const withHour = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+([01]\d|2[0-3]))?$/);
+    if (!withHour) return NaN;
+
+    const year = Number(withHour[1]);
+    const month = Number(withHour[2]);
+    const day = Number(withHour[3]);
+    const hour = withHour[4] != null ? Number(withHour[4]) : 23;
+    const minute = withHour[4] != null ? 59 : 59;
+    const second = withHour[4] != null ? 59 : 59;
+    const millisecond = withHour[4] != null ? 999 : 999;
+
+    const epochMs = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
     if (!Number.isFinite(epochMs)) return NaN;
     return Math.floor(epochMs / 1000);
   }

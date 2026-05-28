@@ -75,10 +75,10 @@
     dateFromParts?: { day?: string; month?: string; year?: string; hour?: string };
     dateToParts?: { day?: string; month?: string; year?: string; hour?: string };
     dateFixed?: {
-      year?: { enabled?: boolean; comparator?: string; value?: string };
-      month?: { enabled?: boolean; comparator?: string; value?: string };
-      day?: { enabled?: boolean; comparator?: string; value?: string };
-      hour?: { enabled?: boolean; comparator?: string; value?: string };
+      year?: Array<{ comparator?: string; value?: string }> | { enabled?: boolean; comparator?: string; value?: string };
+      month?: Array<{ comparator?: string; value?: string }> | { enabled?: boolean; comparator?: string; value?: string };
+      day?: Array<{ comparator?: string; value?: string }> | { enabled?: boolean; comparator?: string; value?: string };
+      hour?: Array<{ comparator?: string; value?: string }> | { enabled?: boolean; comparator?: string; value?: string };
     };
     year?: string;
     month?: string;
@@ -182,6 +182,9 @@
     day: 'd',
     hour: 'h',
     hour_local: 'hl',
+    epoch: 'epoch',
+    epoch_from: 'ef',
+    epoch_to: 'et',
     timezone: 'tz',
     location_country: 'country',
     location: 'location',
@@ -189,8 +192,8 @@
     heart_rate_bpm: 'hr'
   };
 
-  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'heart_rate_bpm']);
-  const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'timezone']);
+  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
+  const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
     date: 'Date',
@@ -199,6 +202,9 @@
     day: 'Day',
     hour: 'Hour',
     hour_local: 'Hour (local)',
+    epoch: 'Epoch',
+    epoch_from: 'Epoch',
+    epoch_to: 'Epoch',
     timezone: 'Timezone',
     location_country: 'Country',
     location: 'Location',
@@ -219,6 +225,11 @@
       hour: 'hour',
       hl: 'hour_local',
       hour_local: 'hour_local',
+      epoch: 'epoch',
+      epoch_from: 'epoch_from',
+      ef: 'epoch_from',
+      epoch_to: 'epoch_to',
+      et: 'epoch_to',
       tz: 'timezone',
       timezone: 'timezone',
       country: 'location_country',
@@ -1194,7 +1205,7 @@
       isOpen: true,
       title: 'Filter by Date & Time',
       icon: 'calendar',
-      description: 'Use one row for From and one for To. Fill only the parts you need.',
+      description: 'Use From/To for exact range and optionally add independent Year/Month/Day/Hour constraints.',
       targetIndex: index,
       filterType: 'metadataDate',
       fields: [
@@ -1203,28 +1214,26 @@
           label: 'Pinned constraints',
           type: 'dateFixes',
           value: prefill.dateFixed || {
-            year: { enabled: false, comparator: 'eq', value: '' },
-            month: { enabled: false, comparator: 'eq', value: '' },
-            day: { enabled: false, comparator: 'eq', value: '' },
-            hour: { enabled: false, comparator: 'eq', value: '' }
+            year: [],
+            month: [],
+            day: [],
+            hour: []
           },
-          visibleWhen: () => false
+          hint: 'These constraints are independent from From/To and can be used together.'
         },
         {
           name: 'dateFromParts',
           label: 'From',
           type: 'dateParts',
           value: prefill.dateFromParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Order: day, month, year, hour. Use Tab/arrows to move. Double-click a cell to pin it as fixed.',
-          pinTarget: 'dateFixed',
-          pinHint: 'Pinned fields are fixed constraints and are not repeated in the range.'
+          hint: 'Epoch range start (requires day, month, year; hour optional). Use Tab/arrows to move.'
         },
         {
           name: 'dateToParts',
           label: 'To (optional)',
           type: 'dateParts',
           value: prefill.dateToParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Leave empty to use only From with the comparator below.'
+          hint: 'Epoch range end (requires day, month, year; hour optional). Leave empty to use only From with the comparator below.'
         },
         {
           name: 'comparator',
@@ -1372,20 +1381,36 @@
   }
 
   function normalizeMetadataTokens(tokens: string[]) {
-    const byField = new Map<string, string>();
+    const out: string[] = [];
+    const indexByField = new Map<string, number>();
+    const seenDateTokens = new Set<string>();
+
     (Array.isArray(tokens) ? tokens : []).forEach((token) => {
       const raw = String(token || '').trim();
       if (!raw) return;
       const field = getFieldFromMetadataToken(raw);
       if (!field) return;
-      const valuePart = getMetadataTokenValuePart(raw);
-      const comparatorMatch = String(valuePart || '').match(/^(>=|<=|!=|>|<|=|~)/);
-      const comparatorKey = comparatorMatch ? comparatorMatch[1] : '=';
-      // Keep both date bounds for same field (e.g. year:>=2022 and year:<=2023).
-      const dedupeKey = DATE_METADATA_FIELDS.has(field) ? `${field}__${comparatorKey}` : field;
-      byField.set(dedupeKey, raw);
+
+      // Temporal filters can appear multiple times for the same field/comparator
+      // (e.g. month:>1 month:<11 month:!=8). Keep all, only skip exact duplicates.
+      if (DATE_METADATA_FIELDS.has(field)) {
+        if (seenDateTokens.has(raw)) return;
+        seenDateTokens.add(raw);
+        out.push(raw);
+        return;
+      }
+
+      const existingIndex = indexByField.get(field);
+      if (existingIndex === undefined) {
+        indexByField.set(field, out.length);
+        out.push(raw);
+        return;
+      }
+
+      out[existingIndex] = raw;
     });
-    return Array.from(byField.values());
+
+    return out;
   }
 
   function parseMetadataTokensFromText(text: string, options?: { extractTrailingToken?: boolean }) {
@@ -1475,6 +1500,30 @@
     return raw;
   }
 
+  function formatEpochBadgeValue(field: string, rawValue: string) {
+    const normalizedField = String(field || '').trim().toLowerCase();
+    if (!['epoch', 'epoch_from', 'epoch_to'].includes(normalizedField)) {
+      return rawValue;
+    }
+
+    const parsed = parseComparatorValue(rawValue, 'eq');
+    const comparator = String(parsed.comparator || 'eq').trim().toLowerCase();
+    const numeric = Number(String(parsed.value || '').trim());
+    if (!Number.isFinite(numeric)) return rawValue;
+
+    // Backward compatible: accept both seconds and legacy milliseconds.
+    const epochSeconds = Math.abs(numeric) > 1e11 ? Math.floor(numeric / 1000) : Math.floor(numeric);
+    const date = new Date(epochSeconds * 1000);
+    if (Number.isNaN(date.getTime())) return rawValue;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatted = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`;
+
+    const symbol = toComparatorSymbol(comparator, 'eq');
+    const prefix = comparator === 'eq' ? '' : `${symbol} `;
+    return `${prefix}${formatted}`;
+  }
+
   function getMetadataChipsForTokens(tokens: string[]): MetadataChip[] {
     const source = Array.isArray(tokens) ? tokens.join(' ') : '';
     const tokenRegex = /(?:^|\s)([a-z_]+):("(?:\\.|[^"])*"|\S+)/gi;
@@ -1488,7 +1537,7 @@
       if (!field) continue;
 
       const token = `${key}:${rawValue}`;
-      const value = unquoteMetadataValue(rawValue);
+      const value = formatEpochBadgeValue(field, unquoteMetadataValue(rawValue));
       chips.push({
         token,
         field,
@@ -1767,51 +1816,39 @@
       return normalized == null ? '' : String(normalized).padStart(2, '0');
     };
 
-    const emptyDateFixed = {
-      year: { enabled: false, comparator: 'eq', value: '' },
-      month: { enabled: false, comparator: 'eq', value: '' },
-      day: { enabled: false, comparator: 'eq', value: '' },
-      hour: { enabled: false, comparator: 'eq', value: '' }
-    };
+    const getFixedValuesForField = (field: string) => {
+      return snapshot
+        .filter((entry) => {
+          const mapped = getFieldFromMetadataToken(entry);
+          if (field === 'hour') return mapped === 'hour' || mapped === 'hour_local';
+          return mapped === field;
+        })
+        .map((token) => {
+          const parsed = parseComparatorValue(unquoteMetadataValue(getMetadataTokenValuePart(token)), 'eq');
+          const comparator = String(parsed.comparator || 'eq').toLowerCase();
+          if (!['eq', 'ne', 'lt', 'gt', 'gte', 'lte'].includes(comparator)) return null;
 
-    const getFixedValueForField = (field: string) => {
-      const token = snapshot.find((entry) => {
-        const mapped = getFieldFromMetadataToken(entry);
-        if (field === 'hour') return mapped === 'hour' || mapped === 'hour_local';
-        return mapped === field;
-      });
-      if (!token) return null;
+          let normalized: number | null = null;
+          if (field === 'year') normalized = normalizeOptionalYear(parsed.value);
+          else if (field === 'month') normalized = normalizeOptionalNumber(parsed.value, 1, 12);
+          else if (field === 'day') normalized = normalizeOptionalNumber(parsed.value, 1, 31);
+          else if (field === 'hour') normalized = normalizeOptionalNumber(parsed.value, 0, 23);
 
-      const parsed = parseComparatorValue(unquoteMetadataValue(getMetadataTokenValuePart(token)), 'eq');
-      const comparator = String(parsed.comparator || 'eq').toLowerCase();
-      if (!['eq', 'ne', 'lt', 'gt'].includes(comparator)) return null;
-
-      let normalized: number | null = null;
-      if (field === 'year') normalized = normalizeOptionalYear(parsed.value);
-      else if (field === 'month') normalized = normalizeOptionalNumber(parsed.value, 1, 12);
-      else if (field === 'day') normalized = normalizeOptionalNumber(parsed.value, 1, 31);
-      else if (field === 'hour') normalized = normalizeOptionalNumber(parsed.value, 0, 23);
-
-      if (normalized === null) return null;
-      return { enabled: true, comparator, value: String(normalized) };
+          if (normalized === null) return null;
+          if (field === 'month') return { comparator, value: padPart(normalized, 'month') };
+          if (field === 'day') return { comparator, value: padPart(normalized, 'day') };
+          if (field === 'hour') return { comparator, value: padPart(normalized, 'hour') };
+          return { comparator, value: String(normalized) };
+        })
+        .filter(Boolean);
     };
 
     const dateFixed = {
-      year: getFixedValueForField('year') || emptyDateFixed.year,
-      month: getFixedValueForField('month') || emptyDateFixed.month,
-      day: getFixedValueForField('day') || emptyDateFixed.day,
-      hour: getFixedValueForField('hour') || emptyDateFixed.hour
+      year: getFixedValuesForField('year'),
+      month: getFixedValuesForField('month'),
+      day: getFixedValuesForField('day'),
+      hour: getFixedValuesForField('hour')
     };
-
-    if (dateFixed.month?.enabled) {
-      dateFixed.month.value = padPart(normalizeOptionalNumber(dateFixed.month.value, 1, 12), 'month');
-    }
-    if (dateFixed.day?.enabled) {
-      dateFixed.day.value = padPart(normalizeOptionalNumber(dateFixed.day.value, 1, 31), 'day');
-    }
-    if (dateFixed.hour?.enabled) {
-      dateFixed.hour.value = padPart(normalizeOptionalNumber(dateFixed.hour.value, 0, 23), 'hour');
-    }
 
     const parseComparator = (raw: string) => {
       const source = String(raw || '').trim();
@@ -1830,6 +1867,60 @@
       }
       return { comparator: 'eq', value: source };
     };
+
+    const epochToParts = (epochValue: string) => {
+      const parsedEpoch = Number(String(epochValue || '').trim());
+      if (!Number.isFinite(parsedEpoch)) return null;
+      const asMs = Math.abs(parsedEpoch) > 1e11 ? parsedEpoch : parsedEpoch * 1000;
+      const date = new Date(asMs);
+      if (Number.isNaN(date.getTime())) return null;
+      return {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        day: date.getUTCDate(),
+        hour: date.getUTCHours()
+      };
+    };
+
+    const explicitEpochFromToken = snapshot.find((token) => getFieldFromMetadataToken(token) === 'epoch_from');
+    const explicitEpochToToken = snapshot.find((token) => getFieldFromMetadataToken(token) === 'epoch_to');
+    if (explicitEpochFromToken || explicitEpochToToken) {
+      const fromParsed = explicitEpochFromToken
+        ? parseComparator(unquoteMetadataValue(getMetadataTokenValuePart(explicitEpochFromToken)))
+        : null;
+      const toParsed = explicitEpochToToken
+        ? parseComparator(unquoteMetadataValue(getMetadataTokenValuePart(explicitEpochToToken)))
+        : null;
+      const fromParts = fromParsed ? epochToParts(fromParsed.value) : null;
+      const toParts = toParsed ? epochToParts(toParsed.value) : null;
+
+      const comparator = (!toParts && fromParsed?.comparator)
+        ? String(fromParsed.comparator || 'gte').toLowerCase()
+        : 'gte';
+
+      return {
+        dateFrom: '',
+        dateTo: '',
+        comparator,
+        dateFixed,
+        dateFromParts: {
+          day: padPart(fromParts?.day ?? null, 'day'),
+          month: padPart(fromParts?.month ?? null, 'month'),
+          year: fromParts?.year != null ? String(fromParts.year) : '',
+          hour: padPart(fromParts?.hour ?? null, 'hour')
+        },
+        dateToParts: {
+          day: padPart(toParts?.day ?? null, 'day'),
+          month: padPart(toParts?.month ?? null, 'month'),
+          year: toParts?.year != null ? String(toParts.year) : '',
+          hour: padPart(toParts?.hour ?? null, 'hour')
+        },
+        year: fromParts?.year != null ? String(fromParts.year) : '',
+        month: padPart(fromParts?.month ?? null, 'month'),
+        day: padPart(fromParts?.day ?? null, 'day'),
+        hour: padPart(fromParts?.hour ?? null, 'hour')
+      };
+    }
 
     const explicitDateToken = snapshot.find((token) => getFieldFromMetadataToken(token) === 'date');
     if (explicitDateToken) {
@@ -1865,93 +1956,17 @@
       };
     }
 
-    type DateParts = { year: number | null; month: number | null; day: number | null; hour: number | null };
-    const emptyParts = (): DateParts => ({ year: null, month: null, day: null, hour: null });
-    const partsByComparator: Record<string, DateParts> = {
-      gte: emptyParts(),
-      gt: emptyParts(),
-      lte: emptyParts(),
-      lt: emptyParts(),
-      eq: emptyParts(),
-      ne: emptyParts()
-    };
-    snapshot.forEach((token) => {
-      const field = getFieldFromMetadataToken(token);
-      if (!DATE_METADATA_FIELDS.has(field)) return;
-
-      const rawValue = unquoteMetadataValue(getMetadataTokenValuePart(token));
-      const parsedComparator = parseComparator(rawValue);
-      const normalizedValue = parsedComparator.value;
-      const normalizedComparator = String(parsedComparator.comparator || 'eq').toLowerCase();
-      const target = partsByComparator[normalizedComparator] || partsByComparator.eq;
-
-      if (field === 'year') {
-        const parsed = normalizeOptionalYear(normalizedValue);
-        if (parsed !== null) target.year = parsed;
-        return;
-      }
-
-      if (field === 'month') {
-        const parsed = normalizeOptionalNumber(normalizedValue, 1, 12);
-        if (parsed !== null) target.month = parsed;
-        return;
-      }
-
-      if (field === 'day') {
-        const parsed = normalizeOptionalNumber(normalizedValue, 1, 31);
-        if (parsed !== null) target.day = parsed;
-        return;
-      }
-
-      if (field === 'hour' || field === 'hour_local') {
-        const parsed = normalizeOptionalNumber(normalizedValue, 0, 23);
-        if (parsed !== null) target.hour = parsed;
-        return;
-      }
-    });
-
-    const dateFromEgt = buildDateExprFromParts(partsByComparator.gte);
-    const dateFromGt = buildDateExprFromParts(partsByComparator.gt);
-    const dateToElt = buildDateExprFromParts(partsByComparator.lte);
-    const dateToLt = buildDateExprFromParts(partsByComparator.lt);
-    const dateEq = buildDateExprFromParts(partsByComparator.eq);
-    const dateNe = buildDateExprFromParts(partsByComparator.ne);
-
-    const dateFrom = dateFromEgt || dateFromGt;
-    const dateTo = dateToElt || dateToLt;
-
-    let comparator = 'eq';
-    if (dateFrom && !dateTo) {
-      comparator = dateFromEgt ? 'gte' : 'gt';
-    } else if (!dateFrom && !dateTo && dateNe) {
-      comparator = 'ne';
-    }
-
-    const singleExpr = dateFrom || (!dateTo ? (dateEq || dateNe) : '');
-    const parts = parseDateExpression(singleExpr);
-    const toParts = parseDateExpression(dateTo);
-
     return {
-      dateFrom: singleExpr,
-      dateTo,
-      comparator,
+      dateFrom: '',
+      dateTo: '',
+      comparator: 'eq',
       dateFixed,
-      dateFromParts: {
-        day: padPart(parts.day, 'day'),
-        month: padPart(parts.month, 'month'),
-        year: parts.year != null ? String(parts.year) : '',
-        hour: padPart(parts.hour, 'hour')
-      },
-      dateToParts: {
-        day: padPart(toParts.day, 'day'),
-        month: padPart(toParts.month, 'month'),
-        year: toParts.year != null ? String(toParts.year) : '',
-        hour: padPart(toParts.hour, 'hour')
-      },
-      year: parts.year != null ? String(parts.year) : '',
-      month: padPart(parts.month, 'month'),
-      day: padPart(parts.day, 'day'),
-      hour: padPart(parts.hour, 'hour')
+      dateFromParts: { day: '', month: '', year: '', hour: '' },
+      dateToParts: { day: '', month: '', year: '', hour: '' },
+      year: '',
+      month: '',
+      day: '',
+      hour: ''
     };
   }
 
@@ -1959,60 +1974,68 @@
     const incomingTokens = normalizeMetadataTokens(tokens);
     if (incomingTokens.length === 0) return;
 
-    upsertMetadataTokens(index, incomingTokens, [
-      'date',
-      'y', 'year',
-      'm', 'month',
-      'd', 'day',
-      'h', 'hour',
-      'hl', 'hour_local',
-      'tz', 'timezone'
-    ]);
+    const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    setMetadataTokens(index, [...existing, ...incomingTokens]);
   }
 
   function buildDateFilterTokens(data: ModalSubmitData) {
     const comparator = String(data.comparator || 'eq').trim().toLowerCase();
 
-    const readFixedPart = (parts: unknown, key: 'year' | 'month' | 'day' | 'hour') => {
-      if (!parts || typeof parts !== 'object') return { enabled: false, comparator: 'eq', value: '' };
+    const readFixedParts = (parts: unknown, key: 'year' | 'month' | 'day' | 'hour') => {
+      if (!parts || typeof parts !== 'object') return [];
       const raw = (parts as Record<string, unknown>)[key];
-      if (!raw || typeof raw !== 'object') return { enabled: false, comparator: 'eq', value: '' };
-      return {
-        enabled: !!(raw as Record<string, unknown>).enabled,
-        comparator: String((raw as Record<string, unknown>).comparator || 'eq').trim().toLowerCase() || 'eq',
-        value: String((raw as Record<string, unknown>).value || '').trim()
-      };
+
+      if (Array.isArray(raw)) {
+        return raw.map((entry) => ({
+          comparator: String((entry as Record<string, unknown>)?.comparator || 'eq').trim().toLowerCase() || 'eq',
+          value: String((entry as Record<string, unknown>)?.value || '').trim()
+        }));
+      }
+
+      // Backward compatibility with old single-entry shape.
+      if (raw && typeof raw === 'object' && !!(raw as Record<string, unknown>).enabled) {
+        return [{
+          comparator: String((raw as Record<string, unknown>).comparator || 'eq').trim().toLowerCase() || 'eq',
+          value: String((raw as Record<string, unknown>).value || '').trim()
+        }];
+      }
+
+      return [];
     };
 
     const buildFixedTokens = () => {
       const fixed = {
-        year: readFixedPart(data.dateFixed, 'year'),
-        month: readFixedPart(data.dateFixed, 'month'),
-        day: readFixedPart(data.dateFixed, 'day'),
-        hour: readFixedPart(data.dateFixed, 'hour')
+        year: readFixedParts(data.dateFixed, 'year'),
+        month: readFixedParts(data.dateFixed, 'month'),
+        day: readFixedParts(data.dateFixed, 'day'),
+        hour: readFixedParts(data.dateFixed, 'hour')
       };
 
       const out: string[] = [];
-      const enabledMap = { year: false, month: false, day: false, hour: false };
-      const append = (field: 'year' | 'month' | 'day' | 'hour', normalized: number | null) => {
-        if (!fixed[field].enabled || normalized === null) return;
-        const cmp = ['eq', 'ne', 'gte', 'lte', 'gt', 'lt'].includes(fixed[field].comparator)
-          ? fixed[field].comparator
-          : 'eq';
-        const symbol = toComparatorSymbol(cmp, 'eq');
-        const prefix = cmp === 'eq' ? '' : symbol;
-        out.push(`${field}:${prefix}${quoteFilterTokenValue(normalized)}`);
-        enabledMap[field] = true;
+      const append = (field: 'year' | 'month' | 'day' | 'hour', entries: Array<{ comparator: string; value: string }>) => {
+        entries.forEach((entry) => {
+          const cmp = ['eq', 'ne', 'gte', 'lte', 'gt', 'lt'].includes(entry.comparator)
+            ? entry.comparator
+            : 'eq';
+
+          let normalized: number | null = null;
+          if (field === 'year') normalized = normalizeOptionalYear(entry.value);
+          else if (field === 'month') normalized = normalizeOptionalNumber(entry.value, 1, 12);
+          else if (field === 'day') normalized = normalizeOptionalNumber(entry.value, 1, 31);
+          else if (field === 'hour') normalized = normalizeOptionalNumber(entry.value, 0, 23);
+          if (normalized === null) return;
+
+          const symbol = toComparatorSymbol(cmp, 'eq');
+          const prefix = cmp === 'eq' ? '' : symbol;
+          out.push(`${field}:${prefix}${quoteFilterTokenValue(normalized)}`);
+        });
       };
 
-      append('year', normalizeOptionalYear(fixed.year.value));
-      append('month', normalizeOptionalNumber(fixed.month.value, 1, 12));
-      append('day', normalizeOptionalNumber(fixed.day.value, 1, 31));
-      append('hour', normalizeOptionalNumber(fixed.hour.value, 0, 23));
-      return {
-        tokens: normalizeMetadataTokens(out),
-        enabledMap
-      };
+      append('year', fixed.year);
+      append('month', fixed.month);
+      append('day', fixed.day);
+      append('hour', fixed.hour);
+      return normalizeMetadataTokens(out);
     };
 
     const normalizeDateParts = (parts: unknown) => {
@@ -2025,51 +2048,118 @@
       };
     };
 
+    const toEpochFromParts = (
+      parts: { day: string; month: string; year: string; hour: string },
+      boundary: 'start' | 'end'
+    ) => {
+      const hasYear = parts.year.length > 0;
+      const hasMonth = parts.month.length > 0;
+      const hasDay = parts.day.length > 0;
+      const hasHour = parts.hour.length > 0;
+
+      const yearValue = normalizeOptionalYear(parts.year);
+      const monthValue = normalizeOptionalNumber(parts.month, 1, 12);
+      const dayValue = normalizeOptionalNumber(parts.day, 1, 31);
+      const hourValue = normalizeOptionalNumber(parts.hour, 0, 23);
+
+      // Epoch partials are allowed, but must be structurally coherent.
+      if (!hasYear || yearValue === null) return null;
+      if (hasMonth && monthValue === null) return null;
+      if (hasDay && dayValue === null) return null;
+      if (hasHour && hourValue === null) return null;
+      if (hasDay && !hasMonth) return null;
+
+      const month = monthValue ?? (boundary === 'start' ? 1 : 12);
+      const daysInMonth = new Date(Date.UTC(yearValue, month, 0)).getUTCDate();
+      if (hasDay && dayValue !== null && dayValue > daysInMonth) return null;
+      const day = dayValue ?? (boundary === 'start' ? 1 : daysInMonth);
+      const hour = hourValue ?? (boundary === 'start' ? 0 : 23);
+      const minute = boundary === 'start' ? 0 : 59;
+      const second = boundary === 'start' ? 0 : 59;
+      const millisecond = boundary === 'start' ? 0 : 999;
+
+      const epochMs = Date.UTC(yearValue, month - 1, day, hour, minute, second, millisecond);
+      if (!Number.isFinite(epochMs)) return null;
+      return Math.floor(epochMs / 1000);
+    };
+
     const fromParts = normalizeDateParts(data.dateFromParts);
     const toParts = normalizeDateParts(data.dateToParts);
 
     const hasAnyPart = (parts: { day: string; month: string; year: string; hour: string }) =>
       !!(parts.day || parts.month || parts.year || parts.hour);
 
-    const buildTokensForParts = (
-      parts: { day: string; month: string; year: string; hour: string },
-      cmp: string,
-      skip: { year: boolean; month: boolean; day: boolean; hour: boolean }
-    ) => {
-      const yearValue = normalizeOptionalYear(parts.year);
-      const monthValue = normalizeOptionalNumber(parts.month, 1, 12);
-      const dayValue = normalizeOptionalNumber(parts.day, 1, 31);
-      const hourValue = normalizeOptionalNumber(parts.hour, 0, 23);
-
-      if (yearValue === null && monthValue === null && dayValue === null && hourValue === null) return [];
-
-      const symbol = toComparatorSymbol(cmp, 'eq');
-      const prefix = cmp === 'eq' ? '' : symbol;
-      const tokens: string[] = [];
-
-      if (!skip.year && yearValue !== null) tokens.push(`year:${prefix}${quoteFilterTokenValue(yearValue)}`);
-      if (!skip.month && monthValue !== null) tokens.push(`month:${prefix}${quoteFilterTokenValue(monthValue)}`);
-      if (!skip.day && dayValue !== null) tokens.push(`day:${prefix}${quoteFilterTokenValue(dayValue)}`);
-      if (!skip.hour && hourValue !== null) tokens.push(`hour:${prefix}${quoteFilterTokenValue(hourValue)}`);
-
-      return normalizeMetadataTokens(tokens);
-    };
-
     const hasFrom = hasAnyPart(fromParts);
     const hasTo = hasAnyPart(toParts);
-    const fixedResult = buildFixedTokens();
-    const fixedTokens = fixedResult.tokens;
-    const skip = fixedResult.enabledMap;
+    const fixedTokens = buildFixedTokens();
 
     if (!hasFrom && !hasTo) return fixedTokens;
 
     if (hasFrom && !hasTo) {
-      return normalizeMetadataTokens([...fixedTokens, ...buildTokensForParts(fromParts, comparator, skip)]);
+      const fromEpochStart = toEpochFromParts(fromParts, 'start');
+      const fromEpochEnd = toEpochFromParts(fromParts, 'end');
+
+      if (fromEpochStart !== null && fromEpochEnd !== null) {
+        if (comparator === 'ne') {
+          // Unsupported as pure epoch range token pair.
+          return normalizeMetadataTokens([...fixedTokens]);
+        }
+
+        const normalizedComparator = comparator === 'eq' ? 'gte' : comparator;
+        const symbol = toComparatorSymbol(normalizedComparator, 'gte');
+        const prefix = normalizedComparator === 'eq' ? '' : symbol;
+        const key = (comparator === 'lt' || comparator === 'lte') ? 'epoch_to' : 'epoch_from';
+        const value = key === 'epoch_to' ? fromEpochEnd : fromEpochStart;
+        return normalizeMetadataTokens([
+          ...fixedTokens,
+          `${key}:${prefix}${quoteFilterTokenValue(value)}`
+        ]);
+      }
+
+      return normalizeMetadataTokens([...fixedTokens]);
     }
 
-    const fromTokens = hasFrom ? buildTokensForParts(fromParts, 'gte', skip) : [];
-    const toTokens = hasTo ? buildTokensForParts(toParts, 'lte', skip) : [];
+    const fromEpoch = hasFrom ? toEpochFromParts(fromParts, 'start') : null;
+    const toEpoch = hasTo ? toEpochFromParts(toParts, 'end') : null;
+    const fromTokens = hasFrom
+      ? (fromEpoch !== null
+        ? [`epoch_from:${quoteFilterTokenValue(fromEpoch)}`]
+        : [])
+      : [];
+    const toTokens = hasTo
+      ? (toEpoch !== null
+        ? [`epoch_to:${quoteFilterTokenValue(toEpoch)}`]
+        : [])
+      : [];
     return normalizeMetadataTokens([...fixedTokens, ...fromTokens, ...toTokens]);
+  }
+
+  function hasInvalidEpochParts(parts: { day?: string; month?: string; year?: string; hour?: string } | undefined) {
+    const safe = parts || {};
+    const day = String(safe.day ?? '').trim();
+    const month = String(safe.month ?? '').trim();
+    const year = String(safe.year ?? '').trim();
+    const hour = String(safe.hour ?? '').trim();
+    const hasAny = !!(day || month || year || hour);
+    if (!hasAny) return false;
+
+    const yearValue = normalizeOptionalYear(year);
+    const monthValue = normalizeOptionalNumber(month, 1, 12);
+    const dayValue = normalizeOptionalNumber(day, 1, 31);
+    const hourValue = normalizeOptionalNumber(hour, 0, 23);
+
+    if (!year || yearValue === null) return true;
+    if (month && monthValue === null) return true;
+    if (day && dayValue === null) return true;
+    if (hour && hourValue === null) return true;
+    if (day && !month) return true;
+
+    if (monthValue !== null && dayValue !== null) {
+      const daysInMonth = new Date(Date.UTC(yearValue, monthValue, 0)).getUTCDate();
+      if (dayValue > daysInMonth) return true;
+    }
+
+    return false;
   }
 
   function quoteFilterTokenValue(value: unknown) {
@@ -2104,6 +2194,11 @@
         );
       }
     } else if (filterType === 'metadataDate') {
+      if (hasInvalidEpochParts(data.dateFromParts) || hasInvalidEpochParts(data.dateToParts)) {
+        toasts.error('From/To use epoch filters: provide at least year (month/day/hour optional; day requires month).');
+        return;
+      }
+
       const tokens = buildDateFilterTokens(data);
       const readPart = (parts: unknown, key: 'day' | 'month' | 'year' | 'hour') => {
         if (!parts || typeof parts !== 'object') return '';
@@ -2112,6 +2207,11 @@
       const readFixedPart = (parts: unknown, key: 'year' | 'month' | 'day' | 'hour') => {
         if (!parts || typeof parts !== 'object') return '';
         const raw = (parts as Record<string, unknown>)[key];
+        if (Array.isArray(raw)) {
+          return raw
+            .map((entry) => String((entry as Record<string, unknown>)?.value ?? '').trim())
+            .find(Boolean) || '';
+        }
         if (!raw || typeof raw !== 'object') return '';
         const enabled = !!(raw as Record<string, unknown>).enabled;
         if (!enabled) return '';
