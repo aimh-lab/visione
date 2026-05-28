@@ -1958,7 +1958,7 @@ class AsyncPGVectorStore(VectorStore):
             param_name = f"{field}_fts_{suffix_id}"
             lang = self.fts_language
             return (
-                f"(to_tsvector('{lang}', {field}) @@ websearch_to_tsquery('{lang}', :{param_name}))",
+                f"(to_tsvector('{lang}', {field}) @@ to_tsquery('{lang}', replace(trim(:{param_name}), ' ', ':* & ') || ':*'))",
                 {f"{param_name}": filter_value},
             )
         elif operator == "$exists":
