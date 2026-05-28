@@ -22,6 +22,13 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
     return Number.isFinite(parsed) ? parsed : null;
   };
 
+  const toIntOrNull = (value) => {
+    if (value == null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const getEpochSortMs = (item) => {
     if (!item || typeof item !== 'object') return 0;
 
@@ -56,8 +63,24 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
     });
 
   const buildDayGroupKey = (item) => {
+    const metadata = item?.raw?.metadata && typeof item.raw.metadata === 'object' ? item.raw.metadata : {};
+    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+
+    if (
+      Number.isFinite(year) && year >= 0
+      && Number.isFinite(month) && month >= 1 && month <= 12
+      && Number.isFinite(day) && day >= 1 && day <= 31
+    ) {
+      return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
     const epochMs = getEpochSortMs(item);
-    if (!epochMs) return 'unknown-date';
+    if (!epochMs) {
+      const uniqueFallback = String(item?.imgId ?? item?.index ?? Math.random()).trim() || 'na';
+      return `unknown-date-${uniqueFallback}`;
+    }
 
     const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
     const date = new Date(epochMs);
@@ -74,12 +97,17 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
 
   const groupByKey = (arr, keyFn, fallbackPrefix = 'group') => {
     const groups = new Map();
-    for (const img of arr) {
-      const key = String(keyFn(img) ?? '').trim() || `${fallbackPrefix}-${img?.index}`;
+    for (let index = 0; index < arr.length; index += 1) {
+      const img = arr[index];
+      const key = String(keyFn(img, index) ?? '').trim() || `${fallbackPrefix}-${img?.index ?? index}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(img);
     }
-    return Array.from(groups.values());
+
+    return Array.from(groups.entries()).map(([key, row]) => {
+      row.__visioneGroupKey = key;
+      return row;
+    });
   };
 
   const groupByVideo = (arr) =>
@@ -92,6 +120,7 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
 
       return parts.map((part) => {
         part.__visioneChunkBoundary = true;
+        part.__visioneGroupKey = row.__visioneGroupKey;
         return part;
       });
     });
@@ -117,6 +146,13 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
         : null);
 
   const dateGroupedRows = mode === 'bydate' ? groupByDateDay(items) : null;
+  const dateCappedRows = dateGroupedRows
+    ? dateGroupedRows.map((row) => {
+        const capped = row.slice(0, perRow);
+        capped.__visioneGroupKey = row.__visioneGroupKey;
+        return capped;
+      })
+    : null;
 
   if (auto) {
     if (mode === "byrank") return [items];
@@ -127,12 +163,12 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
     }
 
     if (mode === "bydate" && dateGroupedRows) {
-      return splitGroupedRows(dateGroupedRows);
+      return dateCappedRows || [];
     }
   }
 
   if (mode === "byrank") return chunk(items, perRow);
-  if (mode === "bydate" && dateGroupedRows) return splitGroupedRows(dateGroupedRows);
+  if (mode === "bydate" && dateGroupedRows) return dateCappedRows || [];
 
   // Grouped modes (video or metadata): respect per-group cap.
   if (groupedRows) return splitGroupedRows(groupedRows);

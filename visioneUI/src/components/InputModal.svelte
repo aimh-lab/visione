@@ -11,6 +11,9 @@
   export let cancelLabel = 'Cancel';
   export let submitOnEnter = false;
   export let autoFocusFirstTextInput = false;
+  export let presentation = 'modal'; // modal | dropdown
+  /** @type {{ left: number; right: number; top: number; bottom: number; width: number; height: number } | null} */
+  export let anchorRect = null;
   
   const dispatch = createEventDispatcher();
   
@@ -18,13 +21,22 @@
   let showAdvancedFields = false;
   let contentEl;
   let wasOpen = false;
+  let dropdownStyle = '';
 
-  const DATE_PART_KEYS = ['day', 'month', 'year', 'hour'];
+  const DROPDOWN_WIDTH = 360;
+  const DROPDOWN_MARGIN = 10;
+  const DROPDOWN_MIN_HEIGHT = 220;
+  const MOBILE_BREAKPOINT = 768;
+
+  const DATE_PART_KEYS = ['year', 'month', 'day', 'hour'];
   const DATE_PART_MAX = { day: 2, month: 2, year: 4, hour: 2 };
-  const DATE_PART_LABEL = { day: 'DD', month: 'MM', year: 'YYYY', hour: 'HH' };
+  const DATE_PART_LABEL = { year: 'YYYY', month: 'MM', day: 'DD', hour: 'HH' };
   const DATE_FIX_PARTS = ['year', 'month', 'day', 'hour'];
   const DATE_FIX_LABEL = { year: 'Year', month: 'Month', day: 'Day', hour: 'Hour' };
   const DATE_FIX_MAX = { year: 4, month: 2, day: 2, hour: 2 };
+  const YEAR_OPTIONS = [2019, 2020, 2021];
+  const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'));
+  const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
 
   function defaultDateFixes() {
     return {
@@ -78,9 +90,17 @@
     ? fields.some((field) => !!field?.advanced)
     : false;
 
+  $: isDateFilterLayout = Array.isArray(fields)
+    ? fields.some((field) => field?.type === 'dateParts' || field?.type === 'dateFixes')
+    : false;
+
+  $: isCompactDropdown = presentation === 'dropdown' && isDateFilterLayout;
+
   $: if (isOpen && !wasOpen && autoFocusFirstTextInput) {
     void focusFirstTextInput();
   }
+
+  $: dropdownStyle = computeDropdownStyle(anchorRect, isCompactDropdown);
 
   $: wasOpen = isOpen;
   
@@ -96,7 +116,13 @@
         const fixedRaw = pinTarget && acc[pinTarget] && typeof acc[pinTarget] === 'object'
           ? acc[pinTarget]
           : null;
-        acc[field.name] = mergePinnedIntoDateParts(raw, fixedRaw);
+        const merged = mergePinnedIntoDateParts(raw, fixedRaw);
+        const hasYear = String(merged.year || '').trim().length > 0;
+        const hasMonth = String(merged.month || '').trim().length > 0;
+        const hasDay = String(merged.day || '').trim().length > 0;
+        const hasHour = String(merged.hour || '').trim().length > 0;
+        const precision = hasHour ? 'hour' : hasDay ? 'day' : hasMonth ? 'month' : hasYear ? 'year' : 'year';
+        acc[field.name] = { ...merged, _precision: precision };
       } else if (field.type === 'dateFixes') {
         const base = defaultDateFixes();
         const raw = field.value && typeof field.value === 'object' ? field.value : {};
@@ -132,6 +158,256 @@
           hour: String(raw.hour || '')
         }
       : { day: '', month: '', year: '', hour: '' };
+  }
+
+  function getDayOptions(year, month) {
+    const y = Number(year);
+    const m = Number(month);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return [];
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return Array.from({ length: daysInMonth }, (_, index) => String(index + 1).padStart(2, '0'));
+  }
+
+  function updateDatePartsCascade(fieldName, part, value) {
+    const next = getDatePartsValue(fieldName);
+    next[part] = String(value || '');
+
+    if (part === 'year') {
+      if (!next.year) {
+        next.month = '';
+        next.day = '';
+        next.hour = '';
+      } else if (next.month) {
+        const dayOptions = getDayOptions(next.year, next.month);
+        if (next.day && !dayOptions.includes(next.day)) {
+          next.day = '';
+          next.hour = '';
+        }
+      }
+    }
+
+    if (part === 'month') {
+      if (!next.month) {
+        next.day = '';
+        next.hour = '';
+      } else {
+        const dayOptions = getDayOptions(next.year, next.month);
+        if (next.day && !dayOptions.includes(next.day)) {
+          next.day = '';
+          next.hour = '';
+        }
+      }
+    }
+
+    if (part === 'day' && !next.day) {
+      next.hour = '';
+    }
+
+    formValues = { ...formValues, [fieldName]: next };
+  }
+
+  function moveDatePartsMonth(fieldName, delta) {
+    const minYear = Math.min(...YEAR_OPTIONS);
+    const maxYear = Math.max(...YEAR_OPTIONS);
+    const current = getDatePartsValue(fieldName);
+    const year = Number(current.year || minYear);
+    const month = Number(current.month || 1);
+
+    const minIndex = minYear * 12;
+    const maxIndex = maxYear * 12 + 11;
+    const currentIndex = year * 12 + Math.max(0, month - 1);
+    const nextIndex = Math.max(minIndex, Math.min(maxIndex, currentIndex + Number(delta || 0)));
+
+    const nextYear = Math.floor(nextIndex / 12);
+    const nextMonth = (nextIndex % 12) + 1;
+
+    updateDatePartsCascade(fieldName, 'year', String(nextYear));
+    updateDatePartsCascade(fieldName, 'month', String(nextMonth).padStart(2, '0'));
+  }
+
+  function inferDatePartsPrecision(parts) {
+    const safe = parts && typeof parts === 'object' ? parts : {};
+    const hasYear = String(safe.year || '').trim().length > 0;
+    const hasMonth = String(safe.month || '').trim().length > 0;
+    const hasDay = String(safe.day || '').trim().length > 0;
+    const hasHour = String(safe.hour || '').trim().length > 0;
+
+    if (hasHour) return 'hour';
+    if (hasDay) return 'day';
+    if (hasMonth) return 'month';
+    if (hasYear) return 'year';
+    return 'year';
+  }
+
+  function getDatePartsPrecision(fieldName) {
+    const raw = formValues?.[fieldName];
+    const explicit = String(raw?._precision || '').trim().toLowerCase();
+    if (explicit === 'year' || explicit === 'month' || explicit === 'day' || explicit === 'hour') {
+      return explicit;
+    }
+    return inferDatePartsPrecision(getDatePartsValue(fieldName));
+  }
+
+  function applyDatePartsPrecision(parts, precision) {
+    const safe = {
+      day: String(parts?.day || ''),
+      month: String(parts?.month || ''),
+      year: String(parts?.year || ''),
+      hour: String(parts?.hour || '')
+    };
+
+    if (precision === 'year') return { ...safe, month: '', day: '', hour: '' };
+    if (precision === 'month') return { ...safe, day: '', hour: '' };
+    if (precision === 'day') return { ...safe, hour: '' };
+    return safe;
+  }
+
+  function setDatePartsPrecision(fieldName, precision) {
+    const normalized = ['year', 'month', 'day', 'hour'].includes(String(precision || '').toLowerCase())
+      ? String(precision).toLowerCase()
+      : 'year';
+
+    const current = getDatePartsValue(fieldName);
+    const next = applyDatePartsPrecision(current, normalized);
+    formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+  }
+
+  function pad2(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return raw.padStart(2, '0');
+  }
+
+  function formatDatePickerValue(parts, precision) {
+    const year = String(parts?.year || '').trim();
+    const month = pad2(parts?.month || '');
+    const day = pad2(parts?.day || '');
+    const hour = pad2(parts?.hour || '');
+
+    if (precision === 'year') return year;
+    if (precision === 'month') return year && month ? `${year}-${month}` : '';
+    if (precision === 'day') return year && month && day ? `${year}-${month}-${day}` : '';
+    return year && month && day && hour ? `${year}-${month}-${day}T${hour}:00` : '';
+  }
+
+  function updateDatePartsFromPicker(fieldName, precision, rawValue) {
+    const value = String(rawValue || '').trim();
+    const normalized = ['year', 'month', 'day', 'hour'].includes(String(precision || '').toLowerCase())
+      ? String(precision).toLowerCase()
+      : 'year';
+
+    let next = { day: '', month: '', year: '', hour: '' };
+
+    if (!value) {
+      formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+      return;
+    }
+
+    if (normalized === 'year') {
+      const match = value.match(/^(\d{4})$/);
+      if (match) next = { ...next, year: match[1] };
+      formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+      return;
+    }
+
+    if (normalized === 'month') {
+      const match = value.match(/^(\d{4})-(\d{2})$/);
+      if (match) next = { ...next, year: match[1], month: match[2] };
+      formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+      return;
+    }
+
+    if (normalized === 'day') {
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) next = { ...next, year: match[1], month: match[2], day: match[3] };
+      formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+      return;
+    }
+
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})(?::\d{2})?$/);
+    if (match) {
+      next = { ...next, year: match[1], month: match[2], day: match[3], hour: match[4] };
+    }
+    formValues = { ...formValues, [fieldName]: { ...next, _precision: normalized } };
+  }
+
+  function formatClassicDateInput(parts) {
+    const year = String(parts?.year || '').trim();
+    const month = String(parts?.month || '').trim();
+    const day = String(parts?.day || '').trim();
+    const hour = String(parts?.hour || '').trim();
+
+    if (!year) return '';
+    if (!month) return year;
+    if (!day) return `${year}/${month}`;
+    if (!hour) return `${year}/${month}/${day}`;
+    return `${year}/${month}/${day}:${hour}`;
+  }
+
+  function isValidMonth(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 1 && n <= 12;
+  }
+
+  function isValidDay(year, month, day) {
+    const y = Number(year);
+    const m = Number(month);
+    const d = Number(day);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
+    if (m < 1 || m > 12 || d < 1) return false;
+    const maxDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return d <= maxDay;
+  }
+
+  function isValidHour(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 && n <= 23;
+  }
+
+  function updateDatePartsFromClassicInput(fieldName, rawValue) {
+    const digits = String(rawValue || '').replace(/\D+/g, '').slice(0, 10);
+    if (!digits) {
+      formValues = { ...formValues, [fieldName]: { year: '', month: '', day: '', hour: '' } };
+      return;
+    }
+
+    const year = digits.slice(0, 4);
+    const monthRaw = digits.slice(4, 6);
+    const dayRaw = digits.slice(6, 8);
+    const hourRaw = digits.slice(8, 10);
+
+    let month = '';
+    if (monthRaw.length === 1) {
+      month = monthRaw;
+    } else if (monthRaw.length === 2 && isValidMonth(monthRaw)) {
+      month = monthRaw;
+    }
+
+    let day = '';
+    if (dayRaw.length === 1) {
+      day = dayRaw;
+    } else if (dayRaw.length === 2) {
+      if (year.length === 4 && month.length > 0 && isValidMonth(month) && isValidDay(year, month, dayRaw)) {
+        day = dayRaw;
+      }
+    }
+
+    let hour = '';
+    if (hourRaw.length === 1) {
+      hour = hourRaw;
+    } else if (hourRaw.length === 2 && isValidHour(hourRaw)) {
+      hour = hourRaw;
+    }
+
+    formValues = {
+      ...formValues,
+      [fieldName]: {
+        year,
+        month,
+        day,
+        hour
+      }
+    };
   }
 
   function updateDatePart(fieldName, part, value) {
@@ -276,6 +552,60 @@
       handleSubmit();
     }
   }
+
+  function computeDropdownStyle(rect, compactDate = false) {
+    if (presentation !== 'dropdown' || !rect || typeof window === 'undefined') {
+      return '';
+    }
+
+    const viewportW = window.innerWidth || 1024;
+    const viewportH = window.innerHeight || 768;
+    const isMobile = viewportW < MOBILE_BREAKPOINT;
+    const anchorGap = isMobile ? 4 : 8;
+    void compactDate;
+    const width = Math.min(DROPDOWN_WIDTH, viewportW - DROPDOWN_MARGIN * 2);
+
+    let left = Number(rect.left || 0);
+    if (left + width > viewportW - DROPDOWN_MARGIN) {
+      left = viewportW - DROPDOWN_MARGIN - width;
+    }
+    left = Math.max(DROPDOWN_MARGIN, left);
+
+    const spaceBelow = Math.max(0, viewportH - Number(rect.bottom || 0) - DROPDOWN_MARGIN - anchorGap);
+    const spaceAbove = Math.max(0, Number(rect.top || 0) - DROPDOWN_MARGIN - anchorGap);
+    const preferBelow = spaceBelow >= Math.max(DROPDOWN_MIN_HEIGHT, spaceAbove);
+    const side = preferBelow ? 'below' : 'above';
+
+    const available = side === 'below' ? spaceBelow : spaceAbove;
+    const maxHeight = Math.max(140, Math.min(720, available));
+
+    let top = Number(rect.bottom || 0) + anchorGap;
+    if (side === 'above') {
+      top = Number(rect.top || 0) - anchorGap - maxHeight;
+    }
+    top = Math.max(DROPDOWN_MARGIN, Math.min(top, viewportH - DROPDOWN_MARGIN - 120));
+
+    return `position: fixed; left: ${left}px; top: ${top}px; width: ${width}px; max-height: ${Math.floor(maxHeight)}px; overflow: auto;`;
+  }
+
+  function handleWindowMouseDown(event) {
+    if (!isOpen || presentation !== 'dropdown') return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    if (!contentEl?.contains(target)) {
+      close();
+    }
+  }
+
+  function handleViewportChange() {
+    if (!isOpen || presentation !== 'dropdown') return;
+    dropdownStyle = computeDropdownStyle(anchorRect, isCompactDropdown);
+  }
+
+  function maybeFocusTrap(node) {
+    if (presentation !== 'modal') return {};
+    return focusTrap(node);
+  }
   
   const iconMap = {
     calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -296,25 +626,37 @@
   };
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window
+  on:keydown={handleKeyDown}
+  on:mousedown={handleWindowMouseDown}
+  on:resize={handleViewportChange}
+  on:scroll={handleViewportChange}
+/>
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[var(--z-dialog-overlay)] flex items-center justify-center p-4">
+  <div
+    use:maybeFocusTrap
+    class={`fixed inset-0 z-[var(--z-dialog-overlay)] ${presentation === 'modal' ? 'flex items-center justify-center p-4' : 'pointer-events-none'}`}
+  >
     <!-- Backdrop -->
-    <button
-      type="button"
-      class="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      on:click={close}
-      aria-label="Close modal"
-    ></button>
+    {#if presentation === 'modal'}
+      <button
+        type="button"
+        class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        on:click={close}
+        aria-label="Close modal"
+      ></button>
+    {/if}
     
     <!-- Modal -->
     <div 
-      class="relative z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl w-full max-w-md border border-gray-700"
+      bind:this={contentEl}
+      style={presentation === 'dropdown' ? dropdownStyle : ''}
+      class={`z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl border border-gray-700 pointer-events-auto ${presentation === 'modal' ? 'relative w-full max-w-md' : ''}`}
     >
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900">
+      <div class={`flex items-center justify-between border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900 ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
         <div class="flex items-center space-x-3">
           <!-- Icon -->
           <div class="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center">
@@ -343,12 +685,12 @@
       </div>
       
       <!-- Content -->
-      <div bind:this={contentEl} class="px-6 py-5 space-y-4">
+      <div class={isCompactDropdown ? 'px-4 py-3.5 space-y-2.5' : 'px-6 py-5 space-y-4'}>
         {#each visibleFields as field, fieldIndex}
           {@const fieldId = `input-modal-${field.name}`}
           {@const shouldAutofocus = autoFocusFirstTextInput && fieldIndex === 0 && isTextLikeField(field)}
           <div>
-            <label for={fieldId} class="block text-sm font-medium text-gray-300 mb-2">
+            <label for={fieldId} class={`block text-sm font-medium text-gray-300 ${isCompactDropdown ? 'mb-1' : 'mb-2'}`}>
               {field.label}
               {#if field.required}
                 <span class="text-red-400">*</span>
@@ -387,19 +729,23 @@
             {:else if field.type === 'preview'}
               <div
                 id={fieldId}
-                class="w-full px-3 py-2 bg-gray-800/70 border border-gray-700 rounded-lg text-emerald-200 font-mono text-sm break-words"
+                class={isCompactDropdown
+                  ? 'w-full min-h-[84px] max-h-44 overflow-auto px-3 py-2.5 bg-gray-800/70 border border-gray-700 rounded-lg text-emerald-200 font-mono text-[12px] leading-5 whitespace-pre-wrap break-all'
+                  : 'w-full min-h-[96px] max-h-56 overflow-auto px-3 py-2.5 bg-gray-800/70 border border-gray-700 rounded-lg text-emerald-200 font-mono text-sm leading-6 whitespace-pre-wrap break-all'}
               >
                 {field.computePreview ? field.computePreview(formValues) : ''}
               </div>
             {:else if field.type === 'dateFixes'}
               {@const dateFixesValue = getDateFixesValue(field.name)}
-              <div id={fieldId} class="space-y-2.5 rounded-lg border border-gray-700 bg-gray-800/50 p-2.5">
-                <div class="flex flex-wrap gap-2">
+              <div id={fieldId} class={isCompactDropdown ? 'space-y-1.5 rounded-lg border border-amber-600/45 bg-amber-950/20 p-2' : 'space-y-2.5 rounded-lg border border-amber-600/45 bg-amber-950/20 p-2.5'}>
+                <div class={isCompactDropdown ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-2'}>
                   {#each DATE_FIX_PARTS as part}
                     <button
                       type="button"
                       on:click={() => addDateFixEntry(field.name, part)}
-                      class="px-2.5 py-1 rounded-full text-xs border transition-colors bg-gray-800 border-gray-600 text-gray-300 hover:border-gray-500"
+                      class={isCompactDropdown
+                        ? 'px-2 py-0.5 rounded-full text-[11px] border transition-colors bg-amber-900/35 border-amber-600/55 text-amber-100 hover:bg-amber-800/45 hover:text-white'
+                        : 'px-2.5 py-1 rounded-full text-xs border transition-colors bg-amber-900/35 border-amber-600/55 text-amber-100 hover:bg-amber-800/45 hover:text-white'}
                     >
                       + {DATE_FIX_LABEL[part]}
                     </button>
@@ -408,13 +754,30 @@
 
                 {#each DATE_FIX_PARTS as part}
                   {#each dateFixesValue[part] as entry, fixIndex}
-                    <div class="grid grid-cols-[86px_1fr_auto] gap-2 items-center">
-                      <div class="text-xs text-gray-300">{DATE_FIX_LABEL[part]}</div>
-                      <div class="grid grid-cols-[92px_1fr] gap-2">
+                    <div class={isCompactDropdown ? 'space-y-1.5 rounded-md border border-amber-700/45 bg-amber-950/15 p-1.5' : 'grid grid-cols-[86px_1fr_auto] gap-2 items-center'}>
+                      {#if isCompactDropdown}
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs text-amber-200/90">{DATE_FIX_LABEL[part]}</div>
+                          <button
+                            type="button"
+                            on:click={() => removeDateFixEntry(field.name, part, fixIndex)}
+                            class="px-1.5 py-0.5 text-[11px] rounded border border-amber-700/65 text-amber-100 hover:text-white hover:bg-amber-800/40 hover:border-amber-500"
+                            aria-label={`Remove ${DATE_FIX_LABEL[part]} constraint`}
+                          >
+                            Del
+                          </button>
+                        </div>
+                      {:else}
+                        <div class="text-xs text-amber-200/90">{DATE_FIX_LABEL[part]}</div>
+                      {/if}
+
+                      <div class={isCompactDropdown ? 'grid grid-cols-[74px_1fr] gap-1.5' : 'grid grid-cols-[92px_1fr] gap-2'}>
                         <select
                           value={entry.comparator}
                           on:change={(event) => updateDateFixEntry(field.name, part, fixIndex, { comparator: String(event.currentTarget?.value || 'eq') })}
-                          class="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                          class={isCompactDropdown
+                            ? 'px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'
+                            : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'}
                           aria-label={`${DATE_FIX_LABEL[part]} comparator`}
                         >
                           <option value="eq">=</option>
@@ -431,41 +794,42 @@
                           value={entry.value}
                           placeholder={part === 'year' ? 'YYYY' : part === 'month' ? 'MM' : part === 'day' ? 'DD' : 'HH'}
                           on:input={(event) => handleDateFixValueInput(field.name, part, fixIndex, event)}
-                          class="px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 font-mono text-sm"
+                          class={isCompactDropdown
+                            ? 'px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-xs'
+                            : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-sm'}
                           aria-label={`${DATE_FIX_LABEL[part]} value`}
                         />
                       </div>
-                      <button
-                        type="button"
-                        on:click={() => removeDateFixEntry(field.name, part, fixIndex)}
-                        class="px-2 py-1 text-xs rounded border border-gray-600 text-gray-300 hover:text-white hover:border-gray-500"
-                        aria-label={`Remove ${DATE_FIX_LABEL[part]} constraint`}
-                      >
-                        Remove
-                      </button>
+                      {#if !isCompactDropdown}
+                        <button
+                          type="button"
+                          on:click={() => removeDateFixEntry(field.name, part, fixIndex)}
+                          class="px-2 py-1 text-xs rounded border border-amber-700/65 text-amber-100 hover:text-white hover:bg-amber-800/40 hover:border-amber-500"
+                          aria-label={`Remove ${DATE_FIX_LABEL[part]} constraint`}
+                        >
+                          Remove
+                        </button>
+                      {/if}
                     </div>
                   {/each}
                 {/each}
               </div>
             {:else if field.type === 'dateParts'}
               {@const datePartsValue = getDatePartsValue(field.name)}
-              <div id={fieldId} class="grid grid-cols-4 gap-2">
-                {#each DATE_PART_KEYS as part, partIndex}
-                  <input
-                    type="text"
-                    inputmode="numeric"
-                    maxlength={DATE_PART_MAX[part]}
-                    data-date-parts-field={field.name}
-                    data-part-index={partIndex}
-                    value={datePartsValue[part]}
-                    placeholder={DATE_PART_LABEL[part]}
-                    on:input={(event) => handleDatePartInput(field.name, part, partIndex, event)}
-                    on:keydown={(event) => handleDatePartKeyDown(field.name, partIndex, event)}
-                    class="w-full px-2.5 py-2 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-sm text-center bg-gray-800 border border-gray-700 focus:border-blue-500"
-                    aria-label={`${field.label} ${DATE_PART_LABEL[part]}`}
-                    title={`${field.label} ${DATE_PART_LABEL[part]}`}
-                  />
-                {/each}
+              {@const classicDateValue = formatClassicDateInput(datePartsValue)}
+              <div id={fieldId} class={isCompactDropdown ? 'space-y-1.5' : 'space-y-2'}>
+                <input
+                  type="text"
+                  inputmode="text"
+                  value={classicDateValue}
+                  placeholder="YYYY/MM/DD:HH"
+                  on:input={(event) => updateDatePartsFromClassicInput(field.name, String(event.currentTarget?.value || ''))}
+                  class={isCompactDropdown
+                    ? 'w-full px-2 py-1.5 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-xs bg-gray-800 border border-gray-700 focus:border-blue-500'
+                    : 'w-full px-2.5 py-2 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/30 transition-all font-mono text-sm bg-gray-800 border border-gray-700 focus:border-blue-500'}
+                  aria-label={`${field.label} date and time`}
+                />
+                <div class="text-[11px] text-gray-500">Use optional parts: YYYY or YYYY/MM or YYYY/MM/DD or YYYY/MM/DD:HH</div>
               </div>
             {:else}
               <input
@@ -505,7 +869,7 @@
       </div>
       
       <!-- Footer -->
-      <div class="px-6 py-4 border-t border-gray-700 bg-gray-800/50 flex items-center justify-between rounded-b-xl">
+      <div class={`border-t border-gray-700 bg-gray-800/50 flex items-center justify-between rounded-b-xl ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
         <div class="text-xs text-gray-500">
           {#if submitOnEnter}
             <kbd class="px-2 py-1 bg-gray-700 rounded text-xs font-mono">Enter</kbd> to apply

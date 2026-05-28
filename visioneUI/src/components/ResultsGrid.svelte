@@ -311,6 +311,16 @@
     return value ? `${prefix} ${value}` : prefix;
   }
 
+  function formatDateLabelFromGroupKey(groupKey) {
+    const normalized = String(groupKey || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return '';
+
+    const [year, month, day] = normalized.split('-').map((v) => Number(v));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
   function useSlideshowFromProfile() {
     const hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
     if (!hasCollectionVideos) return true;
@@ -777,6 +787,30 @@
     }
     
     if (activeGroupBy?.kind === 'date') {
+      const explicitDayKey = String(row?.__visioneGroupKey || '').trim();
+      const explicitDateLabel = formatDateLabelFromGroupKey(explicitDayKey);
+
+      if (explicitDateLabel) {
+        info = {
+          type: 'grouped',
+          groupKind: 'date',
+          groupLabel: activeGroupBy.label || 'Date',
+          label: explicitDateLabel,
+          item: firstItem,
+          showVideoBadge: true,
+          isVideoGroupStart: true,
+          isVideoGroupEnd: true,
+          continuesFromPreviousRow: false,
+          continuesToNextRow: false,
+          continuationRows: 0,
+          groupRowCount: 1,
+          groupRowOffset: 0,
+          showGroupLabelOnThisRow: true
+        };
+        rowInfoCache.set(cacheKey, info);
+        return info;
+      }
+
       const epochSeconds = getEpochSeconds(firstItem);
       const fallbackRaw = toFiniteNumber(firstItem?.timestamp ?? firstItem?.raw?.timestamp ?? 0);
       const fallbackSeconds = Number.isFinite(fallbackRaw)
