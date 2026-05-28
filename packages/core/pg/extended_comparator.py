@@ -14,6 +14,8 @@ class ExtendedComparator(str, Enum):
     FTS = "fts"
     IN = "in"
     NIN = "nin"
+    ILIKE = "ilike"
+    FTS = "fts"
 
 class ExtendedPGVectorTranslator(PGVectorTranslator):
     """Adds support for fts, gte, lte operator in filters."""
@@ -27,6 +29,7 @@ class ExtendedPGVectorTranslator(PGVectorTranslator):
         ExtendedComparator.IN,
         ExtendedComparator.NIN,
         ExtendedComparator.CONTAIN,
+        ExtendedComparator.LIKE,
         ExtendedComparator.FTS,
     ]
 
