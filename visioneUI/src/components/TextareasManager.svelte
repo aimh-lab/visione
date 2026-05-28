@@ -1244,15 +1244,13 @@
           name: 'dateFromParts',
           label: 'From',
           type: 'dateParts',
-          value: prefill.dateFromParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Pick precision and value: year, month+year, date, or date+hour. Used as epoch lower bound.'
+          value: prefill.dateFromParts || { day: '', month: '', year: '', hour: '' }
         },
         {
           name: 'dateToParts',
-          label: 'To (optional)',
+          label: 'To',
           type: 'dateParts',
-          value: prefill.dateToParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Optional upper bound with same precision options. Leave empty for From-only range.'
+          value: prefill.dateToParts || { day: '', month: '', year: '', hour: '' }
         },
         {
           name: 'datePreview',
@@ -1261,8 +1259,7 @@
           computePreview: (values: ModalSubmitData) => {
             const tokens = buildDateFilterTokens(values);
             return tokens.length > 0 ? tokens.join(' ') : 'No date tokens yet';
-          },
-          hint: 'Preview of metadata tokens that will be added to this step.'
+          }
         }
       ]
     };
