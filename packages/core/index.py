@@ -159,6 +159,47 @@ async def run(cfg: DictConfig):
                 )
             print(f"  Index '{index_name}' created and verified.")
 
+    # ------------------------------------------------------------------
+    # 4. Create GIN indexes for full-text search columns
+    # ------------------------------------------------------------------
+    print("=== Step 4: Creating GIN indexes for full-text search columns ===")
+    fts_columns = getattr(loader, "get_full_text_search_columns", lambda: [])()
+    fts_language = cfg.get("fts_language", "simple")
+
+    async with autocommit_engine.connect() as conn:
+        for fts_col in fts_columns:
+            index_name = f"idx_{table_name}_{fts_col}_fts_gin".lower()
+
+            validity = await get_index_validity(conn, index_name)
+            if validity is True:
+                print(f"  Index '{index_name}' already exists and is valid. Skipping.")
+                continue
+            elif validity is False:
+                print(
+                    f"  Index '{index_name}' exists but is invalid. "
+                    f"Dropping and re-creating..."
+                )
+                await conn.execute(text(f'DROP INDEX IF EXISTS "{index_name}"'))
+
+            print(
+                f"  Creating GIN index '{index_name}' on "
+                f"to_tsvector('{fts_language}', \"{fts_col}\")..."
+            )
+            await conn.execute(
+                text(
+                    f'CREATE INDEX CONCURRENTLY "{index_name}" '
+                    f'ON "{table_name}" '
+                    f"USING GIN (to_tsvector('{fts_language}', \"{fts_col}\"))"
+                )
+            )
+
+            validity = await get_index_validity(conn, index_name)
+            if not validity:
+                raise RuntimeError(
+                    f"Index '{index_name}' is not valid after creation."
+                )
+            print(f"  Index '{index_name}' created and verified.")
+
     await engine.dispose()
     print("=== Indexing complete. ===")
 

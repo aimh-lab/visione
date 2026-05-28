@@ -41,6 +41,8 @@ SPECIAL_CASED_OPERATORS = {
 }
 
 TEXT_OPERATORS = {
+    "$like",
+    "$ilike",
     "$fts",
 }
 
@@ -81,6 +83,7 @@ class AsyncPGVectorStore(VectorStore):
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
         model_column_map: Optional[Dict[str, str]] = None,
+        fts_language: str = "simple",
     ):
         """AsyncPGVectorStore constructor.
         Args:
@@ -146,6 +149,7 @@ class AsyncPGVectorStore(VectorStore):
         self.groupby_column = groupby_column
         self.temporal_column = temporal_column
         self.model_column_map = model_column_map or {}
+        self.fts_language = fts_language
 
     @classmethod
     async def create(
@@ -170,6 +174,7 @@ class AsyncPGVectorStore(VectorStore):
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
         model_column_map: Optional[Dict[str, str]] = None,
+        fts_language: str = "simple",
     ) -> AsyncPGVectorStore:
         """Create an AsyncPGVectorStore instance.
 
@@ -288,6 +293,7 @@ class AsyncPGVectorStore(VectorStore):
             groupby_column=groupby_column,
             temporal_column=temporal_column,
             model_column_map=model_column_map,
+            fts_language=fts_language,
         )
 
     @property
@@ -1944,9 +1950,15 @@ class AsyncPGVectorStore(VectorStore):
 
         elif operator == "$fts":
             param_name = f"{field}_{operator.replace('$', '')}_{suffix_id}"
+            if operator == "$like":
+                return f"({field} LIKE :{param_name})", {f"{param_name}": filter_value}
+            else:  # i.e. $ilike
+                return f"({field} ILIKE :{param_name})", {f"{param_name}": filter_value}
+        elif operator == "$fts":
+            param_name = f"{field}_fts_{suffix_id}"
+            lang = self.fts_language
             return (
-                f"(to_tsvector('simple', coalesce({field}::text, '')) "
-                f"@@ websearch_to_tsquery('simple', :{param_name}))",
+                f"(to_tsvector('{lang}', {field}) @@ websearch_to_tsquery('{lang}', :{param_name}))",
                 {f"{param_name}": filter_value},
             )
         elif operator == "$exists":

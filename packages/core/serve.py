@@ -114,6 +114,7 @@ async def lifespan(app: FastAPI):
         groupby_column=loader.get_temporal_groupby_column(),
         temporal_column=loader.get_temporal_column(),
         index_query_options=index_options,
+        fts_language=cfg.get("fts_language", "simple"),
     )
     app.state.available_models = available_model_infos
     app.state.model_column_map = model_column_map

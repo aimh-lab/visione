@@ -170,6 +170,9 @@ class LSCLoader:
 
     def get_video_time_reference_columns(self):
         return []
+    
+    def get_full_text_search_columns(self):
+        return ["location"]
 
     def get_column_schema(self):
         return [

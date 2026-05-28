@@ -134,6 +134,7 @@ class PGVectorStore(VectorStore):
         groupby_column: Optional[str] = None,
         temporal_column: str = "epoch",
         model_column_map: Optional[Dict[str, str]] = None,
+        fts_language: str = "simple",
     ) -> PGVectorStore:
         """Create an PGVectorStore instance.
 
@@ -179,6 +180,7 @@ class PGVectorStore(VectorStore):
             groupby_column=groupby_column,
             temporal_column=temporal_column,
             model_column_map=model_column_map,
+            fts_language=fts_language,
         )
         vs = engine._run_as_sync(coro)
         return cls(cls.__create_key, engine, vs)

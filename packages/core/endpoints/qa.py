@@ -239,12 +239,18 @@ keys) and must ``print`` a JSON object as its last output.
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
-Comparators: eq, ne, gt, gte, lt, lte, fts.
+Comparators for numeric fields: eq, ne, gt, gte, lt, lte
+Comparators for string fields: eq, ne, fts (full-text search, with stemming and stop-word removal)
 Operators: and, or, not.
 
 **Single filter:**
 ```json
-{{"comparator": "fts", "attribute": "city", "value": "Dublin"}}
+{{"comparator": "eq", "attribute": "month", "value": 1}}
+```
+
+**Full-text search on text fields:**
+```json
+{{"comparator": "fts", "attribute": "description", "value": "irish coffee"}}
 ```
 
 **Search by year, month, day:**
@@ -273,7 +279,7 @@ Operators: and, or, not.
 **Combined filters:**
 ```json
 {{"operator": "and", "arguments": [
-    {{"comparator": "fts", "attribute": "city", "value": "Dublin"}},
+    {{"comparator": "fts", "attribute": "location", "value": "dublin"}},
     {{"comparator": "gt", "attribute": "epoch", "value": 1570000000}}
 ]}}
 ```
@@ -364,7 +370,7 @@ deterministic order (e.g., ["epoch"]). Otherwise results may be returned in rand
 images. Do not hallucinate; find evidence in the data or declare the output unreliable. \
 Do not infer activities from biases – LOOK at images first.
 - Before saying metadata cannot confirm a hypothesis, ask for images to verify.
-- Always use "fts" without SQL wildcards (e.g., "Text") for string matching. Use eq only for \
+- Always use "fts" (full-text search) for string matching. Use eq only for \
 numeric fields.
 - If results are empty, assume that the value used for searching string fields with the fts operator \
 are not present in the database. So either try more generic ones or directly remove them.

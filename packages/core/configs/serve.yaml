@@ -6,6 +6,7 @@ defaults:
 host: localhost
 port: 8000
 default_k: 100
+fts_language: "english"
 
 index_query_options:
   ef_search: 1000
