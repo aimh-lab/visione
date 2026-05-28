@@ -1649,6 +1649,9 @@
 
     const optionalFields = [
       'epoch',
+      'year',
+      'month',
+      'day',
       'utc_offset_hours',
       'video_offset_seconds',
       'hour_msb_middletime',

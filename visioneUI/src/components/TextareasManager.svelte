@@ -134,7 +134,6 @@
     filterType: ''
   };
 
-
   const dispatch = createEventDispatcher<DispatchEvents>();
 
   let isSelectingImageFor: number | null = null;
@@ -164,6 +163,7 @@
   let hasAnyCustomMetadataFilter = false;
   let modalMetadataField = '';
   let modalMetadataShortcut = '';
+  let modalAnchorRect: { left: number; right: number; top: number; bottom: number; width: number; height: number } | null = null;
 
   const SPECIAL_METADATA_FIELDS = new Set([
     'year',
@@ -203,8 +203,8 @@
     hour: 'Hour',
     hour_local: 'Hour (local)',
     epoch: 'Epoch',
-    epoch_from: 'Epoch',
-    epoch_to: 'Epoch',
+    epoch_from: 'Epoch From',
+    epoch_to: 'Epoch To',
     timezone: 'Timezone',
     location_country: 'Country',
     location: 'Location',
@@ -932,6 +932,23 @@
   let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
   let fileInput: HTMLInputElement | null = null;
 
+  function setModalAnchorFromIndex(index: number) {
+    const trigger = menuTriggerRefs[index];
+    if (!trigger) {
+      modalAnchorRect = null;
+      return;
+    }
+    const rect = trigger.getBoundingClientRect();
+    modalAnchorRect = {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
   function toggleTranslationHint(index: number) {
     if (!getTranslationHint(index)) {
       openTranslationHintIndex = null;
@@ -1156,6 +1173,7 @@
 
     modalMetadataField = normalizedField;
     modalMetadataShortcut = getShortcutForField(normalizedField);
+    setModalAnchorFromIndex(index);
 
     modalConfig = {
       isOpen: true,
@@ -1200,6 +1218,7 @@
     modalMetadataField = 'date';
     modalMetadataShortcut = 'date';
     const prefill = getDateMetadataPrefill(index);
+    setModalAnchorFromIndex(index);
 
     modalConfig = {
       isOpen: true,
@@ -1226,34 +1245,14 @@
           label: 'From',
           type: 'dateParts',
           value: prefill.dateFromParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Epoch range start (requires day, month, year; hour optional). Use Tab/arrows to move.'
+          hint: 'Pick precision and value: year, month+year, date, or date+hour. Used as epoch lower bound.'
         },
         {
           name: 'dateToParts',
           label: 'To (optional)',
           type: 'dateParts',
           value: prefill.dateToParts || { day: '', month: '', year: '', hour: '' },
-          hint: 'Epoch range end (requires day, month, year; hour optional). Leave empty to use only From with the comparator below.'
-        },
-        {
-          name: 'comparator',
-          label: 'Comparator (single date)',
-          type: 'select',
-          advanced: true,
-          value: prefill.comparator,
-          options: [
-            { value: 'eq', label: '= (equal)' },
-            { value: 'ne', label: '!= (not equal)' },
-            { value: 'gte', label: '>= (greater or equal)' },
-            { value: 'lte', label: '<= (less or equal)' },
-            { value: 'lt', label: '< (less than)' },
-            { value: 'gt', label: '> (greater than)' }
-          ],
-          hint: 'Used only when To is empty.',
-          visibleWhen: (values: ModalSubmitData) => {
-            const to = values?.dateToParts || {};
-            return ![to.day, to.month, to.year, to.hour].some((v) => String(v ?? '').trim());
-          }
+          hint: 'Optional upper bound with same precision options. Leave empty for From-only range.'
         },
         {
           name: 'datePreview',
@@ -1281,6 +1280,7 @@
   ) {
     modalMetadataField = 'location_country';
     modalMetadataShortcut = 'country';
+    setModalAnchorFromIndex(index);
 
     modalConfig = {
       isOpen: true,
@@ -1327,6 +1327,7 @@
   ) {
     modalMetadataField = 'location';
     modalMetadataShortcut = 'location';
+    setModalAnchorFromIndex(index);
 
     modalConfig = {
       isOpen: true,
@@ -1972,15 +1973,16 @@
 
   function upsertDateMetadataTokens(index: number, tokens: string[]) {
     const incomingTokens = normalizeMetadataTokens(tokens);
-    if (incomingTokens.length === 0) return;
-
     const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
-    setMetadataTokens(index, [...existing, ...incomingTokens]);
+    const keptTokens = existing.filter((token) => {
+      const field = getFieldFromMetadataToken(token);
+      return !field || !DATE_METADATA_FIELDS.has(field);
+    });
+
+    setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
   }
 
   function buildDateFilterTokens(data: ModalSubmitData) {
-    const comparator = String(data.comparator || 'eq').trim().toLowerCase();
-
     const readFixedParts = (parts: unknown, key: 'year' | 'month' | 'day' | 'hour') => {
       if (!parts || typeof parts !== 'object') return [];
       const raw = (parts as Record<string, unknown>)[key];
@@ -2097,22 +2099,10 @@
 
     if (hasFrom && !hasTo) {
       const fromEpochStart = toEpochFromParts(fromParts, 'start');
-      const fromEpochEnd = toEpochFromParts(fromParts, 'end');
-
-      if (fromEpochStart !== null && fromEpochEnd !== null) {
-        if (comparator === 'ne') {
-          // Unsupported as pure epoch range token pair.
-          return normalizeMetadataTokens([...fixedTokens]);
-        }
-
-        const normalizedComparator = comparator === 'eq' ? 'gte' : comparator;
-        const symbol = toComparatorSymbol(normalizedComparator, 'gte');
-        const prefix = normalizedComparator === 'eq' ? '' : symbol;
-        const key = (comparator === 'lt' || comparator === 'lte') ? 'epoch_to' : 'epoch_from';
-        const value = key === 'epoch_to' ? fromEpochEnd : fromEpochStart;
+      if (fromEpochStart !== null) {
         return normalizeMetadataTokens([
           ...fixedTokens,
-          `${key}:${prefix}${quoteFilterTokenValue(value)}`
+          `epoch_from:${quoteFilterTokenValue(fromEpochStart)}`
         ]);
       }
 
@@ -2266,6 +2256,7 @@
     modalConfig.isOpen = false;
     modalMetadataField = '';
     modalMetadataShortcut = '';
+    modalAnchorRect = null;
 
     if (shouldTriggerSearch) {
       setTimeout(() => dispatchSearchWithMetadata(), 0);
@@ -2277,6 +2268,7 @@
     modalConfig.isOpen = false;
     modalMetadataField = '';
     modalMetadataShortcut = '';
+    modalAnchorRect = null;
   }
 </script>
 
@@ -2678,7 +2670,7 @@
           <!-- Footer toolbar -->
           <div class="flex items-center justify-between px-1.5 py-0.5">
             <div class="menu-container z-40">
-              <div class="relative">
+              <div class="relative flex items-center gap-1">
                 <button
                   bind:this={menuTriggerRefs[i]}
                   type="button"
@@ -2694,6 +2686,30 @@
                     <path d="M12 5v14M5 12h14"/>
                   </svg>
                 </button>
+
+                {#if hasDateFilterSupport}
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
+                    title="Quick Date filter"
+                    aria-label="Quick Date filter"
+                    class="h-6 px-2 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
+                  >
+                    Date
+                  </button>
+                {/if}
+
+                {#if hasCountryFilterSupport}
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
+                    title="Quick Country filter"
+                    aria-label="Quick Country filter"
+                    class="h-6 px-2 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
+                  >
+                    Country
+                  </button>
+                {/if}
 
                 <!-- Dropdown menu -->
                 {#if openMenuIndex === i}
@@ -2952,6 +2968,8 @@
   submitLabel={modalConfig.filterType.startsWith('metadata') ? 'Apply' : 'Submit'}
   submitOnEnter={modalConfig.filterType.startsWith('metadata')}
   autoFocusFirstTextInput={modalConfig.filterType.startsWith('metadata')}
+  presentation={modalConfig.filterType.startsWith('metadata') ? 'dropdown' : 'modal'}
+  anchorRect={modalAnchorRect as any}
   on:submit={handleModalSubmit}
   on:close={handleModalClose}
 />
