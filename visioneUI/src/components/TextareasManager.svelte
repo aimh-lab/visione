@@ -1224,7 +1224,7 @@
       isOpen: true,
       title: 'Filter by Date & Time',
       icon: 'calendar',
-      description: 'Use From/To for exact range and optionally add independent Year/Month/Day/Hour constraints.',
+      description: 'You can use From/To only, pinned Year/Month/Day/Hour only, or both together (AND).',
       targetIndex: index,
       filterType: 'metadataDate',
       fields: [

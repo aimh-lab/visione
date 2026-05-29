@@ -1336,8 +1336,10 @@
   // URL restore
   // ---------------------------
   async function restoreFromURLState(urlState) {
+    let restoredTextareas = null;
     if (urlState.textareas) {
-      textareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
+      restoredTextareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
+      textareas = restoredTextareas;
     }
     await hydrateInlineTextareaImagesFromState(urlState);
     await hydrateSimilarityTextareaImagesFromState();
@@ -1354,7 +1356,9 @@
       (Array.isArray(urlState.inlineQueryImages) && urlState.inlineQueryImages.length > 0);
 
     if (urlState.textareas?.length > 0 && (hasTextQuery || hasImageQuery)) {
-      await runSearchImmediate();
+      const sourceForSearch = Array.isArray(restoredTextareas) ? restoredTextareas : textareas;
+      const searchTextareas = getTextareasForSearch(sourceForSearch);
+      await runSearchImmediate({ textareas: searchTextareas });
     }
 
     if (urlState.similarityBase) {
@@ -2224,9 +2228,11 @@ function handleViewSubmitted() {
 
   async function handleRestoreFromURL() {
     const urlState = deserializeFromURL();
+    let restoredTextareas = null;
 
     if (urlState.textareas && urlState.textareas.length > 0) {
-      textareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
+      restoredTextareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
+      textareas = restoredTextareas;
       await hydrateInlineTextareaImagesFromState(urlState);
       await hydrateSimilarityTextareaImagesFromState();
     }
@@ -2234,7 +2240,9 @@ function handleViewSubmitted() {
     if (urlState.activeTab) uiStore.actions.setLayoutTab(urlState.activeTab);
 
     await tick();
-    await runSearchImmediate();
+    const sourceForSearch = Array.isArray(restoredTextareas) ? restoredTextareas : textareas;
+    const searchTextareas = getTextareasForSearch(sourceForSearch);
+    await runSearchImmediate({ textareas: searchTextareas });
   }
 
   async function handleRestoreRecentSearch(e) {

@@ -354,14 +354,10 @@ export class VisioneAPI {
     void simReorder;
     void framesPerRow;
 
-    const activeTextareas = textareas.filter((t) => {
-      const text = String(t?.value || "").trim();
-      const simId = String(t?.similarityImgId || "").trim();
-      return !!t?.enabled && (text.length > 0 || simId.length > 0);
-    });
+    const activeTextareas = textareas.filter((t) => !!t?.enabled);
     
     if (activeTextareas.length === 0) {
-      throw new APIError('At least one textarea must be enabled and contain text or image similarity', 400);
+      throw new APIError('At least one textarea must be enabled', 400);
     }
 
     const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds);
@@ -807,15 +803,10 @@ export class VisioneAPI {
     }
 
     if (textareaNodes.length === 1) {
-      const singleTextareaNode = this.#buildTextareaQueryNode(
-        activeTextareas[0],
-        this.defaultSingleK,
-        this.defaultSingleK
-      );
-
-      if (!singleTextareaNode) {
-        throw new APIError('No valid query items', 400);
-      }
+      const singleTextareaNode = {
+        ...textareaNodes[0],
+        k: this.defaultSingleK
+      };
 
       const metadataToRetrieve = this.#buildMetadataToRetrieve(singleTextareaNode);
 
@@ -869,7 +860,7 @@ export class VisioneAPI {
 
     const value = typeof item === 'string' ? item.trim() : '';
     const hasFilters = Array.isArray(node?.filters?.arguments) && node.filters.arguments.length > 0;
-    return value === '' && hasFilters;
+    return (value === '' || value === '*') && hasFilters;
   }
 
   #buildTextareaQueryNode(textarea, leafK, groupK) {
@@ -930,9 +921,10 @@ export class VisioneAPI {
     }
 
     // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
-    // Emit an empty item and rely on filters + reorder_by for deterministic ordering.
+    // Some backends reject empty query items, so use a wildcard placeholder and keep
+    // filters + reorder_by as the effective constraints.
     if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
-      out.push({ type: 'text', value: '', model: textModel, filters });
+      out.push({ type: 'text', value: '*', model: textModel, filters });
     }
 
     return out;
