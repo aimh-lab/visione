@@ -359,18 +359,75 @@
     return d <= maxDay;
   }
 
+  function isValidDayBasic(value) {
+    const d = Number(value);
+    return Number.isFinite(d) && d >= 1 && d <= 31;
+  }
+
   function isValidHour(value) {
     const n = Number(value);
     return Number.isFinite(n) && n >= 0 && n <= 23;
   }
 
   function updateDatePartsFromClassicInput(fieldName, rawValue) {
-    const digits = String(rawValue || '').replace(/\D+/g, '').slice(0, 10);
-    if (!digits) {
+    const source = String(rawValue || '');
+    const sanitized = source.replace(/[^\d/:]/g, '');
+
+    if (!sanitized) {
       formValues = { ...formValues, [fieldName]: { year: '', month: '', day: '', hour: '' } };
       return;
     }
 
+    // If user is editing the classic formatted value (with separators),
+    // preserve segment boundaries so changing year doesn't shift month/day/hour.
+    if (sanitized.includes('/') || sanitized.includes(':')) {
+      const [rawDatePart, rawHourPart = ''] = sanitized.split(':', 2);
+      const [rawYear = '', rawMonth = '', rawDay = ''] = String(rawDatePart || '').split('/', 3);
+
+      const year = String(rawYear || '').replace(/\D+/g, '').slice(0, 4);
+      const monthRaw = String(rawMonth || '').replace(/\D+/g, '').slice(0, 2);
+      const dayRaw = String(rawDay || '').replace(/\D+/g, '').slice(0, 2);
+      const hourRaw = String(rawHourPart || '').replace(/\D+/g, '').slice(0, 2);
+
+      let month = '';
+      if (monthRaw.length === 1) {
+        month = monthRaw;
+      } else if (monthRaw.length === 2 && isValidMonth(monthRaw)) {
+        month = monthRaw;
+      }
+
+      let day = '';
+      if (dayRaw.length === 1) {
+        day = dayRaw;
+      } else if (dayRaw.length === 2) {
+        // Keep DD while editing month/year to avoid collapsing trailing segments.
+        // Full YYYY/MM/DD consistency is validated at submit time.
+        if (isValidDayBasic(dayRaw)) {
+          day = dayRaw;
+        }
+      }
+
+      let hour = '';
+      if (hourRaw.length === 1) {
+        hour = hourRaw;
+      } else if (hourRaw.length === 2 && isValidHour(hourRaw)) {
+        hour = hourRaw;
+      }
+
+      formValues = {
+        ...formValues,
+        [fieldName]: {
+          year,
+          month,
+          day,
+          hour
+        }
+      };
+      return;
+    }
+
+    // Fallback for pure digit input: keep auto-separators behavior.
+    const digits = sanitized.replace(/\D+/g, '').slice(0, 10);
     const year = digits.slice(0, 4);
     const monthRaw = digits.slice(4, 6);
     const dayRaw = digits.slice(6, 8);
@@ -387,7 +444,7 @@
     if (dayRaw.length === 1) {
       day = dayRaw;
     } else if (dayRaw.length === 2) {
-      if (year.length === 4 && month.length > 0 && isValidMonth(month) && isValidDay(year, month, dayRaw)) {
+      if (isValidDayBasic(dayRaw)) {
         day = dayRaw;
       }
     }
@@ -528,7 +585,13 @@
 
       field.focus();
       if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-        field.select?.();
+        const currentValue = String(field.value || '');
+        if (isDateFilterLayout && field instanceof HTMLInputElement) {
+          const end = currentValue.length;
+          field.setSelectionRange?.(end, end);
+        } else {
+          field.select?.();
+        }
       }
     }, 90);
   }
