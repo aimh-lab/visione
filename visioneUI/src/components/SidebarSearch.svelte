@@ -26,10 +26,8 @@
   export let images = []; 
   export let textareaImages = {};
   export let challengeType = 'KIS';
-  export let submitTextAnswer = (_text) => {};
   export let askQaAgent = (_question) => Promise.resolve({});
   export let stopQaAgent = () => {};
-  export let qaAgentSubmitCandidate = '';
   export let sessionResetKey = 0;
   export let qaStreamPanelHeight = 288;
   export let onUpdateQaAgentPanelPrefs = (_patch) => {};
@@ -316,49 +314,6 @@
     return Array.isArray(results) ? results : [];
   }
 
-  function extractSubmitCandidateFromText(rawText) {
-    const raw = String(rawText || '').trim();
-    if (!raw) return '';
-
-    const lines = raw
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .filter((ln) => !ln.startsWith('```'));
-
-    const compact = lines
-      .filter((ln) => {
-        const lower = ln.toLowerCase();
-        return !(lower.startsWith('plan') || lower.startsWith('reasoning') || lower.startsWith('evidence') || lower.startsWith('sources'));
-      })
-      .join(' ')
-      .trim();
-
-    const candidate = compact || raw;
-
-    const patterns = [
-      /(?:located at|is|was|were|named|called)\s+(.+?)(?:\s+in\s+|\s+on\s+|\s+at\s+|,|\.|$)/i,
-      /(?:answer is|answer:|it is)\s+(.+?)(?:,|\.|$)/i
-    ];
-    for (const pattern of patterns) {
-      const m = candidate.match(pattern);
-      if (m?.[1]) {
-        return String(m[1])
-          .trim()
-          .replace(/^the\s+/i, '')
-          .replace(/^['"`\s]+|['"`\s]+$/g, '');
-      }
-    }
-
-    const firstSentence = candidate.split(/\.\s|\n|;/, 1)[0]?.trim() || candidate;
-    return firstSentence
-      .replace(/^the\s+/i, '')
-      .replace(/^['"`\s]+|['"`\s]+$/g, '')
-      .trim();
-  }
-
-  $: qaSubmitCandidateEffective = String(qaAgentSubmitCandidate || '').trim()
-    || extractSubmitCandidateFromText(qaAgentStream?.finalAnswer);
-
   function isQaStreamNearBottom() {
     if (!qaStreamPanelRef) return true;
     const distanceFromBottom = qaStreamPanelRef.scrollHeight - qaStreamPanelRef.scrollTop - qaStreamPanelRef.clientHeight;
@@ -412,12 +367,6 @@
     e.preventDefault();
     if (qaAgentStream?.isStreaming) return;
     runQaAgent();
-  }
-
-  async function submitFinalAnswer() {
-    const answer = String(qaSubmitCandidateEffective || '').trim();
-    if (!answer) return;
-    await submitTextAnswer(answer);
   }
 
 </script>
@@ -641,21 +590,6 @@
                 Stop
               </button>
             </div>
-
-            {#if qaSubmitCandidateEffective}
-              <button
-                class="mt-2 w-full px-3 py-1.5 text-sm font-semibold rounded-md bg-emerald-700/70 hover:bg-emerald-600/80 text-emerald-50 transition-colors"
-                on:click={submitFinalAnswer}
-              >
-                Submit final answer to DRES
-              </button>
-              <div class="mt-1 text-xs text-emerald-200/90 break-words">
-                Candidate: {qaSubmitCandidateEffective}
-              </div>
-              <div class="text-[11px] text-slate-300/90">
-                Source: {qaAgentSubmitCandidate ? 'answer_submit' : 'fallback from answer'}
-              </div>
-            {/if}
 
             {#if qaAgentStream?.error}
               <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-xs break-words">

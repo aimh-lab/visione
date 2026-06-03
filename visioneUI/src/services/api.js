@@ -860,7 +860,7 @@ export class VisioneAPI {
 
     const value = typeof item === 'string' ? item.trim() : '';
     const hasFilters = Array.isArray(node?.filters?.arguments) && node.filters.arguments.length > 0;
-    return value === '' && hasFilters;
+    return (value === '' || value === '*') && hasFilters;
   }
 
   #buildTextareaQueryNode(textarea, leafK, groupK) {
@@ -921,9 +921,10 @@ export class VisioneAPI {
     }
 
     // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
-    // Keep empty item and rely on filters + reorder_by as the effective constraints.
+    // Some backends reject empty query items, so use a wildcard placeholder and keep
+    // filters + reorder_by as the effective constraints.
     if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
-      out.push({ type: 'text', value: '', model: textModel, filters });
+      out.push({ type: 'text', value: '*', model: textModel, filters });
     }
 
     return out;

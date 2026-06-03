@@ -75,7 +75,6 @@
     finalAnswer: string;
     error: string;
   } = { isStreaming: false, events: [], finalAnswer: '', error: '' };
-  export let qaAgentSubmitCandidate = '';
   export let qaStreamPanelHeight = 288;
   export let onUpdateQaAgentPanelPrefs = (_patch: { qaStreamPanelHeight?: number }) => {};
   export let sessionResetKey = 0;
@@ -202,11 +201,9 @@
   {discoveryMetadataFields}
   {textareaImages}
   {challengeType}
-  {submitTextAnswer}
   {askQaAgent}
   {stopQaAgent}
   {qaAgentStream}
-  {qaAgentSubmitCandidate}
   {qaStreamPanelHeight}
   onUpdateQaAgentPanelPrefs={onUpdateQaAgentPanelPrefs}
   {sessionResetKey}

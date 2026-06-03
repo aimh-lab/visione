@@ -41,8 +41,7 @@ SPECIAL_CASED_OPERATORS = {
 }
 
 TEXT_OPERATORS = {
-    "$like",
-    "$ilike",
+    "$fts",
 }
 
 LOGICAL_OPERATORS = {"$and", "$or", "$not"}
@@ -1943,12 +1942,13 @@ class AsyncPGVectorStore(VectorStore):
                     f"{param_name}": filter_value
                 }
 
-        elif operator in {"$like", "$ilike"}:
+        elif operator == "$fts":
             param_name = f"{field}_{operator.replace('$', '')}_{suffix_id}"
-            if operator == "$like":
-                return f"({field} LIKE :{param_name})", {f"{param_name}": filter_value}
-            else:  # i.e. $ilike
-                return f"({field} ILIKE :{param_name})", {f"{param_name}": filter_value}
+            return (
+                f"(to_tsvector('simple', coalesce({field}::text, '')) "
+                f"@@ websearch_to_tsquery('simple', :{param_name}))",
+                {f"{param_name}": filter_value},
+            )
         elif operator == "$exists":
             if not isinstance(filter_value, bool):
                 raise ValueError(
