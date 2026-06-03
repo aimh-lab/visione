@@ -2809,6 +2809,10 @@ function handleViewSubmitted() {
   dresUsername={$uiStore.dresUsername}
   dresPassword={$uiStore.dresPassword}
   dresMemberId={$uiStore.dresMemberId}
+  {logCount}
+  {logUserFolder}
+  {isExportingLogs}
+  {isDeletingLogs}
   autoTranslateQueries={$uiStore.autoTranslateQueries}
   showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}
@@ -2822,6 +2826,8 @@ function handleViewSubmitted() {
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}
   on:testDres={handleTestDresConnection}
+  on:exportLogs={handleExportLogs}
+  on:deleteLogs={handleDeleteLogs}
 />
 
 <AdaptiveTabLayout
