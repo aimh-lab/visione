@@ -27,7 +27,7 @@ export class VisioneAPI {
     this.defaultTextModel = 'openclip_clip_vit_b_32';
     this.defaultImageModel = 'dinov2_base';
     this.defaultSubqueryK = 100000;
-    this.defaultSingleK = 1000;
+    this.defaultSingleK = 10000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
     this.defaultRelevanceFeedbackModel = 'qwen_embedding_8B';
@@ -860,7 +860,7 @@ export class VisioneAPI {
 
     const value = typeof item === 'string' ? item.trim() : '';
     const hasFilters = Array.isArray(node?.filters?.arguments) && node.filters.arguments.length > 0;
-    return (value === '' || value === '*') && hasFilters;
+    return value === '' && hasFilters;
   }
 
   #buildTextareaQueryNode(textarea, leafK, groupK) {
@@ -921,10 +921,9 @@ export class VisioneAPI {
     }
 
     // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
-    // Some backends reject empty query items, so use a wildcard placeholder and keep
-    // filters + reorder_by as the effective constraints.
+    // Keep empty item and rely on filters + reorder_by as the effective constraints.
     if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
-      out.push({ type: 'text', value: '*', model: textModel, filters });
+      out.push({ type: 'text', value: '', model: textModel, filters });
     }
 
     return out;

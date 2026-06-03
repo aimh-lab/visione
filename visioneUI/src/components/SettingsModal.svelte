@@ -26,6 +26,10 @@
   export let dresUsername = '';
   export let dresPassword = '';
   export let dresMemberId = '';
+  export let logCount = 0;
+  export let logUserFolder = 'unknown-user';
+  export let isExportingLogs = false;
+  export let isDeletingLogs = false;
   export let autoTranslateQueries = true;
   export let showAutoTranslateToggle = true;
   export let temporalWindowSeconds = 50;
@@ -177,6 +181,14 @@
       dresPassword: local.dresPassword ?? '',
       dresMemberId: (local.dresMemberId ?? '').trim()
     });
+  }
+
+  function exportLogs() {
+    dispatch('exportLogs');
+  }
+
+  function deleteLogs() {
+    dispatch('deleteLogs');
   }
 
   function save() {
@@ -905,6 +917,29 @@
                 disabled={!local.dresEnabled || !local.dresSubmitServer || !local.dresUsername || !local.dresPassword}
               >
                 Test DRES connection
+              </button>
+            </div>
+
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Local DRES logs</h4>
+            <p class="ui-settings-hint text-xs">
+              Stored in this browser for user folder <span class="font-mono">{String(logUserFolder || 'unknown-user')}</span>.
+              Current entries: <span class="font-semibold">{Number(logCount) || 0}</span>.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                class="px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 border border-emerald-700 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                on:click={exportLogs}
+                disabled={!local.dresEnabled || isExportingLogs || isDeletingLogs}
+              >
+                {isExportingLogs ? 'Exporting...' : 'Export logs'}
+              </button>
+              <button
+                class="px-3 py-1.5 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                on:click={deleteLogs}
+                disabled={!local.dresEnabled || isDeletingLogs || isExportingLogs || Number(logCount) <= 0}
+              >
+                {isDeletingLogs ? 'Deleting...' : 'Delete local logs'}
               </button>
             </div>
           </div>
