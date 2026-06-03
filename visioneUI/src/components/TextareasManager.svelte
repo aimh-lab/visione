@@ -916,6 +916,7 @@
 
   function clearTextareaValue(index: number) {
     update(index, "");
+    clearMetadataTokensForIndex(index);
   }
 
   function handleModelSelectionChange(index: number, model: string, kind: 'text' | 'image') {
@@ -1562,6 +1563,20 @@
 
     setMetadataTokens(index, nextTokens);
     setTimeout(() => dispatchSearchWithMetadata(), 0);
+  }
+
+  function clearMetadataTokensForIndex(index: number) {
+    if (!Array.isArray(metadataTokensByIndex[index]) || metadataTokensByIndex[index].length === 0) return;
+
+    const next = { ...metadataTokensByIndex };
+    delete next[index];
+    metadataTokensByIndex = next;
+  }
+
+  function hasTextareaQueryContent(index: number) {
+    const hasText = String(textareas[index]?.value || '').trim().length > 0;
+    const hasMetadataTokens = Array.isArray(metadataTokensByIndex[index]) && metadataTokensByIndex[index].length > 0;
+    return hasText || hasMetadataTokens;
   }
 
   function escapeRegex(text: string) {
@@ -2616,13 +2631,13 @@
                   on:keydown={(e) => handleKeyDown(e, i)}
                 ></textarea>
 
-                {#if textarea.enabled && textarea.value?.trim()}
+                {#if textarea.enabled && hasTextareaQueryContent(i)}
                   <button
                     type="button"
                     on:click={() => clearTextareaValue(i)}
                     class="ui-textarea-clear-btn absolute top-1 right-1 z-10 w-4 h-4 rounded-full bg-slate-700/85 hover:bg-slate-600 text-slate-200 hover:text-white flex items-center justify-center transition-colors"
-                    title="Clear text"
-                    aria-label="Clear textarea text"
+                    title="Clear query"
+                    aria-label="Clear textarea query"
                   >
                     <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M18 6L6 18M6 6l12 12"/>

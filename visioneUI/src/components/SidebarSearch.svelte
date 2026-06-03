@@ -103,6 +103,7 @@
 
   function handleResetQuery(e) {
     e?.stopPropagation?.();
+    textareasManagerRef?.clearMetadataFilters?.();
     clearQueryInputs();
     isResetMenuOpen = false;
   }
