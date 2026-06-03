@@ -35,6 +35,12 @@
     return 'both';
   }
 
+  function shouldFormatTemporalGroupBadge() {
+    const kind = String(activeGroupBy?.kind || '').trim().toLowerCase();
+    const metadata = String(activeGroupBy?.metadata || '').trim().toLowerCase();
+    return kind === 'video' || (kind === 'metadata' && metadata === 'hour_id');
+  }
+
 
   $: activeGroupBy = resolveGroupByConfig(viewMode, runtimeProfile);
   $: hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
@@ -478,12 +484,7 @@
   function formatEpochHHmm(item, epochSeconds) {
     if (!Number.isFinite(epochSeconds)) return null;
 
-    const configuredTimezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
-    const timezone = timeBadgeTimezoneOverride === 'utc'
-      ? 'utc'
-      : timeBadgeTimezoneOverride === 'local'
-        ? 'local'
-        : (showLocalTimeInTitles ? configuredTimezone : 'utc');
+    const timezone = getEffectiveTimeBadgeTimezone();
     const date = new Date(Math.max(0, epochSeconds) * 1000);
 
     // Honor explicit timeBadge timezone preference first.
@@ -500,6 +501,15 @@
     }
 
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function getEffectiveTimeBadgeTimezone() {
+    const configuredTimezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+    return timeBadgeTimezoneOverride === 'utc'
+      ? 'utc'
+      : timeBadgeTimezoneOverride === 'local'
+        ? 'local'
+        : (showLocalTimeInTitles ? configuredTimezone : 'utc');
   }
 
   function getBadgeLabel(item, tcMap = fetchedTimecodes) {
@@ -711,6 +721,7 @@
     // Badge labels depend on these settings; clear cache so UI updates immediately.
     void resultsetBadgeLabelMode;
     void showLocalTimeInTitles;
+    void timeBadgeTimezoneOverride;
     rowInfoCache.clear();
   }
 
@@ -719,7 +730,7 @@
     if (!row || row.length === 0) return null;
     const firstItem = row[0];
     const rowChunkBoundary = !!row?.__visioneChunkBoundary;
-    const cacheKey = `${viewMode}::${resultsetBadgeLabelMode}::${showLocalTimeInTitles ? 1 : 0}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}::${rowChunkBoundary ? 1 : 0}`;
+    const cacheKey = `${viewMode}::${resultsetBadgeLabelMode}::${showLocalTimeInTitles ? 1 : 0}::${timeBadgeTimezoneOverride}::${rowIndex}::${firstItem?.imgId ?? firstItem?.index ?? "row"}::${row.length}::${rowChunkBoundary ? 1 : 0}`;
     if (rowInfoCache.has(cacheKey)) return rowInfoCache.get(cacheKey);
     
     let info = null;
@@ -762,7 +773,7 @@
       const groupRowCount = precedingRows + 1 + continuationRows;
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
 
-      const displayGroupValue = activeGroupBy.kind === 'video'
+      const displayGroupValue = shouldFormatTemporalGroupBadge()
         ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())
         : `${groupValue}`;
 
@@ -818,7 +829,7 @@
         : 0;
       const safeEpochSeconds = epochSeconds ?? fallbackSeconds;
       const date = safeEpochSeconds > 0 ? new Date(safeEpochSeconds * 1000) : new Date();
-      const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+      const timezone = getEffectiveTimeBadgeTimezone();
 
       const dateLabel = date.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -973,6 +984,10 @@
   // Reactive badge labels map — driven by runtimeProfile.
   // Using a $: block guarantees Svelte tracks it as a template dependency.
   $: _tcLabels = (() => {
+    void runtimeProfile;
+    void showLocalTimeInTitles;
+    void timeBadgeTimezoneOverride;
+
     const labels = new Map();
     for (const row of items) {
       if (!Array.isArray(row)) continue;

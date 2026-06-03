@@ -62,7 +62,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "";
+    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "metadataHeartRate" | "";
   };
 
   type ModalSubmitData = {
@@ -70,6 +70,8 @@
     name?: string;
     comparator?: string;
     value?: string;
+    minBpm?: string;
+    maxBpm?: string;
     dateFrom?: string;
     dateTo?: string;
     dateFromParts?: { day?: string; month?: string; year?: string; hour?: string };
@@ -173,7 +175,8 @@
     'hour_local',
     'timezone',
     'location_country',
-    'location'
+    'location',
+    'heart_rate_bpm'
   ]);
 
   const SHORTCUT_ALIAS_BY_FIELD: Record<string, string> = {
@@ -196,6 +199,7 @@
   const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
   const DATE_RANGE_FIELDS = new Set(['date', 'epoch', 'epoch_from', 'epoch_to']);
   const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local']);
+  const MULTI_TOKEN_METADATA_FIELDS = new Set([...DATE_METADATA_FIELDS, 'heart_rate_bpm']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
     date: 'Date',
@@ -363,6 +367,8 @@
   $: hasDateFilterSupport = ['year', 'month', 'day', 'hour', 'hour_local'].some((f) => hasSpecialMetadataField(f));
   $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
   $: hasLocationFilterSupport = hasSpecialMetadataField('location');
+  // Keep the dedicated Heart Rate filter discoverable even when discovery metadata is delayed/unavailable.
+  $: hasHeartRateFilterSupport = true;
   // Keep these filters always available in UI even when discovery metadata is delayed/unavailable.
   $: hasAnyCustomMetadataFilter = true;
 
@@ -1421,6 +1427,79 @@
     closeMenu();
   }
 
+  function getHeartRateMetadataPrefill(index: number) {
+    const snapshot = getMetadataTokensSnapshotForIndex(index);
+    let minBpm = '';
+    let maxBpm = '';
+
+    snapshot
+      .filter((token) => getFieldFromMetadataToken(token) === 'heart_rate_bpm')
+      .forEach((token) => {
+        const parsed = parseComparatorValue(unquoteMetadataValue(getMetadataTokenValuePart(token)), 'eq');
+        const comparator = String(parsed.comparator || 'eq').trim().toLowerCase();
+        const value = String(parsed.value || '').trim();
+        if (!value) return;
+
+        if (comparator === 'gte' || comparator === 'gt') {
+          minBpm = value;
+        } else if (comparator === 'lte' || comparator === 'lt') {
+          maxBpm = value;
+        } else if (comparator === 'eq') {
+          minBpm = value;
+          maxBpm = value;
+        }
+      });
+
+    return { minBpm, maxBpm };
+  }
+
+  function openHeartRateMetadataFilterModal(index: number) {
+    modalMetadataField = 'heart_rate_bpm';
+    modalMetadataShortcut = 'hr';
+    const prefill = getHeartRateMetadataPrefill(index);
+    setModalAnchorFromIndex(index);
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Heart Rate',
+      icon: 'filter',
+      description: 'Search frames where heart rate is within this BPM range.',
+      targetIndex: index,
+      filterType: 'metadataHeartRate',
+      fields: [
+        {
+          name: 'minBpm',
+          label: 'Min BPM',
+          type: 'number',
+          value: prefill.minBpm,
+          placeholder: 'e.g. 60',
+          min: 0,
+          step: 1
+        },
+        {
+          name: 'maxBpm',
+          label: 'Max BPM',
+          type: 'number',
+          value: prefill.maxBpm,
+          placeholder: 'e.g. 120',
+          min: 0,
+          step: 1
+        },
+        {
+          name: 'heartRatePreview',
+          label: 'Query preview',
+          type: 'preview',
+          computePreview: (values: ModalSubmitData) => {
+            const tokens = buildHeartRateMetadataFilterTokens(values);
+            return tokens.length > 0 ? tokens.join(' ') : 'No heart rate range yet';
+          }
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
   function appendTokensToTextarea(index: number, tokens: string[]) {
     const safeTokens = tokens.map((token) => String(token || '').trim()).filter(Boolean);
     if (safeTokens.length === 0) return;
@@ -1441,7 +1520,7 @@
   function normalizeMetadataTokens(tokens: string[]) {
     const out: string[] = [];
     const indexByField = new Map<string, number>();
-    const seenDateTokens = new Set<string>();
+    const seenMultiTokens = new Set<string>();
 
     (Array.isArray(tokens) ? tokens : []).forEach((token) => {
       const raw = String(token || '').trim();
@@ -1449,11 +1528,11 @@
       const field = getFieldFromMetadataToken(raw);
       if (!field) return;
 
-      // Temporal filters can appear multiple times for the same field/comparator
-      // (e.g. month:>1 month:<11 month:!=8). Keep all, only skip exact duplicates.
-      if (DATE_METADATA_FIELDS.has(field)) {
-        if (seenDateTokens.has(raw)) return;
-        seenDateTokens.add(raw);
+      // Temporal and range filters can appear multiple times for the same field.
+      // Keep all, only skip exact duplicates.
+      if (MULTI_TOKEN_METADATA_FIELDS.has(field)) {
+        if (seenMultiTokens.has(raw)) return;
+        seenMultiTokens.add(raw);
         out.push(raw);
         return;
       }
@@ -1872,6 +1951,11 @@
       return;
     }
 
+    if (field === 'heart_rate_bpm') {
+      openHeartRateMetadataFilterModal(index);
+      return;
+    }
+
     openMetadataFilterModalWithPrefill(index, field, parsed);
   }
 
@@ -2066,6 +2150,33 @@
     });
 
     setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
+  }
+
+  function upsertHeartRateMetadataTokens(index: number, tokens: string[]) {
+    const incomingTokens = normalizeMetadataTokens(tokens);
+    const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    const keptTokens = existing.filter((token) => getFieldFromMetadataToken(token) !== 'heart_rate_bpm');
+
+    setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
+  }
+
+  function normalizeBpmInput(value: unknown) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return Math.floor(parsed);
+  }
+
+  function buildHeartRateMetadataFilterTokens(data: ModalSubmitData) {
+    const minBpm = normalizeBpmInput(data.minBpm);
+    const maxBpm = normalizeBpmInput(data.maxBpm);
+    const tokens: string[] = [];
+
+    if (minBpm !== null) tokens.push(`hr:>=${quoteFilterTokenValue(minBpm)}`);
+    if (maxBpm !== null) tokens.push(`hr:<=${quoteFilterTokenValue(maxBpm)}`);
+
+    return normalizeMetadataTokens(tokens);
   }
 
   function buildDateFilterTokens(data: ModalSubmitData) {
@@ -2333,6 +2444,30 @@
         return;
       }
       upsertDateHourMetadataTokens(targetIndex, tokens);
+      shouldTriggerSearch = tokens.length > 0;
+    } else if (filterType === 'metadataHeartRate') {
+      const minRaw = String(data.minBpm ?? '').trim();
+      const maxRaw = String(data.maxBpm ?? '').trim();
+      const minBpm = normalizeBpmInput(minRaw);
+      const maxBpm = normalizeBpmInput(maxRaw);
+
+      if (!minRaw && !maxRaw) {
+        toasts.error('Heart Rate: provide Min BPM, Max BPM, or both.');
+        return;
+      }
+
+      if ((minRaw && minBpm === null) || (maxRaw && maxBpm === null)) {
+        toasts.error('Heart Rate: BPM values must be valid non-negative numbers.');
+        return;
+      }
+
+      if (minBpm !== null && maxBpm !== null && minBpm > maxBpm) {
+        toasts.error('Heart Rate: Min BPM must be less than or equal to Max BPM.');
+        return;
+      }
+
+      const tokens = buildHeartRateMetadataFilterTokens(data);
+      upsertHeartRateMetadataTokens(targetIndex, tokens);
       shouldTriggerSearch = tokens.length > 0;
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
       const rawValue = String(data.value ?? '').trim();
@@ -2809,8 +2944,9 @@
                     on:click|stopPropagation={() => openDateRangeFilterModal(i)}
                     title="Date Range"
                     aria-label="Date Range"
-                    class="h-6 px-2 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
+                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
                   >
+                    <img src="/icons/data_range.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
                     Range
                   </button>
                   <button
@@ -2818,8 +2954,9 @@
                     on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
                     title="Date/Hour Metadata"
                     aria-label="Date/Hour Metadata"
-                    class="h-6 px-2 rounded-full border border-amber-600/45 bg-amber-900/25 text-amber-200 text-[10px] font-semibold hover:bg-amber-800/40 hover:text-white transition-colors"
+                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-amber-600/45 bg-amber-900/25 text-amber-200 text-[10px] font-semibold hover:bg-amber-800/40 hover:text-white transition-colors"
                   >
+                    <img src="/icons/date_hour.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
                     Date Meta
                   </button>
                 {/if}
@@ -2830,8 +2967,9 @@
                     on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
                     title="Quick Country filter"
                     aria-label="Quick Country filter"
-                    class="h-6 px-2 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
+                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
                   >
+                    <img src="/icons/country.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
                     Country
                   </button>
                 {/if}
@@ -2948,10 +3086,7 @@
                           class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                         >
                           <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <rect x="3" y="4" width="18" height="18" rx="2"/>
-                              <path d="M16 2v4M8 2v4M3 10h18"/>
-                            </svg>
+                            <img src="/icons/data_range.svg" alt="" class="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div class="flex-1">
                             <div class="text-xs font-medium text-white">Date Range</div>
@@ -2965,10 +3100,7 @@
                           class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                         >
                           <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M4 7h16M4 12h16M4 17h10"/>
-                              <path d="M16 17h4"/>
-                            </svg>
+                            <img src="/icons/date_hour.svg" alt="" class="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div class="flex-1">
                             <div class="text-xs font-medium text-white">Date/Hour Metadata</div>
@@ -2982,9 +3114,7 @@
                           class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                         >
                           <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M3 7h18M3 12h18M3 17h18"/>
-                            </svg>
+                            <img src="/icons/country.svg" alt="" class="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div class="flex-1">
                             <div class="text-xs font-medium text-white">Country</div>
@@ -3008,6 +3138,25 @@
                             <div class="text-[10px] text-gray-400 font-mono">location:...</div>
                           </div>
                         </button>
+
+                        {#if hasHeartRateFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openHeartRateMetadataFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+                                <path d="M3 12h4l2-4 3 8 2-4h7"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Heart Rate</div>
+                              <div class="text-[10px] text-gray-400">Filter by BPM range</div>
+                            </div>
+                          </button>
+                        {/if}
 
                         {#if displayMetadataFilterFields.length > 0}
                           <div class="my-1 h-px bg-gray-700"></div>
