@@ -1,7 +1,15 @@
 // src/lib/ui/buildRows.js
 import { resolveGroupByConfig } from '$lib/groupByConfig.js';
 
-export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, resultsAutoFit, runtimeProfile = {} }) {
+export function buildRows(items, {
+  viewMode,
+  resultsPerGroup,
+  resultsPerRow,
+  resultsAutoFit,
+  runtimeProfile = {},
+  showLocalTimeInTitles = true,
+  timeBadgeTimezoneOverride = 'profile'
+}) {
   if (!Array.isArray(items) || items.length === 0) return [];
 
   const chunk = (arr, n) => {
@@ -82,7 +90,13 @@ export function buildRows(items, { viewMode, resultsPerGroup, resultsPerRow, res
       return `unknown-date-${uniqueFallback}`;
     }
 
-    const timezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+    const configuredTimezone = String(runtimeProfile?.timeBadge?.timezone || 'local').trim().toLowerCase();
+    const overrideTimezone = String(timeBadgeTimezoneOverride || 'profile').trim().toLowerCase();
+    const timezone = overrideTimezone === 'utc'
+      ? 'utc'
+      : overrideTimezone === 'local'
+        ? 'local'
+        : (showLocalTimeInTitles ? configuredTimezone : 'utc');
     const date = new Date(epochMs);
 
     const y = timezone === 'utc' ? date.getUTCFullYear() : date.getFullYear();

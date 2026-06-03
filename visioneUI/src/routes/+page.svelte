@@ -2544,7 +2544,9 @@ function handleViewSubmitted() {
     viewMode: $uiStore.viewMode,
     resultsPerGroup: $uiStore.resultsPerGroup,
     resultsAutoFit: true,
-    runtimeProfile
+    runtimeProfile,
+    showLocalTimeInTitles: $uiStore.showLocalTimeInTitles,
+    timeBadgeTimezoneOverride: $uiStore.timeBadgeTimezoneOverride
   });
 
 
@@ -2552,7 +2554,9 @@ function handleViewSubmitted() {
     viewMode: $uiStore.viewMode,
     resultsPerGroup: $uiStore.resultsPerGroup,
     resultsAutoFit: true,
-    runtimeProfile
+    runtimeProfile,
+    showLocalTimeInTitles: $uiStore.showLocalTimeInTitles,
+    timeBadgeTimezoneOverride: $uiStore.timeBadgeTimezoneOverride
   });
 
 
