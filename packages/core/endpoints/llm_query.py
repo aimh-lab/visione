@@ -13,6 +13,7 @@ from langchain_ollama.llms import OllamaLLM
 from pydantic import BaseModel, Field, ValidationError
 
 from endpoints.search import TemporalQueryNode
+from pg.extended_comparator import ExtendedComparator
 
 
 router = APIRouter()
@@ -27,16 +28,16 @@ DEFAULT_MODEL_NAME = "openclip_clip_vit_b_32"
 DEFAULT_LLM_MODEL = "qwen3:8b"
 DEFAULT_LLM_BASE_URL = "http://edge-nd1.isti.cnr.it:11435"
 ALLOWED_COMPARATORS = (
-    Comparator.EQ,
-    Comparator.NE,
-    Comparator.GT,
-    Comparator.GTE,
-    Comparator.LT,
-    Comparator.LTE,
-    Comparator.CONTAIN,
-    Comparator.LIKE,
-    Comparator.IN,
-    Comparator.NIN,
+    ExtendedComparator.EQ,
+    ExtendedComparator.NE,
+    ExtendedComparator.GT,
+    ExtendedComparator.GTE,
+    ExtendedComparator.LT,
+    ExtendedComparator.LTE,
+    ExtendedComparator.CONTAIN,
+    ExtendedComparator.FTS,
+    ExtendedComparator.IN,
+    ExtendedComparator.NIN,
 )
 ALLOWED_OPERATORS = (
     Operator.AND,
@@ -123,7 +124,7 @@ EXAMPLES = [
                         "item": [
                             {
                                 "item": "I was in a hardware store",
-                                "filter": 'and(gt("hour", 13), like("new_semantic_name", "%Dublin%"))',
+                                "filter": 'and(gt("hour", 13), fts("new_semantic_name", "Dublin"))',
                             },
                             {
                                 "item": "image:https://url_of_a_store",

@@ -541,15 +541,41 @@
     formValues = { ...formValues, [fieldName]: next };
   }
 
+  function addDateFixEntryAfter(fieldName, part, index, initial = {}) {
+    const next = getDateFixesValue(fieldName);
+    const entries = next[part].length > 0 ? next[part] : [normalizeDateFixEntry({})];
+    const insertAt = Math.max(0, Math.min(Number(index) + 1, entries.length));
+    next[part] = [
+      ...entries.slice(0, insertAt),
+      normalizeDateFixEntry(initial),
+      ...entries.slice(insertAt)
+    ];
+    formValues = { ...formValues, [fieldName]: next };
+  }
+
   function removeDateFixEntry(fieldName, part, index) {
     const next = getDateFixesValue(fieldName);
-    next[part] = next[part].filter((_, i) => i !== index);
+    const entries = next[part].filter((_, i) => i !== index);
+    next[part] = entries.length > 0 ? entries : [normalizeDateFixEntry({})];
     formValues = { ...formValues, [fieldName]: next };
   }
 
   function updateDateFixEntry(fieldName, part, index, patch) {
     const next = getDateFixesValue(fieldName);
     next[part] = next[part].map((entry, i) => (i === index ? { ...entry, ...patch } : entry));
+    formValues = { ...formValues, [fieldName]: next };
+  }
+
+  function moveDateFixEntry(fieldName, fromPart, index, toPart) {
+    const targetPart = String(toPart || '').trim();
+    if (!DATE_FIX_PARTS.includes(targetPart) || targetPart === fromPart) return;
+
+    const next = getDateFixesValue(fieldName);
+    const entry = next[fromPart]?.[index];
+    if (!entry) return;
+
+    next[fromPart] = next[fromPart].filter((_, i) => i !== index);
+    next[targetPart] = [...next[targetPart], { ...entry, value: '' }];
     formValues = { ...formValues, [fieldName]: next };
   }
 
@@ -801,65 +827,70 @@
             {:else if field.type === 'dateFixes'}
               {@const dateFixesValue = getDateFixesValue(field.name)}
               <div id={fieldId} class={isCompactDropdown ? 'space-y-1.5 rounded-lg border border-amber-600/45 bg-amber-950/20 p-2' : 'space-y-2.5 rounded-lg border border-amber-600/45 bg-amber-950/20 p-2.5'}>
-                <div class={isCompactDropdown ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-2'}>
-                  {#each DATE_FIX_PARTS as part}
-                    <button
-                      type="button"
-                      on:click={() => addDateFixEntry(field.name, part)}
-                      class={isCompactDropdown
-                        ? 'px-2 py-0.5 rounded-full text-[11px] border transition-colors bg-amber-900/35 border-amber-600/55 text-amber-100 hover:bg-amber-800/45 hover:text-white'
-                        : 'px-2.5 py-1 rounded-full text-xs border transition-colors bg-amber-900/35 border-amber-600/55 text-amber-100 hover:bg-amber-800/45 hover:text-white'}
-                    >
-                      + {DATE_FIX_LABEL[part]}
-                    </button>
-                  {/each}
+                <div>
+                  <div class="text-[11px] text-amber-100/90">Metadata constraints are combined with AND.</div>
                 </div>
 
                 {#each DATE_FIX_PARTS as part}
-                  {#each dateFixesValue[part] as entry, fixIndex}
-                    <div class={isCompactDropdown ? 'grid grid-cols-[48px_64px_minmax(0,72px)_auto] gap-1.5 items-center rounded-md border border-amber-700/45 bg-amber-950/15 p-1.5' : 'grid grid-cols-[86px_92px_1fr_auto] gap-2 items-center'}>
-                      <div class="text-xs text-amber-200/90">{DATE_FIX_LABEL[part]}</div>
-                      <select
-                        value={entry.comparator}
-                        on:change={(event) => updateDateFixEntry(field.name, part, fixIndex, { comparator: String(event.currentTarget?.value || 'eq') })}
-                        class={isCompactDropdown
-                          ? 'px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'
-                          : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'}
-                        aria-label={`${DATE_FIX_LABEL[part]} comparator`}
-                      >
-                        <option value="eq">=</option>
-                        <option value="ne">!=</option>
-                        <option value="gte">&gt;=</option>
-                        <option value="lte">&lt;=</option>
-                        <option value="gt">&gt;</option>
-                        <option value="lt">&lt;</option>
-                      </select>
-                      <input
-                        type="text"
-                        inputmode="numeric"
-                        maxlength={DATE_FIX_MAX[part]}
-                        value={entry.value}
-                        placeholder={part === 'year' ? 'YYYY' : part === 'month' ? 'MM' : part === 'day' ? 'DD' : 'HH'}
-                        on:input={(event) => handleDateFixValueInput(field.name, part, fixIndex, event)}
-                        class={isCompactDropdown
-                          ? 'w-full min-w-0 px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-xs'
-                          : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-sm'}
-                        aria-label={`${DATE_FIX_LABEL[part]} value`}
-                      />
-                      <button
-                        type="button"
-                        on:click={() => removeDateFixEntry(field.name, part, fixIndex)}
-                        class={isCompactDropdown
-                          ? 'inline-flex h-6 w-6 shrink-0 items-center justify-center justify-self-end rounded-full border border-red-500/70 bg-red-600/25 text-red-100 hover:bg-red-600/40 hover:text-white'
-                          : 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/70 bg-red-600/25 text-red-100 hover:bg-red-600/40 hover:text-white'}
-                        aria-label={`Remove ${DATE_FIX_LABEL[part]} constraint`}
-                      >
-                        <svg class={isCompactDropdown ? 'h-3 w-3' : 'h-3.5 w-3.5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                  {/each}
+                  {@const entries = dateFixesValue[part].length > 0 ? dateFixesValue[part] : [normalizeDateFixEntry({})]}
+                  <div class={isCompactDropdown ? 'space-y-1' : 'space-y-1.5'}>
+                    {#each entries as entry, fixIndex}
+                      <div class={isCompactDropdown ? 'grid grid-cols-[minmax(0,54px)_52px_minmax(0,72px)_auto_auto] gap-1.5 items-center rounded-md border border-amber-700/45 bg-amber-950/15 p-1.5' : 'grid grid-cols-[minmax(0,86px)_78px_1fr_auto_auto] gap-2 items-center rounded-md border border-amber-700/45 bg-amber-950/15 p-2'}>
+                        <div class={isCompactDropdown ? 'text-xs font-semibold text-amber-100' : 'text-sm font-semibold text-amber-100'}>
+                          {DATE_FIX_LABEL[part]}
+                        </div>
+                        <select
+                          value={entry.comparator}
+                          on:change={(event) => updateDateFixEntry(field.name, part, fixIndex, { comparator: String(event.currentTarget?.value || 'eq') })}
+                          class={isCompactDropdown
+                            ? 'px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'
+                            : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 text-xs focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30'}
+                          aria-label={`${DATE_FIX_LABEL[part]} comparator`}
+                        >
+                          <option value="eq">=</option>
+                          <option value="ne">!=</option>
+                          <option value="gte">&gt;=</option>
+                          <option value="lte">&lt;=</option>
+                        </select>
+                        <input
+                          type="text"
+                          inputmode="numeric"
+                          maxlength={DATE_FIX_MAX[part]}
+                          value={entry.value}
+                          placeholder={part === 'year' ? 'YYYY' : part === 'month' ? 'MM' : part === 'day' ? 'DD' : 'HH'}
+                          on:input={(event) => handleDateFixValueInput(field.name, part, fixIndex, event)}
+                          class={isCompactDropdown
+                            ? 'w-full min-w-0 px-2 py-1 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-xs'
+                            : 'px-2.5 py-1.5 bg-amber-950/35 border border-amber-700/60 rounded text-amber-50 placeholder-amber-200/45 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 font-mono text-sm'}
+                          aria-label={`${DATE_FIX_LABEL[part]} value`}
+                        />
+                        <button
+                          type="button"
+                          on:click={() => addDateFixEntryAfter(field.name, part, fixIndex)}
+                          class={isCompactDropdown
+                            ? 'inline-flex h-6 w-6 shrink-0 items-center justify-center justify-self-end rounded-full border border-amber-500/70 bg-amber-600/25 text-amber-100 hover:bg-amber-600/40 hover:text-white'
+                            : 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-500/70 bg-amber-600/25 text-amber-100 hover:bg-amber-600/40 hover:text-white'}
+                          aria-label={`Add ${DATE_FIX_LABEL[part]} constraint`}
+                        >
+                          <svg class={isCompactDropdown ? 'h-3 w-3' : 'h-3.5 w-3.5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14"/>
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          on:click={() => removeDateFixEntry(field.name, part, fixIndex)}
+                          class={isCompactDropdown
+                            ? 'inline-flex h-6 w-6 shrink-0 items-center justify-center justify-self-end rounded-full border border-red-500/70 bg-red-600/25 text-red-100 hover:bg-red-600/40 hover:text-white'
+                            : 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500/70 bg-red-600/25 text-red-100 hover:bg-red-600/40 hover:text-white'}
+                          aria-label={`Remove ${DATE_FIX_LABEL[part]} constraint`}
+                        >
+                          <svg class={isCompactDropdown ? 'h-3 w-3' : 'h-3.5 w-3.5'} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    {/each}
+                  </div>
                 {/each}
               </div>
             {:else if field.type === 'dateParts'}

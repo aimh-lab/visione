@@ -62,7 +62,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "imageUrl" | "metadata" | "metadataDate" | "metadataCountry" | "metadataLocation" | "";
+    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "";
   };
 
   type ModalSubmitData = {
@@ -194,6 +194,8 @@
 
   const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
   const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
+  const DATE_RANGE_FIELDS = new Set(['date', 'epoch', 'epoch_from', 'epoch_to']);
+  const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
     date: 'Date',
@@ -375,7 +377,7 @@
   }
 
   function getDefaultComparatorForField(field: string) {
-    return NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase()) ? 'eq' : 'ilike';
+    return NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase()) ? 'eq' : 'fts';
   }
 
   function getMetadataFieldHint(field: string) {
@@ -394,7 +396,7 @@
     if (normalized === 'lt') return '<';
     if (normalized === 'eq') return '=';
     if (normalized === 'ne') return '!=';
-    if (normalized === 'like' || normalized === 'ilike') return '~';
+    if (normalized === 'fts') return '~';
 
     const normalizedFallback = String(fallback || '').trim().toLowerCase();
     if (normalizedFallback === 'gte') return '>=';
@@ -402,7 +404,7 @@
     if (normalizedFallback === 'gt') return '>';
     if (normalizedFallback === 'lt') return '<';
     if (normalizedFallback === 'ne') return '!=';
-    if (normalizedFallback === 'like' || normalizedFallback === 'ilike') return '~';
+    if (normalizedFallback === 'fts') return '~';
     return '=';
   }
 
@@ -1196,8 +1198,7 @@
             { value: 'lte', label: '<= (equal less than)' },
             { value: 'lt', label: '< (less than)' },
             { value: 'gt', label: '> (greater than)' },
-            { value: 'like', label: '~ (like)' },
-            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+            { value: 'fts', label: '~ (full-text search)' }
           ]
         },
         {
@@ -1215,7 +1216,7 @@
     closeMenu();
   }
 
-  function openDateMetadataFilterModal(index: number) {
+  function openDateRangeFilterModal(index: number) {
     modalMetadataField = 'date';
     modalMetadataShortcut = 'date';
     const prefill = getDateMetadataPrefill(index);
@@ -1223,24 +1224,12 @@
 
     modalConfig = {
       isOpen: true,
-      title: 'Filter by Date & Time',
+      title: 'Date Range',
       icon: 'calendar',
-      description: 'You can use From/To only, pinned Year/Month/Day/Hour only, or both together (AND).',
+      description: 'Search within a temporal interval. Use From, To, or both; partial dates like YYYY/MM/DD:HH are supported.',
       targetIndex: index,
-      filterType: 'metadataDate',
+      filterType: 'metadataDateRange',
       fields: [
-        {
-          name: 'dateFixed',
-          label: 'Pinned constraints',
-          type: 'dateFixes',
-          value: prefill.dateFixed || {
-            year: [],
-            month: [],
-            day: [],
-            hour: []
-          },
-          hint: 'These constraints are independent from From/To and can be used together.'
-        },
         {
           name: 'dateFromParts',
           label: 'From',
@@ -1258,8 +1247,80 @@
           label: 'Query preview',
           type: 'preview',
           computePreview: (values: ModalSubmitData) => {
-            const tokens = buildDateFilterTokens(values);
+            const tokens = buildDateRangeFilterTokens(values);
             return tokens.length > 0 ? tokens.join(' ') : 'No date tokens yet';
+          }
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
+  function normalizeDateHourMetadataFixEntry(raw: unknown) {
+    const source = raw && typeof raw === 'object' ? raw as { comparator?: unknown; value?: unknown } : {};
+    return {
+      comparator: String(source.comparator || 'eq').trim().toLowerCase() || 'eq',
+      value: String(source.value || '')
+    };
+  }
+
+  function getDefaultDateHourMetadataFixes(dateFixed: unknown) {
+    const source = dateFixed && typeof dateFixed === 'object'
+      ? dateFixed as Record<'year' | 'month' | 'day' | 'hour', unknown>
+      : {} as Record<'year' | 'month' | 'day' | 'hour', unknown>;
+    const normalizeEntries = (key: 'year' | 'month' | 'day' | 'hour') => {
+      const raw = source[key];
+
+      if (Array.isArray(raw)) {
+        return raw.length > 0
+          ? raw.map((entry) => normalizeDateHourMetadataFixEntry(entry))
+          : [{ comparator: 'eq', value: '' }];
+      }
+
+      if (raw && typeof raw === 'object' && !!(raw as { enabled?: unknown }).enabled) {
+        return [normalizeDateHourMetadataFixEntry(raw)];
+      }
+
+      return [{ comparator: 'eq', value: '' }];
+    };
+
+    return {
+      year: normalizeEntries('year'),
+      month: normalizeEntries('month'),
+      day: normalizeEntries('day'),
+      hour: normalizeEntries('hour')
+    };
+  }
+
+  function openDateHourMetadataFilterModal(index: number) {
+    modalMetadataField = 'date';
+    modalMetadataShortcut = 'date';
+    const prefill = getDateMetadataPrefill(index);
+    setModalAnchorFromIndex(index);
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Date/Hour Metadata',
+      icon: 'filter',
+      description: 'Add exact Year, Month, Day, or Hour metadata constraints. Constraints are combined with AND and are not a date range.',
+      targetIndex: index,
+      filterType: 'metadataDateHour',
+      fields: [
+        {
+          name: 'dateFixed',
+          label: 'Metadata constraints',
+          type: 'dateFixes',
+          value: getDefaultDateHourMetadataFixes(prefill.dateFixed),
+          hint: 'Use these for exact temporal metadata conditions, not intervals.'
+        },
+        {
+          name: 'datePreview',
+          label: 'Query preview',
+          type: 'preview',
+          computePreview: (values: ModalSubmitData) => {
+            const tokens = buildDateHourMetadataFilterTokens(values);
+            return tokens.length > 0 ? tokens.join(' ') : 'No metadata constraints yet';
           }
         }
       ]
@@ -1301,12 +1362,11 @@
           label: 'Comparator',
           type: 'select',
           advanced: true,
-          value: String(prefill?.comparator || 'ilike').trim().toLowerCase(),
+          value: String(prefill?.comparator || 'fts').trim().toLowerCase(),
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
-            { value: 'like', label: '~ (like)' },
-            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+            { value: 'fts', label: '~ (full-text search)' }
           ]
         }
       ]
@@ -1348,12 +1408,11 @@
           label: 'Comparator',
           type: 'select',
           advanced: true,
-          value: String(prefill?.comparator || 'ilike').trim().toLowerCase(),
+          value: String(prefill?.comparator || 'fts').trim().toLowerCase(),
           options: [
             { value: 'eq', label: '= (equal)' },
             { value: 'ne', label: '!= (not equal)' },
-            { value: 'like', label: '~ (like)' },
-            { value: 'ilike', label: '~ (ilike, case insensitive)' }
+            { value: 'fts', label: '~ (full-text search)' }
           ]
         }
       ]
@@ -1771,8 +1830,7 @@
     if (raw.startsWith('<')) return { comparator: 'lt', value: raw.slice(1).trim() };
     if (raw.startsWith('=')) return { comparator: 'eq', value: raw.slice(1).trim() };
     if (raw.startsWith('~')) {
-      const stringFallback = fallback === 'like' ? 'like' : 'ilike';
-      return { comparator: stringFallback, value: raw.slice(1).trim() };
+      return { comparator: 'fts', value: raw.slice(1).trim() };
     }
 
     return { comparator: fallback, value: raw };
@@ -1792,8 +1850,13 @@
     const field = String(chip?.field || '').trim().toLowerCase();
     if (!field) return;
 
-    if (DATE_METADATA_FIELDS.has(field)) {
-      openDateMetadataFilterModal(index);
+    if (DATE_RANGE_FIELDS.has(field)) {
+      openDateRangeFilterModal(index);
+      return;
+    }
+
+    if (DATE_HOUR_METADATA_FIELDS.has(field)) {
+      openDateHourMetadataFilterModal(index);
       return;
     }
 
@@ -1983,12 +2046,23 @@
     };
   }
 
-  function upsertDateMetadataTokens(index: number, tokens: string[]) {
+  function upsertDateRangeTokens(index: number, tokens: string[]) {
     const incomingTokens = normalizeMetadataTokens(tokens);
     const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
     const keptTokens = existing.filter((token) => {
       const field = getFieldFromMetadataToken(token);
-      return !field || !DATE_METADATA_FIELDS.has(field);
+      return !field || !DATE_RANGE_FIELDS.has(field);
+    });
+
+    setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
+  }
+
+  function upsertDateHourMetadataTokens(index: number, tokens: string[]) {
+    const incomingTokens = normalizeMetadataTokens(tokens);
+    const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    const keptTokens = existing.filter((token) => {
+      const field = getFieldFromMetadataToken(token);
+      return !field || !DATE_HOUR_METADATA_FIELDS.has(field);
     });
 
     setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
@@ -2136,6 +2210,26 @@
     return normalizeMetadataTokens([...fixedTokens, ...fromTokens, ...toTokens]);
   }
 
+  function buildDateRangeFilterTokens(data: ModalSubmitData) {
+    return buildDateFilterTokens({
+      ...data,
+      dateFixed: {
+        year: [],
+        month: [],
+        day: [],
+        hour: []
+      }
+    });
+  }
+
+  function buildDateHourMetadataFilterTokens(data: ModalSubmitData) {
+    return buildDateFilterTokens({
+      ...data,
+      dateFromParts: { day: '', month: '', year: '', hour: '' },
+      dateToParts: { day: '', month: '', year: '', hour: '' }
+    });
+  }
+
   function hasInvalidEpochParts(parts: { day?: string; month?: string; year?: string; hour?: string } | undefined) {
     const safe = parts || {};
     const day = String(safe.day ?? '').trim();
@@ -2195,17 +2289,29 @@
           'url'
         );
       }
-    } else if (filterType === 'metadataDate') {
+    } else if (filterType === 'metadataDateRange') {
       if (hasInvalidEpochParts(data.dateFromParts) || hasInvalidEpochParts(data.dateToParts)) {
-        toasts.error('From/To use epoch filters: provide at least year (month/day/hour optional; day requires month).');
+        toasts.error('Date Range: provide at least year. Month/day/hour are optional; day requires month.');
         return;
       }
 
-      const tokens = buildDateFilterTokens(data);
+      const tokens = buildDateRangeFilterTokens(data);
       const readPart = (parts: unknown, key: 'day' | 'month' | 'year' | 'hour') => {
         if (!parts || typeof parts !== 'object') return '';
         return String((parts as Record<string, unknown>)[key] ?? '').trim();
       };
+      const hasDateInput = ['day', 'month', 'year', 'hour'].some((key) =>
+        readPart(data.dateFromParts, key as 'day' | 'month' | 'year' | 'hour')
+        || readPart(data.dateToParts, key as 'day' | 'month' | 'year' | 'hour')
+      );
+      if (hasDateInput && tokens.length === 0) {
+        toasts.error('Invalid date range. Check year/month/day/hour values.');
+        return;
+      }
+      upsertDateRangeTokens(targetIndex, tokens);
+      shouldTriggerSearch = tokens.length > 0;
+    } else if (filterType === 'metadataDateHour') {
+      const tokens = buildDateHourMetadataFilterTokens(data);
       const readFixedPart = (parts: unknown, key: 'year' | 'month' | 'day' | 'hour') => {
         if (!parts || typeof parts !== 'object') return '';
         const raw = (parts as Record<string, unknown>)[key];
@@ -2220,22 +2326,20 @@
         return String((raw as Record<string, unknown>).value ?? '').trim();
       };
       const hasDateInput = ['day', 'month', 'year', 'hour'].some((key) =>
-        readPart(data.dateFromParts, key as 'day' | 'month' | 'year' | 'hour')
-        || readPart(data.dateToParts, key as 'day' | 'month' | 'year' | 'hour')
-        || readFixedPart(data.dateFixed, key as 'year' | 'month' | 'day' | 'hour')
+        readFixedPart(data.dateFixed, key as 'year' | 'month' | 'day' | 'hour')
       );
       if (hasDateInput && tokens.length === 0) {
-        toasts.error('Invalid date filter. Check day/month/year/hour values.');
+        toasts.error('Invalid metadata constraint. Check Year, Month, Day, or Hour values.');
         return;
       }
-      upsertDateMetadataTokens(targetIndex, tokens);
+      upsertDateHourMetadataTokens(targetIndex, tokens);
       shouldTriggerSearch = tokens.length > 0;
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
-        const comparator = String(data.comparator || 'ilike').trim().toLowerCase();
+        const comparator = String(data.comparator || 'fts').trim().toLowerCase();
         const shortcut = filterType === 'metadataCountry' ? 'country' : 'location';
-        const defaultComparator = 'ilike';
+        const defaultComparator = 'fts';
         const symbol = toComparatorSymbol(comparator, defaultComparator);
         const tokenValue = quoteFilterTokenValue(rawValue);
         const token = comparator === defaultComparator
@@ -2702,12 +2806,21 @@
                 {#if hasDateFilterSupport}
                   <button
                     type="button"
-                    on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
-                    title="Quick Date filter"
-                    aria-label="Quick Date filter"
+                    on:click|stopPropagation={() => openDateRangeFilterModal(i)}
+                    title="Date Range"
+                    aria-label="Date Range"
                     class="h-6 px-2 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
                   >
-                    Date
+                    Range
+                  </button>
+                  <button
+                    type="button"
+                    on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
+                    title="Date/Hour Metadata"
+                    aria-label="Date/Hour Metadata"
+                    class="h-6 px-2 rounded-full border border-amber-600/45 bg-amber-900/25 text-amber-200 text-[10px] font-semibold hover:bg-amber-800/40 hover:text-white transition-colors"
+                  >
+                    Date Meta
                   </button>
                 {/if}
 
@@ -2831,7 +2944,7 @@
                       {:else}
                         <button
                           type="button"
-                          on:click|stopPropagation={() => openDateMetadataFilterModal(i)}
+                          on:click|stopPropagation={() => openDateRangeFilterModal(i)}
                           class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
                         >
                           <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
@@ -2841,8 +2954,25 @@
                             </svg>
                           </div>
                           <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Date</div>
-                            <div class="text-[10px] text-gray-400 font-mono">partial: year / month / day / hour</div>
+                            <div class="text-xs font-medium text-white">Date Range</div>
+                            <div class="text-[10px] text-gray-400 font-mono">From / To interval</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
+                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                            <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M4 7h16M4 12h16M4 17h10"/>
+                              <path d="M16 17h4"/>
+                            </svg>
+                          </div>
+                          <div class="flex-1">
+                            <div class="text-xs font-medium text-white">Date/Hour Metadata</div>
+                            <div class="text-[10px] text-gray-400 font-mono">year/month/day/hour AND</div>
                           </div>
                         </button>
 

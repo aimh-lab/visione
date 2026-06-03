@@ -225,7 +225,6 @@
   let isQaAnswerModalOpen = false;
   let qaAnswerContext = { imgId: '', source: '', title: '' };
   let qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
-  let qaAgentSubmitCandidate = '';
   let qaAgentAbortController = null;
   let qaAgentRequestId = '';
   let sessionResetKey = 0;
@@ -1243,7 +1242,6 @@
     qaAgentAbortController = new AbortController();
     qaAgentRequestId = '';
     qaAgentStream = { isStreaming: true, events: [], finalAnswer: '', error: '' };
-    qaAgentSubmitCandidate = '';
 
     try {
       const result = await visioneAPI.streamQaAgent({
@@ -1263,9 +1261,6 @@
               ? String(evt?.data?.detail || 'QA stream error')
               : qaAgentStream.error
           };
-          if (evt?.type === 'answer_submit') {
-            qaAgentSubmitCandidate = String(evt?.data?.content || '').trim();
-          }
         }
       });
 
@@ -1274,9 +1269,6 @@
         isStreaming: false,
         finalAnswer: String(result?.answer || qaAgentStream.finalAnswer || '')
       };
-      if (!qaAgentSubmitCandidate) {
-        qaAgentSubmitCandidate = String(result?.submitAnswer || '').trim();
-      }
       qaAgentRequestId = '';
 
       return result;
@@ -2497,7 +2489,6 @@ function handleViewSubmitted() {
     }
 
     qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
-    qaAgentSubmitCandidate = '';
 
     uiStore.actions.setLayoutTab('View1');
 
@@ -2916,7 +2907,6 @@ function handleViewSubmitted() {
         askQaAgent={askQaAgent}
         stopQaAgent={stopQaAgent}
         {qaAgentStream}
-        {qaAgentSubmitCandidate}
         {sessionResetKey}
         qaStreamPanelHeight={$uiStore.qaStreamPanelHeight}
         onUpdateQaAgentPanelPrefs={(patch) => {
