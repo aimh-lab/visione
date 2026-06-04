@@ -966,6 +966,8 @@
         sortType: 'feedbackModel',
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
+        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 50,
+        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
           activeTab: get(uiStore).layoutTab,
@@ -2711,9 +2713,12 @@ function handleViewSubmitted() {
   selectedImgId={slideshowPlayer.selectedImgId}
   title={slideshowPlayer.title}
   modalScale={$uiStore.slideshowModalScale}
+  imageModalScale={$uiStore.imageModalScale}
   highlightedKeyframes={slideshowPlayer.highlightedKeyframes}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
+  {runtimeProfile}
+  showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   on:playerAction={(e) => {
     const d = e?.detail || {};
     const action = String(d.action || 'unknown');
@@ -2739,7 +2744,19 @@ function handleViewSubmitted() {
     isSlideshowOpen = false;
     addSimilarityAsSearchStep(e.detail.imgId);
   }}
+  on:videoSummary={(e) => {
+    const imgId = String(e?.detail?.imgId || e?.detail?.img?.imgId || '');
+    const videoId = String(e?.detail?.videoId || e?.detail?.img?.videoId || slideshowPlayer.videoId || '');
+    if (videoId) openVideoSummary(videoId, imgId || null);
+  }}
+  on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
+  on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
+  on:openVideoPlayer={(e) => {
+    isSlideshowOpen = false;
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+  }}
   on:adjustScale={(e) => adjustSlideshowModalScale(e?.detail?.delta)}
+  on:adjustImageScale={(e) => adjustImageModalScale(e?.detail?.delta)}
   on:close={() => {
     logVideoPlayer('closeSlideshow');
     isSlideshowOpen = false;
@@ -2762,6 +2779,7 @@ function handleViewSubmitted() {
   {runtimeProfile}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
+  imageModalScale={$uiStore.imageModalScale}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
@@ -2770,8 +2788,9 @@ function handleViewSubmitted() {
   onPinCurrent={pinCurrentVideoSummary}
   onOpenPinned={openPinnedVideoSummary}
   onUnpinPinned={unpinVideoSummary}
-  onOpenFrame={(frame) => openFrameModal(frame)}
+  onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
   onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+  onAdjustImageModalScale={adjustImageModalScale}
   addRFPositiveByImg={addRFPositiveByImg}
   addRFNegativeByImg={addRFNegativeByImg}
   submitByImgId={submitByImgId}

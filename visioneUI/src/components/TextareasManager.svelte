@@ -172,7 +172,6 @@
     'month',
     'day',
     'hour',
-    'hour_local',
     'timezone',
     'location_country',
     'location',
@@ -184,7 +183,6 @@
     month: 'm',
     day: 'd',
     hour: 'h',
-    hour_local: 'hl',
     epoch: 'epoch',
     epoch_from: 'ef',
     epoch_to: 'et',
@@ -195,10 +193,10 @@
     heart_rate_bpm: 'hr'
   };
 
-  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
-  const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'hour_local', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
+  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
+  const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
   const DATE_RANGE_FIELDS = new Set(['date', 'epoch', 'epoch_from', 'epoch_to']);
-  const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour', 'hour_local']);
+  const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour']);
   const MULTI_TOKEN_METADATA_FIELDS = new Set([...DATE_METADATA_FIELDS, 'heart_rate_bpm']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
@@ -207,7 +205,6 @@
     month: 'Month',
     day: 'Day',
     hour: 'Hour',
-    hour_local: 'Hour (local)',
     epoch: 'Epoch',
     epoch_from: 'Epoch From',
     epoch_to: 'Epoch To',
@@ -229,8 +226,6 @@
       day: 'day',
       h: 'hour',
       hour: 'hour',
-      hl: 'hour_local',
-      hour_local: 'hour_local',
       epoch: 'epoch',
       epoch_from: 'epoch_from',
       ef: 'epoch_from',
@@ -364,7 +359,7 @@
     return discoveryMetadataSet.has(normalized) || runtimeMetadataSet.has(normalized);
   }
 
-  $: hasDateFilterSupport = ['year', 'month', 'day', 'hour', 'hour_local'].some((f) => hasSpecialMetadataField(f));
+  $: hasDateFilterSupport = ['year', 'month', 'day', 'hour'].some((f) => hasSpecialMetadataField(f));
   $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
   $: hasLocationFilterSupport = hasSpecialMetadataField('location');
   // Keep the dedicated Heart Rate filter discoverable even when discovery metadata is delayed/unavailable.
@@ -379,7 +374,7 @@
 
   function getShortcutForField(field: string) {
     const normalized = String(field || '').trim().toLowerCase();
-    return SHORTCUT_ALIAS_BY_FIELD[normalized] || normalized;
+    return normalized;
   }
 
   function getDefaultComparatorForField(field: string) {
@@ -1188,7 +1183,7 @@
       isOpen: true,
       title: `Add ${normalizedField} Filter`,
       icon: 'filter',
-      description: `Insert shortcut ${modalMetadataShortcut}:... for metadata filtering`,
+      description: `Insert ${modalMetadataShortcut}:... for metadata filtering`,
       targetIndex: index,
       filterType: 'metadata',
       fields: [
@@ -1307,7 +1302,7 @@
 
     modalConfig = {
       isOpen: true,
-      title: 'Date/Hour Metadata',
+      title: 'Date/Hour',
       icon: 'filter',
       description: 'Add exact Year, Month, Day, or Hour metadata constraints. Constraints are combined with AND and are not a date range.',
       targetIndex: index,
@@ -1455,7 +1450,7 @@
 
   function openHeartRateMetadataFilterModal(index: number) {
     modalMetadataField = 'heart_rate_bpm';
-    modalMetadataShortcut = 'hr';
+    modalMetadataShortcut = 'heart_rate_bpm';
     const prefill = getHeartRateMetadataPrefill(index);
     setModalAnchorFromIndex(index);
 
@@ -1980,7 +1975,6 @@
       return snapshot
         .filter((entry) => {
           const mapped = getFieldFromMetadataToken(entry);
-          if (field === 'hour') return mapped === 'hour' || mapped === 'hour_local';
           return mapped === field;
         })
         .map((token) => {
@@ -2173,8 +2167,8 @@
     const maxBpm = normalizeBpmInput(data.maxBpm);
     const tokens: string[] = [];
 
-    if (minBpm !== null) tokens.push(`hr:>=${quoteFilterTokenValue(minBpm)}`);
-    if (maxBpm !== null) tokens.push(`hr:<=${quoteFilterTokenValue(maxBpm)}`);
+    if (minBpm !== null) tokens.push(`heart_rate_bpm:>=${quoteFilterTokenValue(minBpm)}`);
+    if (maxBpm !== null) tokens.push(`heart_rate_bpm:<=${quoteFilterTokenValue(maxBpm)}`);
 
     return normalizeMetadataTokens(tokens);
   }
@@ -2473,7 +2467,7 @@
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
         const comparator = String(data.comparator || 'fts').trim().toLowerCase();
-        const shortcut = filterType === 'metadataCountry' ? 'country' : 'location';
+        const shortcut = filterType === 'metadataCountry' ? 'location_country' : 'location';
         const defaultComparator = 'fts';
         const symbol = toComparatorSymbol(comparator, defaultComparator);
         const tokenValue = quoteFilterTokenValue(rawValue);
@@ -2952,8 +2946,8 @@
                   <button
                     type="button"
                     on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
-                    title="Date/Hour Metadata"
-                    aria-label="Date/Hour Metadata"
+                    title="Date/Hour"
+                    aria-label="Date/Hour"
                     class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-amber-600/45 bg-amber-900/25 text-amber-200 text-[10px] font-semibold hover:bg-amber-800/40 hover:text-white transition-colors"
                   >
                     <img src="/icons/date_hour.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
@@ -3103,7 +3097,7 @@
                             <img src="/icons/date_hour.svg" alt="" class="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Date/Hour Metadata</div>
+                            <div class="text-xs font-medium text-white">Date/Hour</div>
                             <div class="text-[10px] text-gray-400 font-mono">year/month/day/hour AND</div>
                           </div>
                         </button>
@@ -3118,7 +3112,7 @@
                           </div>
                           <div class="flex-1">
                             <div class="text-xs font-medium text-white">Country</div>
-                            <div class="text-[10px] text-gray-400 font-mono">country:...</div>
+                            <div class="text-[10px] text-gray-400 font-mono">location_country:...</div>
                           </div>
                         </button>
 

@@ -75,7 +75,7 @@ export function createSearchController({
     if (!value) return false;
 
     // Keep user-authored shortcut filters untouched in the visible query text.
-    return /(^|\s)(date|type|semantic|sem|semantic_name|new_semantic_name|ns|y|year|m|month|d|day|h|hour|hl|hour_local|tz|timezone|country|location|location_country|hr|heart_rate_bpm|epoch|epoch_from|epoch_to|ef|et):/i.test(value);
+    return /(^|\s)(date|type|semantic|sem|semantic_name|new_semantic_name|ns|y|year|m|month|d|day|h|hour|tz|timezone|country|location|location_country|hr|heart_rate_bpm|epoch|epoch_from|epoch_to|ef|et):/i.test(value);
   }
 
   async function maybeTranslateTextareas(rawTextareas) {

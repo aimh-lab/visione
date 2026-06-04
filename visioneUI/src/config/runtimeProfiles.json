@@ -68,7 +68,6 @@
           "month",
           "day",
           "hour",
-          "hour_local",
           "timezone",
           "location_country",
           "location"

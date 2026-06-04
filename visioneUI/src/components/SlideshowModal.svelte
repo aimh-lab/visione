@@ -2,14 +2,18 @@
   import { createEventDispatcher, onDestroy, tick } from "svelte";
   import { focusTrap } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
+  import ImageModal from "./ImageModal.svelte";
 
   export let isOpen = false;
   export let videoId = "";
   export let selectedImgId = "";
   export let title = "";
   export let modalScale = 100;
+  export let imageModalScale = 100;
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let runtimeProfile = {};
+  export let showLocalTimeInTitles = true;
   export let highlightedKeyframes = [];
 
   const dispatch = createEventDispatcher();
@@ -36,6 +40,7 @@
   let dragStartY = 0;
   let dragBaseX = 0;
   let dragBaseY = 0;
+  let imageModalOpen = false;
 
   const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
   const SLIDESHOW_SPEED_OPTIONS = [50, 100, 200, 300, 400];
@@ -407,6 +412,36 @@
     });
   }
 
+  function getImageModalFrame(frame = activeFrame) {
+    if (!frame) return null;
+    return {
+      ...frame,
+      imgId: frame.imgId,
+      videoId: normalizedVideoId,
+      url: frame.imageUrl || frame.thumbnailUrl || "",
+      title: frame.imgId,
+      index: currentIndex,
+      raw: {
+        ...(frame.raw || {}),
+        source: "slideshow-modal",
+        currentTime: Number(frame.timestamp || 0)
+      }
+    };
+  }
+
+  function openCurrentImageModal() {
+    if (!activeFrame) return;
+    imageModalOpen = true;
+  }
+
+  function closeImageModal() {
+    imageModalOpen = false;
+  }
+
+  function navigateImageModal(offset) {
+    move(offset, "imageModalNavigate");
+  }
+
   function submitCurrentFrame() {
     if (!allowFrameSubmit || !activeFrame) return;
     dispatch("submitFrame", {
@@ -529,6 +564,7 @@
     dragOffsetX = 0;
     dragOffsetY = 0;
     dragPointerId = null;
+    imageModalOpen = false;
     hasInitializedKeyframeStripPosition = false;
     stopAutoPlay();
   }
@@ -749,6 +785,20 @@
         </div>
 
         <button
+          class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sky-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
+          on:click={openCurrentImageModal}
+          aria-label="Open current image"
+          title="Open current image"
+          disabled={!activeFrame}
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+          <span>Open image</span>
+        </button>
+
+        <button
           class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
           on:click={captureFrameForSimilarity}
           aria-label="Capture frame for similarity"
@@ -891,5 +941,36 @@
         </div>
       </div>
     </div>
+
+    <ImageModal
+      isOpen={imageModalOpen}
+      image={getImageModalFrame()}
+      total={frames.length}
+      modalScale={imageModalScale}
+      layer="dialog"
+      {showSubmitUI}
+      {challengeType}
+      {runtimeProfile}
+      {showLocalTimeInTitles}
+      on:close={closeImageModal}
+      on:prev={() => navigateImageModal(-1)}
+      on:next={() => navigateImageModal(1)}
+      on:adjustScale={(e) => dispatch("adjustImageScale", { delta: Number(e?.detail?.delta || 0) })}
+      on:submit={() => submitCurrentFrame()}
+      on:videoSummary={(e) => {
+        closeImageModal();
+        dispatch("videoSummary", { img: e.detail.img, videoId: normalizedVideoId, imgId: activeFrame?.imgId || "" });
+      }}
+      on:similarity={() => {
+        closeImageModal();
+        captureFrameForSimilarity();
+      }}
+      on:rfPositive={(e) => dispatch("rfPositive", { img: e.detail.img })}
+      on:rfNegative={(e) => dispatch("rfNegative", { img: e.detail.img })}
+      on:openVideoPlayer={(e) => {
+        closeImageModal();
+        dispatch("openVideoPlayer", { imgId: e.detail.imgId, videoId: e.detail.videoId, startAt: Number(activeFrame?.timestamp || 0) });
+      }}
+    />
   </div>
 {/if}
