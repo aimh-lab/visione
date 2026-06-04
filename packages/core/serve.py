@@ -116,6 +116,10 @@ async def lifespan(app: FastAPI):
         index_query_options=index_options,
         fts_language=cfg.get("fts_language", "simple"),
     )
+
+    # add to available models the combined retrieval models
+    available_model_infos.extend({"name": model_conf.name, "modalities": list(model_conf.modalities)} for model_conf in cfg.combined_retrieval_models)
+
     app.state.available_models = available_model_infos
     app.state.model_column_map = model_column_map
 
