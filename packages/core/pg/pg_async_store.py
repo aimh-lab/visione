@@ -1948,7 +1948,7 @@ class AsyncPGVectorStore(VectorStore):
                     f"{param_name}": filter_value
                 }
 
-        elif operator == "$fts":
+        elif operator in {"$like", "$ilike"}:
             param_name = f"{field}_{operator.replace('$', '')}_{suffix_id}"
             if operator == "$like":
                 return f"({field} LIKE :{param_name})", {f"{param_name}": filter_value}
