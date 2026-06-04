@@ -79,17 +79,18 @@ class LSCLoader:
 
         # hour_local: hour of day in local time
         local_times = pd.to_datetime(df["local_time"], format="mixed", dayfirst=False, errors="coerce")
-        df["hour_local"] = local_times.apply(lambda x: x.hour if pd.notnull(x) else None)
+        # df["hour_local"] = local_times.apply(lambda x: x.hour if pd.notnull(x) else None)
+        df["epoch_local"] = df["epoch"] + (df["utc_offset_hours"] * 3600).fillna(0).astype(int)
         df = df.drop(columns=["local_time"])
 
         # hour_id: YYYYMMDD_hh (first 11 chars of image_name)
         df["hour_id"] = df["image_name"].str[:11]
 
         # Temporal components from filename
-        df["year"] = df["image_name"].str[0:4].astype(int)
-        df["month"] = df["image_name"].str[4:6].astype(int)
-        df["day"] = df["image_name"].str[6:8].astype(int)
-        df["hour"] = df["image_name"].str[9:11].astype(int)
+        df["year"] = local_times.apply(lambda x: x.year) # df["image_name"].str[0:4].astype(int)
+        df["month"] = local_times.apply(lambda x: x.month) # df["image_name"].str[4:6].astype(int)
+        df["day"] = local_times.apply(lambda x: x.day) # df["image_name"].str[6:8].astype(int)
+        df["hour"] = local_times.apply(lambda x: x.hour) # df["image_name"].str[9:11].astype(int)
 
         # location_stop as boolean
         df["location_stop"] = df["location_stop"].map(
@@ -111,12 +112,12 @@ class LSCLoader:
         target_cols = [
             "image_name",
             "epoch",
+            "epoch_local",
             "hour_id",
             "year",
             "month",
             "day",
             "hour",
-            "hour_local",
             "timezone",
             "utc_offset_hours",
             "location",
@@ -178,12 +179,12 @@ class LSCLoader:
         return [
             Column(name="image_name", data_type="text"),
             Column(name="epoch", data_type="bigint"),
+            Column(name="epoch_local", data_type="bigint"),
             Column(name="hour_id", data_type="text"),
             Column(name="year", data_type="integer"),
             Column(name="month", data_type="integer"),
             Column(name="day", data_type="integer"),
             Column(name="hour", data_type="integer"),
-            Column(name="hour_local", data_type="integer"),
             Column(name="timezone", data_type="text"),
             Column(name="utc_offset_hours", data_type="float"),
             Column(name="location", data_type="text"),
@@ -201,12 +202,12 @@ class LSCLoader:
         column_descriptions = {
             "image_name": "Image filename in the collection, formatted as YYYYMMDD_HHMMSS_NNN.jpg.",
             "epoch": "Unix timestamp in seconds for the image capture time (UTC, derived from filename).",
+            # "epoch_local": "Unix timestamp in seconds for the image capture time (local time, derived from filename).",
             "hour_id": "Identifier of the hour segment containing the image, formatted as YYYYMMDD_hh.",
-            "year": "Four-digit year extracted from the image timestamp.",
-            "month": "Month number extracted from the image timestamp.",
-            "day": "Day of month extracted from the image timestamp.",
-            "hour": "Hour of day in 24-hour format (UTC) extracted from the image timestamp.",
-            "hour_local": "Hour of day in 24-hour format in local time.",
+            "year": "Four-digit year extracted from the image timestamp (local time).",
+            "month": "Month number extracted from the image timestamp (local time).",
+            "day": "Day of month extracted from the image timestamp (local time).",
+            "hour": "Hour of day in 24-hour format (UTC) extracted from the image timestamp (local time).",
             "timezone": "Timezone in which the image was captured (e.g., Europe/Dublin).",
             "utc_offset_hours": "UTC offset in hours at the time of capture.",
             "location": "Semantic location description (e.g., 'Inside; HOME; Dublin, Ireland, Leinster; Ireland').",
@@ -247,6 +248,15 @@ if __name__ == "__main__":
 
     docs, ids = lsc.generate_docs()
 
+    # 10 random idx from 0 to len(ids)-1
+    import random
+    random.seed(42)
+    sample_ids = random.sample(range(len(ids)), min(10, len(ids)))
+
     print(f"Generated {len(docs)} documents.")
     if len(docs) > 0:
-        print("Sample Doc Metadata:", docs[0].metadata)
+        for idx in sample_ids:
+            print(f"Document {idx}:")
+            print(f"  ID: {ids[idx]}")
+            print(f"  Content: {docs[idx].page_content}")
+            print(f"  Metadata: {docs[idx].metadata}")

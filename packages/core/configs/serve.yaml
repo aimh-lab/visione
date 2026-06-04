@@ -35,3 +35,9 @@ qa:
   max_images_per_call: 5
   default_model: "qwen_embedding_8B"
   debug: true
+
+combined_retrieval_models:
+  - "name": "smart (qwen + cliph)"
+    "models": ["qwen_embedding_8B", "openclip_clip_vit_h_14"]
+    "extended_k": 100000
+    "modalities": ["text", "image"]

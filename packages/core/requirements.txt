@@ -9,6 +9,6 @@ hydra-core==1.3.2
 fastapi
 uvicorn
 langchain-ollama
-langgraph>=0.2.0
+langgraph==1.1.10
 lark>=1.1.5
 scikit-learn==1.5.1

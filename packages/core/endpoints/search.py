@@ -8,6 +8,7 @@ from langchain_core.structured_query import Operation, Operator
 from pydantic import BaseModel, Field
 import numpy as np
 from sklearn.svm import SVC
+import copy
 
 from utils import generate_doc_id
 from pg.extended_comparator import ExtendedComparator, ExtendedComparison, ExtendedPGVectorTranslator
@@ -214,6 +215,63 @@ if hasattr(TemporalQueryNode, "model_rebuild"):
 else:
     TemporalQueryNode.update_forward_refs()
 
+def expand_combined_models(query: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    # Base condition: if the node isn't a dictionary, return it as-is
+    if not isinstance(query, dict):
+        return query
+
+    # Create a deep copy to prevent mutating the original payload during iterations
+    expanded_query = copy.deepcopy(query)
+
+    # 1. Process nested queries recursively first (bottom-up traversal)
+    if "item" in expanded_query and isinstance(expanded_query["item"], list):
+        expanded_query["item"] = [
+            expand_combined_models(child, request) if isinstance(child, dict) else child
+            for child in expanded_query["item"]
+        ]
+
+    # 2. Check if the current node specifies a model
+    model_name = expanded_query.get("model")
+    empty_item = expanded_query.get("item") == "" or expanded_query.get("item") == []
+    if model_name and not empty_item:  # Only expand if there's a model and the item isn't empty
+        # Safely extract the combined models config (defaults to empty list if missing)
+        combined_models_config = getattr(request.app.state.config, "combined_retrieval_models", [])
+
+        # Find the matching model config, handling both dicts and object/Pydantic schemas
+        matching_model = next(
+            (m for m in combined_models_config if (
+                m.get("name") if isinstance(m, dict) else getattr(m, "name", None)
+            ) == model_name),
+            None
+        )
+
+        if matching_model:
+            # Extract the list of underlying base models
+            base_models = matching_model.get("models") if isinstance(matching_model, dict) else getattr(matching_model, "models", [])
+
+            if base_models:
+                original_k = expanded_query.get("k", 100)
+                child_k = matching_model.get("extended_k", original_k * 10)  # Use extended_k if specified, otherwise default to 10x the original k
+
+                # Build the child query nodes for each underlying base model
+                children = []
+                for base_model in base_models:
+                    child = copy.deepcopy(expanded_query)
+                    child["model"] = base_model
+                    child["k"] = child_k
+                    children.append(child)
+
+                # Overwrite the current node to be a routing RRF aggregation node.
+                # Leaf-specific keys (filters, window_seconds, etc.) are dropped from the top 
+                # level because they are now safely encapsulated inside the children.
+                expanded_query = {
+                    "item": children,
+                    "aggregation_type": "rrf",
+                    "k": original_k
+                }
+
+    return expanded_query
+
 
 router = APIRouter()
 
@@ -228,6 +286,10 @@ async def search_endpoint(payload: SearchRequest, request: Request):
         else payload.dict(exclude_none=True)
     )
     actual_query = query_dict.get("query")
+
+    # rewrite the query as an RRF combined query where model is one of the combined retrieval models
+    actual_query = expand_combined_models(actual_query, request)
+
     actual_query = convert_filters_to_pg(actual_query)
     requested_models = collect_models(payload.query)
     unknown_models = [m for m in requested_models if m not in [m["name"] for m in request.app.state.available_models]]
