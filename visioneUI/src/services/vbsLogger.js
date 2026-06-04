@@ -78,47 +78,35 @@ function normalizeResultEntry(item, index) {
   };
 }
 
-function buildQueryEvents({ textareas = [], relevanceFeedback = null, timestamp = Date.now() }) {
+function buildQueryEvents({
+  textareas = [],
+  relevanceFeedback = null,
+  timestamp = Date.now(),
+  temporalWindowSeconds = undefined,
+  buildSearchPayload = null
+}) {
   const ts = toUnixMs(timestamp);
   const events = [];
 
-  for (const t of textareas || []) {
-    if (!t?.enabled) continue;
-
-    const text = String(t?.value || '').trim();
-    const simId = String(t?.similarityImgId || '').trim();
-
-    if (text) {
-      const model = String(t?.textModel || t?.model || '').trim();
-      events.push({
-        timestamp: ts,
-        category: 'TEXT',
-        type: modelToTextType(model),
-        value: text
-      });
-    }
-
-    if (simId) {
-      const model = String(t?.imageModel || t?.model || '').trim();
-      events.push({
-        timestamp: ts,
-        category: 'IMAGE',
-        type: modelToImageType(model),
-        value: simId
-      });
+  let queryPayload = null;
+  if (typeof buildSearchPayload === 'function') {
+    try {
+      queryPayload = buildSearchPayload(textareas, relevanceFeedback, temporalWindowSeconds);
+    } catch {
+      queryPayload = null;
     }
   }
 
-  const positive = Array.isArray(relevanceFeedback?.positiveIds) ? relevanceFeedback.positiveIds.filter(Boolean) : [];
-  const negative = Array.isArray(relevanceFeedback?.negativeIds) ? relevanceFeedback.negativeIds.filter(Boolean) : [];
-  if (positive.length || negative.length) {
+  if (queryPayload) {
     events.push({
       timestamp: ts,
-      category: 'IMAGE',
-      type: 'feedbackModel',
-      value: `pos:${positive.join(',')} neg:${negative.join(',')} method:${String(relevanceFeedback?.method || 'svm')}`
+      category: 'Visione query',
+      type: '',
+      value: queryPayload
     });
   }
+
+  // TEXT and IMAGE query logs are intentionally disabled while the full Visione query event is evaluated.
 
   return events;
 }
@@ -311,6 +299,8 @@ export function createVbsLogger() {
     resultSetAvailability = 'all',
     maxResults,
     timestamp = Date.now(),
+    temporalWindowSeconds = undefined,
+    buildSearchPayload = null,
     metadata = {}
   }) {
     const db = await ensureDb();
@@ -322,7 +312,7 @@ export function createVbsLogger() {
     const boundedLimit = Math.min(10000, Math.max(100, Number.isFinite(resolvedLimit) ? resolvedLimit : 10000));
     const limited = raw.slice(0, boundedLimit);
     const results = limited.map(normalizeResultEntry);
-    const events = buildQueryEvents({ textareas, relevanceFeedback, timestamp: ts });
+    const events = buildQueryEvents({ textareas, relevanceFeedback, timestamp: ts, temporalWindowSeconds, buildSearchPayload });
 
     const payload = {
       timestamp: ts,

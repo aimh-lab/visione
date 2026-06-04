@@ -13,6 +13,7 @@
   export let challengeType = "KIS";
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
+  export let layer = "modal";
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch("close");
@@ -80,6 +81,8 @@
   $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
   $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
   $: previewHeight = `${safeModalScale}px`;
+  $: overlayZClass = layer === "dialog" ? "z-[var(--z-dialog-overlay)]" : "z-[var(--z-modal-overlay)]";
+  $: contentZClass = layer === "dialog" ? "z-[var(--z-dialog-content)]" : "z-[var(--z-modal-content)]";
 
   const METADATA_FIELDS_PER_REQUEST = 20;
   const imageMetadataCache = new Map();
@@ -339,7 +342,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] flex items-start justify-center pt-10">
+  <div use:focusTrap class={`fixed inset-0 ${overlayZClass} flex items-start justify-center pt-10`}>
     <!-- Backdrop -->
     <button
       type="button"
@@ -350,7 +353,7 @@
 
     <!-- Modal -->
     <div
-      class="ui-image-modal relative z-[var(--z-modal-content)] bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col"
+      class={`ui-image-modal relative ${contentZClass} bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col`}
       style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <!-- Header -->

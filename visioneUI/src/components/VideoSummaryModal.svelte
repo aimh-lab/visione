@@ -2,6 +2,7 @@
   import { onDestroy, tick } from "svelte";
   import { focusTrap } from "../utils/ui";
   import ResultsGrid from "./ResultsGrid.svelte";
+  import ImageModal from "./ImageModal.svelte";
   const ResultsGridAny = ResultsGrid as any;
 
   type Frame = { imgId?: string; videoId?: string; [key: string]: unknown };
@@ -29,6 +30,7 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
+  export let imageModalScale = 100;
   export let rfPositive: Frame[] = [];
   export let rfNegative: Frame[] = [];
 
@@ -39,18 +41,20 @@
   export let onOpenPinned = (_item: PinnedSummary) => {};
   export let onUnpinPinned = (_item: PinnedSummary) => {};
 
-  export let onOpenFrame = (_frame: Frame) => {};
+  export let onVideoSummary = (_videoId: string, _imgId?: string | null) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
   export let addRFPositiveByImg = (_imgId: string, _img?: Frame | null) => {};
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+  export let onAdjustImageModalScale = (_delta: number) => {};
 
   const summaryKey = (item: PinnedSummary) =>
     `${String(item?.videoId || "").trim()}::${String(item?.highlightImgId || "").trim()}`;
 
   $: framesAsRows = frames ? [frames] : [];
   $: hasFrames = (frames?.length ?? 0) > 0;
+  $: summaryImageModalTotal = Array.isArray(frames) ? frames.length : 0;
 
   const MIN_WIDTH = 820;
   const MIN_HEIGHT = 520;
@@ -66,6 +70,61 @@
   let resizeStartY = 0;
   let resizeStartWidth = 0;
   let resizeStartHeight = 0;
+  let summaryImageModalOpen = false;
+  let summarySelectedFrame: Frame | null = null;
+  let localSelectedFrameId: string | null = null;
+
+  function openSummaryImageModal(frame: Frame | null | undefined) {
+    if (!frame) return;
+    summarySelectedFrame = frame;
+    localSelectedFrameId = String(frame?.imgId || '') || null;
+    summaryImageModalOpen = true;
+  }
+
+  function closeSummaryImageModal() {
+    summaryImageModalOpen = false;
+  }
+
+  function findFrameIndex(frame: Frame | null) {
+    if (!Array.isArray(frames) || frames.length === 0 || !frame) return -1;
+    const imgId = String(frame?.imgId || '').trim();
+    const explicitIndex = Number(frame?.index ?? frame?.idx);
+    if (imgId) {
+      const byId = frames.findIndex((entry) => String(entry?.imgId || '').trim() === imgId);
+      if (byId >= 0) return byId;
+    }
+    if (Number.isFinite(explicitIndex) && explicitIndex >= 0 && explicitIndex < frames.length) {
+      return explicitIndex;
+    }
+    return -1;
+  }
+
+  function navigateSummaryImageModal(offset: number) {
+    if (!Array.isArray(frames) || frames.length === 0) return;
+    const currentIndex = findFrameIndex(summarySelectedFrame);
+    const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = Math.max(0, Math.min(frames.length - 1, baseIndex + offset));
+    const nextFrame = frames[nextIndex];
+    if (!nextFrame) return;
+    summarySelectedFrame = nextFrame;
+    localSelectedFrameId = String(nextFrame?.imgId || '') || null;
+  }
+
+  function handleSummaryWindowKeydown(event: KeyboardEvent) {
+    if (!summaryImageModalOpen) return;
+    if (!["Escape", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.key === "Escape") {
+      closeSummaryImageModal();
+    } else if (event.key === "ArrowLeft") {
+      navigateSummaryImageModal(-1);
+    } else if (event.key === "ArrowRight") {
+      navigateSummaryImageModal(1);
+    }
+  }
 
   function clampRect(rect: { x: number; y: number; width: number; height: number }) {
     if (typeof window === 'undefined') return rect;
@@ -210,7 +269,12 @@
   });
 </script>
 
-<svelte:window on:mousemove={handlePointerMove} on:mouseup={handlePointerUp} on:resize={handleWindowResize} />
+<svelte:window
+  on:mousemove={handlePointerMove}
+  on:mouseup={handlePointerUp}
+  on:resize={handleWindowResize}
+  on:keydown|capture={handleSummaryWindowKeydown}
+/>
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -322,7 +386,7 @@
             <svelte:component
               this={ResultsGridAny}
               items={framesAsRows}
-              selectedId={selectedFrameId as any}
+              selectedId={(localSelectedFrameId || selectedFrameId) as any}
               layout="rows"
               showVideoSummary={false}
               {videoBadgeOrientation}
@@ -337,10 +401,9 @@
               virtualizeRows={virtualizationEnabled}
               virtualizeThreshold={virtualizationThreshold}
               registerContainer={registerGridContainer}
-              on:open={(e: any) => onOpenFrame(e.detail.frame)}
+              on:open={(e: any) => openSummaryImageModal(e.detail.frame)}
               on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
               on:similarity={(e: any) => {
-                onClose();
                 onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null);
               }}
               on:rfPositive={(e: any) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
@@ -362,6 +425,37 @@
           <path d="M8 16l8-8M12 20l8-8M16 20l4-4"/>
         </svg>
       </button>
+
+      <ImageModal
+        isOpen={summaryImageModalOpen}
+        image={summarySelectedFrame as any}
+        total={summaryImageModalTotal}
+        modalScale={imageModalScale}
+        layer="dialog"
+        {showSubmitUI}
+        {challengeType}
+        {runtimeProfile}
+        {showLocalTimeInTitles}
+        on:close={closeSummaryImageModal}
+        on:prev={() => navigateSummaryImageModal(-1)}
+        on:next={() => navigateSummaryImageModal(1)}
+        on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
+        on:submit={(e) => submitByImgId(e.detail.img.imgId, e.detail.img)}
+        on:videoSummary={(e) => {
+          closeSummaryImageModal();
+          onVideoSummary(e.detail.img.videoId, e.detail.img.imgId);
+        }}
+        on:similarity={(e) => {
+          closeSummaryImageModal();
+          onSimilarity(e.detail.imgId, e.detail.img ?? null);
+        }}
+        on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
+        on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
+        on:openVideoPlayer={(e) => {
+          closeSummaryImageModal();
+          openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+        }}
+      />
     </div>
   </div>
 {/if}
