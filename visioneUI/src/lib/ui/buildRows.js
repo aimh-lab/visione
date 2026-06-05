@@ -22,6 +22,7 @@ export function buildRows(items, {
   const mode = String(groupBy?.mode || viewMode || 'byrank');
   const kind = String(groupBy?.kind || '').trim().toLowerCase();
   const metadataField = String(groupBy?.metadata || '').trim();
+  const isHourMetadataGrouping = kind === 'metadata' && metadataField.toLowerCase() === 'hour_id';
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
@@ -106,6 +107,42 @@ export function buildRows(items, {
     return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   };
 
+  const buildHourGroupKey = (item) => {
+    const epochMs = getEpochSortMs(item);
+    if (epochMs) {
+      const date = new Date(epochMs);
+      const y = date.getUTCFullYear();
+      const m = date.getUTCMonth() + 1;
+      const d = date.getUTCDate();
+      const h = date.getUTCHours();
+      return `${String(y).padStart(4, '0')}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}_${String(h).padStart(2, '0')}`;
+    }
+
+    const metadata = item?.raw?.metadata && typeof item.raw.metadata === 'object' ? item.raw.metadata : {};
+    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+    const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
+
+    if (
+      Number.isFinite(year) && year >= 0
+      && Number.isFinite(month) && month >= 1 && month <= 12
+      && Number.isFinite(day) && day >= 1 && day <= 31
+      && Number.isFinite(hour) && hour >= 0 && hour <= 23
+    ) {
+      return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
+    }
+
+    const rawHourId = String(
+      metadata?.hour_id
+      ?? item?.raw?.hour_id
+      ?? item?.hour_id
+      ?? ''
+    ).trim();
+    const match = rawHourId.match(/^(\d{8})_(\d{2})/);
+    return match ? `${match[1]}_${match[2]}` : rawHourId;
+  };
+
   const groupByDateDay = (arr) =>
     groupByKey(arr, (img) => buildDayGroupKey(img), 'date');
 
@@ -143,6 +180,10 @@ export function buildRows(items, {
     groupByKey(
       arr,
       (img) => {
+        if (String(field || '').trim().toLowerCase() === 'hour_id') {
+          return buildHourGroupKey(img) || 'N/A';
+        }
+
         const metadata = img?.raw?.metadata;
         const rawValue = metadata && typeof metadata === 'object'
           ? metadata[field]
@@ -160,6 +201,13 @@ export function buildRows(items, {
         : null);
 
   const dateGroupedRows = mode === 'bydate' ? groupByDateDay(items) : null;
+  const cappedGroupedRows = groupedRows
+    ? groupedRows.map((row) => {
+        const capped = row.slice(0, perRow);
+        capped.__visioneGroupKey = row.__visioneGroupKey;
+        return capped;
+      })
+    : null;
   const dateCappedRows = dateGroupedRows
     ? dateGroupedRows.map((row) => {
         const capped = row.slice(0, perRow);
@@ -172,6 +220,7 @@ export function buildRows(items, {
     if (mode === "byrank") return [items];
 
     if (groupedRows) {
+      if (isHourMetadataGrouping) return cappedGroupedRows || [];
       // One logical group can span multiple visual rows, capped by per-group size.
       return splitGroupedRows(groupedRows);
     }
@@ -185,6 +234,7 @@ export function buildRows(items, {
   if (mode === "bydate" && dateGroupedRows) return dateCappedRows || [];
 
   // Grouped modes (video or metadata): respect per-group cap.
+  if (isHourMetadataGrouping && cappedGroupedRows) return cappedGroupedRows;
   if (groupedRows) return splitGroupedRows(groupedRows);
 
   return chunk(items, perRow);
