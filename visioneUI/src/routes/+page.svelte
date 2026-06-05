@@ -771,8 +771,15 @@
   }
 
   let _submittedIdsSet = new Set();
+  let _submittedByIdMap = new Map();
   $: _submittedIdsSet = new Set(($sessionStore.submittedImages || []).map(s => s.imgId));
+  $: _submittedByIdMap = new Map(
+    ($sessionStore.submittedImages || [])
+      .map((item) => [String(item?.imgId || '').trim(), item])
+      .filter(([imgId]) => !!imgId)
+  );
   const getSubmittedIds = () => _submittedIdsSet;
+  const getSubmittedLookup = () => _submittedByIdMap;
 
   const syncURL = (searchTextareas = null) => {
     scheduleURLSync(searchTextareas);
@@ -877,7 +884,7 @@
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
     getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 50,
     getQueryResultK: () => Number(get(uiStore).queryResultK) || 1000,
-    getSubmittedIds,
+    getSubmittedIds: getSubmittedLookup,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
       if (!rfEnabled) {
@@ -991,7 +998,7 @@
     transformSimilarityResults,
     tick,
 
-    getSubmittedIds,
+    getSubmittedIds: getSubmittedLookup,
 
     setSimilarityState: ({ loading, error, resultSet, images: imgs }) => {
       if (loading !== undefined) similarityLoading = loading;
@@ -1009,7 +1016,7 @@
     transformVideoKeyframes,
     tick,
 
-    getSubmittedIds,
+    getSubmittedIds: getSubmittedLookup,
 
     setVideoState: ({ loading, error, frames, videoId, selectedImgId }) => {
       if (loading !== undefined) view2Loading = loading;
@@ -1069,19 +1076,24 @@
       }
     },
     markSubmittedInViews: (id) => {
+      const submittedRecord = getSubmittedLookup().get(String(id || '').trim()) || null;
+      const patch = {
+        submitted: true,
+        ...(submittedRecord?.submissionVerdict ? { submissionVerdict: submittedRecord.submissionVerdict } : {})
+      };
       const fIdx = _v2Idx.get(id);
       if (fIdx !== undefined) {
-        view2Frames[fIdx] = { ...view2Frames[fIdx], submitted: true };
+        view2Frames[fIdx] = { ...view2Frames[fIdx], ...patch };
         view2Frames = [...view2Frames];
       }
       const sIdx = _simIdx.get(id);
       if (sIdx !== undefined) {
-        similarityImages[sIdx] = { ...similarityImages[sIdx], submitted: true };
+        similarityImages[sIdx] = { ...similarityImages[sIdx], ...patch };
         similarityImages = [...similarityImages];
       }
       const gIdx = _imagesIdx.get(id);
       if (gIdx !== undefined) {
-        images[gIdx] = { ...images[gIdx], submitted: true };
+        images[gIdx] = { ...images[gIdx], ...patch };
         images = [...images];
       }
     },
@@ -2261,8 +2273,7 @@ function handleViewSubmitted() {
 
 
   function updateImagesFromResult(resultset) {
-    const submittedIds = getSubmittedIds();
-    const transformed = transformSearchResults(resultset, submittedIds);
+    const transformed = transformSearchResults(resultset, getSubmittedLookup());
     images = appendSubmittedFrames(transformed);
     selectedIndex = 0;
   }
