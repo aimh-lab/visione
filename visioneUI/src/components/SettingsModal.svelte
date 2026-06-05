@@ -207,10 +207,14 @@
     const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || 160));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
-    const safeDefaultTextModel = textModelOptions.includes(safeDefaultTextModelRaw)
+    const safeDefaultTextModel = discoveredTextModels.length === 0
+      ? (safeDefaultTextModelRaw || FALLBACK_TEXT_MODEL)
+      : textModelOptions.includes(safeDefaultTextModelRaw)
       ? safeDefaultTextModelRaw
       : (textModelOptions[0] || FALLBACK_TEXT_MODEL);
-    const safeDefaultImageModel = imageModelOptions.includes(safeDefaultImageModelRaw)
+    const safeDefaultImageModel = discoveredImageModels.length === 0
+      ? (safeDefaultImageModelRaw || FALLBACK_IMAGE_MODEL)
+      : imageModelOptions.includes(safeDefaultImageModelRaw)
       ? safeDefaultImageModelRaw
       : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
     const safeTupleIndicatorMode = ['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)

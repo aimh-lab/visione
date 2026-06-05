@@ -47,6 +47,7 @@
   let qaStreamScrollKey = '';
   let qaStreamAutoScrollEnabled = true;
   let qaStreamWasStreaming = false;
+  let qaAgentPanelOpen = false;
   let isQaPanelResizing = false;
   let qaPanelResizeStartX = 0;
   let qaPanelResizeStartY = 0;
@@ -104,6 +105,10 @@
   function toggleResetMenu(e) {
     e.stopPropagation();
     isResetMenuOpen = !isResetMenuOpen;
+  }
+
+  function toggleQaAgentPanel() {
+    qaAgentPanelOpen = !qaAgentPanelOpen;
   }
 
   function handleResetQuery(e) {
@@ -565,109 +570,128 @@
           </div>
         </div>
 
-        {#if challengeType === 'Q&A'}
-          <div class="bg-slate-900/30 rounded-lg p-2 border border-slate-700 shadow-lg mt-2">
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <h4 class="text-xs font-bold text-slate-100 uppercase tracking-wide">Q&A Agent Stream</h4>
+        <div class="bg-slate-900/30 rounded-lg border border-slate-700 shadow-lg mt-2 overflow-hidden">
+          <button
+            type="button"
+            class="w-full px-2.5 py-2 flex items-center justify-between gap-2 text-left hover:bg-slate-800/50 transition-colors"
+            aria-expanded={qaAgentPanelOpen}
+            on:click={toggleQaAgentPanel}
+          >
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-100 uppercase tracking-wide">Agent</span>
+              <span class="block text-[11px] text-slate-400 truncate">
+                {qaAgentPanelOpen ? `Available in ${challengeType} · Collapse panel` : `Available in ${challengeType} · Expand panel`}
+              </span>
+            </span>
+            <span class="inline-flex items-center gap-2">
               {#if qaAgentStream?.isStreaming}
                 <span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-900/40 border border-blue-700/50 text-blue-200">streaming</span>
+              {:else if qaAgentStream?.finalAnswer || (Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0)}
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-300">ready</span>
               {/if}
-            </div>
+              <svg class="w-4 h-4 text-slate-300 transition-transform {qaAgentPanelOpen ? 'rotate-180' : ''}" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            </span>
+          </button>
 
-            <textarea
-              class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ask a question about the lifelog..."
-              bind:value={qaAgentQuestion}
-              on:keydown={handleQaQuestionKeydown}
-            ></textarea>
+          {#if qaAgentPanelOpen}
+            <div class="p-2 border-t border-slate-700">
+              <textarea
+                class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ask a question about the lifelog..."
+                bind:value={qaAgentQuestion}
+                on:keydown={handleQaQuestionKeydown}
+              ></textarea>
 
-            <div class="mt-2 flex items-center gap-2">
-              <button
-                class="flex-1 px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
-                on:click={runQaAgent}
-              >
-                Ask agent
-              </button>
-              <button
-                class="px-3 py-2 text-sm font-semibold rounded-md border border-red-500/60 text-red-200 hover:bg-red-900/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                disabled={!qaAgentStream?.isStreaming}
-                on:click={stopQaAgent}
-              >
-                Stop
-              </button>
-            </div>
-
-            {#if qaAgentStream?.error}
-              <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-xs break-words">
-                {qaAgentStream.error}
+              <div class="mt-2 flex items-center gap-2">
+                <button
+                  class="flex-1 px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
+                  on:click={runQaAgent}
+                >
+                  Ask agent
+                </button>
+                <button
+                  class="px-3 py-2 text-sm font-semibold rounded-md border border-red-500/60 text-red-200 hover:bg-red-900/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  disabled={!qaAgentStream?.isStreaming}
+                  on:click={stopQaAgent}
+                >
+                  Stop
+                </button>
               </div>
-            {/if}
 
-            <div
-              class="mt-2 qa-stream-shell qa-stream-resizable"
-              style="height: {qaStreamPanelHeight}px; width: 100%;"
-            >
+              {#if qaAgentStream?.error}
+                <div class="mt-2 p-2 rounded border border-red-700/60 bg-red-900/20 text-xs break-words">
+                  {qaAgentStream.error}
+                </div>
+              {/if}
+
               <div
-                class="overflow-auto space-y-2 pr-1 qa-stream-panel"
-                role="log"
-                bind:this={qaStreamPanelRef}
-                on:scroll={handleQaStreamScroll}
+                class="mt-2 qa-stream-shell qa-stream-resizable"
+                style="height: {qaStreamPanelHeight}px; width: 100%;"
               >
-                {#if Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0}
-                  {#each qaAgentStream.events as evt}
-                    <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
-                      <div class="text-[11px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
+                <div
+                  class="overflow-auto space-y-2 pr-1 qa-stream-panel"
+                  role="log"
+                  bind:this={qaStreamPanelRef}
+                  on:scroll={handleQaStreamScroll}
+                >
+                  {#if Array.isArray(qaAgentStream?.events) && qaAgentStream.events.length > 0}
+                    {#each qaAgentStream.events as evt}
+                      <div class="p-2 rounded-md border qa-event-block {getEventTypeClass(evt?.type)}">
+                        <div class="text-[11px] font-semibold tracking-wide mb-1 qa-event-label">{toEventLabel(evt?.type)}</div>
 
-                      {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
-                        {@const allResults = getToolResults(evt)}
-                        {@const results = allResults}
-                        <details open>
-                          <summary class="text-sm text-slate-300 cursor-pointer">Show {results.length} result(s)</summary>
-                          <div class="qa-tool-results-grid mt-2">
-                            {#each results as result}
-                              <div class="qa-result-card">
-                                {#if result?.image_url}
-                                  <img src={result.image_url} alt={String(result?.id || 'result')} loading="lazy" />
-                                {/if}
-                                {#if result?.id}
-                                  <div class="qa-result-id">{result.id}</div>
-                                {/if}
-                                {#if result?.metadata && typeof result.metadata === 'object'}
-                                  <div class="qa-result-meta">
-                                    {#each Object.entries(result.metadata).slice(0, 8) as [k, v]}
-                                      <div><strong>{k}:</strong> {String(v)}</div>
-                                    {/each}
-                                  </div>
-                                {/if}
-                              </div>
-                            {/each}
-                          </div>
-                        </details>
-                      {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
-                        <pre class="text-sm whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
-                      {:else if isMarkdownEvent(evt?.type)}
-                        <div class="qa-event-body markdown-body text-sm text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
-                      {:else}
-                        <pre class="text-sm whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
-                      {/if}
-                    </div>
-                  {/each}
-                {:else}
-                  <div class="text-xs text-slate-400 italic px-1 py-1">Agent output will appear here.</div>
-                {/if}
+                        {#if String(evt?.type || '').toLowerCase() === 'tool_result'}
+                          {@const allResults = getToolResults(evt)}
+                          {@const results = allResults}
+                          <details open>
+                            <summary class="text-sm text-slate-300 cursor-pointer">Show {results.length} result(s)</summary>
+                            <div class="qa-tool-results-grid mt-2">
+                              {#each results as result}
+                                <div class="qa-result-card">
+                                  {#if result?.image_url}
+                                    <img src={result.image_url} alt={String(result?.id || 'result')} loading="lazy" />
+                                  {/if}
+                                  {#if result?.id}
+                                    <div class="qa-result-id">{result.id}</div>
+                                  {/if}
+                                  {#if result?.metadata && typeof result.metadata === 'object'}
+                                    <div class="qa-result-meta">
+                                      {#each Object.entries(result.metadata).slice(0, 8) as [k, v]}
+                                        <div><strong>{k}:</strong> {String(v)}</div>
+                                      {/each}
+                                    </div>
+                                  {/if}
+                                </div>
+                              {/each}
+                            </div>
+                          </details>
+                        {:else if String(evt?.type || '').toLowerCase() === 'tool_call'}
+                          <pre class="text-sm whitespace-pre-wrap break-words text-slate-200 bg-slate-900/60 rounded p-2 border border-slate-700">{getToolCallArgs(evt)}</pre>
+                        {:else if isMarkdownEvent(evt?.type)}
+                          <div class="qa-event-body markdown-body text-sm text-slate-100">{@html renderMarkdown(getEventMarkdownContent(evt))}</div>
+                        {:else}
+                          <pre class="text-sm whitespace-pre-wrap break-words text-slate-200">{toEventText(evt)}</pre>
+                        {/if}
+                      </div>
+                    {/each}
+                  {:else}
+                    <div class="text-xs text-slate-400 italic px-1 py-1">Agent output will appear here.</div>
+                  {/if}
+                </div>
+
+                <button
+                  type="button"
+                  class="qa-panel-resize-grip"
+                  aria-label="Resize agent panel"
+                  title="Drag to resize"
+                  on:mousedown={startQaPanelResize}
+                ></button>
               </div>
-
-              <button
-                type="button"
-                class="qa-panel-resize-grip"
-                aria-label="Resize agent panel"
-                title="Drag to resize"
-                on:mousedown={startQaPanelResize}
-              ></button>
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
 
         <!-- Recent + Templates compact row -->
         {#if !searchLoading}
