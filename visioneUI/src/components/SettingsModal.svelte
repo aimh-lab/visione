@@ -7,6 +7,7 @@
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
   export let resultsPerGroup = 8;
+  export let queryResultK = 1000;
   export let justifyResultRows = false;
   export let cacheEnabled = true;
   export let dedupeResults = true;
@@ -106,6 +107,7 @@
       theme,
       keyframeSize,
       resultsPerGroup,
+      queryResultK,
       resultsAutoFit,
       cacheEnabled,
       dedupeResults,
@@ -142,14 +144,14 @@
   }
 
   let local = buildLocalState();
-  let activeSettingsTab = 'appearance';
+  let activeSettingsTab = 'search';
   let wasOpen = false;
   let themeTouched = false;
   let hasLocalEdits = false;
   let showDresPassword = false;
   const settingsTabs = [
-    { id: 'appearance', label: 'Appearance' },
     { id: 'search', label: 'Search' },
+    { id: 'appearance', label: 'Display' },
     { id: 'models', label: 'Models' },
     { id: 'dres', label: 'DRES' }
   ];
@@ -162,7 +164,7 @@
     local = buildLocalState();
     hasLocalEdits = false;
     themeTouched = false;
-    activeSettingsTab = 'appearance';
+    activeSettingsTab = 'search';
     showDresPassword = false;
   }
 
@@ -195,6 +197,7 @@
     hasLocalEdits = true;
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
     const perGroup = Math.max(1, Number(local.resultsPerGroup) || 8);
+    const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 1000)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
     const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 50));
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
@@ -228,6 +231,7 @@
       theme: safeTheme,
       keyframeSize: kf,
       resultsPerGroup: perGroup,
+      queryResultK: safeQueryResultK,
       resultsAutoFit: true,
       cacheEnabled: !!local.cacheEnabled,
       dedupeResults: !!local.dedupeResults,
@@ -387,7 +391,7 @@
       <div class="px-5 py-4 overflow-y-auto">
         {#if activeSettingsTab === 'appearance'}
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Appearance</h4>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Display</h4>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-theme" class="ui-settings-label text-sm font-medium text-gray-700">Theme</label>
@@ -613,7 +617,77 @@
 
         {#if activeSettingsTab === 'search'}
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Search</h4>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Query behavior</h4>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-query-result-k" class="ui-settings-label text-sm font-medium text-gray-700">Max results per query</label>
+              <div class="relative">
+                <input
+                  id="settings-query-result-k"
+                  type="number"
+                  min="1"
+                  max="100000"
+                  step="100"
+                  class="ui-settings-input w-28 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.queryResultK}
+                  on:input={(e) => {
+                    const n = Math.min(100000, Math.max(1, Math.floor(Number(e.currentTarget.value) || 1000)));
+                    local.queryResultK = n;
+                    save();
+                  }}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase max results per query" on:click={() => adjustNumber('queryResultK', 100, 1, 100000)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease max results per query" on:click={() => adjustNumber('queryResultK', -100, 1, 100000)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              Controls the final <code>k</code> sent to search. Default is 1000.
+            </p>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-temporal-window-seconds" class="ui-settings-label text-sm font-medium text-gray-700">Temporal window (seconds)</label>
+              <div class="relative">
+                <input
+                  id="settings-temporal-window-seconds"
+                  type="number"
+                  min="1"
+                  max="99999"
+                  step="1"
+                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.temporalWindowSeconds}
+                  on:input={handleTemporalWindowInput}
+                  on:blur={commitTemporalWindowInput}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-auto-translate-toggle" class="ui-settings-label text-sm font-medium text-gray-700">Enable auto-translate</label>
+              <input
+                id="settings-auto-translate-toggle"
+                type="checkbox"
+                bind:checked={local.showAutoTranslateToggle}
+                on:change={() => save()}
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            </div>
+
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Result handling</h4>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-cache-enabled" class="ui-settings-label text-sm font-medium text-gray-700">Enable search cache</label>
@@ -641,7 +715,7 @@
               When disabled, all results are shown even with repeated imgId values.
             </p>
 
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Network</h4>
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Advanced network</h4>
 
             <div>
               <div class="mb-2 flex items-center justify-between">
@@ -693,42 +767,6 @@
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
                 Used to build media URLs. Leave empty to use default_dataserver from core /discovery.
               </p>
-            </div>
-
-            <div class="flex items-center justify-between py-2">
-              <label for="settings-auto-translate-toggle" class="ui-settings-label text-sm font-medium text-gray-700">Enable auto-translate</label>
-              <input
-                id="settings-auto-translate-toggle"
-                type="checkbox"
-                bind:checked={local.showAutoTranslateToggle}
-                on:change={() => save()}
-                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-            </div>
-
-            <div class="flex items-center justify-between py-2">
-              <label for="settings-temporal-window-seconds" class="ui-settings-label text-sm font-medium text-gray-700">Temporal window (seconds)</label>
-              <div class="relative">
-                <input
-                  id="settings-temporal-window-seconds"
-                  type="number"
-                  min="1"
-                  max="99999"
-                  step="1"
-                  class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                  bind:value={local.temporalWindowSeconds}
-                  on:input={handleTemporalWindowInput}
-                  on:blur={commitTemporalWindowInput}
-                />
-                <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
-                  </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
-                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
-                  </button>
-                </div>
-              </div>
             </div>
 
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Performance</h4>

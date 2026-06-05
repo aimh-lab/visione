@@ -18,6 +18,7 @@ const DEFAULT = {
 
   keyframeSize: 130,
   resultsPerGroup: 8,
+  queryResultK: 1000,
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
@@ -74,6 +75,12 @@ function normalizeQaStreamPanelHeight(value, fallback = 288) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.max(160, Math.min(720, Math.round(numeric)));
+}
+
+function normalizeQueryResultK(value, fallback = 1000) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(100000, Math.max(1, Math.floor(numeric)));
 }
 
 function normalizeSidebarWidth(value, fallback = 18) {
@@ -171,6 +178,7 @@ function createUIStore() {
 
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
         resultsPerGroup: (s.resultsPerGroup ?? s.resultsPerRow) ?? u.resultsPerGroup,
+        queryResultK: normalizeQueryResultK(s.queryResultK, u.queryResultK),
         resultsAutoFit: true,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
@@ -228,6 +236,7 @@ function createUIStore() {
         sidebarRightTab: DEFAULT.sidebarRightTab,
         keyframeSize: DEFAULT.keyframeSize,
         resultsPerGroup: DEFAULT.resultsPerGroup,
+        queryResultK: DEFAULT.queryResultK,
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
@@ -389,6 +398,9 @@ function createUIStore() {
         const safeTemporalWindowSeconds = patch.temporalWindowSeconds == null
           ? u.temporalWindowSeconds
           : Math.min(99999, Math.max(1, Number(patch.temporalWindowSeconds) || u.temporalWindowSeconds || DEFAULT.temporalWindowSeconds));
+        const safeQueryResultK = patch.queryResultK == null
+          ? u.queryResultK
+          : normalizeQueryResultK(patch.queryResultK, u.queryResultK || DEFAULT.queryResultK);
         const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)
           ? patch.videoPlayerModalMode
           : u.videoPlayerModalMode;
@@ -409,6 +421,7 @@ function createUIStore() {
           theme: safeTheme,
           keyframeSize: patch.keyframeSize ?? u.keyframeSize,
           resultsPerGroup: patch.resultsPerGroup ?? patch.resultsPerRow ?? u.resultsPerGroup,
+          queryResultK: safeQueryResultK,
           resultsAutoFit: true,
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
@@ -451,6 +464,7 @@ function createUIStore() {
           theme: nextState.theme,
           keyframeSize: nextState.keyframeSize,
           resultsPerGroup: nextState.resultsPerGroup,
+          queryResultK: nextState.queryResultK,
           resultsAutoFit: nextState.resultsAutoFit,
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,

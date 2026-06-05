@@ -105,6 +105,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   sidebarRightWidth: 18,
   keyframeSize: 130,
   resultsPerGroup: 8,
+  queryResultK: 1000,
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,

@@ -49,6 +49,12 @@ export class VisioneAPI {
     this.translationCacheTtlMs = 30 * 60 * 1000;
   }
 
+  #normalizeResultK(value, fallback = this.defaultSingleK) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return fallback;
+    return Math.min(100000, Math.max(1, Math.floor(numeric)));
+  }
+
   /** Fetch /discovery once and cache the result for the session. */
   async discovery() {
     if (this.discoveryCache) return this.discoveryCache;
@@ -350,7 +356,7 @@ export class VisioneAPI {
   }
 
   // Search API
-  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5, temporalWindowSeconds = undefined }) {
+  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5, temporalWindowSeconds = undefined, resultK = undefined }) {
     void simReorder;
     void framesPerRow;
 
@@ -364,7 +370,7 @@ export class VisioneAPI {
       throw new APIError('At least one textarea must be enabled and contain text or image similarity', 400);
     }
 
-    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds);
+    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK);
     const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
     if (normalizedRF) {
       payload.relevance_feedback = normalizedRF;
@@ -386,7 +392,7 @@ export class VisioneAPI {
     return data;
   }
 
-  buildSearchPayloadForLogging(textareas = [], relevanceFeedback = null, temporalWindowSeconds = undefined) {
+  buildSearchPayloadForLogging(textareas = [], relevanceFeedback = null, temporalWindowSeconds = undefined, resultK = undefined) {
     const activeTextareas = (Array.isArray(textareas) ? textareas : []).filter((t) => {
       const text = String(t?.value || "").trim();
       const simId = String(t?.similarityImgId || "").trim();
@@ -395,7 +401,7 @@ export class VisioneAPI {
 
     if (activeTextareas.length === 0) return null;
 
-    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds);
+    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK);
     const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
     if (normalizedRF) {
       payload.relevance_feedback = normalizedRF;
@@ -814,7 +820,8 @@ export class VisioneAPI {
     return fallbackRaw;
   }
 
-  #buildSearchPayload(activeTextareas, temporalWindowSeconds = undefined) {
+  #buildSearchPayload(activeTextareas, temporalWindowSeconds = undefined, resultK = undefined) {
+    const safeResultK = this.#normalizeResultK(resultK, this.defaultSingleK);
     const textareaNodes = activeTextareas
       .map((t) => this.#buildTextareaQueryNode(t, this.defaultSubqueryK, this.defaultSubqueryK))
       .filter(Boolean);
@@ -826,8 +833,8 @@ export class VisioneAPI {
     if (textareaNodes.length === 1) {
       const singleTextareaNode = this.#buildTextareaQueryNode(
         activeTextareas[0],
-        this.defaultSingleK,
-        this.defaultSingleK
+        safeResultK,
+        safeResultK
       );
 
       if (!singleTextareaNode) {
@@ -857,7 +864,7 @@ export class VisioneAPI {
         item: textareaNodes,
         aggregation_type: 'temporal',
         window_seconds: safeTemporalWindowSeconds,
-        k: this.defaultAggregatedK
+        k: safeResultK
       }
     };
 

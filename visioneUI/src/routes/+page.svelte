@@ -874,6 +874,7 @@
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
     getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 50,
+    getQueryResultK: () => Number(get(uiStore).queryResultK) || 1000,
     getSubmittedIds,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -967,7 +968,7 @@
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
         temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 50,
-        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds),
+        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(get(uiStore).queryResultK) || 1000),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
           activeTab: get(uiStore).layoutTab,
@@ -2802,6 +2803,7 @@ function handleViewSubmitted() {
   theme={$uiStore.theme}
   keyframeSize={$uiStore.keyframeSize}
   resultsPerGroup={$uiStore.resultsPerGroup}
+  queryResultK={$uiStore.queryResultK}
   resultsAutoFit={$uiStore.resultsAutoFit}
   cacheEnabled={$uiStore.cacheEnabled}
   dedupeResults={$uiStore.dedupeResults}
