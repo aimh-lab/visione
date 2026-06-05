@@ -385,9 +385,13 @@
       const [rawYear = '', rawMonth = '', rawDay = ''] = String(rawDatePart || '').split('/', 3);
 
       const year = String(rawYear || '').replace(/\D+/g, '').slice(0, 4);
-      const monthRaw = String(rawMonth || '').replace(/\D+/g, '').slice(0, 2);
-      const dayRaw = String(rawDay || '').replace(/\D+/g, '').slice(0, 2);
-      const hourRaw = String(rawHourPart || '').replace(/\D+/g, '').slice(0, 2);
+      const monthSource = String(rawMonth || '').replace(/\D+/g, '');
+      const daySource = String(rawDay || '').replace(/\D+/g, '');
+      const hourSource = String(rawHourPart || '').replace(/\D+/g, '');
+      const monthRaw = monthSource.slice(0, 2);
+      const overflowAfterMonth = `${monthSource.slice(2)}${daySource}`;
+      const dayRaw = overflowAfterMonth.slice(0, 2);
+      const hourRaw = `${overflowAfterMonth.slice(2)}${hourSource}`.slice(0, 2);
 
       let month = '';
       if (monthRaw.length === 1) {

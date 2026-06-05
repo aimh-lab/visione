@@ -3117,6 +3117,7 @@ function handleViewSubmitted() {
     rfNegativeCount={rfNegative.length}
     challengeType={$uiStore.dresChallengeType}
     viewMode={$uiStore.viewMode}
+    {runtimeProfile}
     searchTime={searchTime}
     isLoading={searchLoading || similarityLoading || view2Loading}
     showSubmitted={$uiStore.dresEnabled}

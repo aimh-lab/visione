@@ -874,6 +874,17 @@
     });
   }
 
+  export function getEffectiveTextareasSnapshot() {
+    return buildEffectiveTextareasForSearch();
+  }
+
+  export function getEffectiveQueriesSnapshot() {
+    return buildEffectiveTextareasForSearch()
+      .filter((step) => step?.enabled)
+      .map((step) => String(step?.value ?? '').trim())
+      .filter(Boolean);
+  }
+
   function dispatchSearchWithMetadata() {
     finalizeMetadataTokensForAll();
     dispatch("search", { textareas: buildEffectiveTextareasForSearch() });
