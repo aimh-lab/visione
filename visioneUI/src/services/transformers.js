@@ -53,8 +53,26 @@ function expandTupleAwareItems(arr) {
   return expanded;
 }
 
+function getSubmittedRecord(submittedLookup, imgId) {
+  const key = String(imgId || '').trim();
+  if (!key || !submittedLookup) return null;
+  if (typeof submittedLookup.get === 'function') return submittedLookup.get(key) || null;
+  if (typeof submittedLookup.has === 'function') return submittedLookup.has(key) ? { imgId: key } : null;
+  return null;
+}
+
+function applySubmittedState(item, submittedLookup) {
+  const submittedRecord = getSubmittedRecord(submittedLookup, item?.imgId);
+  if (!submittedRecord) return item;
+  return {
+    ...item,
+    submitted: true,
+    submissionVerdict: submittedRecord.submissionVerdict ?? item?.submissionVerdict ?? ''
+  };
+}
+
 // src/services/transformers.js
-export function transformSearchResults(resultSet, submittedIds = new Set()) {
+export function transformSearchResults(resultSet, submittedLookup = new Set()) {
   const arr = findResultsArray(resultSet) ?? [];
   const expanded = expandTupleAwareItems(arr);
 
@@ -63,10 +81,10 @@ export function transformSearchResults(resultSet, submittedIds = new Set()) {
     const raw = info.raw && typeof info.raw === 'object' ? info.raw : {};
     const scoreSource = Number(raw.score ?? raw.similarity ?? raw.distance ?? raw.confidence);
     
-    return {
+    return applySubmittedState({
       ...info,
       index,
-      submitted: submittedIds.has(info.imgId),
+      submitted: false,
       matchScore: Number.isFinite(scoreSource) ? scoreSource : 0,
       tupleRank: entry.tupleRank,
       tupleMemberIndex: entry.tupleMemberIndex,
@@ -77,11 +95,11 @@ export function transformSearchResults(resultSet, submittedIds = new Set()) {
       raw,
       tupleItems: entry.tupleItems,
       tupleSize: entry.tupleSize
-    };
+    }, submittedLookup);
   });
 }
 
-export function transformSimilarityResults(resultSet, submittedIds = new Set()) {
+export function transformSimilarityResults(resultSet, submittedLookup = new Set()) {
   const arr = findResultsArray(resultSet) || [];
   const expanded = expandTupleAwareItems(arr);
 
@@ -90,7 +108,7 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
     const raw = info.raw && typeof info.raw === 'object' ? info.raw : {};
     const scoreSource = Number(raw.score ?? raw.similarity ?? raw.distance);
     
-    return {
+    return applySubmittedState({
       index,
       title: info.imgId ?? `Image ${index + 1}`,
       videoId: info.videoId,
@@ -104,7 +122,7 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
       size: info.size ?? null,
       resolution: info.resolution ?? null,
       tags: info.tags ?? [],
-      submitted: submittedIds.has(info.imgId),
+      submitted: false,
       tupleRank: entry.tupleRank,
       tupleMemberIndex: entry.tupleMemberIndex,
       tupleGroupKey: entry.tupleGroupKey,
@@ -118,11 +136,11 @@ export function transformSimilarityResults(resultSet, submittedIds = new Set()) 
       raw,
       tupleItems: entry.tupleItems,
       tupleSize: entry.tupleSize
-    };
+    }, submittedLookup);
   });
 }
 
-export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new Set()) {
+export function transformVideoKeyframes(rawFrames, videoId, submittedLookup = new Set()) {
   return rawFrames.map((item, index) => {
     const imgId = typeof item === 'string'
       ? item
@@ -142,18 +160,18 @@ export function transformVideoKeyframes(rawFrames, videoId, submittedIds = new S
     const rawTs = typeof item === 'object' && item ? Number(item.timestamp) : NaN;
     const timestamp = Number.isFinite(rawTs) ? rawTs : null;
 
-    return {
+    return applySubmittedState({
       index,
       imgId: rawImgId,
       videoId: vid,
       url,
       title: rawImgId,
-      submitted: submittedIds.has(rawImgId),
+      submitted: false,
       timestamp,
       date: timestamp,
       // Timecodes are resolved per-frame via getMiddleTimestamp API in ResultsGrid.
       // Do NOT estimate timestamps here — wrong estimates block the accurate API call.
       raw: item
-    };
+    }, submittedLookup);
   });
 }
