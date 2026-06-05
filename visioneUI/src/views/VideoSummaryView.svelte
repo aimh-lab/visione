@@ -43,7 +43,7 @@
   export let onNextFrame = () => {};
   export let onAdjustImageModalScale = (_delta: number) => {};
 
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: unknown) => {};
 
   let containerEl: HTMLElement | null = null;
   $: if (containerEl) registerContainer(containerEl);
@@ -137,7 +137,7 @@
               virtualizeThreshold={virtualizationThreshold}
               {registerContainer}
                 on:open={(e: any) => onOpenFrame(e.detail.frame)}
-                on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
+                on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt, e.detail.img ?? null)}
                 on:similarity={(e: any) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
                 on:rfPositive={(e: any) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
                 on:rfNegative={(e: any) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
@@ -165,6 +165,6 @@
   on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:openVideoPlayer={(e) => {
     onCloseFrameModal();
-    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
   }}
 />

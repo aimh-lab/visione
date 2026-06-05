@@ -26,6 +26,8 @@ export function buildRows(items, {
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
+  if (mode === "byrank") return chunk(items, perRow);
+
   const toFiniteNumber = (value) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -217,8 +219,6 @@ export function buildRows(items, {
     : null;
 
   if (auto) {
-    if (mode === "byrank") return [items];
-
     if (groupedRows) {
       if (isHourMetadataGrouping) return cappedGroupedRows || [];
       // One logical group can span multiple visual rows, capped by per-group size.
@@ -230,7 +230,6 @@ export function buildRows(items, {
     }
   }
 
-  if (mode === "byrank") return chunk(items, perRow);
   if (mode === "bydate" && dateGroupedRows) return dateCappedRows || [];
 
   // Grouped modes (video or metadata): respect per-group cap.

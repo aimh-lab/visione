@@ -59,7 +59,7 @@
   export let addRFNegativeByImg = (_imgId: string) => {};
   export let submitByImgId = (_imgId: string) => {};
   export let openByImgId = (_imgId: string) => {};
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: Img | null) => {};
 
 
   // Modal actions
@@ -168,7 +168,7 @@
             {resultsetBadgeLabelMode}
             registerContainer={registerContainer}
             on:open={(e) => openByImgId(e.detail.img.imgId)}
-            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
+            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt, e.detail.img ?? null)}
             on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
             on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
             on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
@@ -195,6 +195,6 @@
   on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:openVideoPlayer={(e) => {
     onCloseSimModal();
-    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
   }}
 />

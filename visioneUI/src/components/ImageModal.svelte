@@ -425,7 +425,7 @@
             <!-- Overlay layer con trasparenza -->
             <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
-            <!-- Navigation arrows overlay (Instagram-like) -->
+            <!-- Navigation arrows overlay (Instagram-style) -->
             <button
               on:click={prev}
               disabled={currentIndex === 0}

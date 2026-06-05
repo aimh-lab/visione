@@ -16,7 +16,7 @@ const DEFAULT_GROUP_BY_OPTIONS = [
   {
     value: 'byvideo',
     label: 'Group by Hour',
-    description: 'Group results by video ID',
+    description: 'Group results by Hour',
     icon: ICONS.video,
     kind: 'video'
   },

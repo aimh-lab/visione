@@ -1250,7 +1250,7 @@
       isOpen: true,
       title: 'Date Range',
       icon: 'calendar',
-      description: 'Search within a temporal interval. Use From, To, or both; partial dates like YYYY/MM/DD:HH are supported.',
+      description: 'Search within a temporal interval. Use From, To, or both; partial dates such as YYYY/MM/DD:HH are supported.',
       targetIndex: index,
       filterType: 'metadataDateRange',
       fields: [
@@ -1369,7 +1369,7 @@
       isOpen: true,
       title: 'Add Country Filter',
       icon: 'filter',
-      description: 'Filter by capture country (location_country).',
+      description: `Filter by capture country (${modalMetadataField}).`,
       targetIndex: index,
       filterType: 'metadataCountry',
       fields: [
@@ -1587,7 +1587,7 @@
       const isTrailingToken = tokenEnd >= str.length;
 
       // While typing, keep the last token in the textarea until user closes it
-      // (e.g., by adding whitespace), so inputs like `y:20` are not interrupted.
+      // (e.g., by adding whitespace), so inputs such as `y:20` are not interrupted.
       if (isTrailingToken && !extractTrailingToken) {
         return full;
       }
@@ -1750,7 +1750,7 @@
     if (uniqueShortcuts.length === 0) return source;
 
     const alternation = uniqueShortcuts.map((s) => escapeRegex(s)).join('|');
-    // Match tokens like key:value and key:"value with spaces".
+    // Match tokens such as key:value and key:"value with spaces".
     const tokenRegex = new RegExp(`(^|\\s)(?:${alternation}):(?:"(?:\\\\.|[^"])*"|\\S+)`, 'gi');
 
     const stripped = source.replace(tokenRegex, (match, leading) => {
@@ -2724,7 +2724,7 @@
                 </button>
               {/if}
 
-              {#if showSequenceChrome && textareas.length > 1}
+              {#if textareas.length > 1}
                 <div class="relative step-actions-menu">
                   <button
                     type="button"

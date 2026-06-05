@@ -46,7 +46,7 @@
   export let addRFPositiveByImg = (_imgId: string, _img?: Frame | null) => {};
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: unknown) => {};
   export let onAdjustImageModalScale = (_delta: number) => {};
 
   const summaryKey = (item: PinnedSummary) =>
@@ -402,7 +402,7 @@
               virtualizeThreshold={virtualizationThreshold}
               registerContainer={registerGridContainer}
               on:open={(e: any) => openSummaryImageModal(e.detail.frame)}
-              on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt)}
+              on:openVideoPlayer={(e: any) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId ?? e.detail.img.videoId, e.detail.startAt, e.detail.img ?? null)}
               on:similarity={(e: any) => {
                 onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null);
               }}
@@ -453,7 +453,7 @@
         on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
         on:openVideoPlayer={(e) => {
           closeSummaryImageModal();
-          openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+          openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
         }}
       />
     </div>
