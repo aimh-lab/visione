@@ -109,7 +109,7 @@
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
   export let openByImgId = (_imgId: string) => {};  
-  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number) => {};
+  export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: Img | null) => {};
 
   // Modal actions
   export let onCloseModal = () => {};
@@ -373,7 +373,7 @@
             registerContainer={registerContainer}
             isSelectionMode={isSelectingImage}
             on:open={handleImageClick}
-            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt)}
+            on:openVideoPlayer={(e) => openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null)}
             on:videoSummary={(e) => onVideoSummary(e.detail.img.videoId, e.detail.img.imgId)}
             on:similarity={(e) => onSimilarity(e.detail.imgId, e.detail.frame ?? e.detail.img ?? null)}
             on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId)}
@@ -439,6 +439,6 @@
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId)}
   on:openVideoPlayer={(e) => {
     onCloseModal();
-    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
   }}
 />

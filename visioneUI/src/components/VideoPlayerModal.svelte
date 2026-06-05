@@ -104,7 +104,7 @@
       submitCurrentFrame();
     }
 
-    // Frame-by-frame stepping (comma/period like YouTube/VLC)
+    // Frame-by-frame stepping (comma/period, YouTube/VLC-style)
     if (e.key === "," || e.key === ".") {
       e.preventDefault();
       if (videoEl && videoEl.paused) {

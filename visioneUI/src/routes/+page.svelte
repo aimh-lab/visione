@@ -33,7 +33,8 @@
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
   import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
-  import { resolveViewMode } from '$lib/groupByConfig.js';
+  import { resolveGroupByConfig, resolveViewMode } from '$lib/groupByConfig.js';
+  import { formatGroupDateLabel, formatGroupHourLabel } from '$lib/titleFormatting.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
@@ -212,6 +213,7 @@
     videoId: "",
     selectedImgId: "",
     title: "",
+    contextItem: null,
     highlightedKeyframes: []
   };
 
@@ -1628,7 +1630,7 @@
     };
 
     const groupingField = String(selectedDiscovery?.groupby_attribute || 'hour_id').trim() || 'hour_id';
-    const requested = [groupingField];
+    const requested = [groupingField, 'location_country'];
 
     const configuredGroupByMetadata = Array.isArray(profile?.groupBy?.modes)
       ? profile.groupBy.modes
@@ -1908,6 +1910,119 @@
     return raw.split('-')[0] || '';
   }
 
+  function getRawMetadata(item) {
+    if (!item || typeof item !== 'object') return {};
+    const metadata = item?.raw?.metadata;
+    return metadata && typeof metadata === 'object' ? metadata : {};
+  }
+
+  function toFiniteNumber(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function toIntOrNull(value) {
+    if (value == null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function getEpochSecondsFromItem(item) {
+    if (!item || typeof item !== 'object') return null;
+    const metadata = getRawMetadata(item);
+    const epochField = String(runtimeProfile?.fieldAliases?.epoch || 'epoch').trim() || 'epoch';
+    const epochUnit = String(runtimeProfile?.timeBadge?.epochUnit || 'auto').trim().toLowerCase();
+    const rawEpoch =
+      metadata?.[epochField]
+      ?? item?.raw?.[epochField]
+      ?? item?.[epochField]
+      ?? metadata?.epoch
+      ?? item?.raw?.epoch
+      ?? item?.epoch
+      ?? item?.timestamp
+      ?? item?.raw?.timestamp;
+    const parsed = toFiniteNumber(rawEpoch);
+    if (parsed == null || parsed < 0) return null;
+    if (epochUnit === 'seconds') return parsed;
+    if (epochUnit === 'milliseconds') return parsed / 1000;
+    return parsed > 1e11 ? parsed / 1000 : parsed;
+  }
+
+  function buildDayGroupKeyForItem(item) {
+    const metadata = getRawMetadata(item);
+    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+
+    if (
+      Number.isFinite(year) && year >= 0
+      && Number.isFinite(month) && month >= 1 && month <= 12
+      && Number.isFinite(day) && day >= 1 && day <= 31
+    ) {
+      return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    const epochSeconds = getEpochSecondsFromItem(item);
+    if (epochSeconds == null) return '';
+    const date = new Date(epochSeconds * 1000);
+    return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  function buildHourGroupKeyForItem(item, fallbackVideoId = '') {
+    const epochSeconds = getEpochSecondsFromItem(item);
+    if (epochSeconds != null) {
+      const date = new Date(epochSeconds * 1000);
+      return `${String(date.getUTCFullYear()).padStart(4, '0')}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}_${String(date.getUTCHours()).padStart(2, '0')}`;
+    }
+
+    const metadata = getRawMetadata(item);
+    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+    const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
+
+    if (
+      Number.isFinite(year) && year >= 0
+      && Number.isFinite(month) && month >= 1 && month <= 12
+      && Number.isFinite(day) && day >= 1 && day <= 31
+      && Number.isFinite(hour) && hour >= 0 && hour <= 23
+    ) {
+      return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
+    }
+
+    const rawHourId = String(
+      metadata?.hour_id
+      ?? item?.raw?.hour_id
+      ?? item?.hour_id
+      ?? fallbackVideoId
+      ?? ''
+    ).trim();
+    const match = rawHourId.match(/^(\d{8})_(\d{2})/);
+    return match ? `${match[1]}_${match[2]}` : rawHourId;
+  }
+
+  function buildSlideshowTitle(item, videoId) {
+    const fallback = String(videoId || '').trim();
+    const activeGroupBy = resolveGroupByConfig($uiStore.viewMode, runtimeProfile);
+    const kind = String(activeGroupBy?.kind || '').trim().toLowerCase();
+    const metadata = String(activeGroupBy?.metadata || '').trim().toLowerCase();
+
+    if (kind === 'date') {
+      const dayKey = buildDayGroupKeyForItem(item);
+      const label = dayKey ? formatGroupDateLabel(dayKey, item, runtimeProfile, $uiStore.showLocalTimeInTitles) : '';
+      return label || fallback;
+    }
+
+    if (kind === 'video' || (kind === 'metadata' && metadata === 'hour_id')) {
+      const hourKey = buildHourGroupKeyForItem(item, fallback);
+      const label = hourKey ? formatGroupHourLabel(hourKey, item, runtimeProfile, $uiStore.showLocalTimeInTitles) : '';
+      return label || fallback;
+    }
+
+    return fallback;
+  }
+
   function useSlideshowModal() {
     const hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
     if (!hasCollectionVideos) return true;
@@ -1920,9 +2035,10 @@
     return mode === 'slideshow';
   }
 
-  async function openVideoPlayerBy(imgId, videoId, startAt) {
+  async function openVideoPlayerBy(imgId, videoId, startAt, item = null) {
     const normalizedVideoId = normalizeVideoId(videoId || extractVideoIdFromImageId(imgId));
     const normalizedImgId = String(imgId || '');
+    const sourceItem = item && typeof item === 'object' ? item : { imgId: normalizedImgId, videoId: normalizedVideoId };
 
     // Ensure the dedicated player modal is never layered behind the summary modal.
     if (isVideoSummaryModalOpen) {
@@ -1934,7 +2050,8 @@
       slideshowPlayer = {
         videoId: normalizedVideoId,
         selectedImgId: normalizedImgId,
-        title: normalizedVideoId,
+        title: buildSlideshowTitle(sourceItem, normalizedVideoId),
+        contextItem: sourceItem,
         highlightedKeyframes: videoPlayerCtrl.getHighlightedKeyframesForVideo(normalizedVideoId)
       };
       isSlideshowOpen = true;
@@ -2713,6 +2830,7 @@ function handleViewSubmitted() {
   videoId={slideshowPlayer.videoId}
   selectedImgId={slideshowPlayer.selectedImgId}
   title={slideshowPlayer.title}
+  contextItem={slideshowPlayer.contextItem}
   modalScale={$uiStore.slideshowModalScale}
   imageModalScale={$uiStore.imageModalScale}
   highlightedKeyframes={slideshowPlayer.highlightedKeyframes}
@@ -2754,7 +2872,7 @@ function handleViewSubmitted() {
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
   on:openVideoPlayer={(e) => {
     isSlideshowOpen = false;
-    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt);
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
   }}
   on:adjustScale={(e) => adjustSlideshowModalScale(e?.detail?.delta)}
   on:adjustImageScale={(e) => adjustImageModalScale(e?.detail?.delta)}

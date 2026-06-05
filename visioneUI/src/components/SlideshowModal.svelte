@@ -8,6 +8,7 @@
   export let videoId = "";
   export let selectedImgId = "";
   export let title = "";
+  export let contextItem = null;
   export let modalScale = 100;
   export let imageModalScale = 100;
   export let showSubmitUI = false;
@@ -414,7 +415,16 @@
 
   function getImageModalFrame(frame = activeFrame) {
     if (!frame) return null;
+    const contextRaw = contextItem && typeof contextItem === "object" && contextItem.raw && typeof contextItem.raw === "object"
+      ? contextItem.raw
+      : {};
+    const contextMetadata = contextRaw.metadata && typeof contextRaw.metadata === "object"
+      ? contextRaw.metadata
+      : {};
+    const frameRaw = frame.raw && typeof frame.raw === "object" ? frame.raw : {};
+    const frameMetadata = frameRaw.metadata && typeof frameRaw.metadata === "object" ? frameRaw.metadata : {};
     return {
+      ...(contextItem && typeof contextItem === "object" ? contextItem : {}),
       ...frame,
       imgId: frame.imgId,
       videoId: normalizedVideoId,
@@ -422,7 +432,12 @@
       title: frame.imgId,
       index: currentIndex,
       raw: {
-        ...(frame.raw || {}),
+        ...contextRaw,
+        ...frameRaw,
+        metadata: {
+          ...contextMetadata,
+          ...frameMetadata
+        },
         source: "slideshow-modal",
         currentTime: Number(frame.timestamp || 0)
       }

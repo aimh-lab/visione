@@ -283,7 +283,10 @@ export function createSearchController({
       ? Number(getQueryResultK())
       : undefined;
     const queryKFingerprint = Number.isFinite(queryResultK) ? ` k:${Math.floor(queryResultK)}` : '';
-    const cacheKey = `${query}${rfFingerprint}${queryKFingerprint}`;
+    const metadataFingerprint = Array.isArray(api?.defaultMetadataToRetrieve)
+      ? ` meta:${api.defaultMetadataToRetrieve.map((field) => String(field || '').trim()).filter(Boolean).sort().join(',')}`
+      : '';
+    const cacheKey = `${query}${rfFingerprint}${queryKFingerprint}${metadataFingerprint}`;
     const cacheEnabled = typeof getCacheEnabled === 'function' ? !!getCacheEnabled() : true;
 
     const start = Date.now();

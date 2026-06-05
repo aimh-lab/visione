@@ -26,12 +26,12 @@ export class VisioneAPI {
     this.middleTimestampTtlMs = 5 * 60 * 1000;
     this.defaultTextModel = 'openclip_clip_vit_b_32';
     this.defaultImageModel = 'dinov2_base';
-    this.defaultSubqueryK = 100000;
+    this.defaultSubqueryK = 10000;
     this.defaultSingleK = 1000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
     this.defaultRelevanceFeedbackModel = 'qwen_embedding_8B';
-    this.defaultMetadataToRetrieve = ['hour_id'];
+    this.defaultMetadataToRetrieve = ['hour_id', 'location_country'];
     this.supportsVideos = true;
     this.elementUrlCache = new Map();
     this.elementUrlInFlight = new Map();
@@ -909,7 +909,7 @@ export class VisioneAPI {
       };
 
       if (item.filters && Array.isArray(item.filters.arguments) && item.filters.arguments.length > 0) {
-        node.filters = item.filters;
+        node.filters = this.#normalizeFilterComparators(item.filters);
       }
 
       return node;
@@ -1102,11 +1102,11 @@ export class VisioneAPI {
 
     if (Object.prototype.hasOwnProperty.call(textShortcuts, alias)) {
       const attribute = textShortcuts[alias];
-      const parsed = this.#extractComparatorValue(value, attribute === 'type' ? 'eq' : 'ilike');
-      const normalized = this.#normalizeTextFilterValue(parsed.value, parsed.comparator);
+      const parsed = this.#extractComparatorValue(value, attribute === 'type' ? 'eq' : 'fts');
+      const normalized = this.#normalizeTextFilterValue(parsed.value);
       if (!normalized) return null;
       return {
-        arguments: [{ comparator: parsed.comparator, attribute, value: normalized }]
+        arguments: [{ comparator: this.#normalizeComparator(parsed.comparator), attribute, value: normalized }]
       };
     }
 
@@ -1126,9 +1126,9 @@ export class VisioneAPI {
     const value = String(raw || '').trim();
     if (!value) return { comparator: fallbackComparator, value: '' };
 
-    const namedMatch = value.match(/^(eq|ne|lt|gt|gte|lte|like|ilike):(.*)$/i);
+    const namedMatch = value.match(/^(eq|ne|lt|gt|gte|lte|fts):(.*)$/i);
     if (namedMatch) {
-      return { comparator: String(namedMatch[1] || '').toLowerCase(), value: this.#unquoteValue(namedMatch[2]) };
+      return { comparator: this.#normalizeComparator(namedMatch[1]), value: this.#unquoteValue(namedMatch[2]) };
     }
 
     const symbolicMatch = value.match(/^(>=|<=|!=|>|<|=|~)(.*)$/);
@@ -1145,22 +1145,38 @@ export class VisioneAPI {
           : symbol === '!='
             ? 'ne'
             : symbol === '~'
-              ? (String(fallbackComparator || '').trim().toLowerCase() === 'like' ? 'like' : 'ilike')
+              ? 'fts'
               : 'eq';
       return { comparator: mapped, value: this.#unquoteValue(symbolicMatch[2]) };
     }
 
-    return { comparator: fallbackComparator, value: this.#unquoteValue(value) };
+    return { comparator: this.#normalizeComparator(fallbackComparator), value: this.#unquoteValue(value) };
   }
 
-  #normalizeTextFilterValue(rawValue, comparator) {
+  #normalizeComparator(comparator) {
+    const normalized = String(comparator || '').trim().toLowerCase();
+    if (!normalized) return 'eq';
+    return ['eq', 'ne', 'lt', 'gt', 'gte', 'lte', 'fts'].includes(normalized) ? normalized : 'fts';
+  }
+
+  #normalizeFilterComparators(filters) {
+    if (!filters || typeof filters !== 'object') return filters;
+    const args = Array.isArray(filters.arguments) ? filters.arguments : [];
+    return {
+      ...filters,
+      arguments: args.map((arg) => {
+        if (!arg || typeof arg !== 'object') return arg;
+        return {
+          ...arg,
+          comparator: this.#normalizeComparator(arg.comparator)
+        };
+      })
+    };
+  }
+
+  #normalizeTextFilterValue(rawValue) {
     const value = String(rawValue || '').trim();
     if (!value) return '';
-    if (comparator === 'like' || comparator === 'ilike') {
-      const withoutBoundaryPercents = value.replace(/^%+|%+$/g, '');
-      const core = withoutBoundaryPercents || value.replace(/%/g, '');
-      return `%${core}%`;
-    }
     return value;
   }
 

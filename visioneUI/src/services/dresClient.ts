@@ -84,7 +84,7 @@ export class DresClient {
   }
 
   private normalizeMediaItemName(mediaItemName: string): string {
-    return String(mediaItemName).replace(/\.webp$/i, '');
+    return String(mediaItemName).replace(/\.[^./\\]+$/i, '');
   }
 
   async login(): Promise<ApiUser> {

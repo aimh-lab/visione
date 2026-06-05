@@ -5,7 +5,7 @@
   import { uiStore } from "../stores/uiStore.js";
   import VideoOverlay from "./VideoOverlay.svelte";
   import { resolveGroupByConfig } from "$lib/groupByConfig.js";
-  import { formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
+  import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
 
   export let items = [];
   export let selectedId = null;
@@ -319,16 +319,6 @@
     const prefix = String(rowInfo?.groupLabel || 'Group').trim();
     const value = String(rowInfo?.label || '').trim();
     return value ? `${prefix} ${value}` : prefix;
-  }
-
-  function formatDateLabelFromGroupKey(groupKey) {
-    const normalized = String(groupKey || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return '';
-
-    const [year, month, day] = normalized.split('-').map((v) => Number(v));
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
-
-    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   function useSlideshowFromProfile() {
@@ -820,9 +810,17 @@
       const groupRowCount = precedingRows + 1 + continuationRows;
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
 
-      const displayGroupValue = shouldFormatTemporalGroupBadge()
-        ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())
-        : `${groupValue}`;
+      const displayGroupValue = (
+        String(activeGroupBy?.kind || '').trim().toLowerCase() === 'video'
+        || (
+          String(activeGroupBy?.kind || '').trim().toLowerCase() === 'metadata'
+          && String(activeGroupBy?.metadata || '').trim().toLowerCase() === 'hour_id'
+        )
+      )
+          ? formatGroupHourLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles)
+          : (shouldFormatTemporalGroupBadge()
+            ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())
+            : `${groupValue}`);
 
       info = {
         type: 'grouped',
@@ -846,7 +844,9 @@
     
     if (activeGroupBy?.kind === 'date') {
       const explicitDayKey = String(row?.__visioneGroupKey || '').trim();
-      const explicitDateLabel = formatDateLabelFromGroupKey(explicitDayKey);
+      const explicitDateLabel = explicitDayKey
+        ? formatGroupDateLabel(explicitDayKey, firstItem, runtimeProfile, showLocalTimeInTitles)
+        : '';
 
       if (explicitDateLabel) {
         info = {
