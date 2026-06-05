@@ -497,8 +497,8 @@
     const configuredText = String(ui?.defaultTextModel || '').trim();
     const configuredImage = String(ui?.defaultImageModel || '').trim();
 
-    const shouldAutoSetText = !configuredText || configuredText === DEFAULT_TEXT_MODEL;
-    const shouldAutoSetImage = !configuredImage || configuredImage === DEFAULT_IMAGE_MODEL;
+    const shouldAutoSetText = !configuredText;
+    const shouldAutoSetImage = !configuredImage;
 
     const fallbackText = discoveredText[0] || configuredText || DEFAULT_TEXT_MODEL;
     const fallbackImage = discoveredImage[0] || configuredImage || DEFAULT_IMAGE_MODEL;
@@ -2423,6 +2423,24 @@ function handleViewSubmitted() {
     const existingSimilarityIndex = textareas.findIndex((t) => String(t?.similarityImgId || "").trim());
     let targetIndex = existingSimilarityIndex;
     let nextTextareas;
+    const clearSimilarityDisableMarker = (t) => {
+      if (t?._disabledBySimilarity) {
+        return {
+          ...t,
+          enabled: t?._wasEnabledBeforeSimilarity === true,
+          _disabledBySimilarity: false,
+          _wasEnabledBeforeSimilarity: false
+        };
+      }
+      if (t?._wasEnabledBeforeSimilarity) {
+        return {
+          ...t,
+          _disabledBySimilarity: false,
+          _wasEnabledBeforeSimilarity: false
+        };
+      }
+      return t;
+    };
 
     if (existingSimilarityIndex >= 0) {
       nextTextareas = textareas.map((t, idx) => {
@@ -2433,17 +2451,12 @@ function handleViewSubmitted() {
             enabled: true,
             textModel: String(t?.textModel || t?.model || '').trim() || defaultTextModel,
             imageModel: defaultImageModel,
-            similarityImgId: imgId
+            similarityImgId: imgId,
+            _disabledBySimilarity: false,
+            _wasEnabledBeforeSimilarity: false
           };
         }
-        // Mark non-similarity steps as disabled-by-similarity so "Restore steps" works
-        const wasEnabled = t._disabledBySimilarity ? t._wasEnabledBeforeSimilarity : !!t.enabled;
-        return {
-          ...t,
-          enabled: false,
-          _wasEnabledBeforeSimilarity: wasEnabled,
-          _disabledBySimilarity: wasEnabled
-        };
+        return clearSimilarityDisableMarker(t);
       });
     } else {
       const similarityStep = {
@@ -2451,15 +2464,11 @@ function handleViewSubmitted() {
         enabled: true,
         textModel: defaultTextModel,
         imageModel: defaultImageModel,
-        similarityImgId: imgId
+        similarityImgId: imgId,
+        _disabledBySimilarity: false,
+        _wasEnabledBeforeSimilarity: false
       };
-      const disabledExisting = textareas.map((t) => ({
-        ...t,
-        _wasEnabledBeforeSimilarity: !!t.enabled,
-        _disabledBySimilarity: !!t.enabled,
-        enabled: false
-      }));
-      nextTextareas = [...disabledExisting, similarityStep];
+      nextTextareas = [...textareas.map((t) => clearSimilarityDisableMarker(t)), similarityStep];
       targetIndex = nextTextareas.length - 1;
     }
 
@@ -2487,7 +2496,7 @@ function handleViewSubmitted() {
     }
 
     uiStore.actions.setLayoutTab("View1");
-    toasts.info(existingSimilarityIndex >= 0 ? "Similarity image replaced in active query step" : "Similarity added as active query step");
+    toasts.info(existingSimilarityIndex >= 0 ? "Similarity image replaced in query step" : "Similarity added as new query step");
     setTimeout(() => runSearchImmediate(), 0);
   }
 
