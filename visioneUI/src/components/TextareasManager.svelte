@@ -930,7 +930,7 @@
 
   function clearTextareaValue(index: number) {
     update(index, "");
-    clearMetadataTokensForIndex(index);
+    setTimeout(() => dispatchSearchWithMetadata(), 0);
   }
 
   function handleModelSelectionChange(index: number, model: string, kind: 'text' | 'image') {
@@ -1733,6 +1733,10 @@
     const hasText = String(textareas[index]?.value || '').trim().length > 0;
     const hasMetadataTokens = Array.isArray(metadataTokensByIndex[index]) && metadataTokensByIndex[index].length > 0;
     return hasText || hasMetadataTokens;
+  }
+
+  function hasTextareaTextContent(index: number) {
+    return String(textareas[index]?.value || '').trim().length > 0;
   }
 
   function escapeRegex(text: string) {
@@ -2887,7 +2891,7 @@
                   on:keydown={(e) => handleKeyDown(e, i)}
                 ></textarea>
 
-                {#if textarea.enabled && hasTextareaQueryContent(i)}
+                {#if textarea.enabled && hasTextareaTextContent(i)}
                   <button
                     type="button"
                     on:click={() => clearTextareaValue(i)}
