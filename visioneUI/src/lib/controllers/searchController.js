@@ -15,6 +15,7 @@ export function createSearchController({
   getDedupeResultsEnabled,// () => boolean
   getAutoTranslateEnabled,// () => boolean
   getTemporalWindowSeconds, // () => number
+  getQueryResultK,       // () => number
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
   getRelevanceFeedback,   // () => { positiveIds, negativeIds, method, model?, numAdditionalNegatives? } | null
@@ -278,7 +279,11 @@ export function createSearchController({
       ? ` rf:method=${String(relevanceFeedback.method || 'svm')} pos=${(relevanceFeedback.positiveIds || []).join(',')} neg=${(relevanceFeedback.negativeIds || []).join(',')} model=${String(relevanceFeedback.model || '')} addNeg=${Number.isFinite(Number(relevanceFeedback.numAdditionalNegatives)) ? Number(relevanceFeedback.numAdditionalNegatives) : ''}`
       : '';
 
-    const cacheKey = `${query}${rfFingerprint}`;
+    const queryResultK = typeof getQueryResultK === 'function'
+      ? Number(getQueryResultK())
+      : undefined;
+    const queryKFingerprint = Number.isFinite(queryResultK) ? ` k:${Math.floor(queryResultK)}` : '';
+    const cacheKey = `${query}${rfFingerprint}${queryKFingerprint}`;
     const cacheEnabled = typeof getCacheEnabled === 'function' ? !!getCacheEnabled() : true;
 
     const start = Date.now();
@@ -344,13 +349,13 @@ export function createSearchController({
       const temporalWindowSeconds = typeof getTemporalWindowSeconds === 'function'
         ? Number(getTemporalWindowSeconds())
         : undefined;
-
       const resultSet = await api.search({
         textareas,
         relevanceFeedback,
         simReorder: false,
         framesPerRow,
-        temporalWindowSeconds
+        temporalWindowSeconds,
+        resultK: queryResultK
       });
 
       if (req !== reqId) return;

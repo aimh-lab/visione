@@ -944,6 +944,7 @@
   let openImageSubmenuIndex: number | null = null;
   let openTranslationHintIndex: number | null = null;
   let menuTriggerRefs: Array<HTMLButtonElement | null> = [];
+  let menuPanelRefs: Array<HTMLDivElement | null> = [];
   let menuPlacementByIndex: Record<number, "top" | "bottom"> = {};
   let fileInput: HTMLInputElement | null = null;
 
@@ -1018,12 +1019,23 @@
     if (!trigger) return;
 
     const rect = trigger.getBoundingClientRect();
-    const spaceAbove = rect.top;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const estimatedMenuHeight = 270;
+    const menuPanel = menuPanelRefs[index];
+    const menuHeight = Math.ceil(menuPanel?.getBoundingClientRect?.().height || 360);
+    const gap = 8;
+    const topSafeArea = 72;
+    const bottomSafeArea = 12;
+    const spaceAbove = Math.max(0, rect.top - topSafeArea - gap);
+    const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - bottomSafeArea - gap);
+    const fitsAbove = spaceAbove >= menuHeight;
+    const fitsBelow = spaceBelow >= menuHeight;
 
     menuPlacementByIndex[index] =
-      spaceAbove >= estimatedMenuHeight || spaceAbove >= spaceBelow ? "top" : "bottom";
+      fitsAbove && (!fitsBelow || spaceAbove > spaceBelow) ? "top" : "bottom";
+  }
+
+  function refreshOpenMenuPlacement() {
+    if (openMenuIndex === null) return;
+    updateMenuPlacement(openMenuIndex);
   }
 
   // Gestione immagini
@@ -2528,7 +2540,7 @@
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} on:keydown={handleWindowKeydown} />
+<svelte:window on:click={handleClickOutside} on:keydown={handleWindowKeydown} on:resize={refreshOpenMenuPlacement} on:scroll={refreshOpenMenuPlacement} />
 
 <div class="space-y-1.5">
   <!-- Query cards -->
@@ -2943,45 +2955,12 @@
                   </svg>
                 </button>
 
-                {#if hasDateFilterSupport}
-                  <button
-                    type="button"
-                    on:click|stopPropagation={() => openDateRangeFilterModal(i)}
-                    title="Date Range"
-                    aria-label="Date Range"
-                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
-                  >
-                    <img src="/icons/data_range.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
-                    Range
-                  </button>
-                  <button
-                    type="button"
-                    on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
-                    title="Date/Hour"
-                    aria-label="Date/Hour"
-                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-amber-600/45 bg-amber-900/25 text-amber-200 text-[10px] font-semibold hover:bg-amber-800/40 hover:text-white transition-colors"
-                  >
-                    <img src="/icons/date_hour.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
-                    Date Meta
-                  </button>
-                {/if}
-
-                {#if hasCountryFilterSupport}
-                  <button
-                    type="button"
-                    on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
-                    title="Quick Country filter"
-                    aria-label="Quick Country filter"
-                    class="h-6 px-2 inline-flex items-center gap-1 rounded-full border border-cyan-600/45 bg-cyan-900/25 text-cyan-200 text-[10px] font-semibold hover:bg-cyan-800/40 hover:text-white transition-colors"
-                  >
-                    <img src="/icons/country.svg" alt="" class="w-3.5 h-3.5" aria-hidden="true" />
-                    Country
-                  </button>
-                {/if}
-
                 <!-- Dropdown menu -->
                 {#if openMenuIndex === i}
-                  <div class="absolute left-0 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}">
+                  <div
+                    bind:this={menuPanelRefs[i]}
+                    class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
+                  >
                     <div class="px-3 py-2 bg-gray-900/50 border-b border-gray-700">
                       <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Add to Query</span>
                     </div>
