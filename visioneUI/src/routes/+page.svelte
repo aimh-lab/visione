@@ -737,22 +737,6 @@
     }, URL_SYNC_DEBOUNCE_MS);
   }
 
-  function appendSubmittedFrames(transformed) {
-    const submitted = $sessionStore.submittedImages;
-    if (submitted.length === 0) return transformed;
-
-    const existing = new Set(transformed.map(i => i.imgId));
-    const missing = submitted.filter(i => !existing.has(i.imgId));
-
-    return [
-      ...transformed,
-      ...missing.map((i, idx) => ({
-        ...i,
-        index: transformed.length + idx
-      }))
-    ];
-  }
-
   // Memoized flat lists (recomputed only when display rows change)
   let flatDisplayList = [];
   $: flatDisplayList = displayRows?.flat?.() ?? [];
@@ -924,7 +908,7 @@
     },
 
     setImages: (transformed) => {
-      images = appendSubmittedFrames(transformed);
+      images = transformed;
       selectedIndex = 0;
     },
 
@@ -2274,7 +2258,7 @@ function handleViewSubmitted() {
 
   function updateImagesFromResult(resultset) {
     const transformed = transformSearchResults(resultset, getSubmittedLookup());
-    images = appendSubmittedFrames(transformed);
+    images = transformed;
     selectedIndex = 0;
   }
 
