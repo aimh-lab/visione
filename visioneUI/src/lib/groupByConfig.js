@@ -8,21 +8,21 @@ const ICONS = {
 const DEFAULT_GROUP_BY_OPTIONS = [
   {
     value: 'byrank',
-    label: 'By Rank',
+    label: 'Sort by Rank',
     description: 'Sort results by relevance score',
     icon: ICONS.rank,
     kind: 'rank'
   },
   {
     value: 'byvideo',
-    label: 'By Video',
+    label: 'Group by Hour',
     description: 'Group results by video ID',
     icon: ICONS.video,
     kind: 'video'
   },
   {
     value: 'bydate',
-    label: 'By Date',
+    label: 'Group by Date',
     description: 'Sort by creation date',
     icon: ICONS.date,
     kind: 'date'
@@ -60,44 +60,25 @@ function normalizeKind(kind, value, metadata) {
 }
 
 function normalizeEntry(entry, index) {
-  if (!entry) return null;
-
-  if (typeof entry === 'string') {
-    const value = toSafeString(entry);
-    if (!value) return null;
-
-    const preset = DEFAULT_BY_VALUE.get(value.toLowerCase());
-    if (preset) return { ...preset };
-
-    return {
-      value: slugify(value) || `group-${index + 1}`,
-      label: value,
-      description: `Group results by ${value}`,
-      icon: ICONS.metadata,
-      kind: 'metadata',
-      metadata: value
-    };
-  }
-
   if (typeof entry !== 'object') return null;
 
-  const rawValue = toSafeString(entry.value || entry.mode);
-  let metadata = toSafeString(entry.metadata || entry.field);
+  const rawValue = toSafeString(entry.value);
+  let metadata = toSafeString(entry.metadata);
   const preset = DEFAULT_BY_VALUE.get(rawValue.toLowerCase());
-  const value = rawValue || (metadata ? `metadata:${metadata}` : slugify(entry.label || entry.name) || `group-${index + 1}`);
+  const value = rawValue || (metadata ? `metadata:${metadata}` : slugify(entry.label) || `group-${index + 1}`);
 
-  let kind = normalizeKind(entry.kind || entry.type, value, metadata);
+  let kind = normalizeKind(entry.kind, value, metadata);
   if (!metadata && kind === 'metadata') {
     const maybeMetadata = value.toLowerCase().startsWith('metadata:') ? value.slice('metadata:'.length) : '';
     metadata = toSafeString(maybeMetadata);
   }
 
-  const label = toSafeString(entry.label || entry.name || preset?.label || (metadata ? `By ${metadata}` : 'Group'));
+  const label = toSafeString(entry.label || preset?.label || (metadata ? `Group by ${metadata}` : 'Group'));
   const description = toSafeString(entry.description)
     || preset?.description
     || (kind === 'metadata' && metadata ? `Group results by metadata field ${metadata}` : 'Group results');
 
-  if (preset && !toSafeString(entry.kind || entry.type) && !metadata) {
+  if (preset && !toSafeString(entry.kind) && !metadata) {
     kind = preset.kind;
   }
 
@@ -118,7 +99,7 @@ export function getDefaultGroupByOptions() {
 export function normalizeGroupByOptions(runtimeProfile = {}) {
   const configured = Array.isArray(runtimeProfile?.groupBy?.modes)
     ? runtimeProfile.groupBy.modes
-    : (Array.isArray(runtimeProfile?.groupByModes) ? runtimeProfile.groupByModes : null);
+    : null;
 
   if (!configured) {
     return getDefaultGroupByOptions();

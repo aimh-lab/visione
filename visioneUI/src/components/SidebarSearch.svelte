@@ -87,6 +87,13 @@
   };
   const clearQueryInputs = () => dispatch("clearQueryInputs");
   const handleSearchFromTextarea = (e) => dispatch("runSearch", e?.detail || {});
+  const getCurrentQueriesForTemplates = () =>
+    typeof textareasManagerRef?.getEffectiveQueriesSnapshot === 'function'
+      ? textareasManagerRef.getEffectiveQueriesSnapshot()
+      : textareas
+          .filter((step) => step?.enabled)
+          .map((step) => String(step?.value ?? '').trim())
+          .filter(Boolean);
   let isResetMenuOpen = false;
   let activeUtilityPanel = null;
 
@@ -723,6 +730,7 @@
             {#if activeUtilityPanel === 'templates'}
               <QueryTemplatesPanel
                 {textareas}
+                getCurrentQueries={getCurrentQueriesForTemplates}
                 headerless={true}
                 expanded={true}
                 onLoad={(queries) => applyQueriesToURLAndRestore(queries, 'View1')}

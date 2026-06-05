@@ -4,6 +4,7 @@
   import { tick } from 'svelte';
   
   export let textareas = [];
+  export let getCurrentQueries = null;
   export let onLoad = (queries) => {};
   export let headerless = false;
   export let expanded = false;
@@ -15,6 +16,15 @@
   $: effectiveExpanded = headerless ? expanded : isExpanded;
 
   function getActiveQueriesSnapshot(items = textareas) {
+    if (typeof getCurrentQueries === 'function') {
+      const snapshot = getCurrentQueries();
+      if (Array.isArray(snapshot)) {
+        return snapshot
+          .map((query) => String(query || '').trim())
+          .filter(Boolean);
+      }
+    }
+
     const source = Array.isArray(items) ? items : [];
     return source
       .filter((step) => step?.enabled)
@@ -25,7 +35,7 @@
   $: canSave = getActiveQueriesSnapshot().length > 0;
   
   function handleSaveTemplate() {
-    const currentQueries = getActiveQueriesSnapshot(textareas);
+    const currentQueries = getActiveQueriesSnapshot();
 
     if (currentQueries.length === 0) {
       toasts.warning('Current query is empty');

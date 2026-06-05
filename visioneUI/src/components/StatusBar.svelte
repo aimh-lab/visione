@@ -1,5 +1,5 @@
 <script>
-  import { tabLabels } from '$lib/tabConfig.js';
+  import { resolveGroupByConfig } from '$lib/groupByConfig.js';
 
   export let totalImages = 0;
   export let submittedCount = 0;
@@ -13,19 +13,14 @@
   export let dresEnabled = false;
   export let dresUsername = '';
   export let dresEvaluationLabel = '';
+  export let runtimeProfile = {};
   
   // Events for quick actions
   export let onViewSubmitted = () => {};
   export let onViewRF = () => {};
 
-  const sortLabels = {
-    'byrank': 'By Relevance',
-    'byvideo': 'By Video',
-    'bydate': 'By Date'
-  };
-
   $: challengeLabel = String(challengeType || 'KIS').trim() || 'KIS';
-  $: sortLabel = sortLabels[viewMode] || viewMode;
+  $: sortLabel = resolveGroupByConfig(viewMode, runtimeProfile)?.label || viewMode;
 </script>
 
 <div class="ui-statusbar fixed bottom-0 left-0 right-0 backdrop-blur-md border-t z-[100]">

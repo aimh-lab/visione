@@ -393,7 +393,7 @@ export function createSearchController({
           const similarityPreview = typeof getSimilarityPreview === 'function'
             ? getSimilarityPreview(rawTextareas)
             : null;
-          recentSearches.add(cacheKey, hydratedItems.length, resultSet, rawTextareas, similarityPreview);
+          recentSearches.add(cacheKey, hydratedItems.length, resultSet, textareas, similarityPreview);
         }
         if (removedCount > 0) {
           toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);
