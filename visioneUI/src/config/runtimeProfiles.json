@@ -3,6 +3,11 @@
     "api": {
       "servicesHost": ""
     },
+    "settingsDefaults": {
+      "version": "search-defaults-7200-57600",
+      "queryResultK": 7200,
+      "temporalWindowSeconds": 57600
+    },
     "media": {
       "hasVideos": true
     },

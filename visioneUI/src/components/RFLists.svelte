@@ -10,6 +10,10 @@
   const removeNegative = (imgId, index) => dispatch("removeNegative", { imgId, index });
 </script>
 
+<div class="mb-3 rounded-lg border border-blue-800/40 bg-blue-900/20 px-3 py-2 text-xs text-blue-100">
+  To update results with relevance feedback, click <span class="font-semibold">Search</span> again after changing positive or negative examples.
+</div>
+
 <div class="grid grid-cols-2 gap-4">
   <!-- Positive Column -->
   <div class="space-y-3">

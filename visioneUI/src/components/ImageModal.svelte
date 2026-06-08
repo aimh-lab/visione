@@ -28,6 +28,7 @@
   const handleSimilarity = (e) => { e?.stopPropagation(); dispatch("similarity", { imgId: image?.imgId, img: image }); };
   const handleRFPositive = (e) => { e?.stopPropagation(); dispatch("rfPositive", { img: image }); };
   const handleRFNegative = (e) => { e?.stopPropagation(); dispatch("rfNegative", { img: image }); };
+  const handlePinImage = (e) => { e?.stopPropagation(); dispatch("pinImage", { img: image }); };
   const handleOpenVideoPlayer = (e) => {
     e?.stopPropagation();
     const videoId = image?.videoId ?? String(image?.imgId).split("-")[0];
@@ -390,6 +391,21 @@
           >
             <svg class="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
               <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            on:click={handlePinImage}
+            class="ui-image-modal-btn w-8 h-8 rounded-md border border-gray-300 bg-white text-gray-700 transition-colors"
+            title="Pin image"
+            aria-label="Pin image"
+            disabled={!image?.imgId}
+          >
+            <svg class="w-4 h-4 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 5a3 3 0 0 1 6 0c0 1.37-.72 2.58-1.8 3.26l1.55 3.24h-5.5l1.55-3.24A3.93 3.93 0 0 1 9 5Z"/>
+              <path d="M12 11.5v7.5"/>
+              <path d="M10 15.5h4"/>
             </svg>
           </button>
 

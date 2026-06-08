@@ -972,6 +972,7 @@
       on:next={() => navigateImageModal(1)}
       on:adjustScale={(e) => dispatch("adjustImageScale", { delta: Number(e?.detail?.delta || 0) })}
       on:submit={() => submitCurrentFrame()}
+      on:pinImage={(e) => dispatch("pinImage", { img: e.detail.img })}
       on:videoSummary={(e) => {
         closeImageModal();
         dispatch("videoSummary", { img: e.detail.img, videoId: normalizedVideoId, imgId: activeFrame?.imgId || "" });

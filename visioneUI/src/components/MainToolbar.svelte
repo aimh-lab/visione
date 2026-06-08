@@ -18,6 +18,7 @@
   export let selectedEvaluationId = '';
   export let loadingEvaluationOptions = false;
   export let pinnedSummaries = [];
+  export let pinnedImages = [];
   export let activePinnedSummaryKey = '';
   
   const dispatch = createEventDispatcher();
@@ -76,7 +77,23 @@
     isPinnedDropdownOpen = false;
   };
 
+  const openPinnedImage = (item) => {
+    dispatch('openPinnedImage', { item });
+    isPinnedDropdownOpen = false;
+  };
+
+  const unpinImage = (event, item) => {
+    event.stopPropagation();
+    dispatch('unpinImage', { item });
+  };
+
+  const clearPinnedImages = () => {
+    dispatch('clearPinnedImages');
+    isPinnedDropdownOpen = false;
+  };
+
   const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
+  $: pinnedCount = (pinnedSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: hasTabs = Array.isArray(tabs) && tabs.length > 0;
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   
@@ -154,8 +171,8 @@
       <div class="relative pinned-dropdown-container">
         <button
           type="button"
-          aria-label="Pinned video summaries"
-          title="Pinned video summaries"
+          aria-label="Pinned items"
+          title="Pinned items"
           class="ui-toolbar-btn ui-toolbar-settings p-2 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm hover:shadow-md relative"
           on:click|stopPropagation={() => isPinnedDropdownOpen = !isPinnedDropdownOpen}
         >
@@ -164,53 +181,87 @@
             <path d="M12 11.5v7.5"/>
             <path d="M10 15.5h4"/>
           </svg>
-          {#if pinnedSummaries.length > 0}
-            <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-blue-600 text-white text-[10px] leading-4 text-center font-semibold">{Math.min(pinnedSummaries.length, 99)}</span>
+          {#if pinnedCount > 0}
+            <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-blue-600 text-white text-[10px] leading-4 text-center font-semibold">{Math.min(pinnedCount, 99)}</span>
           {/if}
         </button>
 
         {#if isPinnedDropdownOpen}
           <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 rounded-lg shadow-xl border py-1 z-50">
             <div class="ui-position-menu-header px-3 py-2 border-b flex items-center justify-between">
-              <span class="text-xs font-semibold">Pinned summaries</span>
-              {#if pinnedSummaries.length > 0}
+              <span class="text-xs font-semibold">Pinned</span>
+              {#if pinnedCount > 0}
                 <button
                   type="button"
                   class="text-[11px] font-medium text-red-500 hover:text-red-400"
-                  on:click={clearPinnedSummaries}
+                  on:click={() => {
+                    clearPinnedSummaries();
+                    clearPinnedImages();
+                  }}
                 >
                   Clear
                 </button>
               {/if}
             </div>
 
-            {#if pinnedSummaries.length === 0}
-              <div class="px-3 py-3 text-xs text-gray-500">No pinned summaries yet</div>
+            {#if pinnedCount === 0}
+              <div class="px-3 py-3 text-xs text-gray-500">No pinned items yet</div>
             {:else}
-              {#each pinnedSummaries as item}
-                <button
-                  type="button"
-                  class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {summaryKey(item) === activePinnedSummaryKey ? 'ui-sort-option-active' : ''}"
-                  on:click={() => openPinnedSummary(item)}
-                  title={`Open ${item.label || item.videoId}`}
-                >
-                  <span class="min-w-0 flex-1 text-xs truncate {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700 font-semibold' : ''}">{item.label || item.videoId}</span>
-                  <span class="text-[10px] opacity-75 {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700' : ''}">{item.videoId}</span>
-                  <span
-                    role="button"
-                    tabindex="0"
-                    class="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50"
-                    on:click={(event) => unpinSummary(event, item)}
-                    on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && unpinSummary(event, item)}
-                    aria-label={`Unpin ${item.label || item.videoId}`}
-                    title="Unpin"
+              {#if pinnedSummaries.length > 0}
+                <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">Summaries</div>
+                {#each pinnedSummaries as item}
+                  <button
+                    type="button"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {summaryKey(item) === activePinnedSummaryKey ? 'ui-sort-option-active' : ''}"
+                    on:click={() => openPinnedSummary(item)}
+                    title={`Open ${item.label || item.videoId}`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </span>
-                </button>
-              {/each}
+                    <span class="min-w-0 flex-1 text-xs truncate {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700 font-semibold' : ''}">{item.label || item.videoId}</span>
+                    <span class="text-[10px] opacity-75 {summaryKey(item) === activePinnedSummaryKey ? 'text-blue-700' : ''}">{item.videoId}</span>
+                    <span
+                      role="button"
+                      tabindex="0"
+                      class="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50"
+                      on:click={(event) => unpinSummary(event, item)}
+                      on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && unpinSummary(event, item)}
+                      aria-label={`Unpin ${item.label || item.videoId}`}
+                      title="Unpin"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </span>
+                  </button>
+                {/each}
+              {/if}
+
+              {#if pinnedImages.length > 0}
+                <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">Images</div>
+                {#each pinnedImages as item}
+                  <button
+                    type="button"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left"
+                    on:click={() => openPinnedImage(item)}
+                    title={`Open ${item.label || item.imgId}`}
+                  >
+                    <span class="min-w-0 flex-1 text-xs truncate">{item.label || item.imgId}</span>
+                    <span class="text-[10px] opacity-75">{item.imgId}</span>
+                    <span
+                      role="button"
+                      tabindex="0"
+                      class="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50"
+                      on:click={(event) => unpinImage(event, item)}
+                      on:keydown={(event) => (event.key === 'Enter' || event.key === ' ') && unpinImage(event, item)}
+                      aria-label={`Unpin ${item.label || item.imgId}`}
+                      title="Unpin"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </span>
+                  </button>
+                {/each}
+              {/if}
             {/if}
           </div>
         {/if}

@@ -6,7 +6,8 @@ const DEFAULT = {
   rfNegative: [],
   submittedImages: [],
   submittedAnswers: [],
-  pinnedVideoSummaries: []
+  pinnedVideoSummaries: [],
+  pinnedImages: []
 };
 
 const freshDefault = () => ({
@@ -14,7 +15,8 @@ const freshDefault = () => ({
   rfNegative: [],
   submittedImages: [],
   submittedAnswers: [],
-  pinnedVideoSummaries: []
+  pinnedVideoSummaries: [],
+  pinnedImages: []
 });
 
 function createSessionStore() {
@@ -89,6 +91,34 @@ function createSessionStore() {
       uiStore.actions.focusRightTab('RF');
     },
 
+    addSubmittedToRFPositive() {
+      let addedCount = 0;
+
+      update((s) => {
+        const submitted = Array.isArray(s.submittedImages) ? s.submittedImages : [];
+        if (submitted.length === 0) return s;
+
+        const positiveIds = new Set((s.rfPositive || []).map((item) => String(item?.imgId || '').trim()).filter(Boolean));
+        const submittedIds = new Set(submitted.map((item) => String(item?.imgId || '').trim()).filter(Boolean));
+        const toAdd = submitted.filter((item) => {
+          const imgId = String(item?.imgId || '').trim();
+          return imgId && !positiveIds.has(imgId);
+        });
+
+        if (toAdd.length === 0) return s;
+        addedCount = toAdd.length;
+
+        return {
+          ...s,
+          rfNegative: (s.rfNegative || []).filter((item) => !submittedIds.has(String(item?.imgId || '').trim())),
+          rfPositive: [...(s.rfPositive || []), ...toAdd]
+        };
+      });
+
+      if (addedCount > 0) uiStore.actions.focusRightTab('RF');
+      return { addedCount };
+    },
+
     toggleRFNegative({ imgId, imgObj }) {
       if (!imgId || !imgObj) return;
 
@@ -148,6 +178,44 @@ function createSessionStore() {
 
     clearPinnedVideoSummaries() {
       update((s) => ({ ...s, pinnedVideoSummaries: [] }));
+    },
+
+    pinImage({ img, label = '' }) {
+      const safeImg = img && typeof img === 'object' ? img : null;
+      const safeImgId = String(safeImg?.imgId || '').trim();
+      if (!safeImg || !safeImgId) return { added: false, reason: 'missing-img-id' };
+
+      const safeLabel = String(label || safeImg?.title || safeImgId).trim() || safeImgId;
+
+      let added = false;
+      update((s) => {
+        const exists = (s.pinnedImages || []).some((item) => item.imgId === safeImgId);
+        if (exists) return s;
+        added = true;
+        return {
+          ...s,
+          pinnedImages: [
+            { ...safeImg, imgId: safeImgId, label: safeLabel },
+            ...(s.pinnedImages || [])
+          ].slice(0, 12)
+        };
+      });
+
+      return { added, reason: added ? 'added' : 'already-exists' };
+    },
+
+    unpinImage({ imgId }) {
+      const safeImgId = String(imgId || '').trim();
+      if (!safeImgId) return;
+
+      update((s) => ({
+        ...s,
+        pinnedImages: (s.pinnedImages || []).filter((item) => item.imgId !== safeImgId)
+      }));
+    },
+
+    clearPinnedImages() {
+      update((s) => ({ ...s, pinnedImages: [] }));
     }
   };
 

@@ -18,7 +18,7 @@ const DEFAULT = {
 
   keyframeSize: 130,
   resultsPerGroup: 8,
-  queryResultK: 1000,
+  queryResultK: 7200,
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
@@ -48,14 +48,15 @@ const DEFAULT = {
   dresMemberId: '',
   autoTranslateQueries: true,
   showAutoTranslateToggle: true,
-  temporalWindowSeconds: 50,
+  temporalWindowSeconds: 57600,
   videoPlayerModalMode: 'profile',
   imageModalScale: 160,
   slideshowModalScale: 160,
   qaStreamPanelHeight: 288,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
-  defaultImageModel: 'dinov2_base'
+  defaultImageModel: 'dinov2_base',
+  runtimeSettingsDefaultsVersion: ''
 };
 
 function normalizeModalSizePx(value, fallback = 160) {
@@ -77,7 +78,7 @@ function normalizeQaStreamPanelHeight(value, fallback = 288) {
   return Math.max(160, Math.min(720, Math.round(numeric)));
 }
 
-function normalizeQueryResultK(value, fallback = 1000) {
+function normalizeQueryResultK(value, fallback = 7200) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.min(100000, Math.max(1, Math.floor(numeric)));
@@ -218,8 +219,44 @@ function createUIStore() {
         qaStreamPanelHeight: normalizeQaStreamPanelHeight(s.qaStreamPanelHeight, u.qaStreamPanelHeight),
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
-        defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel
+        defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel,
+        runtimeSettingsDefaultsVersion: String(s.runtimeSettingsDefaultsVersion || '').trim()
       }));
+    },
+
+    applyRuntimeSettingsDefaults(defaults = {}) {
+      const version = String(defaults?.version || '').trim();
+      if (!version) return;
+
+      let nextState = null;
+      update((u) => {
+        if (String(u.runtimeSettingsDefaultsVersion || '').trim() === version) return u;
+
+        const nextQueryResultK = Number.isFinite(Number(defaults?.queryResultK))
+          && (!Number.isFinite(Number(u.queryResultK)) || Number(u.queryResultK) === 1000)
+            ? normalizeQueryResultK(defaults.queryResultK, u.queryResultK || DEFAULT.queryResultK)
+            : u.queryResultK;
+        const nextTemporalWindowSeconds = Number.isFinite(Number(defaults?.temporalWindowSeconds))
+          && (!Number.isFinite(Number(u.temporalWindowSeconds)) || Number(u.temporalWindowSeconds) === 50)
+            ? Math.min(99999, Math.max(1, Number(defaults.temporalWindowSeconds)))
+            : u.temporalWindowSeconds;
+
+        nextState = {
+          ...u,
+          queryResultK: nextQueryResultK,
+          temporalWindowSeconds: nextTemporalWindowSeconds,
+          runtimeSettingsDefaultsVersion: version
+        };
+        return nextState;
+      });
+
+      if (nextState) {
+        persist({
+          queryResultK: nextState.queryResultK,
+          temporalWindowSeconds: nextState.temporalWindowSeconds,
+          runtimeSettingsDefaultsVersion: nextState.runtimeSettingsDefaultsVersion
+        });
+      }
     },
 
     // Use for the "reset app" action (UI + persistence)
@@ -268,7 +305,8 @@ function createUIStore() {
         qaStreamPanelHeight: DEFAULT.qaStreamPanelHeight,
         modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
         defaultTextModel: DEFAULT.defaultTextModel,
-        defaultImageModel: DEFAULT.defaultImageModel
+        defaultImageModel: DEFAULT.defaultImageModel,
+        runtimeSettingsDefaultsVersion: DEFAULT.runtimeSettingsDefaultsVersion
       });
     },
 
@@ -453,7 +491,8 @@ function createUIStore() {
           qaStreamPanelHeight: safeQaStreamPanelHeight,
           modelSelectionPerStepEnabled: patch.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
           defaultTextModel: safeDefaultTextModel,
-          defaultImageModel: safeDefaultImageModel
+          defaultImageModel: safeDefaultImageModel,
+          runtimeSettingsDefaultsVersion: u.runtimeSettingsDefaultsVersion
         };
 
         return nextState;
@@ -496,7 +535,8 @@ function createUIStore() {
           qaStreamPanelHeight: nextState.qaStreamPanelHeight,
           modelSelectionPerStepEnabled: nextState.modelSelectionPerStepEnabled,
           defaultTextModel: nextState.defaultTextModel,
-          defaultImageModel: nextState.defaultImageModel
+          defaultImageModel: nextState.defaultImageModel,
+          runtimeSettingsDefaultsVersion: nextState.runtimeSettingsDefaultsVersion
         });
       }
     }
