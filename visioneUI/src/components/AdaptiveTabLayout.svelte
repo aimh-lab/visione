@@ -97,7 +97,7 @@
     isPinnedDropdownOpen = false;
   }
 
-  const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
+  const summaryKey = (item) => `${String(item?.scope || 'hour').trim()}::${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   $: pinnedCount = (pinnedVideoSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   

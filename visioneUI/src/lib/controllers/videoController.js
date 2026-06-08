@@ -2,9 +2,11 @@
 export function createVideoController({
   api,                      // visioneAPI
   transformVideoKeyframes,
+  transformSearchResults,
   tick,
 
   getSubmittedIds,          // () => Set<string>
+  getResultK = () => 7200,
 
   // state sinks
   setVideoState             // ({ loading?, error?, frames?, videoId?, selectedImgId? }) => void
@@ -68,12 +70,71 @@ export function createVideoController({
     return transformVideoKeyframes(enrichedFrames, videoId, getSubmittedIds());
   }
 
-  async function openVideoSummary(videoId, highlightImgId = null) {
+  async function enrichFramesWithElementUrls(frames) {
+    const source = Array.isArray(frames) ? frames : [];
+    const ids = source
+      .map((entry) => String(entry?.imgId || entry?.id || entry?.content || entry || '').trim())
+      .filter(Boolean);
+    if (ids.length === 0) return source;
+
+    const urlRows = await api.getElementUrlsBatch(ids, ['images', 'thumbnails']);
+    const urlById = new Map(
+      (Array.isArray(urlRows) ? urlRows : [])
+        .map((row) => [
+          String(row?.id || '').trim(),
+          {
+            imageUrl: String(row?.images || '').trim() || null,
+            thumbnailUrl: String(row?.thumbnails || '').trim() || null
+          }
+        ])
+        .filter(([id]) => !!id)
+    );
+
+    return source.map((entry) => {
+      const imgId = String(entry?.imgId || entry?.id || entry?.content || entry || '').trim();
+      const resolved = urlById.get(imgId) || {};
+      const imageUrl = String(resolved?.imageUrl || entry?.imageUrl || '').trim() || null;
+      const thumbnailUrl = String(resolved?.thumbnailUrl || entry?.thumbnailUrl || entry?.url || '').trim() || null;
+      return {
+        ...(typeof entry === 'object' && entry ? entry : { imgId }),
+        imgId,
+        imageUrl,
+        thumbnailUrl,
+        url: thumbnailUrl || imageUrl || entry?.url || null
+      };
+    });
+  }
+
+  function toInt(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed) : null;
+  }
+
+  async function resolveDayPartsFromFrame(imgId) {
+    const safeImgId = String(imgId || '').trim();
+    if (!safeImgId) return null;
+
+    const metadata = await api.getField(safeImgId, ['year', 'month', 'day']);
+    const year = toInt(metadata?.year);
+    const month = toInt(metadata?.month);
+    const day = toInt(metadata?.day);
+    if (year == null || month == null || day == null) return null;
+    return { year, month, day };
+  }
+
+  async function fetchDayKeyframes({ year, month, day }) {
+    const resultSet = await api.searchFramesByDay({ year, month, day, k: getResultK() });
+    const frames = transformSearchResults(resultSet, getSubmittedIds());
+    return enrichFramesWithElementUrls(frames);
+  }
+
+  async function openVideoSummary(videoId, highlightImgId = null, scope = 'hour') {
     if (!videoId) return;
 
     const req = ++reqId;
 
     const requestedVideoId = String(videoId);
+    const requestedScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
     // Preserve raw imgId (including extensions) to keep selection/anchor
     // aligned with transformed keyframe ids.
     const selectedImgId = highlightImgId ? String(highlightImgId) : null;
@@ -83,13 +144,24 @@ export function createVideoController({
       error: null,
       frames: null,
       videoId: requestedVideoId,
-      selectedImgId
+      selectedImgId,
+      contextScope: requestedScope,
+      contextDay: null
     });
 
     try {
       await tick();
 
-      const frames = await fetchVideoKeyframes(requestedVideoId);
+      const dayParts = requestedScope === 'day'
+        ? await resolveDayPartsFromFrame(selectedImgId)
+        : null;
+      if (requestedScope === 'day' && !dayParts) {
+        throw new Error('Unable to resolve day metadata for this frame');
+      }
+
+      const frames = requestedScope === 'day'
+        ? await fetchDayKeyframes(dayParts)
+        : await fetchVideoKeyframes(requestedVideoId);
       if (req !== reqId) return;
 
       setVideoState({
@@ -97,7 +169,9 @@ export function createVideoController({
         error: null,
         frames,
         videoId: requestedVideoId,
-        selectedImgId
+        selectedImgId,
+        contextScope: requestedScope,
+        contextDay: dayParts
       });
     } catch (err) {
       if (req !== reqId) return;
@@ -107,7 +181,9 @@ export function createVideoController({
         error: err?.message ?? String(err),
         frames: null,
         videoId: requestedVideoId,
-        selectedImgId: null
+        selectedImgId: null,
+        contextScope: requestedScope,
+        contextDay: null
       });
     }
   }

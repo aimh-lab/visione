@@ -11,8 +11,8 @@ export const tabConfig = {
     icon: `<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>`
   },
   View2: {
-    label: 'Video Summary',
-    icon: `<path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>`
+    label: 'Context View',
+    icon: `<g opacity="0.6"><rect x="3" y="3" width="4" height="4" rx="1"/><rect x="10" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/><rect x="3" y="10" width="4" height="4" rx="1"/><rect x="17" y="10" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><rect x="10" y="17" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/></g><rect x="9.25" y="9.25" width="5.5" height="5.5" rx="1.2" fill="white" stroke="none"/>`
   },
   Similarity: {
     label: 'Image Similarity',

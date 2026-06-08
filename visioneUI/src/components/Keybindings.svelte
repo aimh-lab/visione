@@ -131,7 +131,7 @@
       else if (e.key === 'v') {
         e.preventDefault();
         onVideoSummarySelected();
-        showActionFeedback('Video summary opened');
+        showActionFeedback('Context view opened');
       }
 
       return;
@@ -210,11 +210,11 @@
       return;
     }
 
-    // V: Video summary on selected
+    // V: Context view on selected
     if (e.key === 'v' && !isTypingTarget(e.target)) {
       e.preventDefault();
       onVideoSummarySelected();
-      showActionFeedback('Video summary opened');
+      showActionFeedback('Context view opened');
       return;
     }
 
@@ -377,7 +377,7 @@
               <kbd class="kbd">I</kbd>
             </div>
             <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
-              <span class="text-gray-700">Video summary</span>
+              <span class="text-gray-700">Context view</span>
               <kbd class="kbd">V</kbd>
             </div>
           </div>

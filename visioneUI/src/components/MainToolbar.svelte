@@ -92,7 +92,7 @@
     isPinnedDropdownOpen = false;
   };
 
-  const summaryKey = (item) => `${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
+  const summaryKey = (item) => `${String(item?.scope || 'hour').trim()}::${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   $: pinnedCount = (pinnedSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: hasTabs = Array.isArray(tabs) && tabs.length > 0;
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
@@ -208,7 +208,7 @@
               <div class="px-3 py-3 text-xs text-gray-500">No pinned items yet</div>
             {:else}
               {#if pinnedSummaries.length > 0}
-                <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">Summaries</div>
+                <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide opacity-60">Contexts</div>
                 {#each pinnedSummaries as item}
                   <button
                     type="button"

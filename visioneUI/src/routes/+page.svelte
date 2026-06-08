@@ -157,10 +157,11 @@
     return String(videoId || '').trim();
   }
 
-  function toPinnedSummaryKey(videoId, highlightImgId = null) {
+  function toPinnedSummaryKey(videoId, highlightImgId = null, scope = 'hour') {
     const safeVideoId = String(videoId || '').trim();
     const safeHighlight = String(highlightImgId || '').trim();
-    return `${safeVideoId}::${safeHighlight}`;
+    const safeScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
+    return `${safeScope}::${safeVideoId}::${safeHighlight}`;
   }
 
   function pinCurrentVideoSummary() {
@@ -171,27 +172,29 @@
     const result = sessionStore.actions.pinVideoSummary({
       videoId,
       highlightImgId,
-      label: activeVideoSummaryContext.label || videoId
+      label: activeVideoSummaryContext.label || videoId,
+      scope: view2ContextScope || activeVideoSummaryContext.scope || 'hour'
     });
 
     if (!result?.added) {
-      toasts.info('Video summary already pinned');
+      toasts.info('Context already pinned');
       return;
     }
 
-    toasts.success('Video summary pinned');
+    toasts.success('Context pinned');
   }
 
   function openPinnedVideoSummary(item) {
     if (!item?.videoId) return;
-    openVideoSummary(item.videoId, item.highlightImgId || null);
+    openVideoSummary(item.videoId, item.highlightImgId || null, item.scope || 'hour');
   }
 
   function unpinVideoSummary(item) {
     if (!item?.videoId) return;
     sessionStore.actions.unpinVideoSummary({
       videoId: item.videoId,
-      highlightImgId: item.highlightImgId || null
+      highlightImgId: item.highlightImgId || null,
+      scope: item.scope || 'hour'
     });
   }
 
@@ -270,7 +273,7 @@
   let pinnedImageModalOpen = false;
   let pinnedImageModalImage = null;
   let pinnedImageModalFrame = null;
-  let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
+  let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '', scope: 'hour' };
   let activePinnedSummaryKey = '';
   let activeCollectionName = 'default';
   let runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
@@ -350,7 +353,8 @@
   $: pinnedImageModalFrame = pinnedImageModalImage ? { ...pinnedImageModalImage, index: 0, idx: 0 } : null;
   $: activePinnedSummaryKey = toPinnedSummaryKey(
     activeVideoSummaryContext.videoId,
-    activeVideoSummaryContext.highlightImgId
+    activeVideoSummaryContext.highlightImgId,
+    view2ContextScope || activeVideoSummaryContext.scope || 'hour'
   );
 
   // Derivate
@@ -374,6 +378,8 @@
   let view2VideoId = null;
   let view2Loading = false;
   let view2Error = null;
+  let view2ContextScope = 'hour';
+  let view2ContextDay = null;
   let view2SelectedImgId = null;
 
   // Similarity state
@@ -1042,16 +1048,20 @@
   const videoController = createVideoController({
     api: visioneAPI,
     transformVideoKeyframes,
+    transformSearchResults,
     tick,
 
     getSubmittedIds: getSubmittedLookup,
+    getResultK: () => Number(get(uiStore).queryResultK) || 7200,
 
-    setVideoState: ({ loading, error, frames, videoId, selectedImgId }) => {
+    setVideoState: ({ loading, error, frames, videoId, selectedImgId, contextScope, contextDay }) => {
       if (loading !== undefined) view2Loading = loading;
       if (error !== undefined) view2Error = error;
       if (frames !== undefined) view2Frames = frames;
       if (videoId !== undefined) view2VideoId = videoId;
       if (selectedImgId !== undefined) view2SelectedImgId = selectedImgId;
+      if (contextScope !== undefined) view2ContextScope = contextScope || 'hour';
+      if (contextDay !== undefined) view2ContextDay = contextDay || null;
     }
   });
 
@@ -2423,23 +2433,25 @@ function handleViewSubmitted() {
     await runSearchImmediate();
   }
 
-  async function openVideoSummary(videoId, highlightImgId = null) {
+  async function openVideoSummary(videoId, highlightImgId = null, scope = 'hour') {
     isVideoSummaryModalOpen = true;
     const normalizedVideoId = String(videoId || '');
     const normalizedHighlight = String(highlightImgId || '') || null;
+    const normalizedScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
     activeVideoSummaryContext = {
       videoId: normalizedVideoId,
       highlightImgId: normalizedHighlight,
-      label: resolveSummaryLabel(normalizedVideoId, normalizedHighlight)
+      label: resolveSummaryLabel(normalizedVideoId, normalizedHighlight),
+      scope: normalizedScope
     };
 
     if (!highlightImgId) lastViewedVideoIndex = 0;
 
-    await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight);
+    await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight, normalizedScope);
     vbsLogger.logInteractionEvent({
       category: 'BROWSING',
-      type: 'videoSummary',
-      value: `${normalizedVideoId}${normalizedHighlight ? `;${normalizedHighlight}` : ''}`
+      type: 'contextView',
+      value: `${normalizedScope};${normalizedVideoId}${normalizedHighlight ? `;${normalizedHighlight}` : ''}`
     }).then(refreshLogCount).catch(() => {});
   }
 
@@ -2685,6 +2697,8 @@ function handleViewSubmitted() {
 
     view2Frames = null;
     view2VideoId = null;
+    view2ContextScope = 'hour';
+    view2ContextDay = null;
     view2SelectedImgId = null;
     view2Loading = false;
     view2Error = null;
@@ -2702,7 +2716,7 @@ function handleViewSubmitted() {
     isVideoPlayerOpen = false;
     isSlideshowOpen = false;
     isVideoSummaryModalOpen = false;
-    activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
+    activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '', scope: 'hour' };
 
     lastViewedSearchIndex = 0;
     lastViewedVideoIndex = 0;
@@ -2984,6 +2998,8 @@ function handleViewSubmitted() {
   error={view2Error}
   frames={view2Frames}
   videoId={view2VideoId || activeVideoSummaryContext.videoId}
+  contextScope={view2ContextScope}
+  contextDay={view2ContextDay}
   selectedFrameId={view2SelectedImgId}
   pinnedSummaries={pinnedVideoSummaries}
   {activePinnedSummaryKey}
@@ -3001,6 +3017,7 @@ function handleViewSubmitted() {
   justifyResultRows={$uiStore.justifyResultRows}
   onClose={() => { isVideoSummaryModalOpen = false; }}
   onPinCurrent={pinCurrentVideoSummary}
+  onScopeChange={(scope, imgId, videoId) => openVideoSummary(videoId || activeVideoSummaryContext.videoId || view2VideoId, imgId || view2SelectedImgId, scope)}
   onOpenPinned={openPinnedVideoSummary}
   onUnpinPinned={unpinVideoSummary}
   onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
