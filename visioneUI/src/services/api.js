@@ -571,6 +571,63 @@ export class VisioneAPI {
       });
   }
 
+  async searchFramesByDay({ year, month, day, k = 7200 }) {
+    const safeYear = Math.floor(Number(year));
+    const safeMonth = Math.floor(Number(month));
+    const safeDay = Math.floor(Number(day));
+    const safeK = this.#normalizeResultK(k, 7200);
+
+    if (!Number.isFinite(safeYear) || !Number.isFinite(safeMonth) || !Number.isFinite(safeDay)) {
+      throw new APIError('Valid year, month, and day are required', 400);
+    }
+
+    const metadataToRetrieve = Array.from(new Set([
+      ...this.defaultMetadataToRetrieve,
+      'year',
+      'month',
+      'day',
+      'hour',
+      'epoch'
+    ]));
+
+    const payload = {
+      query: {
+        item: '',
+        k: safeK,
+        filters: {
+          operator: 'and',
+          arguments: [
+            { comparator: 'eq', attribute: 'year', value: safeYear },
+            { comparator: 'eq', attribute: 'month', value: safeMonth },
+            { comparator: 'eq', attribute: 'day', value: safeDay }
+          ]
+        }
+      },
+      metadata_to_retrieve: metadataToRetrieve,
+      reorder_by: { columns: ['epoch'] }
+    };
+
+    const payloadText = JSON.stringify(payload);
+    console.info('[VisioneAPI] POST /search payload (context day)', payload);
+    console.info('[VisioneAPI] POST /search payload (context day, text)', payloadText);
+
+    try {
+      const response = await this.#makeRequest(this.searchUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payloadText,
+        retries: 2
+      });
+
+      const data = await response.json();
+      console.info('[VisioneAPI] POST /search response (context day)', data);
+      return data;
+    } catch (error) {
+      console.error('[VisioneAPI] POST /search failed (context day)', { payload, error });
+      throw error;
+    }
+  }
+
   // Health check API (optional)
   async healthCheck() {
     try {

@@ -137,24 +137,27 @@ function createSessionStore() {
       uiStore.actions.focusRightTab('RF');
     },
 
-    pinVideoSummary({ videoId, highlightImgId = null, label = '' }) {
+    pinVideoSummary({ videoId, highlightImgId = null, label = '', scope = 'hour' }) {
       const safeVideoId = String(videoId || '').trim();
       if (!safeVideoId) return { added: false, reason: 'missing-video-id' };
 
       const safeHighlight = String(highlightImgId || '').trim() || null;
       const safeLabel = String(label || '').trim() || safeVideoId;
+      const safeScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
 
       let added = false;
       update((s) => {
         const exists = (s.pinnedVideoSummaries || []).some(
-          (item) => item.videoId === safeVideoId && String(item.highlightImgId || '') === String(safeHighlight || '')
+          (item) => item.videoId === safeVideoId
+            && String(item.highlightImgId || '') === String(safeHighlight || '')
+            && String(item.scope || 'hour') === safeScope
         );
         if (exists) return s;
         added = true;
         return {
           ...s,
           pinnedVideoSummaries: [
-            { videoId: safeVideoId, highlightImgId: safeHighlight, label: safeLabel },
+            { videoId: safeVideoId, highlightImgId: safeHighlight, label: safeLabel, scope: safeScope },
             ...(s.pinnedVideoSummaries || [])
           ].slice(0, 12)
         };
@@ -163,15 +166,18 @@ function createSessionStore() {
       return { added, reason: added ? 'added' : 'already-exists' };
     },
 
-    unpinVideoSummary({ videoId, highlightImgId = null }) {
+    unpinVideoSummary({ videoId, highlightImgId = null, scope = 'hour' }) {
       const safeVideoId = String(videoId || '').trim();
       if (!safeVideoId) return;
       const safeHighlight = String(highlightImgId || '').trim() || null;
+      const safeScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
 
       update((s) => ({
         ...s,
         pinnedVideoSummaries: (s.pinnedVideoSummaries || []).filter(
-          (item) => !(item.videoId === safeVideoId && String(item.highlightImgId || '') === String(safeHighlight || ''))
+          (item) => !(item.videoId === safeVideoId
+            && String(item.highlightImgId || '') === String(safeHighlight || '')
+            && String(item.scope || 'hour') === safeScope)
         )
       }));
     },

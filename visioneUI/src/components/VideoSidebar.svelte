@@ -9,7 +9,7 @@
 
 <div class="sidebar-left bg-gray-800 text-white flex flex-col {isSidebarOpen ? '' : 'collapsed'}">
   <div class="sidebar-header">
-    <h2 class="text-lg font-bold">Video Summary - Menu</h2>
+    <h2 class="text-lg font-bold">Context View - Menu</h2>
   </div>
 
   {#if isSidebarOpen}

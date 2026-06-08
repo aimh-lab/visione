@@ -60,7 +60,7 @@
   }
 </script>
 
-<div class="flex h-full w-full" style="--sidebar-width: clamp(200px, 18vw, 360px);"  aria-label="Video Summary">
+<div class="flex h-full w-full" style="--sidebar-width: clamp(200px, 18vw, 360px);"  aria-label="Context View">
   <VideoSidebar {isSidebarOpen} on:openOptions={() => {}} on:openFilters={() => {}} />
 
   <div class="flex flex-col flex-grow">
@@ -89,7 +89,7 @@
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
             </div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Video summary error</h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Context view error</h3>
             <p class="text-sm text-gray-500 leading-relaxed mb-5">{error}</p>
             <button
               type="button"

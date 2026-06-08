@@ -10,6 +10,7 @@
     videoId: string;
     highlightImgId?: string | null;
     label?: string;
+    scope?: string;
   };
 
   export let isOpen = false;
@@ -17,6 +18,8 @@
   export let error: string | null = null;
   export let frames: Frame[] | null = null;
   export let videoId: string | null = null;
+  export let contextScope: "hour" | "day" = "hour";
+  export let contextDay: { year?: number; month?: number; day?: number } | null = null;
 
   export let pinnedSummaries: PinnedSummary[] = [];
   export let activePinnedSummaryKey = "";
@@ -38,6 +41,7 @@
 
   export let onClose = () => {};
   export let onPinCurrent = () => {};
+  export let onScopeChange = (_scope: "hour" | "day", _imgId?: string | null, _videoId?: string | null) => {};
   export let onOpenPinned = (_item: PinnedSummary) => {};
   export let onUnpinPinned = (_item: PinnedSummary) => {};
 
@@ -51,11 +55,18 @@
   export let onAdjustImageModalScale = (_delta: number) => {};
 
   const summaryKey = (item: PinnedSummary) =>
-    `${String(item?.videoId || "").trim()}::${String(item?.highlightImgId || "").trim()}`;
+    `${String(item?.scope || "hour").trim()}::${String(item?.videoId || "").trim()}::${String(item?.highlightImgId || "").trim()}`;
 
   $: framesAsRows = frames ? [frames] : [];
   $: hasFrames = (frames?.length ?? 0) > 0;
   $: summaryImageModalTotal = Array.isArray(frames) ? frames.length : 0;
+  $: safeContextScope = contextScope === "day" ? "day" : "hour";
+  $: contextDayLabel = contextDay?.year && contextDay?.month && contextDay?.day
+    ? `${String(contextDay.day).padStart(2, "0")}/${String(contextDay.month).padStart(2, "0")}/${contextDay.year}`
+    : "";
+  $: contextSubtitle = safeContextScope === "day"
+    ? `Day${contextDayLabel ? ` ${contextDayLabel}` : ""}`
+    : (videoId ? `Hour ${videoId}` : "Quick inspect mode");
 
   const MIN_WIDTH = 820;
   const MIN_HEIGHT = 520;
@@ -80,6 +91,16 @@
     summarySelectedFrame = frame;
     localSelectedFrameId = String(frame?.imgId || '') || null;
     summaryImageModalOpen = true;
+  }
+
+  function requestScope(scope: "hour" | "day") {
+    if (scope === safeContextScope) return;
+    const imgId = localSelectedFrameId || selectedFrameId || String(frames?.[0]?.imgId || "") || null;
+    const selectedFrame = imgId && Array.isArray(frames)
+      ? frames.find((frame) => String(frame?.imgId || "") === String(imgId))
+      : null;
+    const nextVideoId = String(selectedFrame?.videoId || videoId || "").trim() || null;
+    onScopeChange(scope, imgId, nextVideoId);
   }
 
   function closeSummaryImageModal() {
@@ -283,7 +304,7 @@
     <button
       type="button"
       class="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
-      aria-label="Close video summary"
+      aria-label="Close context view"
       on:click={onClose}
     ></button>
 
@@ -297,26 +318,42 @@
       >
         <div class="min-w-0 flex items-start gap-2.5">
           <div class="mt-0.5 inline-flex items-center justify-center w-6 h-6 rounded-md bg-sky-900/50 border border-sky-700/45 text-sky-200">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4"/>
-            </svg>
+            <img src="/icons/context-view.svg" alt="" class="w-4 h-4 opacity-95" aria-hidden="true" />
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <h3 class="text-sm font-semibold text-slate-100 truncate">Video Summary</h3>
+              <h3 class="text-sm font-semibold text-slate-100 truncate">Context View</h3>
               <span class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded border border-sky-700/40 bg-sky-900/25 text-sky-200">Modal</span>
             </div>
-            <p class="text-[11px] text-slate-400 truncate">{videoId ? `Video ${videoId}` : 'Quick inspect mode'} · Drag header to move · ESC to close</p>
+            <p class="text-[11px] text-slate-400 truncate">{contextSubtitle} · Drag header to move · ESC to close</p>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
+          <div class="inline-flex rounded-md border border-slate-600/70 bg-slate-800/80 p-0.5">
+            <button
+              type="button"
+              class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'hour' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
+              on:click={() => requestScope("hour")}
+              title="Show frames from the same hour"
+            >
+              Hour
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'day' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
+              on:click={() => requestScope("day")}
+              title="Show frames from the same day"
+            >
+              Day
+            </button>
+          </div>
           <button
             type="button"
             class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-600/50 bg-amber-900/35 text-amber-200 hover:bg-amber-800/45 transition-colors"
             on:click={onPinCurrent}
-            title="Pin this summary"
-            aria-label="Pin this summary"
+            title="Pin this context"
+            aria-label="Pin this context"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 5a3 3 0 0 1 6 0c0 1.37-.72 2.58-1.8 3.26l1.55 3.24h-5.5l1.55-3.24A3.93 3.93 0 0 1 9 5Z"/>
@@ -353,7 +390,7 @@
                   ? 'text-sky-100 font-semibold hover:bg-sky-800/35'
                   : 'hover:bg-slate-700'}"
                 on:click={() => onOpenPinned(item)}
-                title={`Open pinned summary ${item.videoId}`}
+                title={`Open pinned context ${item.videoId}`}
               >
                 {item.label || item.videoId}
               </button>
@@ -375,7 +412,7 @@
 
       <div class="flex-1 overflow-hidden bg-slate-900">
         {#if loading}
-          <div class="h-full flex items-center justify-center text-slate-300 text-sm">Loading video summary…</div>
+              <div class="h-full flex items-center justify-center text-slate-300 text-sm">Loading context…</div>
         {:else if error}
           <div class="h-full flex items-center justify-center px-6">
             <div class="rounded-lg border border-red-500/40 bg-red-900/20 text-red-200 px-4 py-3 text-sm">{error}</div>
