@@ -1030,7 +1030,8 @@ class AsyncPGVectorStore(VectorStore):
                             b."{temporal_column}" AS end_time,
                             {groupby_select},
                             1.0 AS score,
-                            ARRAY[b."{self.id_column}"::text] AS id_chain
+                            ARRAY[b."{self.id_column}"::text] AS id_chain,
+                            ROW_NUMBER() OVER () AS rn
                         FROM {full_table_name} b
                         {safe_filter}
                     )
@@ -1060,11 +1061,15 @@ class AsyncPGVectorStore(VectorStore):
                         if search_function == "cosine_distance"
                         else f'(1.0 / (1.0 + {search_function}(b."{selected_model}", {embedding_expr})))'
                     )
+                    rn_expr = None
                 else:
-                    score_expr = (
-                        f'(100.0 / (ROW_NUMBER() OVER '
-                        f'(ORDER BY b."{selected_model}" {operator} {embedding_expr}) + 100.0))'
+                    rn_expr = (
+                        f'ROW_NUMBER() OVER '
+                        f'(ORDER BY b."{selected_model}" {operator} {embedding_expr})'
                     )
+                    score_expr = f'(100.0 / ({rn_expr} + 100.0))'
+
+                rn_column = f",\n                            {rn_expr} AS rn" if rn_expr else ""
 
                 cte_statements.append(
                     f"""
@@ -1075,7 +1080,7 @@ class AsyncPGVectorStore(VectorStore):
                             b."{temporal_column}" AS end_time,
                             {groupby_select},
                             {score_expr} AS score,
-                            ARRAY[b."{self.id_column}"::text] AS id_chain
+                            ARRAY[b."{self.id_column}"::text] AS id_chain{rn_column}
                         FROM {full_table_name} b
                         {safe_filter}
                         ORDER BY b."{selected_model}" {operator} {embedding_expr}
@@ -1102,35 +1107,18 @@ class AsyncPGVectorStore(VectorStore):
 
             # ── RRF aggregation ─────────────────────────────────────────
             if aggregation_type == "rrf":
-                current = child_ctes[0]
-                for idx in range(1, len(child_ctes)):
-                    right = child_ctes[idx]
-                    jn = f"q_{node_counter}"
-                    node_counter += 1
-                    jlp = f"{jn}_k"
-                    params[jlp] = int(node.get("k", candidate_limit))
+                n_children = len(child_ctes)
 
-                    cte_statements.append(
-                        f"""
-                        {jn} AS (
-                            SELECT
-                                COALESCE(l."{self.id_column}", r."{self.id_column}") AS "{self.id_column}",
-                                LEAST(COALESCE(l.start_time, r.start_time),
-                                      COALESCE(r.start_time, l.start_time)) AS start_time,
-                                GREATEST(COALESCE(l.end_time, r.end_time),
-                                         COALESCE(r.end_time, l.end_time)) AS end_time,
-                                COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
-                                (COALESCE(l.score, 0.0) + COALESCE(r.score, 0.0)) AS score,
-                                COALESCE(l.id_chain, r.id_chain) AS id_chain
-                            FROM {current} l
-                            FULL OUTER JOIN {right} r
-                              ON l."{self.id_column}" = r."{self.id_column}"
-                            ORDER BY score DESC
-                            LIMIT :{jlp}
-                        )
-                        """.strip()
-                    )
-                    current = jn
+                # Each child contributes a score; if a document ranks in the
+                # top 3 of a child query its score contribution is multiplied
+                # by the total number of queries (n_children).
+                union_parts = [
+                    f'SELECT "{self.id_column}", start_time, end_time, groupby_value, '
+                    f'CASE WHEN rn <= 5 THEN score * {n_children} ELSE score END AS weighted_score, '
+                    f'id_chain FROM {child_cte}'
+                    for child_cte in child_ctes
+                ]
+                union_sql = "\n                    UNION ALL\n                    ".join(union_parts)
 
                 agg = f"q_{node_counter}"
                 node_counter += 1
@@ -1141,11 +1129,18 @@ class AsyncPGVectorStore(VectorStore):
                     f"""
                     {agg} AS (
                         SELECT
-                            s."{self.id_column}",
-                            s.start_time, s.end_time, s.groupby_value,
-                            s.score, s.id_chain
-                        FROM {current} s
-                        ORDER BY s.score DESC
+                            "{self.id_column}",
+                            MIN(start_time) AS start_time,
+                            MAX(end_time) AS end_time,
+                            MAX(groupby_value) AS groupby_value,
+                            SUM(weighted_score) AS score,
+                            MAX(id_chain) AS id_chain,
+                            ROW_NUMBER() OVER (ORDER BY SUM(weighted_score) DESC) AS rn
+                        FROM (
+                            {union_sql}
+                        ) _rrf_union
+                        GROUP BY "{self.id_column}"
+                        ORDER BY score DESC
                         LIMIT :{alp}
                     )
                     """.strip()
@@ -1381,7 +1376,7 @@ class AsyncPGVectorStore(VectorStore):
             FROM {chain_cte} uc,
             LATERAL UNNEST(uc._chain) WITH ORDINALITY AS m(val, ord)
             JOIN {full_table_name} b
-              ON b."{self.id_column}"::text = m.val
+              ON b."{self.id_column}" = m.val::uuid
             ORDER BY {reorder_order}, uc._rk, m.ord
         """)
 
