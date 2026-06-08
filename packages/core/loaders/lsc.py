@@ -36,6 +36,7 @@ class LSCLoader:
                 "location.vaisl.country",
                 "location.vaisl.stop",
                 "time.timezone",
+                "now_playing"
             ],
             dtype={
                 "image_key": str,
@@ -52,6 +53,7 @@ class LSCLoader:
                 "location.vaisl.country": str,
                 "location.vaisl.stop": str,
                 "time.timezone": str,
+                "now_playing": str,
             },
         )
 
@@ -65,6 +67,7 @@ class LSCLoader:
             "location.vaisl.country": "location_country",
             "location.gps.elevation": "gps_elevation",
             "time.timezone": "timezone",
+            "now_playing": "music",
         })
 
         # Derive epoch from filename stem (YYYYMMDD_HHMMSS)
@@ -129,6 +132,7 @@ class LSCLoader:
             "ocr",
             "tags",
             "heart_rate_bpm",
+            "music",
         ]
         df = df[target_cols]
 
@@ -173,7 +177,7 @@ class LSCLoader:
         return []
     
     def get_full_text_search_columns(self):
-        return ["location"]
+        return ["location", "music"]
 
     def get_column_schema(self):
         return [
@@ -196,6 +200,7 @@ class LSCLoader:
             Column(name="ocr", data_type="text"),
             Column(name="tags", data_type="text"),
             Column(name="heart_rate_bpm", data_type="float"),
+            Column(name="music", data_type="text"),
         ]
 
     def get_attribute_info(self):
@@ -218,7 +223,7 @@ class LSCLoader:
             "ocr": "Text extracted from the image via optical character recognition.",
             # "tags": "Comma-separated semantic tags associated with the image.",
             "heart_rate_bpm": "Heart rate in beats per minute at the time of capture.",
-            # "location_stop": "Whether the location is a recognized semantic stop.",
+            # "music": "The name of the song currently playing in the mp3 player.",
         }
         type_map = {
             "text": "string",
