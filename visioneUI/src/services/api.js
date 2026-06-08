@@ -1081,6 +1081,7 @@ export class VisioneAPI {
       country: 'location_country',
       location_country: 'location_country',
       location: 'location',
+      music: 'music',
       timezone: 'timezone',
       tz: 'timezone'
     };

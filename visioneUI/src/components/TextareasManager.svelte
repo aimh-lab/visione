@@ -62,7 +62,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "metadataHeartRate" | "";
+    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "metadataHeartRate" | "metadataMusic" | "";
   };
 
   type ModalSubmitData = {
@@ -162,6 +162,7 @@
   let hasDateFilterSupport = false;
   let hasCountryFilterSupport = false;
   let hasLocationFilterSupport = false;
+  let hasMusicFilterSupport = false;
   let hasAnyCustomMetadataFilter = false;
   let modalMetadataField = '';
   let modalMetadataShortcut = '';
@@ -175,6 +176,7 @@
     'timezone',
     'location_country',
     'location',
+    'music',
     'heart_rate_bpm'
   ]);
 
@@ -189,6 +191,7 @@
     timezone: 'tz',
     location_country: 'country',
     location: 'location',
+    music: 'music',
     semantic_name: 'semantic',
     heart_rate_bpm: 'hr'
   };
@@ -211,6 +214,7 @@
     timezone: 'Timezone',
     location_country: 'Country',
     location: 'Location',
+    music: 'Music',
     semantic_name: 'Semantic',
     heart_rate_bpm: 'Heart Rate'
   };
@@ -236,6 +240,7 @@
       country: 'location_country',
       location_country: 'location_country',
       location: 'location',
+      music: 'music',
       semantic: 'semantic_name',
       sem: 'semantic_name',
       semantic_name: 'semantic_name',
@@ -362,6 +367,8 @@
   $: hasDateFilterSupport = ['year', 'month', 'day', 'hour'].some((f) => hasSpecialMetadataField(f));
   $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
   $: hasLocationFilterSupport = hasSpecialMetadataField('location');
+  // Keep the dedicated Music filter discoverable even when discovery metadata is delayed/unavailable.
+  $: hasMusicFilterSupport = true;
   // Keep the dedicated Heart Rate filter discoverable even when discovery metadata is delayed/unavailable.
   $: hasHeartRateFilterSupport = true;
   // Keep these filters always available in UI even when discovery metadata is delayed/unavailable.
@@ -1445,6 +1452,52 @@
     closeMenu();
   }
 
+  function openMusicMetadataFilterModal(index: number) {
+    return openMusicMetadataFilterModalWithPrefill(index);
+  }
+
+  function openMusicMetadataFilterModalWithPrefill(
+    index: number,
+    prefill?: { comparator?: string; value?: string }
+  ) {
+    modalMetadataField = 'music';
+    modalMetadataShortcut = 'music';
+    setModalAnchorFromIndex(index);
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Add Music Filter',
+      icon: 'filter',
+      description: 'Filter by music metadata (music).',
+      targetIndex: index,
+      filterType: 'metadataMusic',
+      fields: [
+        {
+          name: 'value',
+          label: 'Music',
+          type: 'text',
+          value: String(prefill?.value ?? ''),
+          placeholder: 'e.g. piano',
+          required: true
+        },
+        {
+          name: 'comparator',
+          label: 'Comparator',
+          type: 'select',
+          advanced: true,
+          value: String(prefill?.comparator || 'fts').trim().toLowerCase(),
+          options: [
+            { value: 'eq', label: '= (equal)' },
+            { value: 'ne', label: '!= (not equal)' },
+            { value: 'fts', label: '~ (full-text search)' }
+          ]
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
   function getHeartRateMetadataPrefill(index: number) {
     const snapshot = getMetadataTokensSnapshotForIndex(index);
     let minBpm = '';
@@ -1973,6 +2026,11 @@
       return;
     }
 
+    if (field === 'music') {
+      openMusicMetadataFilterModalWithPrefill(index, parsed);
+      return;
+    }
+
     if (field === 'heart_rate_bpm') {
       openHeartRateMetadataFilterModal(index);
       return;
@@ -2490,11 +2548,15 @@
       const tokens = buildHeartRateMetadataFilterTokens(data);
       upsertHeartRateMetadataTokens(targetIndex, tokens);
       shouldTriggerSearch = tokens.length > 0;
-    } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation') {
+    } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation' || filterType === 'metadataMusic') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
         const comparator = String(data.comparator || 'fts').trim().toLowerCase();
-        const shortcut = filterType === 'metadataCountry' ? 'location_country' : 'location';
+        const shortcut = filterType === 'metadataCountry'
+          ? 'location_country'
+          : filterType === 'metadataMusic'
+            ? 'music'
+            : 'location';
         const defaultComparator = 'fts';
         const symbol = toComparatorSymbol(comparator, defaultComparator);
         const tokenValue = quoteFilterTokenValue(rawValue);
@@ -2504,7 +2566,9 @@
 
         const shortcutsToReplace = filterType === 'metadataCountry'
           ? ['country', 'location_country']
-          : ['location'];
+          : filterType === 'metadataMusic'
+            ? ['music']
+            : ['location'];
 
         upsertMetadataTokens(targetIndex, [token], shortcutsToReplace);
         shouldTriggerSearch = true;
@@ -3126,6 +3190,26 @@
                             <div class="text-[10px] text-gray-400 font-mono">location:...</div>
                           </div>
                         </button>
+
+                        {#if hasMusicFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openMusicMetadataFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-violet-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18V5l12-2v13"/>
+                                <circle cx="6" cy="18" r="3"/>
+                                <circle cx="18" cy="16" r="3"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Music</div>
+                              <div class="text-[10px] text-gray-400 font-mono">music:...</div>
+                            </div>
+                          </button>
+                        {/if}
 
                         {#if hasHeartRateFilterSupport}
                           <button
