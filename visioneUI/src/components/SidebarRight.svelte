@@ -65,6 +65,10 @@
     dispatch("openFromSubmitted", e.detail);
   }
 
+  function handleAddSubmittedToRFPositive() {
+    dispatch("addSubmittedToRFPositive");
+  }
+
   // Resize logic
   let isResizing = false;
 
@@ -225,6 +229,7 @@
             <SubmittedList
               {submittedImages}
               on:openFromSubmitted={handleOpenFromSubmitted}
+              on:addAllToRFPositive={handleAddSubmittedToRFPositive}
             />
           {/if}
 

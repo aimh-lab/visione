@@ -14,6 +14,7 @@
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
   import SlideshowModal from "../components/SlideshowModal.svelte";
   import VideoSummaryModal from "../components/VideoSummaryModal.svelte";
+  import ImageModal from "../components/ImageModal.svelte";
   import { recentSearches } from '../stores/recentSearches.js';
   import { deserializeFromURL, updateURL } from '../utils/urlState.js';
   import { tabsPosition } from '../stores/tabsPosition.js';
@@ -198,6 +199,40 @@
     sessionStore.actions.clearPinnedVideoSummaries();
   }
 
+  function pinImage(img) {
+    if (!img?.imgId) return;
+    const result = sessionStore.actions.pinImage({
+      img,
+      label: img?.title || img?.imgId
+    });
+
+    if (!result?.added) {
+      toasts.info('Image already pinned');
+      return;
+    }
+
+    toasts.success('Image pinned');
+  }
+
+  function openPinnedImage(item) {
+    if (!item?.imgId) return;
+    pinnedImageModalImage = item;
+    pinnedImageModalOpen = true;
+  }
+
+  function closePinnedImageModal() {
+    pinnedImageModalOpen = false;
+  }
+
+  function unpinImage(item) {
+    if (!item?.imgId) return;
+    sessionStore.actions.unpinImage({ imgId: item.imgId });
+  }
+
+  function clearPinnedImages() {
+    sessionStore.actions.clearPinnedImages();
+  }
+
 
   // VideoPlayerModal
   let isVideoPlayerOpen = false;
@@ -231,6 +266,10 @@
   let qaAgentRequestId = '';
   let sessionResetKey = 0;
   let pinnedVideoSummaries = [];
+  let pinnedImages = [];
+  let pinnedImageModalOpen = false;
+  let pinnedImageModalImage = null;
+  let pinnedImageModalFrame = null;
   let activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '' };
   let activePinnedSummaryKey = '';
   let activeCollectionName = 'default';
@@ -274,6 +313,9 @@
       uiStore.actions.setViewMode(safeViewMode);
     }
   }
+  $: if (runtimeProfile?.settingsDefaults) {
+    uiStore.actions.applyRuntimeSettingsDefaults(runtimeProfile.settingsDefaults);
+  }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
   $: visioneAPI.setServicesHost($uiStore.apiServicesHostOverrideEnabled ? $uiStore.apiServicesHost : (runtimeProfile?.api?.servicesHost || ''));
@@ -304,6 +346,8 @@
   $: submittedImages = $sessionStore.submittedImages;
   $: submittedAnswers = $sessionStore.submittedAnswers;
   $: pinnedVideoSummaries = $sessionStore.pinnedVideoSummaries || [];
+  $: pinnedImages = $sessionStore.pinnedImages || [];
+  $: pinnedImageModalFrame = pinnedImageModalImage ? { ...pinnedImageModalImage, index: 0, idx: 0 } : null;
   $: activePinnedSummaryKey = toPinnedSummaryKey(
     activeVideoSummaryContext.videoId,
     activeVideoSummaryContext.highlightImgId
@@ -866,8 +910,8 @@
     getCacheEnabled: () => get(uiStore).cacheEnabled,
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
-    getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 50,
-    getQueryResultK: () => Number(get(uiStore).queryResultK) || 1000,
+    getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 57600,
+    getQueryResultK: () => Number(get(uiStore).queryResultK) || 7200,
     getSubmittedIds: getSubmittedLookup,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -960,8 +1004,8 @@
         sortType: 'feedbackModel',
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
-        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 50,
-        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(get(uiStore).queryResultK) || 1000),
+        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 57600,
+        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(get(uiStore).queryResultK) || 7200),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
           activeTab: get(uiStore).layoutTab,
@@ -2209,6 +2253,21 @@ function handleViewSubmitted() {
     toasts.info("Viewing relevance feedback");
   }
 
+  function addSubmittedToRFPositive() {
+    if (!($sessionStore.submittedImages || []).length) {
+      toasts.info('No submitted frames to add');
+      return;
+    }
+
+    const result = sessionStore.actions.addSubmittedToRFPositive();
+    const addedCount = Number(result?.addedCount || 0);
+    if (addedCount > 0) {
+      toasts.success(`Added ${addedCount} submitted frame${addedCount === 1 ? '' : 's'} to positive RF`);
+    } else {
+      toasts.info('Submitted frames are already in positive RF');
+    }
+  }
+
   // ---------------------------
   // Open by imgId (tab-aware)
   // ---------------------------
@@ -2639,6 +2698,7 @@ function handleViewSubmitted() {
     searchModal.close();
     similarityModal.close();
     videoModal.close();
+    pinnedImageModalOpen = false;
     isVideoPlayerOpen = false;
     isSlideshowOpen = false;
     isVideoSummaryModalOpen = false;
@@ -2714,7 +2774,7 @@ function handleViewSubmitted() {
 
 <!-- Template invariato -->
 <Keybindings
-  isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen}
+  isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen || pinnedImageModalOpen}
   isVideoPlayerOpen={isVideoPlayerOpen || isSlideshowOpen}
   onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => {
@@ -2874,6 +2934,7 @@ function handleViewSubmitted() {
   }}
   on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
   on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
+  on:pinImage={(e) => pinImage(e.detail.img)}
   on:openVideoPlayer={(e) => {
     isSlideshowOpen = false;
     openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
@@ -2883,6 +2944,37 @@ function handleViewSubmitted() {
   on:close={() => {
     logVideoPlayer('closeSlideshow');
     isSlideshowOpen = false;
+  }}
+/>
+
+<ImageModal
+  isOpen={pinnedImageModalOpen}
+  image={pinnedImageModalFrame}
+  total={1}
+  modalScale={$uiStore.imageModalScale}
+  showSubmitUI={$uiStore.dresEnabled}
+  challengeType={$uiStore.dresChallengeType}
+  {runtimeProfile}
+  showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+  on:close={closePinnedImageModal}
+  on:prev={() => {}}
+  on:next={() => {}}
+  on:adjustScale={(e) => adjustImageModalScale(Number(e?.detail?.delta || 0))}
+  on:submit={(e) => submitByImgId(e.detail.img.imgId, e.detail.img)}
+  on:pinImage={(e) => pinImage(e.detail.img)}
+  on:videoSummary={(e) => {
+    closePinnedImageModal();
+    openVideoSummary(e.detail.img.videoId, e.detail.img.imgId);
+  }}
+  on:similarity={(e) => {
+    closePinnedImageModal();
+    addSimilarityAsSearchStep(e.detail.imgId, e.detail.img ?? null);
+  }}
+  on:rfPositive={(e) => addRFPositiveByImg(e.detail.img.imgId, e.detail.img)}
+  on:rfNegative={(e) => addRFNegativeByImg(e.detail.img.imgId, e.detail.img)}
+  on:openVideoPlayer={(e) => {
+    closePinnedImageModal();
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
   }}
 />
 
@@ -2913,6 +3005,7 @@ function handleViewSubmitted() {
   onUnpinPinned={unpinVideoSummary}
   onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
   onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+  onPinImage={pinImage}
   onAdjustImageModalScale={adjustImageModalScale}
   addRFPositiveByImg={addRFPositiveByImg}
   addRFNegativeByImg={addRFNegativeByImg}
@@ -2983,6 +3076,7 @@ function handleViewSubmitted() {
   selectedEvaluationId={$uiStore.dresEvaluationIdByChallenge?.[$uiStore.dresChallengeType] || ''}
   loadingEvaluationOptions={isLoadingDresEvaluationOptions}
   {pinnedVideoSummaries}
+  {pinnedImages}
   {activePinnedSummaryKey}
   on:change={(e) => uiStore.actions.setLayoutTab(e.detail.tab)}
   on:toggleSidebar={() => uiStore.actions.toggleSidebar()}
@@ -3002,6 +3096,9 @@ function handleViewSubmitted() {
   on:openPinnedVideoSummary={(e) => openPinnedVideoSummary(e.detail.item)}
   on:unpinVideoSummary={(e) => unpinVideoSummary(e.detail.item)}
   on:clearPinnedVideoSummaries={clearPinnedVideoSummaries}
+  on:openPinnedImage={(e) => openPinnedImage(e.detail.item)}
+  on:unpinImage={(e) => unpinImage(e.detail.item)}
+  on:clearPinnedImages={clearPinnedImages}
 >
   <div
     class="views-wrapper w-full overflow-x-hidden"
@@ -3106,6 +3203,7 @@ function handleViewSubmitted() {
 
         onRemovePositive={handleRemovePositive}
         onRemoveNegative={handleRemoveNegative}
+        onAddSubmittedToRFPositive={addSubmittedToRFPositive}
         on:updateRFEnabled={(e) => {
           rfEnabled = !!e?.detail?.enabled;
           setTimeout(() => runSearchImmediate(), 0);
@@ -3137,6 +3235,7 @@ function handleViewSubmitted() {
         submitByImgId={submitByImgId}
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+        onPinImage={pinImage}
         onCloseModal={closeModal}
         onPrev={() => navigateImage(-1)}
         onNext={() => navigateImage(1)}
@@ -3179,6 +3278,7 @@ function handleViewSubmitted() {
 
         onOpenFrame={(frame) => openFrameModal(frame)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+        onPinImage={pinImage}
         addRFPositiveByImg={addRFPositiveByImg}
         addRFNegativeByImg={addRFNegativeByImg}
         submitByImgId={submitByImgId}
@@ -3224,6 +3324,8 @@ function handleViewSubmitted() {
         submitByImgId={submitByImgId}
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
+        onPinImage={pinImage}
+        onAddSubmittedToRFPositive={addSubmittedToRFPositive}
         onCloseSimModal={closeSimilarityModal}
         onPrevSim={() => moveSimilarityBy(-1)}
         onNextSim={() => moveSimilarityBy(1)}

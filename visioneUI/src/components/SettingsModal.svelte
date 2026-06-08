@@ -7,7 +7,7 @@
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
   export let resultsPerGroup = 8;
-  export let queryResultK = 1000;
+  export let queryResultK = 7200;
   export let justifyResultRows = false;
   export let cacheEnabled = true;
   export let dedupeResults = true;
@@ -33,7 +33,7 @@
   export let isDeletingLogs = false;
   export let autoTranslateQueries = true;
   export let showAutoTranslateToggle = true;
-  export let temporalWindowSeconds = 50;
+  export let temporalWindowSeconds = 57600;
   export let videoPlayerModalMode = 'profile';
   export let imageModalScale = 100;
   export let slideshowModalScale = 100;
@@ -197,9 +197,9 @@
     hasLocalEdits = true;
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
     const perGroup = Math.max(1, Number(local.resultsPerGroup) || 8);
-    const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 1000)));
+    const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 7200)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
-    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 50));
+    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 57600));
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
@@ -307,7 +307,7 @@
     const parsed = Number(local.temporalWindowSeconds);
     local.temporalWindowSeconds = Number.isFinite(parsed)
       ? Math.min(99999, Math.max(1, Math.trunc(parsed)))
-      : 50;
+      : 57600;
     save();
   }
 
@@ -635,7 +635,7 @@
                   class="ui-settings-input w-28 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.queryResultK}
                   on:input={(e) => {
-                    const n = Math.min(100000, Math.max(1, Math.floor(Number(e.currentTarget.value) || 1000)));
+                    const n = Math.min(100000, Math.max(1, Math.floor(Number(e.currentTarget.value) || 7200)));
                     local.queryResultK = n;
                     save();
                   }}
@@ -652,7 +652,7 @@
             </div>
 
             <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
-              Controls the final <code>k</code> sent to search. Default is 1000.
+              Controls the final <code>k</code> sent to search. Default is 7200.
             </p>
 
             <div class="flex items-center justify-between py-2">

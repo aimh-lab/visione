@@ -4,6 +4,7 @@
 
   const dispatch = createEventDispatcher();
   const openFromSubmitted = (index) => dispatch("openFromSubmitted", { index });
+  const addAllToRFPositive = () => dispatch("addAllToRFPositive");
 </script>
 
 <div class="space-y-3">
@@ -18,6 +19,18 @@
       <p class="text-xs text-gray-400 text-center">No frames submitted yet</p>
     </div>
   {:else}
+    <button
+      type="button"
+      class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-700/50 bg-emerald-900/35 text-emerald-100 text-xs font-semibold hover:bg-emerald-800/45 hover:border-emerald-500 transition-colors"
+      on:click={addAllToRFPositive}
+      title="Add all submitted frames as positive relevance feedback"
+    >
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+      </svg>
+      Add all to positive RF
+    </button>
+
     <!-- Grid of submitted images -->
     <div class="grid grid-cols-2 gap-3">
       {#each submittedImages as s, idx}

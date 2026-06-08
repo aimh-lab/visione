@@ -31,6 +31,7 @@
 
   export let onOpenFrame = (_frame: Frame) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
+  export let onPinImage = (_img?: Frame | null) => {};
   export let addRFPositiveByImg = (..._args: any[]) => {};
   export let addRFNegativeByImg = (..._args: any[]) => {};
   export let submitByImgId = (..._args: any[]) => {};
@@ -163,6 +164,7 @@
   on:prev={onPrevFrame}
   on:next={onNextFrame}
   on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
+  on:pinImage={(e) => onPinImage(e.detail.img)}
   on:openVideoPlayer={(e) => {
     onCloseFrameModal();
     openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);

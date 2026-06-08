@@ -50,10 +50,12 @@
   export let onClearResults = () => {};
   export let onOpenFromRF = (_index: number) => {};
   export let onOpenFromSubmitted = (_index: number) => {};
+  export let onAddSubmittedToRFPositive = () => {};
 
   // Grid actions
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
+  export let onPinImage = (_img?: Img | null) => {};
 
   export let addRFPositiveByImg = (_imgId: string) => {};
   export let addRFNegativeByImg = (_imgId: string) => {};
@@ -92,6 +94,7 @@
     on:clearResults={onClearResults}
     on:openFromRF={(e) => onOpenFromRF(e.detail.index)}
     on:openFromSubmitted={(e) => onOpenFromSubmitted(e.detail.index)}
+    on:addSubmittedToRFPositive={onAddSubmittedToRFPositive}
   />
 
   <!-- Main column (same structure as SearchView) -->
@@ -193,6 +196,7 @@
   on:prev={onPrevSim}
   on:next={onNextSim}
   on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
+  on:pinImage={(e) => onPinImage(e.detail.img)}
   on:openVideoPlayer={(e) => {
     onCloseSimModal();
     openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);

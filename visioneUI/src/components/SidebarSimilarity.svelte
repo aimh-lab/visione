@@ -30,6 +30,7 @@
 
   const openFromRF = (index) => dispatch("openFromRF", { index });
   const openFromSubmitted = (index) => dispatch("openFromSubmitted", { index });
+  const addSubmittedToRFPositive = () => dispatch("addSubmittedToRFPositive");
 </script>
 
 <div class="sidebar-left bg-gray-800 text-white flex flex-col {isSidebarOpen ? '' : 'collapsed'}">
@@ -79,6 +80,7 @@
       <SubmittedList
         {submittedImages}
         on:openFromSubmitted={(e) => openFromSubmitted(e.detail.index)}
+        on:addAllToRFPositive={addSubmittedToRFPositive}
       />
     {/if}
   </div>

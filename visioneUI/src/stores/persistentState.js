@@ -105,7 +105,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   sidebarRightWidth: 18,
   keyframeSize: 130,
   resultsPerGroup: 8,
-  queryResultK: 1000,
+  queryResultK: 7200,
   resultsAutoFit: true,
   cacheEnabled: true,
   dedupeResults: true,
@@ -134,14 +134,15 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   dresMemberId: '',
   autoTranslateQueries: true,
   showAutoTranslateToggle: true,
-  temporalWindowSeconds: 50,
+  temporalWindowSeconds: 57600,
   videoPlayerModalMode: 'profile',
   imageModalScale: 160,
   slideshowModalScale: 160,
   qaStreamPanelHeight: 288,
   modelSelectionPerStepEnabled: true,
   defaultTextModel: 'openclip_clip_vit_b_32',
-  defaultImageModel: 'dinov2_base'
+  defaultImageModel: 'dinov2_base',
+  runtimeSettingsDefaultsVersion: ''
 });
 
 // Utility functions

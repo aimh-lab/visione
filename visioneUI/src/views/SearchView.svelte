@@ -104,10 +104,12 @@
   export let onOpenFromSubmitted = (_index: number) => {};
   export let onRemovePositive = (_e: CustomEvent) => {};
   export let onRemoveNegative = (_e: CustomEvent) => {};
+  export let onAddSubmittedToRFPositive = () => {};
 
   // Grid actions
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
+  export let onPinImage = (_img?: Img | null) => {};
   export let openByImgId = (_imgId: string) => {};  
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: Img | null) => {};
 
@@ -404,6 +406,7 @@
     on:removeNegative={onRemoveNegative}
     on:openFromRF={(e) => onOpenFromRF(e.detail.index)}
     on:openFromSubmitted={(e) => onOpenFromSubmitted(e.detail.index)}
+    on:addSubmittedToRFPositive={onAddSubmittedToRFPositive}
     on:resize={(e) => onResizeRightSidebar(e.detail.width)}
     on:toggleRightSidebar={onToggleRightSidebar}
     on:selectTab={(e) => dispatch('selectRightTab', e.detail)}
@@ -427,6 +430,7 @@
   on:next={onNext}
   on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
   on:submit={(e) => submitByImgId(e.detail.img.imgId)}
+  on:pinImage={(e) => onPinImage(e.detail.img)}
   on:videoSummary={(e) => {
     onCloseModal();
     onVideoSummary(e.detail.img.videoId, e.detail.img.imgId);

@@ -43,6 +43,7 @@
 
   export let onVideoSummary = (_videoId: string, _imgId?: string | null) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
+  export let onPinImage = (_img?: Frame | null) => {};
   export let addRFPositiveByImg = (_imgId: string, _img?: Frame | null) => {};
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
@@ -441,6 +442,7 @@
         on:next={() => navigateSummaryImageModal(1)}
         on:adjustScale={(e) => onAdjustImageModalScale(Number(e?.detail?.delta || 0))}
         on:submit={(e) => submitByImgId(e.detail.img.imgId, e.detail.img)}
+        on:pinImage={(e) => onPinImage(e.detail.img)}
         on:videoSummary={(e) => {
           closeSummaryImageModal();
           onVideoSummary(e.detail.img.videoId, e.detail.img.imgId);
