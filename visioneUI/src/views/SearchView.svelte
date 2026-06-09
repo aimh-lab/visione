@@ -370,6 +370,7 @@
             {runtimeProfile}
             {showLocalTimeInTitles}
             {resultsetBadgeLabelMode}
+            modalOpen={isModalOpen}
             {rfPositive}
             {rfNegative}
             registerContainer={registerContainer}
