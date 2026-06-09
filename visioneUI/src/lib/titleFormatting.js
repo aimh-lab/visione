@@ -181,7 +181,7 @@ export function formatGroupDateLabel(rawLabel, item, runtimeProfile = {}, showLo
 
   if (parsed) {
     const baseMs = Date.UTC(parsed.year, parsed.month - 1, parsed.day, 0, 0, 0);
-    return appendCountryLabel(formatUtcDayLabel(baseMs + offsetHours * 3600 * 1000), item);
+    return appendCountryLabel(formatUtcDayLabel(baseMs), item);
   }
 
   const epochSeconds = getEpochSecondsFromItem(item, runtimeProfile, cfg);
