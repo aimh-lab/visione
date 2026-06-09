@@ -148,7 +148,7 @@ class LSC26Loader:
         return "epoch"
 
     def get_temporal_groupby_column(self):
-        return "hour_id"
+        return None
 
     def get_video_time_reference_columns(self):
         return []
