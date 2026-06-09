@@ -42,8 +42,6 @@
   export let defaultImageModel = 'dinov2_base';
   export let availableModels = [];
   export let videoBadgeOrientation = 'vertical';
-  export let futureOptionA = "";
-  export let futureOptionB = false;
 
   const dispatch = createEventDispatcher();
   const FALLBACK_TEXT_MODEL = 'openclip_clip_vit_b_32';
@@ -137,9 +135,7 @@
       slideshowModalScale,
       modelSelectionPerStepEnabled,
       defaultTextModel,
-      defaultImageModel,
-      futureOptionA,
-      futureOptionB
+      defaultImageModel
     };
   }
 
@@ -265,9 +261,7 @@
       slideshowModalScale: safeSlideshowModalScale,
       modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
       defaultTextModel: safeDefaultTextModel,
-      defaultImageModel: safeDefaultImageModel,
-      futureOptionA: local.futureOptionA,
-      futureOptionB: !!local.futureOptionB
+      defaultImageModel: safeDefaultImageModel
     };
 
     dispatch('save', newSettings);
@@ -328,6 +322,7 @@
     if (local.keyframeSize >= 80 && local.keyframeSize <= 400) {
       document.documentElement.style.setProperty('--kf-size', `${local.keyframeSize}px`);
       document.documentElement.style.setProperty('--min-card-w', `${Math.round(local.keyframeSize * 1.1)}px`);
+      save();
     }
   }
 
@@ -740,7 +735,7 @@
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.apiServicesHost}
                 disabled={!local.apiServicesHostOverrideEnabled}
-                on:change={() => save()}
+                on:input={() => save()}
               />
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
                 Used for core/search endpoints. Leave empty to use runtime profile or app default.
@@ -766,7 +761,7 @@
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.dataserverHost}
                 disabled={!local.dataserverHostOverrideEnabled}
-                on:change={() => save()}
+                on:input={() => save()}
               />
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
                 Used to build media URLs. Leave empty to use default_dataserver from core /discovery.
@@ -888,7 +883,7 @@
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                 bind:value={local.dresSubmitServer}
                 disabled={!local.dresEnabled}
-                on:change={() => save()}
+                on:input={() => save()}
               />
             </div>
 
@@ -900,7 +895,7 @@
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                 bind:value={local.dresUsername}
                 disabled={!local.dresEnabled}
-                on:change={() => save()}
+                on:input={() => save()}
               />
             </div>
 
@@ -913,7 +908,7 @@
                   class="ui-settings-input w-full pr-10 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                   bind:value={local.dresPassword}
                   disabled={!local.dresEnabled}
-                  on:change={() => save()}
+                  on:input={() => save()}
                 />
                 <button
                   type="button"
@@ -948,7 +943,7 @@
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400"
                 bind:value={local.dresMemberId}
                 disabled={!local.dresEnabled}
-                on:change={() => save()}
+                on:input={() => save()}
               />
             </div>
 
