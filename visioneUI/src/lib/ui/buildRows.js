@@ -74,9 +74,8 @@ export function buildRows(items, {
       return dateA - dateB;
     });
 
-  const sortedItems = String(sortMode || '').trim().toLowerCase() === 'time'
-    ? sortByDateAsc(items)
-    : items;
+  const isTimeSortMode = String(sortMode || '').trim().toLowerCase() === 'time';
+  const sortedItems = isTimeSortMode ? sortByDateAsc(items) : items;
 
   if (mode === "byrank" || kind === "rank") {
     return chunk(sortedItems, NO_GROUP_VIRTUAL_ROW_SIZE).map((row) => {
@@ -207,23 +206,60 @@ export function buildRows(items, {
       'meta'
     );
 
+  const getGroupSortMs = (row) => {
+    const key = String(row?.__visioneGroupKey || '').trim();
+    const dateMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateMatch) {
+      return Date.UTC(
+        Number(dateMatch[1]),
+        Number(dateMatch[2]) - 1,
+        Number(dateMatch[3])
+      );
+    }
+
+    const hourMatch = key.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})/);
+    if (hourMatch) {
+      return Date.UTC(
+        Number(hourMatch[1]),
+        Number(hourMatch[2]) - 1,
+        Number(hourMatch[3]),
+        Number(hourMatch[4])
+      );
+    }
+
+    const rowTimes = Array.isArray(row)
+      ? row.map(getEpochSortMs).filter((value) => value > 0)
+      : [];
+    return rowTimes.length ? Math.min(...rowTimes) : Number.MAX_SAFE_INTEGER;
+  };
+
+  const sortGroupedRowsByTime = (rows) => {
+    if (!isTimeSortMode || !Array.isArray(rows)) return rows;
+    return rows
+      .map((row, index) => ({ row, index, time: getGroupSortMs(row) }))
+      .sort((a, b) => (a.time - b.time) || (a.index - b.index))
+      .map(({ row }) => row);
+  };
+
   const groupedRows =
     kind === 'video'
-      ? groupByVideo(sortedItems)
+      ? groupByVideo(items)
       : (kind === 'metadata' && metadataField
-        ? groupByMetadata(sortedItems, metadataField)
+        ? groupByMetadata(items, metadataField)
         : null);
 
-  const dateGroupedRows = mode === 'bydate' ? groupByDateDay(sortedItems) : null;
-  const cappedGroupedRows = groupedRows
-    ? groupedRows.map((row) => {
+  const dateGroupedRows = mode === 'bydate' ? groupByDateDay(items) : null;
+  const orderedGroupedRows = sortGroupedRowsByTime(groupedRows);
+  const orderedDateGroupedRows = sortGroupedRowsByTime(dateGroupedRows);
+  const cappedGroupedRows = orderedGroupedRows
+    ? orderedGroupedRows.map((row) => {
         const capped = row.slice(0, perRow);
         capped.__visioneGroupKey = row.__visioneGroupKey;
         return capped;
       })
     : null;
-  const dateCappedRows = dateGroupedRows
-    ? dateGroupedRows.map((row) => {
+  const dateCappedRows = orderedDateGroupedRows
+    ? orderedDateGroupedRows.map((row) => {
         const capped = row.slice(0, perRow);
         capped.__visioneGroupKey = row.__visioneGroupKey;
         return capped;
@@ -231,22 +267,22 @@ export function buildRows(items, {
     : null;
 
   if (auto) {
-    if (groupedRows) {
+    if (orderedGroupedRows) {
       if (isHourMetadataGrouping) return cappedGroupedRows || [];
       // One logical group can span multiple visual rows, capped by per-group size.
-      return splitGroupedRows(groupedRows);
+      return splitGroupedRows(orderedGroupedRows);
     }
 
-    if (mode === "bydate" && dateGroupedRows) {
+    if (mode === "bydate" && orderedDateGroupedRows) {
       return dateCappedRows || [];
     }
   }
 
-  if (mode === "bydate" && dateGroupedRows) return dateCappedRows || [];
+  if (mode === "bydate" && orderedDateGroupedRows) return dateCappedRows || [];
 
   // Grouped modes (video or metadata): respect per-group cap.
   if (isHourMetadataGrouping && cappedGroupedRows) return cappedGroupedRows;
-  if (groupedRows) return splitGroupedRows(groupedRows);
+  if (orderedGroupedRows) return splitGroupedRows(orderedGroupedRows);
 
   return chunk(items, perRow);
 }
