@@ -98,7 +98,6 @@
     updateModel: { index: number; model: string; kind: 'text' | 'image' };
     search: { textareas: QueryTextarea[] };
     swap: { indexA: number; indexB: number; mode?: "swap" | "move" };
-    swapTextarea: { indexA: number; indexB: number; mode?: "swap" | "move" };
     startImageSelection: { textareaIndex: number };
     imageSelected: void;
     updateImages: { index: number; images: AttachedImage[] };
@@ -696,11 +695,22 @@
   let imageDropIndex: number | null = null;
   let stepRefs: Array<HTMLElement | null> = [];
   const FRAME_DRAG_MIME = "application/x-visione-frame";
+  const QUERY_IMAGE_DRAG_MIME = "application/x-visione-query-image";
 
   function isFrameDragEvent(event: DragEvent) {
     const types = event.dataTransfer?.types;
     if (!types) return false;
     return Array.from(types).includes(FRAME_DRAG_MIME);
+  }
+
+  function isQueryImageDragEvent(event: DragEvent) {
+    const types = event.dataTransfer?.types;
+    if (!types) return false;
+    return Array.from(types).includes(QUERY_IMAGE_DRAG_MIME);
+  }
+
+  function isImageDragEvent(event: DragEvent) {
+    return isFrameDragEvent(event) || isQueryImageDragEvent(event);
   }
 
   function startStepDrag(index: number, event: DragEvent) {
@@ -783,7 +793,7 @@
 
     if (sourceIndex !== targetIndex) {
       reindexMetadataTokensAfterReorder(sourceIndex, targetIndex, "move");
-      dispatch("swapTextarea", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
+      dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
       setTimeout(() => dispatchSearchWithMetadata(), 100);
     }
   }
@@ -795,31 +805,39 @@
 
   function handleTextareaDragOver(index: number, event: DragEvent) {
     if (draggedStepIndex !== null) return;
-    if (!isFrameDragEvent(event)) return;
+    if (!isImageDragEvent(event)) return;
 
     event.preventDefault();
     event.stopPropagation();
     imageDropIndex = index;
 
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "copy";
+      event.dataTransfer.dropEffect = isQueryImageDragEvent(event) ? "move" : "copy";
     }
   }
 
   function handleTextareaDrop(index: number, event: DragEvent) {
     if (draggedStepIndex !== null) return;
-    if (!isFrameDragEvent(event)) return;
+    if (!isImageDragEvent(event)) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    const raw = event.dataTransfer?.getData(FRAME_DRAG_MIME);
+    const isQueryImage = isQueryImageDragEvent(event);
+    const raw = event.dataTransfer?.getData(isQueryImage ? QUERY_IMAGE_DRAG_MIME : FRAME_DRAG_MIME);
     imageDropIndex = null;
     if (!raw) return;
 
     try {
       const parsed = JSON.parse(raw);
       if (!parsed?.url) return;
+      const sourceIndex = Number(parsed.sourceIndex);
+      const sourceImageIndex = Number(parsed.sourceImageIndex);
+      const sourceIsValid = isQueryImage
+        && Number.isInteger(sourceIndex)
+        && sourceIndex >= 0
+        && sourceIndex < textareas.length;
+      if (sourceIsValid && sourceIndex === index) return;
 
       if (isSimilarityStep(index)) {
         const nextName = parsed.title || parsed.imgId || `Similarity ${index + 1}`;
@@ -829,6 +847,9 @@
           url: parsed.url,
           name: nextName
         });
+        if (sourceIsValid) {
+          removeDraggedSourceImage(sourceIndex, Number.isInteger(sourceImageIndex) ? sourceImageIndex : 0, !!parsed.sourceSimilarity);
+        }
         toasts.success(`Similarity image replaced on step ${index + 1}`);
         return;
       }
@@ -840,8 +861,11 @@
         "result",
         parsed.imgId || null
       );
+      if (sourceIsValid) {
+        removeDraggedSourceImage(sourceIndex, Number.isInteger(sourceImageIndex) ? sourceImageIndex : 0, !!parsed.sourceSimilarity);
+      }
 
-      toasts.success(`Frame added to step ${index + 1}`);
+      toasts.success(`${isQueryImage ? 'Image moved' : 'Frame added'} to step ${index + 1}`);
     } catch {
       // Ignore malformed drag payloads
     }
@@ -938,7 +962,7 @@
     if (indexB < 0 || indexB >= textareas.length) return;
 
     reindexMetadataTokensAfterReorder(indexA, indexB, "swap");
-    dispatch("swapTextarea", { indexA, indexB, mode: "swap" });
+    dispatch("swap", { indexA, indexB, mode: "swap" });
     setTimeout(() => dispatchSearchWithMetadata(), 100);
   }
 
@@ -1146,12 +1170,40 @@
     dispatch('updateImages', { index, images: textareaImages[index] });
   }
 
+  function startAttachedImageDrag(textareaIndex: number, imageIndex: number, image: AttachedImage, event: DragEvent) {
+    event.stopPropagation();
+    if (!event.dataTransfer) return;
+    draggedStepIndex = null;
+    dropStepIndex = null;
+    imageDropIndex = null;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.clearData();
+    event.dataTransfer.setData(QUERY_IMAGE_DRAG_MIME, JSON.stringify({
+      sourceIndex: textareaIndex,
+      sourceImageIndex: imageIndex,
+      url: image.url,
+      title: image.name,
+      imgId: image.imgId || null,
+      type: image.type || "result",
+      sourceSimilarity: isSimilarityStep(textareaIndex)
+    }));
+    event.dataTransfer.setData("text/plain", image.name || image.imgId || image.url || "");
+  }
+
   function removeImageFromTextarea(textareaIndex: number, imageIndex: number) {
     textareaImages[textareaIndex] = textareaImages[textareaIndex].filter((_, i) => i !== imageIndex);
 
     
     // Notifica il padre
     dispatch('updateImages', { index: textareaIndex, images: textareaImages[textareaIndex] });
+  }
+
+  function removeDraggedSourceImage(textareaIndex: number, imageIndex: number, sourceSimilarity: boolean) {
+    if (sourceSimilarity) {
+      removePrimarySimilarityImage(textareaIndex, imageIndex);
+      return;
+    }
+    removeImageFromTextarea(textareaIndex, imageIndex);
   }
 
   function removePrimarySimilarityImage(textareaIndex: number, imageIndex: number) {
@@ -2861,11 +2913,18 @@
                 {#if similarityImage}
                   <div class="px-1.5 py-0.5 border-b border-slate-700/45">
                     <div class="flex flex-wrap items-start gap-2">
-                      <div class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                      <div
+                        class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70 cursor-grab active:cursor-grabbing"
+                        draggable="true"
+                        role="group"
+                        aria-label={`Similarity query image ${similarityImage.name || similarityImageIndex + 1}`}
+                        on:dragstart={(e) => startAttachedImageDrag(i, similarityImageIndex, similarityImage, e)}
+                      >
                         <img
                           src={similarityImage.url}
                           alt={similarityImage.name}
-                          class="ui-query-image-thumb w-full max-h-20 object-contain bg-slate-950/50"
+                          class="ui-query-image-thumb pointer-events-none w-full max-h-20 object-contain bg-slate-950/50"
+                          draggable="false"
                         />
                         <button
                           type="button"
@@ -2910,11 +2969,18 @@
                 <div class="px-1.5 py-0.5 border-b border-slate-700/45">
                   <div class="flex flex-wrap items-start gap-2">
                     {#each textareaImages[i] as image, imgIdx}
-                      <div class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                      <div
+                        class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70 cursor-grab active:cursor-grabbing"
+                        draggable="true"
+                        role="group"
+                        aria-label={`Attached query image ${image.name || imgIdx + 1}`}
+                        on:dragstart={(e) => startAttachedImageDrag(i, imgIdx, image, e)}
+                      >
                         <img
                           src={image.url}
                           alt={image.name}
-                          class="ui-query-image-thumb w-full max-h-20 object-contain bg-slate-950/50"
+                          class="ui-query-image-thumb pointer-events-none w-full max-h-20 object-contain bg-slate-950/50"
+                          draggable="false"
                         />
                         {#if image.type === 'result'}
                           <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
