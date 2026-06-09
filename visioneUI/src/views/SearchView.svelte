@@ -93,6 +93,7 @@
   export let onRemoveTextarea = (_index: number) => {};
   export let onToggleTextarea = (_index: number) => {};
   export let onUpdateTextarea = (_index: number, _value: string) => {};
+  export let onSwapTextarea = (_indexA: number, _indexB: number, _mode: "swap" | "move" = "swap") => {};
 
   export let rows: Img[][] = [];
 
@@ -221,7 +222,7 @@
   on:runSearch={onRunSearch}
   on:clearResults={onClearResults}
   on:clearQueryInputs={() => dispatch('clearQueryInputs')}
-  on:swapTextarea
+  on:swapTextarea={(e) => onSwapTextarea(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap')}
   on:resize={(e) => onResizeLeftSidebar(e.detail.width)}
   on:toggleSidebar={onToggleSidebar}
   on:loadCachedResults={(e) => {

@@ -3300,6 +3300,7 @@ function handleViewSubmitted() {
         onUpdateTextarea={(i, v) => {
           textareas = textareas.map((t, idx) => (idx === i ? { ...t, value: v } : t));
         }}
+        onSwapTextarea={swapTextareas}
         on:updateModel={(e) => {
           if (!$uiStore.modelSelectionPerStepEnabled) return;
           const { index: i, model: m, kind } = e.detail;
@@ -3354,7 +3355,6 @@ function handleViewSubmitted() {
         onNext={() => navigateImage(1)}
         onAdjustImageModalScale={adjustImageModalScale}
 
-        on:swapTextarea={(e) => swapTextareas(e.detail.indexA, e.detail.indexB, e.detail.mode || 'swap')}
         onLoadExample={(queries) => loadExampleQuery(queries)}
         on:updateImages={handleUpdateImages}
         on:replaceSimilarityImage={handleReplaceSimilarityImage}
