@@ -3,6 +3,7 @@ import { resolveGroupByConfig } from '$lib/groupByConfig.js';
 
 export function buildRows(items, {
   viewMode,
+  sortMode = 'relevance',
   resultsPerGroup,
   resultsPerRow,
   resultsAutoFit,
@@ -25,8 +26,6 @@ export function buildRows(items, {
   const isHourMetadataGrouping = kind === 'metadata' && metadataField.toLowerCase() === 'hour_id';
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
-
-  if (mode === "byrank") return chunk(items, perRow);
 
   const toFiniteNumber = (value) => {
     const parsed = Number(value);
@@ -66,12 +65,18 @@ export function buildRows(items, {
     return parsed > 1e11 ? parsed : parsed * 1000;
   };
 
-  const sortByDateDesc = (arr) =>
+  const sortByDateAsc = (arr) =>
     [...arr].sort((a, b) => {
       const dateA = getEpochSortMs(a);
       const dateB = getEpochSortMs(b);
-      return dateB - dateA;
+      return dateA - dateB;
     });
+
+  const sortedItems = String(sortMode || '').trim().toLowerCase() === 'time'
+    ? sortByDateAsc(items)
+    : items;
+
+  if (mode === "byrank" || kind === "rank") return [sortedItems];
 
   const buildDayGroupKey = (item) => {
     const metadata = item?.raw?.metadata && typeof item.raw.metadata === 'object' ? item.raw.metadata : {};
@@ -197,12 +202,12 @@ export function buildRows(items, {
 
   const groupedRows =
     kind === 'video'
-      ? groupByVideo(items)
+      ? groupByVideo(sortedItems)
       : (kind === 'metadata' && metadataField
-        ? groupByMetadata(items, metadataField)
+        ? groupByMetadata(sortedItems, metadataField)
         : null);
 
-  const dateGroupedRows = mode === 'bydate' ? groupByDateDay(items) : null;
+  const dateGroupedRows = mode === 'bydate' ? groupByDateDay(sortedItems) : null;
   const cappedGroupedRows = groupedRows
     ? groupedRows.map((row) => {
         const capped = row.slice(0, perRow);

@@ -321,6 +321,25 @@
     return value ? `${prefix} ${value}` : prefix;
   }
 
+  function getNoGroupDateBadgeLabel(item) {
+    if (String(activeGroupBy?.kind || '').trim().toLowerCase() !== 'rank') return '';
+    if (!item || typeof item !== 'object') return '';
+
+    const metadata = getRawMetadata(item);
+    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+    const dayKey = (
+      Number.isFinite(year) && year >= 0
+      && Number.isFinite(month) && month >= 1 && month <= 12
+      && Number.isFinite(day) && day >= 1 && day <= 31
+    )
+      ? `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      : '';
+
+    return formatGroupDateLabel(dayKey, item, runtimeProfile, showLocalTimeInTitles);
+  }
+
   function useSlideshowFromProfile() {
     const hasCollectionVideos = runtimeProfile?.media?.hasVideos !== false;
     if (!hasCollectionVideos) return true;
@@ -1348,7 +1367,22 @@
         {/if}
 
         {#each row as item, colIndex (getCardRenderKey(item, rowIndex, colIndex))}
-          <div>
+          {@const noGroupDateBadgeLabel = getNoGroupDateBadgeLabel(item)}
+          <div class="flex flex-col gap-1">
+            {#if noGroupDateBadgeLabel}
+              <div
+                class="inline-flex max-w-full items-center gap-1.5 self-start rounded-md border px-2 py-1 text-[10px] font-semibold leading-none tracking-[0.02em] shadow-sm"
+                style="background: var(--ui-video-badge-bg); border-color: var(--ui-video-badge-border); color: var(--ui-video-badge-text); box-shadow: var(--ui-video-badge-shadow);"
+              >
+                <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span class="truncate">{noGroupDateBadgeLabel}</span>
+              </div>
+            {/if}
             <div
               use:observeCardForPreload={item}
               data-index={getIndex(item)}

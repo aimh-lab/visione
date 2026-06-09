@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
-  import { normalizeGroupByOptions } from '$lib/groupByConfig.js';
+  import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
 
   export let active = "View1";
   export let tabs = ["View1", "View2", "Similarity"];
@@ -9,6 +9,7 @@
   export let isSidebarOpen = true;
   export let isSidebarRightOpen = false;
   export let viewMode = "byrank";
+  export let sortMode = "relevance";
   export let showViewModeRadios = false;
   export let runtimeProfile = {};
   export let keyframeSize = 130;
@@ -23,6 +24,7 @@
   
   const dispatch = createEventDispatcher();
   
+  let isGroupDropdownOpen = false;
   let isSortDropdownOpen = false;
   let isChallengeDropdownOpen = false;
   let isPinnedDropdownOpen = false;
@@ -37,6 +39,10 @@
   const toggleRightSidebar = () => dispatch("toggleRightSidebar");
   const setMode = (mode) => {
     dispatch("changeViewMode", { mode });
+    isGroupDropdownOpen = false;
+  };
+  const setSortMode = (mode) => {
+    dispatch("changeSortMode", { mode });
     isSortDropdownOpen = false;
   };
   const adjustKeyframeSize = (delta) => {
@@ -98,8 +104,12 @@
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
+  $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
   
   function handleClickOutside(event) {
+    if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
+      isGroupDropdownOpen = false;
+    }
     if (isSortDropdownOpen && !event.target.closest('.sort-dropdown-container')) {
       isSortDropdownOpen = false;
     }
@@ -267,7 +277,7 @@
         {/if}
       </div>
 
-      <!-- Sort by dropdown -->
+      <!-- Grouping and sorting dropdowns -->
       {#if showViewModeRadios}
         <div class="flex items-center space-x-2">
           <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
@@ -297,31 +307,25 @@
             </button>
           </div>
 
-        <div class="relative sort-dropdown-container">
+        <div class="relative group-dropdown-container">
           <button
-            on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
+            on:click|stopPropagation={() => isGroupDropdownOpen = !isGroupDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
+            title="Group results"
+            aria-label="Group results"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M11 5h10"/>
-              <path d="M11 12h7"/>
-              <path d="M11 19h4"/>
-              <path d="M4 17l-2 2 2 2"/>
-              <path d="M2 19h5"/>
-              <path d="M6 7l2-2 2 2"/>
-              <path d="M8 5v14"/>
-            </svg>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               {@html currentSort.icon}
             </svg>
             <span class="text-xs font-medium text-gray-700">{currentSort.label}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isSortDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isGroupDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
 
-          {#if isSortDropdownOpen}
+          {#if isGroupDropdownOpen}
             <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Grouping</div>
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
@@ -340,6 +344,55 @@
                     </div>
                   </div>
                   {#if viewMode === option.value}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <div class="relative sort-dropdown-container">
+          <button
+            on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
+            class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
+            title="Sort results"
+            aria-label="Sort results"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5h10"/>
+              <path d="M11 12h7"/>
+              <path d="M11 19h4"/>
+              <path d="M4 17l-2 2 2 2"/>
+              <path d="M2 19h5"/>
+              <path d="M6 7l2-2 2 2"/>
+              <path d="M8 5v14"/>
+            </svg>
+            <span class="text-xs font-medium text-gray-700">{currentSortMode.label}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isSortDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {#if isSortDropdownOpen}
+            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sorting</div>
+              {#each SORT_MODE_OPTIONS as option}
+                <button
+                  on:click={() => setSortMode(option.value)}
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors
+                         {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    {@html option.icon}
+                  </svg>
+                  <div class="flex-1 text-left">
+                    <div class="text-sm font-medium {sortMode === option.value ? 'text-blue-700' : 'text-gray-800'}">{option.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                  </div>
+                  {#if sortMode === option.value}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>

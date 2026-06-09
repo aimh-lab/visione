@@ -34,7 +34,7 @@
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
   import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
-  import { resolveGroupByConfig, resolveViewMode } from '$lib/groupByConfig.js';
+  import { resolveGroupByConfig, resolveViewMode, resolveSortMode } from '$lib/groupByConfig.js';
   import { formatGroupDateLabel, formatGroupHourLabel } from '$lib/titleFormatting.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
@@ -314,6 +314,10 @@
     const safeViewMode = resolveViewMode($uiStore.viewMode, runtimeProfile);
     if (safeViewMode !== $uiStore.viewMode) {
       uiStore.actions.setViewMode(safeViewMode);
+    }
+    const safeSortMode = resolveSortMode($uiStore.sortMode);
+    if (safeSortMode !== $uiStore.sortMode) {
+      uiStore.actions.setSortMode(safeSortMode);
     }
   }
   $: if (runtimeProfile?.settingsDefaults) {
@@ -1016,6 +1020,7 @@
           elapsedMs: Number(elapsed) || 0,
           activeTab: get(uiStore).layoutTab,
           viewMode: get(uiStore).viewMode,
+          sortMode: get(uiStore).sortMode,
           translationEnabled: !!translation?.enabled,
           translatedSteps: Number(translation?.translatedCount) || 0
         }
@@ -2740,6 +2745,7 @@ function handleViewSubmitted() {
   // ---------------------------
   $: displayRows = buildRows(images, {
     viewMode: $uiStore.viewMode,
+    sortMode: $uiStore.sortMode,
     resultsPerGroup: $uiStore.resultsPerGroup,
     resultsAutoFit: true,
     runtimeProfile,
@@ -2750,6 +2756,7 @@ function handleViewSubmitted() {
 
   $: similarityDisplayRows = buildRows(similarityImages, {
     viewMode: $uiStore.viewMode,
+    sortMode: $uiStore.sortMode,
     resultsPerGroup: $uiStore.resultsPerGroup,
     resultsAutoFit: true,
     runtimeProfile,
@@ -2790,7 +2797,6 @@ function handleViewSubmitted() {
 <Keybindings
   isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen || pinnedImageModalOpen}
   isVideoPlayerOpen={isVideoPlayerOpen || isSlideshowOpen}
-  onFocusSearch={focusSearchBox}
   onSwitchTab={(tab) => {
     if (tab !== 'View1') return;
     uiStore.actions.setLayoutTab(tab);
@@ -3084,6 +3090,7 @@ function handleViewSubmitted() {
   isSidebarOpen={$uiStore.isSidebarOpen}
   isSidebarRightOpen={$uiStore.isSidebarRightOpen}
   viewMode={$uiStore.viewMode}
+  sortMode={$uiStore.sortMode}
   keyframeSize={$uiStore.keyframeSize}
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
   {runtimeProfile}
@@ -3099,6 +3106,7 @@ function handleViewSubmitted() {
   on:toggleSidebar={() => uiStore.actions.toggleSidebar()}
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
   on:changeViewMode={(e) => uiStore.actions.setViewMode(e.detail.mode)}
+  on:changeSortMode={(e) => uiStore.actions.setSortMode(e.detail.mode)}
   on:adjustKeyframeSize={(e) => {
     const delta = Number(e?.detail?.delta) || 0;
     const next = $uiStore.keyframeSize + delta;
@@ -3360,6 +3368,7 @@ function handleViewSubmitted() {
     rfNegativeCount={rfNegative.length}
     challengeType={$uiStore.dresChallengeType}
     viewMode={$uiStore.viewMode}
+    sortMode={$uiStore.sortMode}
     {runtimeProfile}
     searchTime={searchTime}
     isLoading={searchLoading || similarityLoading || view2Loading}

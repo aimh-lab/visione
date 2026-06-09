@@ -233,3 +233,17 @@ export function formatImageDisplayTitle(item, runtimeProfile = {}, showLocalTime
   }
   return appendCountryLabel(rawTitle, item);
 }
+
+export function formatImageTemporalBadge(item, runtimeProfile = {}, showLocalTime = true) {
+  const cfg = runtimeProfile?.titleFormatting?.imageTitle || {};
+  if (cfg.enabled === false) return "";
+
+  const epochSeconds = getEpochSecondsFromItem(item, runtimeProfile, cfg);
+  if (epochSeconds == null) return "";
+
+  const useLocalTime = !!showLocalTime && cfg.applyUtcOffsetHours !== false;
+  const offsetHours = useLocalTime ? getUtcOffsetHours(item, cfg.utcOffsetField || "utc_offset_hours") : 0;
+  const adjustedMs = (epochSeconds + offsetHours * 3600) * 1000;
+  const formatted = formatUtcDateTime(adjustedMs, !!cfg.includeWeekday, "");
+  return appendCountryLabel(formatted, item);
+}

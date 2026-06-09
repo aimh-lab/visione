@@ -3,6 +3,7 @@
   import { focusTrap } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
   import ImageModal from "./ImageModal.svelte";
+  import { formatImageTemporalBadge } from "$lib/titleFormatting.js";
 
   export let isOpen = false;
   export let videoId = "";
@@ -164,6 +165,7 @@
       const sortedEntries = sortKeyframes(entries)
         .filter((entry) => String(entry?.imgId || ""))
         .map((entry) => ({
+          ...entry,
           imgId: String(entry.imgId),
           timestamp: Number.isFinite(Number(entry?.timestamp)) && Number(entry?.timestamp) >= 0
             ? Number(entry.timestamp)
@@ -548,6 +550,9 @@
   $: normalizedVideoId = normalizeVideoId(videoId);
   $: normalizedSelectedImgId = String(selectedImgId || "");
   $: activeFrame = frames[currentIndex] || null;
+  $: activeFrameTemporalBadge = activeFrame
+    ? formatImageTemporalBadge(activeFrame, runtimeProfile, showLocalTimeInTitles)
+    : "";
   $: resolvedTitle = String(title || "").trim() || (normalizedVideoId ? `Keyframe Slideshow - ${normalizedVideoId}` : "Keyframe Slideshow");
   $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
   $: allowFrameSubmit = showSubmitUI;
@@ -722,6 +727,12 @@
               style="height: {previewHeight}; width: auto; max-width: 100%; object-fit: contain;"
             />
           </div>
+
+          {#if activeFrameTemporalBadge}
+            <div class="absolute left-5 bottom-5 z-30 max-w-[calc(100%-2.5rem)] rounded-md border border-slate-300/35 bg-slate-900/85 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-100 shadow-xl backdrop-blur-md pointer-events-none">
+              {activeFrameTemporalBadge}
+            </div>
+          {/if}
 
           <button
             type="button"
