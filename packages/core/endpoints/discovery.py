@@ -8,7 +8,7 @@ class DiscoveryResponse(BaseModel):
     name: str
     default_dataserver: str
     metadata: List[str]
-    groupby_attribute: str
+    groupby_attribute: str | None
     video_time_reference_attribute: List[str]
     available_models: List[Dict]
 
