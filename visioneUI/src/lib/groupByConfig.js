@@ -8,24 +8,39 @@ const ICONS = {
 const DEFAULT_GROUP_BY_OPTIONS = [
   {
     value: 'byrank',
-    label: 'Sort by Rank',
-    description: 'Sort results by relevance score',
+    label: 'No group',
+    description: 'Show results without grouping',
     icon: ICONS.rank,
     kind: 'rank'
   },
   {
-    value: 'byvideo',
-    label: 'Group by Hour',
-    description: 'Group results by Hour',
-    icon: ICONS.video,
-    kind: 'video'
-  },
-  {
     value: 'bydate',
     label: 'Group by Date',
-    description: 'Sort by creation date',
+    description: 'Group results by calendar date',
     icon: ICONS.date,
     kind: 'date'
+  },
+  {
+    value: 'byvideo',
+    label: 'Group by Hour',
+    description: 'Group results by hour',
+    icon: ICONS.video,
+    kind: 'video'
+  }
+];
+
+export const SORT_MODE_OPTIONS = [
+  {
+    value: 'relevance',
+    label: 'Sort by relevance',
+    description: 'Keep backend relevance ranking',
+    icon: ICONS.rank
+  },
+  {
+    value: 'time',
+    label: 'Sort by time',
+    description: 'Order results by capture time',
+    icon: ICONS.date
   }
 ];
 
@@ -126,6 +141,11 @@ export function resolveViewMode(currentMode, runtimeProfile = {}) {
     return current;
   }
   return options[0]?.value || 'byrank';
+}
+
+export function resolveSortMode(currentMode) {
+  const current = toSafeString(currentMode).toLowerCase();
+  return SORT_MODE_OPTIONS.some((option) => option.value === current) ? current : 'relevance';
 }
 
 export function resolveGroupByConfig(viewMode, runtimeProfile = {}) {

@@ -99,6 +99,7 @@ export const appSettingsStore = new PersistentStore('visione-app-settings', {
   theme: 'default',
   contentScale: 1,
   viewMode: 'byvideo',
+  sortMode: 'relevance',
   isSidebarOpen: true,
   isSidebarRightOpen: false,
   sidebarLeftWidth: 18,

@@ -8,6 +8,7 @@ const DEFAULT = {
   // Persistent
   theme: 'default',            // 'default' | 'dark' | 'light'
   viewMode: 'byvideo',
+  sortMode: 'relevance',
   contentScale: 1,
 
   isSidebarOpen: true,
@@ -169,6 +170,7 @@ function createUIStore() {
         // layoutTab intentionally excluded
         theme: s.theme ?? u.theme,
         viewMode: s.viewMode ?? u.viewMode,
+        sortMode: s.sortMode ?? u.sortMode,
         contentScale: s.contentScale ?? u.contentScale,
 
         isSidebarOpen: s.isSidebarOpen ?? u.isSidebarOpen,
@@ -265,6 +267,7 @@ function createUIStore() {
       persist({
         theme: DEFAULT.theme,
         viewMode: DEFAULT.viewMode,
+        sortMode: DEFAULT.sortMode,
         contentScale: DEFAULT.contentScale,
         isSidebarOpen: DEFAULT.isSidebarOpen,
         isSidebarRightOpen: DEFAULT.isSidebarRightOpen,
@@ -319,6 +322,12 @@ function createUIStore() {
     setViewMode(viewMode) {
       update(u => ({ ...u, viewMode }));
       persist({ viewMode });
+    },
+
+    setSortMode(sortMode) {
+      const safe = String(sortMode || '').trim().toLowerCase() === 'time' ? 'time' : 'relevance';
+      update(u => ({ ...u, sortMode: safe }));
+      persist({ sortMode: safe });
     },
 
     setTheme(theme) {

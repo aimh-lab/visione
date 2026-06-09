@@ -15,8 +15,6 @@
   export let onCloseModal = () => {};
 
   // New callbacks for shortcuts
-  /** @type {() => void} */
-  export let onFocusSearch = () => {};
   /** @type {(tab: LayoutTab) => void} */
   export let onSwitchTab = (_tab) => {};
   /** @type {() => void} */
@@ -139,14 +137,6 @@
 
     // Global shortcuts (when no modal is open)
     
-    // Ctrl/Cmd + F: Focus search
-    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      onFocusSearch();
-      showActionFeedback('Search focused');
-      return;
-    }
-
     // Ctrl/Cmd + K: Open settings
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
@@ -313,12 +303,6 @@
             <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
               <span class="text-gray-700">Show this help</span>
               <kbd class="kbd">?</kbd>
-            </div>
-            <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
-              <span class="text-gray-700">Focus search box</span>
-              <div class="flex items-center space-x-1">
-                <kbd class="kbd">Ctrl</kbd><span class="text-gray-400">+</span><kbd class="kbd">F</kbd>
-              </div>
             </div>
             <div class="flex items-center justify-between py-2 px-3 hover:bg-gray-50 rounded-lg">
               <span class="text-gray-700">Open settings</span>
@@ -495,4 +479,3 @@
     animation: fade-in 0.2s ease-out;
   }
 </style>
-

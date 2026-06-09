@@ -549,7 +549,16 @@ export class VisioneAPI {
     const params = new URLSearchParams();
     params.set('select_field', 'hour_id');
     params.set('select_value', normalizedVideoId);
-    params.append('field', 'image_name');
+    [
+      'image_name',
+      'epoch',
+      'year',
+      'month',
+      'day',
+      'hour',
+      'utc_offset_hours',
+      'location_country'
+    ].forEach((field) => params.append('field', field));
 
     const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
       retries: 2
@@ -566,7 +575,23 @@ export class VisioneAPI {
       .map((item) => {
         return {
           imgId: String(item.image_name),
-          timestamp: null
+          timestamp: item?.epoch ?? null,
+          epoch: item?.epoch ?? null,
+          year: item?.year ?? null,
+          month: item?.month ?? null,
+          day: item?.day ?? null,
+          hour: item?.hour ?? null,
+          utc_offset_hours: item?.utc_offset_hours ?? null,
+          location_country: item?.location_country ?? null,
+          metadata: {
+            epoch: item?.epoch ?? null,
+            year: item?.year ?? null,
+            month: item?.month ?? null,
+            day: item?.day ?? null,
+            hour: item?.hour ?? null,
+            utc_offset_hours: item?.utc_offset_hours ?? null,
+            location_country: item?.location_country ?? null
+          }
         };
       });
   }

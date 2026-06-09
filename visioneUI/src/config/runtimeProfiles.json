@@ -15,15 +15,15 @@
       "modes": [
           {
             "value": "byrank",
-          "label": "Sort by Rank"
-          },
-          {
-            "value": "byvideo",
-          "label": "Group by Hour"
+          "label": "No group"
           },
           {
             "value": "bydate",
           "label": "Group by Date"
+          },
+          {
+            "value": "byvideo",
+          "label": "Group by Hour"
         }
       ]
     },
@@ -54,16 +54,16 @@
         "modes": [
           {
             "value": "byrank",
-            "label": "Sort by Rank"
+            "label": "No group"
+          },
+          {
+            "value": "bydate",
+            "label": "Group by Date"
           },
           {
             "value": "byvideo",
             "label": "Group by Hour",
             "metadata": "hour_id"
-          },
-          {
-            "value": "bydate",
-            "label": "Group by Date"
           }
         ]
       },
