@@ -13,6 +13,8 @@ export function buildRows(items, {
 }) {
   if (!Array.isArray(items) || items.length === 0) return [];
 
+  const NO_GROUP_VIRTUAL_ROW_SIZE = 48;
+
   const chunk = (arr, n) => {
     const out = [];
     for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
@@ -76,7 +78,12 @@ export function buildRows(items, {
     ? sortByDateAsc(items)
     : items;
 
-  if (mode === "byrank" || kind === "rank") return [sortedItems];
+  if (mode === "byrank" || kind === "rank") {
+    return chunk(sortedItems, NO_GROUP_VIRTUAL_ROW_SIZE).map((row) => {
+      row.__visioneNoGroupChunk = true;
+      return row;
+    });
+  }
 
   const buildDayGroupKey = (item) => {
     const metadata = item?.raw?.metadata && typeof item.raw.metadata === 'object' ? item.raw.metadata : {};

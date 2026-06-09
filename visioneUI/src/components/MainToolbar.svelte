@@ -25,7 +25,6 @@
   const dispatch = createEventDispatcher();
   
   let isGroupDropdownOpen = false;
-  let isSortDropdownOpen = false;
   let isChallengeDropdownOpen = false;
   let isPinnedDropdownOpen = false;
   const challengeOptions = ["KIS", "AVS", "Q&A"];
@@ -43,7 +42,7 @@
   };
   const setSortMode = (mode) => {
     dispatch("changeSortMode", { mode });
-    isSortDropdownOpen = false;
+    isGroupDropdownOpen = false;
   };
   const adjustKeyframeSize = (delta) => {
     dispatch("adjustKeyframeSize", { delta });
@@ -109,9 +108,6 @@
   function handleClickOutside(event) {
     if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
       isGroupDropdownOpen = false;
-    }
-    if (isSortDropdownOpen && !event.target.closest('.sort-dropdown-container')) {
-      isSortDropdownOpen = false;
     }
     if (isChallengeDropdownOpen && !event.target.closest('.challenge-dropdown-container')) {
       isChallengeDropdownOpen = false;
@@ -277,7 +273,7 @@
         {/if}
       </div>
 
-      <!-- Grouping and sorting dropdowns -->
+      <!-- Grouping dropdown with sorting options -->
       {#if showViewModeRadios}
         <div class="flex items-center space-x-2">
           <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
@@ -324,7 +320,7 @@
           </button>
 
           {#if isGroupDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
               <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Grouping</div>
               {#each sortOptions as option}
                 <button
@@ -350,34 +346,8 @@
                   {/if}
                 </button>
               {/each}
-            </div>
-          {/if}
-        </div>
 
-        <div class="relative sort-dropdown-container">
-          <button
-            on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
-            class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
-            title="Sort results"
-            aria-label="Sort results"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M11 5h10"/>
-              <path d="M11 12h7"/>
-              <path d="M11 19h4"/>
-              <path d="M4 17l-2 2 2 2"/>
-              <path d="M2 19h5"/>
-              <path d="M6 7l2-2 2 2"/>
-              <path d="M8 5v14"/>
-            </svg>
-            <span class="text-xs font-medium text-gray-700">{currentSortMode.label}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isSortDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </button>
-
-          {#if isSortDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+              <div class="my-1 border-t border-gray-200"></div>
               <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sorting</div>
               {#each SORT_MODE_OPTIONS as option}
                 <button
