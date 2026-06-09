@@ -308,7 +308,6 @@ export function createSearchController({
         setSearchState({
           resultSet: cached.results,
           searchTime: Date.now() - start,
-          loading: false,
           error: null
         });
 
@@ -331,6 +330,7 @@ export function createSearchController({
         const hydratedItems = await hydrateMediaUrls(preparedItems);
         if (req !== reqId) return;
         setImages(hydratedItems);
+        setSearchState({ loading: false });
 
         await tick();
         if (!isRestoringFromHistory()) syncURL(textareas);
@@ -366,7 +366,6 @@ export function createSearchController({
       setSearchState({
         resultSet,
         searchTime: Date.now() - start,
-        loading: false,
         error: null
       });
 
@@ -392,6 +391,7 @@ export function createSearchController({
       const hydratedItems = await hydrateMediaUrls(preparedItems);
       if (req !== reqId) return;
       setImages(hydratedItems);
+      setSearchState({ loading: false });
 
       await tick();
       if (!isRestoringFromHistory()) syncURL(textareas);
