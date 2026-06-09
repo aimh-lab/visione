@@ -433,6 +433,7 @@
               {runtimeProfile}
               {showLocalTimeInTitles}
               {resultsetBadgeLabelMode}
+              strongSelectedHighlight={true}
               {rfPositive}
               {rfNegative}
               {justifyResultRows}

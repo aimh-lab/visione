@@ -26,6 +26,8 @@
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let resultsetBadgeLabelMode = "both";
+  export let strongSelectedHighlight = false;
+  export let modalSelectionEmphasis = false;
 
   $: timeBadgeTimezoneOverride = String($uiStore?.timeBadgeTimezoneOverride || 'profile').trim().toLowerCase();
 
@@ -76,6 +78,8 @@
 
     return selectedId != null && selectedId === getId(item);
   };
+
+  $: hasAnySelection = toValidIndex(selectedIndex) != null || (selectedId != null && String(selectedId).trim().length > 0);
 
   function getCardRenderKey(item, rowIndex, colIndex) {
     const idx = Number(getIndex(item));
@@ -1390,13 +1394,13 @@
               data-img-id={getId(item)}
               data-frame-id={getId(item)}
               draggable="true"
-              class="group relative rounded-xl overflow-hidden flex items-center justify-center
+              class="group ui-result-card ui-result-card-focusable relative rounded-xl overflow-hidden flex items-center justify-center
                     cursor-pointer transition-all duration-200 focus:outline-none
                     {isSelectionMode 
                       ? 'ring-4 ring-green-500 hover:ring-green-600 shadow-lg shadow-green-500/30 hover:scale-105' 
                       : isSelected(item)
-                        ? 'border border-sky-500/80 ring-2 ring-sky-300/45 shadow-md shadow-sky-500/15'
-                        : 'border border-slate-300/70 hover:border-slate-400/80 hover:shadow-sm'}"
+                        ? `${strongSelectedHighlight || modalSelectionEmphasis ? 'ui-result-card--selected-strong' : 'ui-result-card--selected'} ${modalSelectionEmphasis ? 'ui-result-card--selected-modal' : ''}`
+                        : `${(strongSelectedHighlight || modalSelectionEmphasis) && hasAnySelection ? 'ui-result-card--context-muted ' : ''}border border-slate-300/70 hover:border-slate-400/80 hover:shadow-sm`}"
               style="height: var(--kf-size, 160px); min-width: var(--min-card-w, 140px);"
               title={isSelectionMode ? `✓ Click to select: ${getTitle(item)}` : getTitle(item)}
               role="button"
@@ -1623,6 +1627,60 @@
   
   .group:hover .image-overlay {
     background-color: rgba(0, 0, 0, 0.15);
+  }
+
+  .ui-result-card--selected {
+    border: 1px solid var(--ui-context-selected-border);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-context-selected-ring) 70%, transparent 30%);
+  }
+
+  .ui-result-card--selected-strong {
+    border: 2px solid var(--ui-context-selected-border);
+    box-shadow:
+      0 0 0 2px var(--ui-context-selected-ring),
+      0 0 0 6px color-mix(in srgb, var(--ui-context-selected-ring) 35%, transparent 65%),
+      0 10px 22px var(--ui-context-selected-glow);
+    transform: translateY(-1px);
+  }
+
+  .ui-result-card--selected-strong .image-overlay {
+    background-color: var(--ui-context-selected-overlay);
+  }
+
+  .ui-result-card--selected-modal {
+    animation: selected-modal-pulse 1.35s ease-in-out infinite;
+  }
+
+  .ui-result-card--context-muted {
+    opacity: 0.82;
+    filter: saturate(0.85);
+  }
+
+  .ui-result-card--context-muted:hover {
+    opacity: 0.95;
+  }
+
+  .ui-result-card-focusable:focus-visible {
+    border-color: var(--ui-context-selected-border) !important;
+    box-shadow:
+      0 0 0 2px var(--ui-context-selected-ring),
+      0 0 0 6px color-mix(in srgb, var(--ui-context-selected-ring) 45%, transparent 55%),
+      0 10px 22px var(--ui-context-selected-glow);
+  }
+
+  @keyframes selected-modal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px var(--ui-context-selected-ring),
+        0 0 0 6px color-mix(in srgb, var(--ui-context-selected-ring) 35%, transparent 65%),
+        0 10px 22px var(--ui-context-selected-glow);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px var(--ui-context-selected-ring),
+        0 0 0 10px color-mix(in srgb, var(--ui-context-selected-ring) 22%, transparent 78%),
+        0 14px 28px color-mix(in srgb, var(--ui-context-selected-glow) 85%, transparent 15%);
+    }
   }
 
   .custom-scrollbar::-webkit-scrollbar {

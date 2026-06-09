@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { RankedAnswer } from './RankedAnswer';
-import {
-    RankedAnswerFromJSON,
-    RankedAnswerFromJSONTyped,
-    RankedAnswerToJSON,
-    RankedAnswerToJSONTyped,
-} from './RankedAnswer';
 import type { QueryEvent } from './QueryEvent';
 import {
     QueryEventFromJSON,
@@ -54,10 +47,10 @@ export interface QueryResultLog {
     resultSetAvailability: string;
     /**
      * 
-     * @type {Array<RankedAnswer>}
+     * @type {Array<any>}
      * @memberof QueryResultLog
      */
-    results: Array<RankedAnswer>;
+    results: Array<any>;
     /**
      * 
      * @type {Array<QueryEvent>}
@@ -91,7 +84,7 @@ export function QueryResultLogFromJSONTyped(json: any, ignoreDiscriminator: bool
         'timestamp': json['timestamp'],
         'sortType': json['sortType'],
         'resultSetAvailability': json['resultSetAvailability'],
-        'results': ((json['results'] as Array<any>).map(RankedAnswerFromJSON)),
+        'results': json['results'],
         'events': ((json['events'] as Array<any>).map(QueryEventFromJSON)),
     };
 }
@@ -110,8 +103,7 @@ export function QueryResultLogToJSONTyped(value?: QueryResultLog | null, ignoreD
         'timestamp': value['timestamp'],
         'sortType': value['sortType'],
         'resultSetAvailability': value['resultSetAvailability'],
-        'results': ((value['results'] as Array<any>).map(RankedAnswerToJSON)),
+        'results': value['results'],
         'events': ((value['events'] as Array<any>).map(QueryEventToJSON)),
     };
 }
-

@@ -18,6 +18,7 @@
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let resultsetBadgeLabelMode = "both";
+  export let modalOpen = false;
 
   const dispatch = createEventDispatcher();
   const forward = (type, detail) => dispatch(type, detail);
@@ -42,6 +43,7 @@
   {runtimeProfile}
   {showLocalTimeInTitles}
   {resultsetBadgeLabelMode}
+  modalSelectionEmphasis={modalOpen}
   {registerContainer}
   {isSelectionMode}
   on:openVideoPlayer={(e) =>  { forward("openVideoPlayer", e.detail); }}

@@ -219,6 +219,12 @@
   --ui-video-badge-hover-bg: linear-gradient(to right, #bfdbfe, #93c5fd);
   --ui-video-badge-hover-text: #1e40af;
 
+  /* ---- Context view selected frame ---- */
+  --ui-context-selected-border: #0284c7;
+  --ui-context-selected-ring: rgba(56, 189, 248, 0.72);
+  --ui-context-selected-glow: rgba(14, 165, 233, 0.36);
+  --ui-context-selected-overlay: rgba(2, 132, 199, 0.16);
+
   /* ---- Sidebar right tabs ---- */
   --ui-sidebar-tab-active-bg: #dbeafe;
   --ui-sidebar-tab-active-text: #1e3a8a;
@@ -454,6 +460,12 @@ html[data-dres-enabled='false'] .ui-challenge-control {
   --ui-video-badge-hover-bg: linear-gradient(to right, #d2e1f7, #b4caee);
   --ui-video-badge-hover-text: #1f4578;
 
+  /* ---- Context view selected frame ---- */
+  --ui-context-selected-border: #0369a1;
+  --ui-context-selected-ring: rgba(56, 189, 248, 0.58);
+  --ui-context-selected-glow: rgba(3, 105, 161, 0.28);
+  --ui-context-selected-overlay: rgba(3, 105, 161, 0.14);
+
   /* ---- Image modal actions ---- */
   --ui-modal-close-btn-bg: color-mix(in srgb, #dc2626 88%, #7f1d1d 12%);
   --ui-modal-close-btn-hover-bg: #dc2626;
@@ -663,6 +675,12 @@ html[data-dres-enabled='false'] .ui-challenge-control {
   --ui-video-badge-shadow: 0 4px 10px rgba(2, 6, 23, 0.35);
   --ui-video-badge-hover-bg: linear-gradient(to right, rgba(30, 64, 175, 0.6), rgba(37, 99, 235, 0.5));
   --ui-video-badge-hover-text: #bfdbfe;
+
+  /* ---- Context view selected frame ---- */
+  --ui-context-selected-border: #7dd3fc;
+  --ui-context-selected-ring: rgba(125, 211, 252, 0.85);
+  --ui-context-selected-glow: rgba(56, 189, 248, 0.34);
+  --ui-context-selected-overlay: rgba(56, 189, 248, 0.12);
 
   /* ---- Sidebar right tabs ---- */
   --ui-sidebar-tab-active-bg: rgba(30, 58, 138, 0.4);

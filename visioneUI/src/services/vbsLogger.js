@@ -1,4 +1,4 @@
-import { findResultsArray, extractImageInfo } from '../utils/results';
+import { findResultsArray } from '../utils/results';
 
 const DB_NAME = 'visione-vbs-logs';
 const DB_VERSION = 1;
@@ -43,39 +43,6 @@ function modelToImageType(model, hasRf = false) {
   if (!m) return 'globalFeatures';
   if (m.includes('local')) return 'localFeatures';
   return 'globalFeatures';
-}
-
-function parseFrameFromImageId(imgId) {
-  const raw = String(imgId || '').trim();
-  if (!raw) return null;
-
-  const underscore = raw.match(/_(\d{3,})$/);
-  if (underscore) return Number.parseInt(underscore[1], 10);
-
-  const dash = raw.match(/-(\d{3,})$/);
-  if (dash) return Number.parseInt(dash[1], 10);
-
-  return null;
-}
-
-function normalizeResultEntry(item, index) {
-  const info = extractImageInfo(item, index);
-  const mediaItemName = String(info?.videoId || '').trim() || String(info?.imgId || '').trim();
-  const rankRaw = Number(item?.rank);
-  const rank = Number.isFinite(rankRaw) && rankRaw > 0 ? Math.floor(rankRaw) : index + 1;
-  const scoreRaw = Number(item?.score ?? item?.similarity ?? item?.distance ?? item?.confidence ?? item?.matchScore);
-  const score = Number.isFinite(scoreRaw) ? scoreRaw : null;
-  const frameRaw = Number(item?.frame ?? item?.frameNumber ?? item?.shot);
-  const frame = Number.isFinite(frameRaw) ? Math.floor(frameRaw) : parseFrameFromImageId(info?.imgId);
-
-  return {
-    mediaItemName,
-    item: mediaItemName,
-    video: mediaItemName,
-    frame,
-    rank,
-    score
-  };
 }
 
 function buildQueryEvents({
@@ -310,8 +277,7 @@ export function createVbsLogger() {
     const raw = findResultsArray(resultSet) || [];
     const resolvedLimit = Number(maxResults ?? loggerOptions.resultLimit);
     const boundedLimit = Math.min(10000, Math.max(100, Number.isFinite(resolvedLimit) ? resolvedLimit : 10000));
-    const limited = raw.slice(0, boundedLimit);
-    const results = limited.map(normalizeResultEntry);
+    const results = raw.slice(0, boundedLimit);
     const events = buildQueryEvents({ textareas, relevanceFeedback, timestamp: ts, temporalWindowSeconds, buildSearchPayload });
 
     const payload = {
