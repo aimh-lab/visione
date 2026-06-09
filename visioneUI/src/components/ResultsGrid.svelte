@@ -1055,7 +1055,8 @@
     void timeBadgeTimezoneOverride;
 
     const labels = new Map();
-    for (const row of items) {
+    for (const bucket of visibleRows) {
+      const row = bucket?.row;
       if (!Array.isArray(row)) continue;
       for (const item of row) {
         const imgId = getId(item);
@@ -1228,7 +1229,7 @@
     
     <div
       use:measureRow={rowIndex}
-      class="w-full {rowInfo?.type === 'grouped' ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
+      class="w-full {rowInfo?.type === 'grouped' || row?.__visioneNoGroupChunk ? '' : rowIndex % 2 === 0 ? 'bg-gradient-to-r from-white to-gray-50' : 'bg-gradient-to-r from-gray-50 to-white'}"
     >
       
         <!-- Row header (solo per byvideo e bydate) -->

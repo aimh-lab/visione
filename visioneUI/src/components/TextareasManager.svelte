@@ -646,6 +646,30 @@
     metadataTokensByIndex = next;
   }
 
+  function reindexMetadataTokensAfterReorder(indexA: number, indexB: number, mode: "swap" | "move" = "swap") {
+    if (indexA < 0 || indexA >= textareas.length) return;
+    if (indexB < 0 || indexB >= textareas.length) return;
+    if (indexA === indexB) return;
+
+    const entries = Array.from(
+      { length: textareas.length },
+      (_, i) => normalizeMetadataTokens(Array.isArray(metadataTokensByIndex[i]) ? metadataTokensByIndex[i] : [])
+    );
+
+    if (mode === "move") {
+      const [moved] = entries.splice(indexA, 1);
+      entries.splice(indexB, 0, moved || []);
+    } else {
+      const temp = entries[indexA] || [];
+      entries[indexA] = entries[indexB] || [];
+      entries[indexB] = temp;
+    }
+
+    metadataTokensByIndex = Object.fromEntries(
+      entries.map((tokens, i) => [i, tokens])
+    );
+  }
+
   const remove = (i: number) => {
     reindexMetadataTokensAfterRemove(i);
     dispatch("remove", { index: i });
@@ -757,6 +781,7 @@
     dropStepIndex = null;
 
     if (sourceIndex !== targetIndex) {
+      reindexMetadataTokensAfterReorder(sourceIndex, targetIndex, "move");
       dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
       setTimeout(() => dispatchSearchWithMetadata(), 100);
     }
@@ -911,6 +936,7 @@
   function swapQueries(indexA: number, indexB: number) {
     if (indexB < 0 || indexB >= textareas.length) return;
 
+    reindexMetadataTokensAfterReorder(indexA, indexB, "swap");
     dispatch("swap", { indexA, indexB, mode: "swap" });
     setTimeout(() => dispatchSearchWithMetadata(), 100);
   }
@@ -2626,6 +2652,7 @@
     {#each textareas as textarea, i}
       {@const stepColor = getStepColor(i)}
       {@const isVisualQueryStep = isSimilarityStep(i)}
+      {@const isStepDisabled = !textarea.enabled}
       {@const isDisabledBySimilarity = !textarea.enabled && textarea?._disabledBySimilarity === true}
       {@const translationHint = getTranslationHint(i)}
       <div
@@ -2657,11 +2684,11 @@
           </div>
         {/if}
         <div
-          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {isDisabledBySimilarity
+          class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {isStepDisabled ? 'ui-query-step-card--disabled' : ''} {isDisabledBySimilarity
             ? 'bg-slate-950/80 border-amber-600/60 ring-1 ring-amber-500/35'
             : textarea.enabled
               ? 'bg-slate-800/75 border-slate-600/55 shadow-[0_10px_30px_rgba(2,6,23,0.45)]'
-              : 'bg-slate-900/45 border-slate-700/55 opacity-90'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
+              : 'bg-slate-900/50 border-slate-700/70 opacity-95'} {imageDropIndex === i ? 'ring-2 ring-cyan-400/50 bg-cyan-900/10' : ''}"
           style={`box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(2,6,23,0.45), inset 2px 0 0 ${isDisabledBySimilarity ? 'rgba(245, 158, 11, 0.85)' : isVisualQueryStep ? 'rgba(251, 191, 36, 0.7)' : withAlpha(stepColor, textarea.enabled ? 0.85 : 0.35)};`}
           role="group"
           aria-label={`Drop frame on step ${i + 1}`}
@@ -2733,7 +2760,7 @@
                 </div>
               {/if}
               {#if isVisualQueryStep}
-                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-[9px] font-medium text-amber-300/90" title="Image set by Similarity — next click replaces it">
+                <span class="ui-query-step-header-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-amber-500/40 bg-amber-900/20 text-[9px] font-medium text-amber-300/90" title="Image set by Similarity — next click replaces it">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                   Similarity
                 </span>
@@ -2835,11 +2862,11 @@
                 {#if similarityImage}
                   <div class="px-1.5 py-0.5 border-b border-slate-700/45">
                     <div class="flex flex-wrap items-start gap-2">
-                      <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                      <div class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
                         <img
                           src={similarityImage.url}
                           alt={similarityImage.name}
-                          class="w-full max-h-20 object-contain bg-slate-950/50"
+                          class="ui-query-image-thumb w-full max-h-20 object-contain bg-slate-950/50"
                         />
                         <button
                           type="button"
@@ -2884,11 +2911,11 @@
                 <div class="px-1.5 py-0.5 border-b border-slate-700/45">
                   <div class="flex flex-wrap items-start gap-2">
                     {#each textareaImages[i] as image, imgIdx}
-                      <div class="relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
+                      <div class="ui-query-image-shell relative group/img w-28 rounded-md overflow-hidden bg-slate-900/70 border border-slate-700/70">
                         <img
                           src={image.url}
                           alt={image.name}
-                          class="w-full max-h-20 object-contain bg-slate-950/50"
+                          class="ui-query-image-thumb w-full max-h-20 object-contain bg-slate-950/50"
                         />
                         {#if image.type === 'result'}
                           <div class="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-600/90 text-white leading-none">
@@ -2976,7 +3003,7 @@
           {#if getMetadataChipsForIndex(i).length > 0}
             <div class="px-1.5 pb-1 pt-0.5 flex flex-wrap items-center gap-1.5 border-t border-slate-800/60">
               {#each getMetadataChipsForIndex(i) as chip}
-                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-600/40 bg-cyan-900/25 px-1 py-0.5 text-[10px] text-cyan-100">
+                <span class="ui-metadata-chip inline-flex items-center gap-1 rounded-full border border-cyan-600/40 bg-cyan-900/25 px-1 py-0.5 text-[10px] text-cyan-100">
                   <button
                     type="button"
                     class="inline-flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-cyan-700/35 transition-colors"
@@ -3352,5 +3379,71 @@
 
   .animate-slide-up {
     animation: slide-up 0.2s ease-out;
+  }
+
+  .ui-query-step-card--disabled {
+    position: relative;
+    filter: grayscale(0.35) saturate(0.38) brightness(0.78);
+  }
+
+  .ui-query-step-card--disabled::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.46));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .ui-query-step-card--disabled > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .ui-query-step-card--disabled textarea,
+  .ui-query-step-card--disabled select,
+  .ui-query-step-card--disabled button,
+  .ui-query-step-card--disabled .ui-query-plus-btn {
+    opacity: 0.78;
+  }
+
+  .ui-query-step-card--disabled .ui-query-step-header-badge {
+    border-color: rgba(100, 116, 139, 0.55);
+    background: rgba(51, 65, 85, 0.62);
+    color: rgba(203, 213, 225, 0.92);
+  }
+
+  .ui-query-step-card--disabled .ui-query-textarea {
+    color: rgba(148, 163, 184, 0.95) !important;
+  }
+
+  .ui-query-step-card--disabled .ui-query-textarea::placeholder {
+    color: rgba(100, 116, 139, 0.85) !important;
+  }
+
+  .ui-query-step-card--disabled .ui-query-image-shell {
+    border-color: rgba(100, 116, 139, 0.45);
+    background: rgba(15, 23, 42, 0.8);
+  }
+
+  .ui-query-step-card--disabled .ui-query-image-thumb {
+    filter: grayscale(1) saturate(0.2) brightness(0.58);
+    opacity: 0.68;
+  }
+
+  .ui-query-step-card--disabled .ui-metadata-chip {
+    border-color: rgba(100, 116, 139, 0.5);
+    background: rgba(30, 41, 59, 0.8);
+    color: rgba(148, 163, 184, 0.95);
+  }
+
+  .ui-query-step-card--disabled .ui-metadata-chip button {
+    color: rgba(203, 213, 225, 0.9);
+  }
+
+  .ui-query-step-card--disabled .ui-metadata-chip button:hover {
+    background: rgba(71, 85, 105, 0.45);
+    color: rgba(248, 250, 252, 0.95);
   }
 </style>

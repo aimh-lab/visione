@@ -407,11 +407,20 @@
 
   function captureFrameForSimilarity() {
     if (!activeFrame) return;
+    const fallbackUrl = activeFrame.imageUrl || activeFrame.thumbnailUrl || activeFrame.url || "";
     dispatch("captureForSimilarity", {
       imgId: activeFrame.imgId,
       videoId: normalizedVideoId,
       currentIndex,
-      currentTime: Number(activeFrame.timestamp || 0)
+      currentTime: Number(activeFrame.timestamp || 0),
+      dataUrl: fallbackUrl,
+      frame: {
+        ...getImageModalFrame(activeFrame),
+        url: fallbackUrl,
+        imageUrl: activeFrame.imageUrl || null,
+        thumbnailUrl: activeFrame.thumbnailUrl || null,
+        title: activeFrame.imgId || ''
+      }
     });
   }
 
@@ -430,7 +439,7 @@
       ...frame,
       imgId: frame.imgId,
       videoId: normalizedVideoId,
-      url: frame.imageUrl || frame.thumbnailUrl || "",
+      url: frame.imageUrl || frame.thumbnailUrl || frame.url || "",
       title: frame.imgId,
       index: currentIndex,
       raw: {

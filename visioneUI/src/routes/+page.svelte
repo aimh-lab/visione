@@ -325,8 +325,11 @@
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
-  $: visioneAPI.setServicesHost($uiStore.apiServicesHostOverrideEnabled ? $uiStore.apiServicesHost : (runtimeProfile?.api?.servicesHost || ''));
-  $: visioneAPI.setDataserverHost($uiStore.dataserverHostOverrideEnabled ? $uiStore.dataserverHost : '');
+  function syncVisioneApiHosts(uiState = get(uiStore), profile = runtimeProfile) {
+    visioneAPI.setServicesHost(uiState.apiServicesHostOverrideEnabled ? uiState.apiServicesHost : (profile?.api?.servicesHost || ''));
+    visioneAPI.setDataserverHost(uiState.dataserverHostOverrideEnabled ? uiState.dataserverHost : '');
+  }
+  $: syncVisioneApiHosts($uiStore, runtimeProfile);
   $: visioneAPI.setActiveCollectionName(activeCollectionName);
 
   // ---------------------------
@@ -689,6 +692,48 @@
         }
       })
     );
+  }
+
+  async function resolveSimilarityPreviewForStep(stepIndex, rawImgId, fallbackName = 'Similarity') {
+    const safeImgId = String(rawImgId || '').trim();
+    if (!safeImgId) return;
+
+    try {
+      const urls = await visioneAPI.getElementUrls(safeImgId, ['thumbnails', 'images']);
+      const resolvedUrl = String(urls?.thumbnails || urls?.images || '').trim();
+      if (!resolvedUrl) return;
+
+      let targetIndex = Number(stepIndex);
+      if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= textareas.length) {
+        targetIndex = textareas.findIndex((t) => String(t?.similarityImgId || '').trim() === safeImgId);
+      }
+      if (targetIndex < 0) return;
+
+      const activeSimilarity = String(textareas[targetIndex]?.similarityImgId || '').trim();
+      if (activeSimilarity !== safeImgId) {
+        const relocatedIndex = textareas.findIndex((t) => String(t?.similarityImgId || '').trim() === safeImgId);
+        if (relocatedIndex < 0) return;
+        targetIndex = relocatedIndex;
+      }
+
+      const currentImages = Array.isArray(textareaImages[targetIndex]) ? textareaImages[targetIndex] : [];
+      const primary = currentImages[0] || {};
+
+      textareaImages = {
+        ...textareaImages,
+        [targetIndex]: [
+          {
+            ...primary,
+            url: resolvedUrl,
+            name: String(primary?.name || fallbackName || safeImgId),
+            type: 'result',
+            imgId: safeImgId
+          }
+        ]
+      };
+    } catch {
+      // Keep placeholder when URL resolution fails.
+    }
   }
 
   async function hydrateInlineTextareaImagesFromState(urlState) {
@@ -1431,6 +1476,10 @@
 
     const init = async () => {
       uiStore.actions.hydrateFromSettings();
+      syncVisioneApiHosts(
+        get(uiStore),
+        resolveRuntimeProfile(activeCollectionName, get(uiStore).dresChallengeType || 'default')
+      );
       // Strict startup: keep video URLs disabled until discovery resolves a profile.
       visioneAPI.setSupportsVideos(false);
       await vbsLogger.initSession(getLoggerContext());
@@ -2550,20 +2599,46 @@ function handleViewSubmitted() {
       (view2Frames || []).find((i) => i?.imgId === imgId) ||
       null;
 
+    const resolvedFrameUrl = String(
+      resolvedFrame?.url || resolvedFrame?.imageUrl || resolvedFrame?.thumbnailUrl || ''
+    ).trim();
+    const resolvedFrameName = String(
+      resolvedFrame?.title || resolvedFrame?.name || resolvedFrame?.imgId || `Similarity ${targetIndex + 1}`
+    ).trim();
+    const resolvedFrameImgId = String(resolvedFrame?.imgId || imgId).trim();
+
     textareas = nextTextareas;
 
-    if (resolvedFrame?.url) {
+    if (resolvedFrameUrl) {
       textareaImages = {
         ...textareaImages,
         [targetIndex]: [
           {
-            url: resolvedFrame.url,
-            name: resolvedFrame.title || resolvedFrame.imgId || `Similarity ${targetIndex + 1}`,
+            url: resolvedFrameUrl,
+            name: resolvedFrameName,
             type: "result",
-            imgId: resolvedFrame.imgId || imgId
+            imgId: resolvedFrameImgId
           }
         ]
       };
+    } else {
+      // Keep replacement semantics deterministic: clear stale preview, then resolve by imgId.
+      textareaImages = {
+        ...textareaImages,
+        [targetIndex]: [
+          {
+            url: '',
+            name: resolvedFrameName,
+            type: 'result',
+            imgId: resolvedFrameImgId || imgId
+          }
+        ]
+      };
+
+      const pendingImgId = String(resolvedFrameImgId || imgId).trim();
+      if (pendingImgId) {
+        void resolveSimilarityPreviewForStep(targetIndex, pendingImgId, resolvedFrameName);
+      }
     }
 
     uiStore.actions.setLayoutTab("View1");
@@ -2901,7 +2976,11 @@ function handleViewSubmitted() {
     const t = Number(e?.detail?.currentTime || 0);
     logVideoPlayer('captureForSimilarity', `t:${t.toFixed(3)}`);
     isVideoPlayerOpen = false;
-    addSimilarityAsSearchStep(e.detail.imgId);
+    addSimilarityAsSearchStep(e.detail.imgId, {
+      imgId: e?.detail?.imgId,
+      url: e?.detail?.dataUrl || '',
+      title: e?.detail?.imgId || 'Similarity'
+    });
   }}
   on:close={() => {
     logVideoPlayer('close');
@@ -2945,7 +3024,16 @@ function handleViewSubmitted() {
     const t = Number(e?.detail?.currentTime || 0);
     logVideoPlayer('slideshow:captureForSimilarity', `t:${t.toFixed(3)}`);
     isSlideshowOpen = false;
-    addSimilarityAsSearchStep(e.detail.imgId);
+    const frameFromEvent = (e?.detail?.frame && typeof e.detail.frame === 'object') ? e.detail.frame : null;
+    const eventUrl = String(e?.detail?.dataUrl || '').trim();
+    addSimilarityAsSearchStep(e.detail.imgId, {
+      ...(frameFromEvent || {}),
+      imgId: String(e?.detail?.imgId || frameFromEvent?.imgId || '').trim(),
+      url: String(frameFromEvent?.url || frameFromEvent?.imageUrl || frameFromEvent?.thumbnailUrl || eventUrl).trim(),
+      imageUrl: String(frameFromEvent?.imageUrl || eventUrl).trim(),
+      thumbnailUrl: String(frameFromEvent?.thumbnailUrl || eventUrl).trim(),
+      title: String(frameFromEvent?.title || e?.detail?.imgId || 'Similarity').trim()
+    });
   }}
   on:videoSummary={(e) => {
     const imgId = String(e?.detail?.imgId || e?.detail?.img?.imgId || '');
