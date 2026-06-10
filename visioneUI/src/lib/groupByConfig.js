@@ -2,6 +2,8 @@ const ICONS = {
   rank: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
   video: `<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>`,
   date: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
+  timeAsc: `<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>`,
+  timeDesc: `<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>`,
   metadata: `<rect x="4" y="4" width="16" height="16" rx="3" ry="3"/><path d="M8 9h8M8 13h8M8 17h5"/>`
 };
 
@@ -37,10 +39,16 @@ export const SORT_MODE_OPTIONS = [
     icon: ICONS.rank
   },
   {
-    value: 'time',
+    value: 'time_asc',
     label: 'Sort by time',
-    description: 'Order results by capture time',
-    icon: ICONS.date
+    description: 'Order groups from oldest to newest',
+    icon: ICONS.timeAsc
+  },
+  {
+    value: 'time_desc',
+    label: 'Sort by time',
+    description: 'Order groups from newest to oldest',
+    icon: ICONS.timeDesc
   }
 ];
 
@@ -145,6 +153,7 @@ export function resolveViewMode(currentMode, runtimeProfile = {}) {
 
 export function resolveSortMode(currentMode) {
   const current = toSafeString(currentMode).toLowerCase();
+  if (current === 'time') return 'time_asc';
   return SORT_MODE_OPTIONS.some((option) => option.value === current) ? current : 'relevance';
 }
 
