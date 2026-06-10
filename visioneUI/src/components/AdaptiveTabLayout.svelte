@@ -443,8 +443,8 @@
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Group by"
-            aria-label="Group by"
+            title="Results layout and order"
+            aria-label="Results layout and order"
           >
             <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 5h10"/>
@@ -458,20 +458,21 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-48 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Grouping</div>
+            <div class="ui-sort-dropdown-menu absolute bottom-0 left-20 mb-0 w-64 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Results Layout</div>
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
-                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
                          {viewMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
-                  <svg class="w-4 h-4 flex-shrink-0 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
                   </svg>
-                  <span class="text-sm {viewMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">
-                    {option.label}
-                  </span>
+                  <div class="flex-1">
+                    <div class="text-sm {viewMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                  </div>
                   {#if viewMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
@@ -480,19 +481,20 @@
                 </button>
               {/each}
               <div class="my-1 h-px bg-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sorting</div>
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
               {#each SORT_MODE_OPTIONS as option}
                 <button
                   on:click={() => setSortMode(option.value)}
-                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
                          {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
-                  <svg class="w-4 h-4 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
                   </svg>
-                  <span class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">
-                    {option.label}
-                  </span>
+                  <div class="flex-1">
+                    <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                  </div>
                   {#if sortMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
@@ -819,8 +821,8 @@
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Group by"
-            aria-label="Group by"
+            title="Results layout and order"
+            aria-label="Results layout and order"
           >
             <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 5h10"/>
@@ -834,20 +836,21 @@
           </button>
           
           {#if isSortDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-48 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Grouping</div>
+            <div class="ui-sort-dropdown-menu absolute bottom-0 right-20 mb-0 w-64 rounded-lg shadow-xl border py-1 z-50 sort-dropdown-container">
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Results Layout</div>
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
-                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
                          {viewMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
-                  <svg class="w-4 h-4 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {viewMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
                   </svg>
-                  <span class="text-sm {viewMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">
-                    {option.label}
-                  </span>
+                  <div class="flex-1">
+                    <div class="text-sm {viewMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                  </div>
                   {#if viewMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>
@@ -856,19 +859,20 @@
                 </button>
               {/each}
               <div class="my-1 h-px bg-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sorting</div>
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
               {#each SORT_MODE_OPTIONS as option}
                 <button
                   on:click={() => setSortMode(option.value)}
-                  class="ui-sort-option w-full flex items-center space-x-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left
+                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
                          {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
                 >
-                  <svg class="w-4 h-4 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     {@html option.icon}
                   </svg>
-                  <span class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">
-                    {option.label}
-                  </span>
+                  <div class="flex-1">
+                    <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                  </div>
                   {#if sortMode === option.value}
                     <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <polyline points="20 6 9 17 4 12"/>

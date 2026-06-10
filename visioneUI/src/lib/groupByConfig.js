@@ -1,6 +1,7 @@
 const ICONS = {
-  rank: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
-  video: `<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>`,
+  rank: `<line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="17" x2="19" y2="17"/>`,
+  relevance: `<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.5z"/>`,
+  video: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
   date: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`,
   timeAsc: `<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>`,
   timeDesc: `<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>`,
@@ -10,21 +11,21 @@ const ICONS = {
 const DEFAULT_GROUP_BY_OPTIONS = [
   {
     value: 'byrank',
-    label: 'No group',
-    description: 'Show results without grouping',
+    label: 'Standard',
+    description: 'Show all results (without grouping)',
     icon: ICONS.rank,
     kind: 'rank'
   },
   {
     value: 'bydate',
-    label: 'Group by Date',
-    description: 'Group results by calendar date',
+    label: 'By Day',
+    description: 'Group results by day',
     icon: ICONS.date,
     kind: 'date'
   },
   {
     value: 'byvideo',
-    label: 'Group by Hour',
+    label: 'By Hour',
     description: 'Group results by hour',
     icon: ICONS.video,
     kind: 'video'
@@ -34,20 +35,20 @@ const DEFAULT_GROUP_BY_OPTIONS = [
 export const SORT_MODE_OPTIONS = [
   {
     value: 'relevance',
-    label: 'Sort by relevance',
-    description: 'Keep backend relevance ranking',
-    icon: ICONS.rank
+    label: 'Relevance',
+    description: 'Best matches first',
+    icon: ICONS.relevance
   },
   {
     value: 'time_asc',
-    label: 'Sort by time',
-    description: 'Order groups from oldest to newest',
+    label: 'Oldest First',
+    description: 'Order results from oldest to newest',
     icon: ICONS.timeAsc
   },
   {
     value: 'time_desc',
-    label: 'Sort by time',
-    description: 'Order groups from newest to oldest',
+    label: 'Newest First',
+    description: 'Order results from newest to oldest',
     icon: ICONS.timeDesc
   }
 ];
