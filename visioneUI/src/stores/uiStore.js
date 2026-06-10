@@ -235,11 +235,11 @@ function createUIStore() {
         if (String(u.runtimeSettingsDefaultsVersion || '').trim() === version) return u;
 
         const nextQueryResultK = Number.isFinite(Number(defaults?.queryResultK))
-          && (!Number.isFinite(Number(u.queryResultK)) || Number(u.queryResultK) === 1000)
+          && !Number.isFinite(Number(u.queryResultK))
             ? normalizeQueryResultK(defaults.queryResultK, u.queryResultK || DEFAULT.queryResultK)
             : u.queryResultK;
         const nextTemporalWindowSeconds = Number.isFinite(Number(defaults?.temporalWindowSeconds))
-          && (!Number.isFinite(Number(u.temporalWindowSeconds)) || Number(u.temporalWindowSeconds) === 50)
+          && !Number.isFinite(Number(u.temporalWindowSeconds))
             ? Math.min(99999, Math.max(1, Number(defaults.temporalWindowSeconds)))
             : u.temporalWindowSeconds;
 

@@ -841,6 +841,15 @@ body {
   color: var(--ui-toolbar-hover-icon);
   stroke: var(--ui-toolbar-hover-icon);
 }
+.ui-toolbar-sort-chip {
+  background: var(--ui-sort-option-active-bg);
+  border-color: var(--ui-sort-menu-border);
+  color: var(--ui-sort-option-active-text);
+}
+.ui-toolbar-sort-chip svg {
+  color: currentColor;
+  stroke: currentColor;
+}
 
 /* ---- Sort dropdown ---- */
 .ui-sort-dropdown-menu {

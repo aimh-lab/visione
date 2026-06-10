@@ -32,6 +32,7 @@
   export let onOpenFrame = (_frame: Frame) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
   export let onPinImage = (_img?: Frame | null) => {};
+  export let isImagePinned = (_imgId: string) => false;
   export let addRFPositiveByImg = (..._args: any[]) => {};
   export let addRFNegativeByImg = (..._args: any[]) => {};
   export let submitByImgId = (..._args: any[]) => {};
@@ -160,6 +161,7 @@
   {challengeType}
   {runtimeProfile}
   {showLocalTimeInTitles}
+  isPinned={isImagePinned(String(selectedFrame?.imgId || ''))}
   on:close={onCloseFrameModal}
   on:prev={onPrevFrame}
   on:next={onNextFrame}

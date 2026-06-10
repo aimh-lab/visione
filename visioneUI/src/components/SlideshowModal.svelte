@@ -17,6 +17,7 @@
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let highlightedKeyframes = [];
+  export let isImagePinned = (_imgId) => false;
 
   const dispatch = createEventDispatcher();
 
@@ -987,6 +988,7 @@
       {challengeType}
       {runtimeProfile}
       {showLocalTimeInTitles}
+      isPinned={isImagePinned(String(getImageModalFrame()?.imgId || ""))}
       on:close={closeImageModal}
       on:prev={() => navigateImageModal(-1)}
       on:next={() => navigateImageModal(1)}

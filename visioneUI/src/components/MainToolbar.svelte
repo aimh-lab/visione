@@ -104,6 +104,7 @@
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
   $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
+  $: currentSortModeShortLabel = sortMode === 'time' ? 'Time' : 'Rel';
   
   function handleClickOutside(event) {
     if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
@@ -314,6 +315,16 @@
               {@html currentSort.icon}
             </svg>
             <span class="text-xs font-medium text-gray-700">{currentSort.label}</span>
+            <span
+              class="ui-toolbar-sort-chip inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+              title={`Sorting: ${currentSortMode.label}`}
+              aria-label={`Sorting: ${currentSortMode.label}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true">
+                {@html currentSortMode.icon}
+              </svg>
+              {currentSortModeShortLabel}
+            </span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isGroupDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"/>
             </svg>

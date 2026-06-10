@@ -111,6 +111,7 @@
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
   export let onPinImage = (_img?: Img | null) => {};
+  export let isImagePinned = (_imgId: string) => false;
   export let openByImgId = (_imgId: string) => {};  
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: Img | null) => {};
 
@@ -427,6 +428,7 @@
   {challengeType}
   {runtimeProfile}
   {showLocalTimeInTitles}
+  isPinned={isImagePinned(String(selectedImage?.imgId || ''))}
   on:close={onCloseModal}
   on:prev={onPrev}
   on:next={onNext}

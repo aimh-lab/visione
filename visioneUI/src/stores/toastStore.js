@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
 
+const MAX_TOASTS = 3;
+
 function createToastStore() {
   const { subscribe, update } = writable([]);
   let idCounter = 0;
@@ -8,7 +10,7 @@ function createToastStore() {
     const id = idCounter++;
     const toast = { id, message, type, duration };
     
-    update(toasts => [...toasts, toast]);
+    update(toasts => [...toasts, toast].slice(-MAX_TOASTS));
     
     if (duration > 0) {
       setTimeout(() => remove(id), duration);
