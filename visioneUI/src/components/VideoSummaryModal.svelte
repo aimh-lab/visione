@@ -48,6 +48,7 @@
   export let onVideoSummary = (_videoId: string, _imgId?: string | null) => {};
   export let onSimilarity = (_imgId: string, _img?: Frame | null) => {};
   export let onPinImage = (_img?: Frame | null) => {};
+  export let isImagePinned = (_imgId: string) => false;
   export let addRFPositiveByImg = (_imgId: string, _img?: Frame | null) => {};
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
@@ -57,6 +58,12 @@
   const summaryKey = (item: PinnedSummary) =>
     `${String(item?.scope || "hour").trim()}::${String(item?.videoId || "").trim()}::${String(item?.highlightImgId || "").trim()}`;
 
+  $: currentContextKey = summaryKey({
+    videoId: videoId || "",
+    highlightImgId: selectedFrameId || null,
+    scope: safeContextScope
+  });
+  $: isCurrentContextPinned = (pinnedSummaries || []).some((item) => summaryKey(item) === currentContextKey);
   $: framesAsRows = frames ? [frames] : [];
   $: hasFrames = (frames?.length ?? 0) > 0;
   $: summaryImageModalTotal = Array.isArray(frames) ? frames.length : 0;
@@ -350,10 +357,11 @@
           </div>
           <button
             type="button"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-amber-600/50 bg-amber-900/35 text-amber-200 hover:bg-amber-800/45 transition-colors"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-md border transition-colors {isCurrentContextPinned ? 'border-amber-400/80 bg-amber-500/25 text-amber-100 ring-1 ring-amber-400/45 hover:bg-amber-500/35' : 'border-amber-600/50 bg-amber-900/35 text-amber-200 hover:bg-amber-800/45'}"
             on:click={onPinCurrent}
-            title="Pin this context"
-            aria-label="Pin this context"
+            title={isCurrentContextPinned ? "Unpin this context" : "Pin this context"}
+            aria-label={isCurrentContextPinned ? "Unpin this context" : "Pin this context"}
+            aria-pressed={isCurrentContextPinned}
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 5a3 3 0 0 1 6 0c0 1.37-.72 2.58-1.8 3.26l1.55 3.24h-5.5l1.55-3.24A3.93 3.93 0 0 1 9 5Z"/>
@@ -475,6 +483,7 @@
         {challengeType}
         {runtimeProfile}
         {showLocalTimeInTitles}
+        isPinned={isImagePinned(String(summarySelectedFrame?.imgId || ""))}
         on:close={closeSummaryImageModal}
         on:prev={() => navigateSummaryImageModal(-1)}
         on:next={() => navigateSummaryImageModal(1)}

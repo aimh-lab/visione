@@ -169,11 +169,23 @@
     if (!videoId) return;
 
     const highlightImgId = String(activeVideoSummaryContext.highlightImgId || '').trim() || null;
+    const scope = view2ContextScope || activeVideoSummaryContext.scope || 'hour';
+    const currentKey = toPinnedSummaryKey(videoId, highlightImgId, scope);
+    const existing = (pinnedVideoSummaries || []).find((item) =>
+      toPinnedSummaryKey(item.videoId, item.highlightImgId || null, item.scope || 'hour') === currentKey
+    );
+
+    if (existing) {
+      unpinVideoSummary(existing);
+      toasts.info('Context unpinned');
+      return;
+    }
+
     const result = sessionStore.actions.pinVideoSummary({
       videoId,
       highlightImgId,
       label: activeVideoSummaryContext.label || videoId,
-      scope: view2ContextScope || activeVideoSummaryContext.scope || 'hour'
+      scope
     });
 
     if (!result?.added) {
@@ -204,6 +216,12 @@
 
   function pinImage(img) {
     if (!img?.imgId) return;
+    if (isImagePinned(img.imgId)) {
+      sessionStore.actions.unpinImage({ imgId: img.imgId });
+      toasts.info('Image unpinned');
+      return;
+    }
+
     const result = sessionStore.actions.pinImage({
       img,
       label: img?.title || img?.imgId
@@ -215,6 +233,12 @@
     }
 
     toasts.success('Image pinned');
+  }
+
+  function isImagePinned(imgId) {
+    const safeImgId = String(imgId || '').trim();
+    if (!safeImgId) return false;
+    return (pinnedImages || []).some((item) => String(item?.imgId || '').trim() === safeImgId);
   }
 
   function openPinnedImage(item) {
@@ -279,6 +303,7 @@
   let runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   let lastDiscoveryPayload = null;
   let discoveryMetadataFields = [];
+  let settingsHydrated = false;
 
   // Back/forward
   let isRestoringFromHistory = false;
@@ -320,7 +345,7 @@
       uiStore.actions.setSortMode(safeSortMode);
     }
   }
-  $: if (runtimeProfile?.settingsDefaults) {
+  $: if (settingsHydrated && runtimeProfile?.settingsDefaults) {
     uiStore.actions.applyRuntimeSettingsDefaults(runtimeProfile.settingsDefaults);
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
@@ -1476,6 +1501,7 @@
 
     const init = async () => {
       uiStore.actions.hydrateFromSettings();
+      settingsHydrated = true;
       syncVisioneApiHosts(
         get(uiStore),
         resolveRuntimeProfile(activeCollectionName, get(uiStore).dresChallengeType || 'default')
@@ -3001,6 +3027,7 @@ function handleViewSubmitted() {
   challengeType={$uiStore.dresChallengeType}
   {runtimeProfile}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+  {isImagePinned}
   on:playerAction={(e) => {
     const d = e?.detail || {};
     const action = String(d.action || 'unknown');
@@ -3064,6 +3091,7 @@ function handleViewSubmitted() {
   challengeType={$uiStore.dresChallengeType}
   {runtimeProfile}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
+  isPinned={isImagePinned(String(pinnedImageModalFrame?.imgId || ''))}
   on:close={closePinnedImageModal}
   on:prev={() => {}}
   on:next={() => {}}
@@ -3117,6 +3145,7 @@ function handleViewSubmitted() {
   onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
   onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
   onPinImage={pinImage}
+  {isImagePinned}
   onAdjustImageModalScale={adjustImageModalScale}
   addRFPositiveByImg={addRFPositiveByImg}
   addRFNegativeByImg={addRFNegativeByImg}
@@ -3350,6 +3379,7 @@ function handleViewSubmitted() {
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         onPinImage={pinImage}
+        {isImagePinned}
         onCloseModal={closeModal}
         onPrev={() => navigateImage(-1)}
         onNext={() => navigateImage(1)}
@@ -3392,6 +3422,7 @@ function handleViewSubmitted() {
         onOpenFrame={(frame) => openFrameModal(frame)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         onPinImage={pinImage}
+        {isImagePinned}
         addRFPositiveByImg={addRFPositiveByImg}
         addRFNegativeByImg={addRFNegativeByImg}
         submitByImgId={submitByImgId}
@@ -3438,6 +3469,7 @@ function handleViewSubmitted() {
         onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
         onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
         onPinImage={pinImage}
+        {isImagePinned}
         onAddSubmittedToRFPositive={addSubmittedToRFPositive}
         onCloseSimModal={closeSimilarityModal}
         onPrevSim={() => moveSimilarityBy(-1)}

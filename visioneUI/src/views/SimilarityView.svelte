@@ -56,6 +56,7 @@
   export let onVideoSummary = (_videoId: string, _imgId: string) => {};
   export let onSimilarity = (_imgId: string, _img?: Img | null) => {};
   export let onPinImage = (_img?: Img | null) => {};
+  export let isImagePinned = (_imgId: string) => false;
 
   export let addRFPositiveByImg = (_imgId: string) => {};
   export let addRFNegativeByImg = (_imgId: string) => {};
@@ -192,6 +193,7 @@
   {challengeType}
   {runtimeProfile}
   {showLocalTimeInTitles}
+  isPinned={isImagePinned(String(simSelected?.imgId || ''))}
   on:close={onCloseSimModal}
   on:prev={onPrevSim}
   on:next={onNextSim}
