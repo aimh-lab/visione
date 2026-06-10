@@ -23,7 +23,7 @@
   $: challengeLabel = String(challengeType || 'KIS').trim() || 'KIS';
   $: groupLabel = resolveGroupByConfig(viewMode, runtimeProfile)?.label || viewMode;
   $: sortOption = SORT_MODE_OPTIONS.find((option) => option.value === sortMode) || SORT_MODE_OPTIONS[0];
-  $: sortLabel = sortOption?.label || 'Sort by relevance';
+  $: sortLabel = sortOption?.label || 'Relevance';
 </script>
 
 <div class="ui-statusbar fixed bottom-0 left-0 right-0 backdrop-blur-md border-t z-[100]">

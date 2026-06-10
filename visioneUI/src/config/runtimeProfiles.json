@@ -13,17 +13,17 @@
     },
     "groupBy": {
       "modes": [
-          {
-            "value": "byrank",
-          "label": "No group"
-          },
-          {
-            "value": "bydate",
-          "label": "Group by Date"
-          },
-          {
-            "value": "byvideo",
-          "label": "Group by Hour"
+        {
+          "value": "byrank",
+          "label": "Standard"
+        },
+        {
+          "value": "bydate",
+          "label": "By Day"
+        },
+        {
+          "value": "byvideo",
+          "label": "By Hour"
         }
       ]
     },
@@ -54,15 +54,15 @@
         "modes": [
           {
             "value": "byrank",
-            "label": "No group"
+            "label": "Standard"
           },
           {
             "value": "bydate",
-            "label": "Group by Date"
+            "label": "By Day"
           },
           {
             "value": "byvideo",
-            "label": "Group by Hour",
+            "label": "By Hour",
             "metadata": "hour_id"
           }
         ]

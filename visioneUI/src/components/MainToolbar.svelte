@@ -104,7 +104,6 @@
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
   $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
-  $: currentSortModeShortLabel = sortMode === 'time_desc' || sortMode === 'time_asc' || sortMode === 'time' ? 'Time' : 'Rel';
   
   function handleClickOutside(event) {
     if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
@@ -274,7 +273,7 @@
         {/if}
       </div>
 
-      <!-- Grouping dropdown with sorting options -->
+      <!-- Results layout dropdown with order options -->
       {#if showViewModeRadios}
         <div class="flex items-center space-x-2">
           <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
@@ -308,22 +307,28 @@
           <button
             on:click|stopPropagation={() => isGroupDropdownOpen = !isGroupDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
-            title="Group results"
-            aria-label="Group results"
+            title="Results layout and order"
+            aria-label="Results layout and order"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              {@html currentSort.icon}
-            </svg>
-            <span class="text-xs font-medium text-gray-700">{currentSort.label}</span>
             <span
               class="ui-toolbar-sort-chip inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-              title={`Sorting: ${currentSortMode.label}`}
-              aria-label={`Sorting: ${currentSortMode.label}`}
+              title={`Layout: ${currentSort.label}`}
+              aria-label={`Layout: ${currentSort.label}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {@html currentSort.icon}
+              </svg>
+              {currentSort.label}
+            </span>
+            <span
+              class="ui-toolbar-sort-chip inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+              title={`Order: ${currentSortMode.label}`}
+              aria-label={`Order: ${currentSortMode.label}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 {@html currentSortMode.icon}
               </svg>
-              {currentSortModeShortLabel}
+              {currentSortMode.label}
             </span>
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isGroupDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"/>
@@ -332,7 +337,7 @@
 
           {#if isGroupDropdownOpen}
             <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Grouping</div>
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Results Layout</div>
               {#each sortOptions as option}
                 <button
                   on:click={() => setMode(option.value)}
@@ -359,7 +364,7 @@
               {/each}
 
               <div class="my-1 border-t border-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Sorting</div>
+              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
               {#each SORT_MODE_OPTIONS as option}
                 <button
                   on:click={() => setSortMode(option.value)}
