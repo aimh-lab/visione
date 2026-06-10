@@ -325,7 +325,8 @@ function createUIStore() {
     },
 
     setSortMode(sortMode) {
-      const safe = String(sortMode || '').trim().toLowerCase() === 'time' ? 'time' : 'relevance';
+      const raw = String(sortMode || '').trim().toLowerCase();
+      const safe = raw === 'time' ? 'time_asc' : (['time_asc', 'time_desc'].includes(raw) ? raw : 'relevance');
       update(u => ({ ...u, sortMode: safe }));
       persist({ sortMode: safe });
     },

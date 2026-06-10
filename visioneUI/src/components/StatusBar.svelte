@@ -22,7 +22,8 @@
 
   $: challengeLabel = String(challengeType || 'KIS').trim() || 'KIS';
   $: groupLabel = resolveGroupByConfig(viewMode, runtimeProfile)?.label || viewMode;
-  $: sortLabel = SORT_MODE_OPTIONS.find((option) => option.value === sortMode)?.label || 'Sort by relevance';
+  $: sortOption = SORT_MODE_OPTIONS.find((option) => option.value === sortMode) || SORT_MODE_OPTIONS[0];
+  $: sortLabel = sortOption?.label || 'Sort by relevance';
 </script>
 
 <div class="ui-statusbar fixed bottom-0 left-0 right-0 backdrop-blur-md border-t z-[100]">
@@ -159,14 +160,8 @@
         <span class="text-gray-700">•</span>
 
         <div class="flex items-center space-x-1.5">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 5h10"/>
-            <path d="M11 12h7"/>
-            <path d="M11 19h4"/>
-            <path d="M4 17l-2 2 2 2"/>
-            <path d="M2 19h5"/>
-            <path d="M6 7l2-2 2 2"/>
-            <path d="M8 5v14"/>
+          <svg class="w-4 h-4 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            {@html sortOption.icon}
           </svg>
           <span>Sort:</span>
           <span class="text-white font-semibold">{sortLabel}</span>

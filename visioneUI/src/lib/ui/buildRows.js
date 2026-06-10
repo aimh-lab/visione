@@ -67,15 +67,17 @@ export function buildRows(items, {
     return parsed > 1e11 ? parsed : parsed * 1000;
   };
 
-  const sortByDateAsc = (arr) =>
+  const sortByDate = (arr, direction = 'asc') =>
     [...arr].sort((a, b) => {
       const dateA = getEpochSortMs(a);
       const dateB = getEpochSortMs(b);
-      return dateA - dateB;
+      return direction === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
-  const isTimeSortMode = String(sortMode || '').trim().toLowerCase() === 'time';
-  const sortedItems = isTimeSortMode ? sortByDateAsc(items) : items;
+  const normalizedSortMode = String(sortMode || '').trim().toLowerCase();
+  const isTimeSortMode = normalizedSortMode === 'time' || normalizedSortMode === 'time_asc' || normalizedSortMode === 'time_desc';
+  const timeSortDirection = normalizedSortMode === 'time_desc' ? 'desc' : 'asc';
+  const sortedItems = isTimeSortMode ? sortByDate(items, timeSortDirection) : items;
 
   if (mode === "byrank" || kind === "rank") {
     return chunk(sortedItems, NO_GROUP_VIRTUAL_ROW_SIZE).map((row) => {
@@ -237,7 +239,10 @@ export function buildRows(items, {
     if (!isTimeSortMode || !Array.isArray(rows)) return rows;
     return rows
       .map((row, index) => ({ row, index, time: getGroupSortMs(row) }))
-      .sort((a, b) => (a.time - b.time) || (a.index - b.index))
+      .sort((a, b) => {
+        const delta = timeSortDirection === 'desc' ? b.time - a.time : a.time - b.time;
+        return delta || (a.index - b.index);
+      })
       .map(({ row }) => row);
   };
 

@@ -104,7 +104,7 @@
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
   $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
-  $: currentSortModeShortLabel = sortMode === 'time' ? 'Time' : 'Rel';
+  $: currentSortModeShortLabel = sortMode === 'time_desc' || sortMode === 'time_asc' || sortMode === 'time' ? 'Time' : 'Rel';
   
   function handleClickOutside(event) {
     if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
@@ -316,11 +316,11 @@
             </svg>
             <span class="text-xs font-medium text-gray-700">{currentSort.label}</span>
             <span
-              class="ui-toolbar-sort-chip inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+              class="ui-toolbar-sort-chip inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
               title={`Sorting: ${currentSortMode.label}`}
               aria-label={`Sorting: ${currentSortMode.label}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 {@html currentSortMode.icon}
               </svg>
               {currentSortModeShortLabel}
