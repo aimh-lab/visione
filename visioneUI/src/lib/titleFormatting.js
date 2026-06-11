@@ -67,12 +67,29 @@ function getCountryLabel(item) {
   );
 }
 
-function appendCountryLabel(label, item) {
+function getCountryLabels(items) {
+  const source = Array.isArray(items) ? items : [items];
+  const labels = [];
+  const seen = new Set();
+
+  for (const item of source) {
+    const country = getCountryLabel(item);
+    const normalized = country.toLowerCase();
+    if (!country || seen.has(normalized)) continue;
+    seen.add(normalized);
+    labels.push(country);
+  }
+
+  return labels;
+}
+
+function appendCountryLabel(label, itemOrItems) {
   const base = String(label || "").trim();
-  const country = getCountryLabel(item);
-  if (!base || !country) return base;
-  if (base.toLowerCase().includes(country.toLowerCase())) return base;
-  return `${base} · ${country}`;
+  const countries = getCountryLabels(itemOrItems);
+  if (!base || countries.length === 0) return base;
+  const missingCountries = countries.filter((country) => !base.toLowerCase().includes(country.toLowerCase()));
+  if (missingCountries.length === 0) return base;
+  return `${base} · ${missingCountries.join(" / ")}`;
 }
 
 function formatUtcDateTime(ms, includeWeekday = false, hourPrefix = "") {
@@ -173,27 +190,29 @@ export function formatVideoGroupLabel(rawLabel, item, runtimeProfile = {}, showL
   return label;
 }
 
-export function formatGroupDateLabel(rawLabel, item, runtimeProfile = {}, showLocalTime = true) {
+export function formatGroupDateLabel(rawLabel, item, runtimeProfile = {}, showLocalTime = true, groupItems = null) {
   const parsed = parseDayKey(rawLabel);
   const cfg = runtimeProfile?.titleFormatting?.imageTitle || {};
   const useLocalTime = !!showLocalTime && cfg.applyUtcOffsetHours !== false;
   const offsetHours = useLocalTime ? getUtcOffsetHours(item, cfg.utcOffsetField || "utc_offset_hours") : 0;
+  const countrySource = Array.isArray(groupItems) && groupItems.length > 0 ? groupItems : item;
 
   if (parsed) {
     const baseMs = Date.UTC(parsed.year, parsed.month - 1, parsed.day, 0, 0, 0);
-    return appendCountryLabel(formatUtcDayLabel(baseMs), item);
+    return appendCountryLabel(formatUtcDayLabel(baseMs), countrySource);
   }
 
   const epochSeconds = getEpochSecondsFromItem(item, runtimeProfile, cfg);
-  if (epochSeconds == null) return appendCountryLabel(String(rawLabel || "").trim(), item);
-  return appendCountryLabel(formatUtcDayLabel((epochSeconds + offsetHours * 3600) * 1000), item);
+  if (epochSeconds == null) return appendCountryLabel(String(rawLabel || "").trim(), countrySource);
+  return appendCountryLabel(formatUtcDayLabel((epochSeconds + offsetHours * 3600) * 1000), countrySource);
 }
 
-export function formatGroupHourLabel(rawLabel, item, runtimeProfile = {}, showLocalTime = true) {
+export function formatGroupHourLabel(rawLabel, item, runtimeProfile = {}, showLocalTime = true, groupItems = null) {
   const parsed = parseHourId(rawLabel);
   const cfg = runtimeProfile?.titleFormatting?.videoGroup || runtimeProfile?.titleFormatting?.imageTitle || {};
   const useLocalTime = !!showLocalTime && cfg.applyUtcOffsetHours !== false;
   const offsetHours = useLocalTime ? getUtcOffsetHours(item, cfg.utcOffsetField || "utc_offset_hours") : 0;
+  const countrySource = Array.isArray(groupItems) && groupItems.length > 0 ? groupItems : item;
 
   let adjustedMs = null;
   if (parsed) {
@@ -207,7 +226,7 @@ export function formatGroupHourLabel(rawLabel, item, runtimeProfile = {}, showLo
   if (adjustedMs == null) return String(rawLabel || "").trim();
   const dateLabel = formatUtcDayLabel(adjustedMs);
   const hour = String(new Date(adjustedMs).getUTCHours()).padStart(2, "0");
-  return appendCountryLabel(`${dateLabel} ${hour}h`, item);
+  return appendCountryLabel(`${dateLabel} ${hour}h`, countrySource);
 }
 
 export function formatImageDisplayTitle(item, runtimeProfile = {}, showLocalTime = true) {

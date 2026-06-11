@@ -7,7 +7,7 @@
   import EmptyState from '../components/EmptyState.svelte';
   import WelcomeHero from '../components/WelcomeHero.svelte';
 
-  type QueryTextarea = { value: string; enabled: boolean };
+  type QueryTextarea = { value: string; enabled: boolean; similarityImgId?: string };
   type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
   type AvailableModel = string | { name?: string; modalities?: string[] };
 
@@ -34,6 +34,7 @@
   export let onResizeLeftSidebar = (_width: number) => {};
   export let onResizeRightSidebar = (_width: number) => {};
   export let textareas: QueryTextarea[] = [];
+  export let searchTextareasSnapshot: QueryTextarea[] | null = null;
   export let translatedQueryHints: Record<number, { from: string; to: string }> = {};
   export let availableModels: AvailableModel[] = [];
   export let modelSelectionPerStepEnabled = true;
@@ -158,7 +159,7 @@
   $: isFirstVisit = !searchResultSet && !searchLoading && !hasActiveQueries;
   $: hasSearched = searchResultSet !== null;
   $: noResults = hasSearched && rows.length === 0;
-  $: enabledSteps = enabledTextareasCount();
+  $: enabledSteps = enabledTextareasCount(searchLoading && searchTextareasSnapshot?.length ? searchTextareasSnapshot : textareas);
   
   function handleStartImageSelection(_e: CustomEvent<{ textareaIndex: number }>) {
     isSelectingImage = true;
@@ -183,8 +184,12 @@
     }
   }
 
-  function enabledTextareasCount() {
-    return textareas.filter(t => t.enabled).length;
+  function enabledTextareasCount(items: QueryTextarea[] = []) {
+    return items.filter(t => {
+      const text = String(t.value || '').trim();
+      const simId = String(t.similarityImgId || '').trim();
+      return t.enabled && (text.length > 0 || simId.length > 0);
+    }).length;
   }
 </script>
 

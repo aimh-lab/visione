@@ -319,6 +319,29 @@
     return String(getVideoId(item));
   }
 
+  function getItemsForRowGroup(row, rowIndex, groupValue) {
+    const groupedItems = [];
+
+    for (let index = rowIndex; index >= 0; index -= 1) {
+      const candidateRow = Array.isArray(items[index]) ? items[index] : null;
+      const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+      if (!candidateRow) break;
+      if (index !== rowIndex && candidateRow?.__visioneChunkBoundary) break;
+      if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
+      groupedItems.unshift(...candidateRow);
+    }
+
+    for (let index = rowIndex + 1; index < items.length; index += 1) {
+      const candidateRow = Array.isArray(items[index]) ? items[index] : null;
+      const candidateFirstItem = candidateRow && candidateRow.length > 0 ? candidateRow[0] : null;
+      if (!candidateRow || candidateRow?.__visioneChunkBoundary) break;
+      if (!candidateFirstItem || getGroupValueForItem(candidateFirstItem) !== groupValue) break;
+      groupedItems.push(...candidateRow);
+    }
+
+    return groupedItems.length > 0 ? groupedItems : row;
+  }
+
   function getGroupDisplayLabel(rowInfo) {
     const prefix = String(rowInfo?.groupLabel || 'Group').trim();
     const value = String(rowInfo?.label || '').trim();
@@ -832,6 +855,7 @@
 
       const groupRowCount = precedingRows + 1 + continuationRows;
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
+      const groupItems = getItemsForRowGroup(row, rowIndex, groupValue);
 
       const displayGroupValue = (
         String(activeGroupBy?.kind || '').trim().toLowerCase() === 'video'
@@ -840,7 +864,7 @@
           && String(activeGroupBy?.metadata || '').trim().toLowerCase() === 'hour_id'
         )
       )
-          ? formatGroupHourLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles)
+          ? formatGroupHourLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, groupItems)
           : (shouldFormatTemporalGroupBadge()
             ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())
             : `${groupValue}`);
@@ -868,7 +892,7 @@
     if (activeGroupBy?.kind === 'date') {
       const explicitDayKey = String(row?.__visioneGroupKey || '').trim();
       const explicitDateLabel = explicitDayKey
-        ? formatGroupDateLabel(explicitDayKey, firstItem, runtimeProfile, showLocalTimeInTitles)
+        ? formatGroupDateLabel(explicitDayKey, firstItem, runtimeProfile, showLocalTimeInTitles, row)
         : '';
 
       if (explicitDateLabel) {
