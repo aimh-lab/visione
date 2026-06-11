@@ -448,11 +448,20 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       );
 
       try { await client.logout(); } catch { /* ignore logout errors after test */ }
+      return {
+        ok: true,
+        evaluations: Array.isArray(evaluations) ? evaluations : []
+      };
     } catch (error) {
       const message = error instanceof DresClientError || error instanceof Error
         ? error.message
         : 'Unknown error during DRES test';
       toasts.error(`DRES test failed: ${message}`);
+      return {
+        ok: false,
+        evaluations: [],
+        error: message
+      };
     }
   }
 

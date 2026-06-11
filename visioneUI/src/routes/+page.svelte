@@ -1247,7 +1247,23 @@
 
   const submitByImgIdRaw = (imgId, fallback) => dresCtrl.submitByImgId(imgId, fallback);
   const submitTextAnswer = (text) => dresCtrl.submitTextAnswer(text);
-  const handleTestDresConnection = (e) => dresCtrl.testConnection(e);
+
+  async function handleTestDresConnection(e) {
+    const result = await dresCtrl.testConnection(e);
+    if (!result?.ok) return;
+
+    const testedSettings = e?.detail || {};
+    dresEvaluationLoadKey = computeDresEvaluationLoadKey(testedSettings);
+    dresEvaluationOptions = normalizeEvaluationOptions(result.evaluations);
+
+    const challengeType = String(testedSettings.dresChallengeType || get(uiStore).dresChallengeType || 'KIS');
+    const selectedEvaluationId = String(get(uiStore).dresEvaluationIdByChallenge?.[challengeType] || '').trim();
+    const firstAvailable = String(dresEvaluationOptions[0]?.id || '').trim();
+    const selectedStillAvailable = dresEvaluationOptions.some((item) => item.id === selectedEvaluationId);
+    if (firstAvailable && (!selectedEvaluationId || !selectedStillAvailable)) {
+      uiStore.actions.setDresEvaluationId(challengeType, firstAvailable);
+    }
+  }
 
   function normalizeEvaluationOptions(entries) {
     if (!Array.isArray(entries)) return [];
@@ -1300,45 +1316,10 @@
       return;
     }
 
-    isLoadingDresEvaluationOptions = true;
-    try {
-      const entries = await dresCtrl.listEvaluations();
-      dresEvaluationOptions = normalizeEvaluationOptions(entries);
-
-      const challengeType = String(get(uiStore).dresChallengeType || 'KIS');
-      const selectedEvaluationId = String(get(uiStore).dresEvaluationIdByChallenge?.[challengeType] || '').trim();
-      const firstAvailable = String(dresEvaluationOptions[0]?.id || '').trim();
-
-      if (!firstAvailable) {
-        return;
-      }
-
-      const selectedStillAvailable = dresEvaluationOptions.some((item) => item.id === selectedEvaluationId);
-      if (!selectedEvaluationId || !selectedStillAvailable) {
-        uiStore.actions.setDresEvaluationId(challengeType, firstAvailable);
-      }
-    } catch (error) {
-      const message = error?.message || String(error || 'Unknown error while loading evaluations');
-      toasts.error(`Unable to load DRES evaluations: ${message}`);
-    } finally {
-      isLoadingDresEvaluationOptions = false;
-    }
-  }
-
-  $: {
-    if (browser) {
-      const settings = $uiStore;
-      const nextKey = computeDresEvaluationLoadKey(settings);
-
-      if (nextKey !== dresEvaluationLoadKey) {
-        dresEvaluationLoadKey = nextKey;
-
-        if (!canLoadDresEvaluations(settings)) {
-          dresEvaluationOptions = [];
-        } else {
-          refreshDresEvaluationOptions().catch(() => {});
-        }
-      }
+    const currentKey = computeDresEvaluationLoadKey(currentSettings);
+    if (currentKey !== dresEvaluationLoadKey) {
+      dresEvaluationOptions = [];
+      return;
     }
   }
 
@@ -1884,8 +1865,14 @@
   }
 
   function applySettings(e) {
+    const previousDresKey = computeDresEvaluationLoadKey(get(uiStore));
     uiStore.actions.applySettings(e.detail);
     const detail = e?.detail || {};
+    const nextDresKey = computeDresEvaluationLoadKey({ ...get(uiStore), ...detail });
+    if (nextDresKey !== previousDresKey && nextDresKey !== dresEvaluationLoadKey) {
+      dresEvaluationOptions = [];
+    }
+
     vbsLogger.logInteractionEvent({
       category: 'OTHER',
       type: 'settingsUpdate',
