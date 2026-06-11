@@ -376,6 +376,7 @@
   let searchResultSet = null;
   let searchLoading = false;
   let searchError = null;
+  let searchTextareasSnapshot = null;
 
   // submittedImages: currently in-session (Commit 2: sessionStore)
   $: submittedImages = $sessionStore.submittedImages;
@@ -1017,6 +1018,7 @@
 
     setSearchState: ({ loading, error, resultSet, searchTime: st }) => {
       if (loading !== undefined) searchLoading = loading;
+      if (loading === false) searchTextareasSnapshot = null;
       if (error !== undefined) searchError = error;
       if (resultSet !== undefined) {
         searchResultSet = resultSet;
@@ -2470,6 +2472,7 @@ function handleViewSubmitted() {
       ? payloadOrEvent.detail
       : payloadOrEvent;
     const textareasOverride = Array.isArray(payload?.textareas) ? payload.textareas : null;
+    searchTextareasSnapshot = getTextareasForSearch(textareasOverride || textareas);
     return searchController.runSearch({ textareasOverride });
   }
 
@@ -2478,6 +2481,7 @@ function handleViewSubmitted() {
       ? payloadOrEvent.detail
       : payloadOrEvent;
     const textareasOverride = Array.isArray(payload?.textareas) ? payload.textareas : null;
+    searchTextareasSnapshot = getTextareasForSearch(textareasOverride || textareas);
     return searchController.runSearchImmediate({ textareasOverride });
   }
 
@@ -3254,6 +3258,7 @@ function handleViewSubmitted() {
         isSidebarRightOpen={$uiStore.isSidebarRightOpen}
         sidebarRightTab={$uiStore.sidebarRightTab}
         {textareas}
+        {searchTextareasSnapshot}
         {translatedQueryHints}
         {availableModels}
         modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
