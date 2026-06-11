@@ -796,7 +796,7 @@
     if (sourceIndex !== targetIndex) {
       reindexMetadataTokensAfterReorder(sourceIndex, targetIndex, "move");
       dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
-      setTimeout(() => dispatchSearchWithMetadata(), 100);
+      setTimeout(() => triggerSearchLikeButton(), 100);
     }
   }
 
@@ -882,16 +882,8 @@
   }
 
   const toggle = (index: number) => {
-    const nextTextareas = textareas.map((t, i) =>
-      i === index ? { ...t, enabled: !t.enabled } : t
-    );
-    const hasActiveQuery = nextTextareas.some(t => t.enabled && t.value?.trim());
-
     dispatch("toggle", { index });
-
-    if (hasActiveQuery) {
-      setTimeout(() => dispatchSearchWithMetadata(), 0);
-    }
+    setTimeout(() => triggerSearchLikeButton(), 0);
   };
   const update = (i: number, value: string) => dispatch("update", { index: i, value });
 
@@ -944,13 +936,13 @@
       .filter(Boolean);
   }
 
-  function dispatchSearchWithMetadata() {
+  function triggerSearchLikeButton() {
     finalizeMetadataTokensForAll();
     dispatch("search", { textareas: buildEffectiveTextareasForSearch() });
   }
 
   export function triggerSearchWithMetadata() {
-    dispatchSearchWithMetadata();
+    triggerSearchLikeButton();
   }
 
   export function clearMetadataFilters() {
@@ -965,14 +957,14 @@
 
     reindexMetadataTokensAfterReorder(indexA, indexB, "swap");
     dispatch("swap", { indexA, indexB, mode: "swap" });
-    setTimeout(() => dispatchSearchWithMetadata(), 100);
+    setTimeout(() => triggerSearchLikeButton(), 100);
   }
 
 
   const handleKeyDown = (e: KeyboardEvent, textareaIndex: number) => {
     if (e.key === "Enter" && !e.shiftKey && textareas[textareaIndex]?.enabled) {
       e.preventDefault();
-      dispatchSearchWithMetadata();
+      triggerSearchLikeButton();
     }
   };
 
@@ -990,13 +982,13 @@
 
   function clearTextareaValue(index: number) {
     update(index, "");
-    setTimeout(() => dispatchSearchWithMetadata(), 0);
+    setTimeout(() => triggerSearchLikeButton(), 0);
   }
 
   function handleModelSelectionChange(index: number, model: string, kind: 'text' | 'image') {
     dispatch('updateModel', { index, model, kind });
     // Keep metadata filters in the effective query when re-running after model changes.
-    setTimeout(() => dispatchSearchWithMetadata(), 0);
+    setTimeout(() => triggerSearchLikeButton(), 0);
   }
 
   // Gestione menu dropdown
@@ -1852,7 +1844,7 @@
     if (nextTokens.length === currentTokens.length) return;
 
     setMetadataTokens(index, nextTokens);
-    setTimeout(() => dispatchSearchWithMetadata(), 0);
+    setTimeout(() => triggerSearchLikeButton(), 0);
   }
 
   function clearMetadataTokensForIndex(index: number) {
@@ -2676,7 +2668,7 @@
     modalAnchorRect = null;
 
     if (shouldTriggerSearch) {
-      setTimeout(() => dispatchSearchWithMetadata(), 0);
+      setTimeout(() => triggerSearchLikeButton(), 0);
     }
   }
   

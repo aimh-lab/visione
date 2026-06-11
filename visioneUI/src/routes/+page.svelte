@@ -2530,6 +2530,12 @@ function handleViewSubmitted() {
     runSearch();
   }
 
+  function updateTextareaModel(index, model, kind) {
+    if (!get(uiStore).modelSelectionPerStepEnabled) return;
+    const targetField = kind === 'image' ? 'imageModel' : 'textModel';
+    textareas = textareas.map((t, idx) => (idx === index ? { ...t, [targetField]: model } : t));
+  }
+
 
   async function handleRestoreFromURL() {
     const urlState = deserializeFromURL();
@@ -3366,10 +3372,8 @@ function handleViewSubmitted() {
         }}
         onSwapTextarea={swapTextareas}
         on:updateModel={(e) => {
-          if (!$uiStore.modelSelectionPerStepEnabled) return;
           const { index: i, model: m, kind } = e.detail;
-          const targetField = kind === 'image' ? 'imageModel' : 'textModel';
-          textareas = textareas.map((t, idx) => (idx === i ? { ...t, [targetField]: m } : t));
+          updateTextareaModel(i, m, kind);
         }}
         onRunSearch={runSearch}
         onClearResults={() => {
