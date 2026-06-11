@@ -746,10 +746,10 @@
     <div 
       bind:this={contentEl}
       style={presentation === 'dropdown' ? dropdownStyle : ''}
-      class={`z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl border border-gray-700 pointer-events-auto ${presentation === 'modal' ? 'relative w-full max-w-md' : ''}`}
+      class={`ui-input-modal z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl border border-gray-700 pointer-events-auto ${presentation === 'modal' ? 'relative w-full max-w-md' : ''}`}
     >
       <!-- Header -->
-      <div class={`flex items-center justify-between border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900 ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
+      <div class={`ui-input-modal-header flex items-center justify-between border-b border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900 ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
         <div class="flex items-center space-x-3">
           <!-- Icon -->
           <div class="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center">
@@ -778,7 +778,7 @@
       </div>
       
       <!-- Content -->
-      <div class={isCompactDropdown ? 'px-4 py-3.5 space-y-2.5' : 'px-6 py-5 space-y-4'}>
+      <div class={`ui-input-modal-body ${isCompactDropdown ? 'px-4 py-3.5 space-y-2.5' : 'px-6 py-5 space-y-4'}`}>
         {#each visibleFields as field, fieldIndex}
           {@const fieldId = `input-modal-${field.name}`}
           {@const shouldAutofocus = autoFocusFirstTextInput && fieldIndex === 0 && isTextLikeField(field)}
@@ -951,7 +951,7 @@
       </div>
       
       <!-- Footer -->
-      <div class={`border-t border-gray-700 bg-gray-800/50 flex items-center justify-between rounded-b-xl ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
+      <div class={`ui-input-modal-footer border-t border-gray-700 bg-gray-800/50 flex items-center justify-between rounded-b-xl ${isCompactDropdown ? 'px-4 py-2.5' : 'px-6 py-4'}`}>
         <div class="text-xs text-gray-500">
           {#if submitOnEnter}
             <kbd class="px-2 py-1 bg-gray-700 rounded text-xs font-mono">Enter</kbd> to apply

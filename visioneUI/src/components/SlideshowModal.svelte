@@ -657,11 +657,11 @@
     ></button>
 
     <div
-      class="relative z-[var(--z-modal-content)] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
+      class="ui-slideshow-modal relative z-[var(--z-modal-content)] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
       style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/80 cursor-move select-none touch-none"
+        class="ui-slideshow-header flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900/80 cursor-move select-none touch-none"
         on:pointerdown={startDrag}
         on:pointermove={moveDrag}
         on:pointerup={endDrag}
@@ -674,7 +674,7 @@
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            class="ui-slideshow-header-btn inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
             on:click={zoomOut}
             aria-label="Decrease slideshow image size"
             title="Decrease slideshow image size"
@@ -686,7 +686,7 @@
 
           <button
             type="button"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            class="ui-slideshow-header-btn inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
             on:click={zoomIn}
             aria-label="Increase slideshow image size"
             title="Increase slideshow image size"
@@ -698,7 +698,7 @@
 
           <button
             type="button"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            class="ui-slideshow-header-btn inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
             on:click={close}
             aria-label="Close slideshow"
           >
@@ -709,12 +709,12 @@
         </div>
       </div>
 
-      <div class="min-h-0 bg-slate-950 relative" style="height: {stageHeightPx}px;">
+      <div class="ui-slideshow-stage min-h-0 bg-slate-950 relative" style="height: {stageHeightPx}px;">
         {#if loading}
           <div class="absolute inset-0 flex items-center justify-center text-slate-300 text-sm">Loading keyframes...</div>
         {:else if error}
           <div class="absolute inset-0 flex items-center justify-center px-6">
-            <div class="rounded-lg border border-red-500/50 bg-red-900/20 text-red-200 text-sm px-4 py-3">{error}</div>
+            <div class="ui-slideshow-error rounded-lg border border-red-500/50 bg-red-900/20 text-red-200 text-sm px-4 py-3">{error}</div>
           </div>
         {:else if activeFrame}
           <div
@@ -739,14 +739,14 @@
           </div>
 
           {#if activeFrameTemporalBadge}
-            <div class="absolute left-5 bottom-5 z-30 max-w-[calc(100%-2.5rem)] rounded-md border border-slate-300/35 bg-slate-900/85 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-100 shadow-xl backdrop-blur-md pointer-events-none">
+            <div class="ui-slideshow-temporal-badge absolute left-5 bottom-5 z-30 max-w-[calc(100%-2.5rem)] rounded-md border border-slate-300/35 bg-slate-900/85 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-100 shadow-xl backdrop-blur-md pointer-events-none">
               {activeFrameTemporalBadge}
             </div>
           {/if}
 
           <button
             type="button"
-            class="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-slate-600 bg-black/50 text-slate-100 hover:bg-black/70"
+            class="ui-slideshow-nav-btn absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-slate-600 bg-black/50 text-slate-100 hover:bg-black/70"
             on:click={() => move(-1, 'prev')}
             aria-label="Previous keyframe"
           >
@@ -757,7 +757,7 @@
 
           <button
             type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-slate-600 bg-black/50 text-slate-100 hover:bg-black/70"
+            class="ui-slideshow-nav-btn absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-slate-600 bg-black/50 text-slate-100 hover:bg-black/70"
             on:click={() => move(1, 'next')}
             aria-label="Next keyframe"
           >
@@ -770,9 +770,9 @@
         {/if}
       </div>
 
-      <div class="px-4 py-2 bg-gray-850 border-t border-gray-700 flex items-center gap-3">
+      <div class="ui-slideshow-controls px-4 py-2 bg-gray-850 border-t border-gray-700 flex items-center gap-3">
         <button
-          class="text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          class="ui-slideshow-control-btn text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={toggleAutoPlay}
           aria-label={isAutoPlaying ? 'Pause slideshow' : 'Play slideshow'}
         >
@@ -784,7 +784,7 @@
         </button>
 
         <button
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          class="ui-slideshow-control-btn text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={() => move(-1, 'prev')}
           aria-label="Previous keyframe"
         >
@@ -794,7 +794,7 @@
         </button>
 
         <button
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          class="ui-slideshow-control-btn text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={() => move(1, 'next')}
           aria-label="Next keyframe"
         >
@@ -803,13 +803,13 @@
           </svg>
         </button>
 
-        <div class="w-px h-5 bg-gray-600"></div>
+        <div class="ui-slideshow-divider w-px h-5 bg-gray-600"></div>
 
         <div class="flex items-center gap-1.5">
           <label for="slideshow-speed" class="text-[11px] text-gray-500">Speed</label>
           <select
             id="slideshow-speed"
-            class="text-xs bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            class="ui-slideshow-select text-xs bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
             bind:value={autoPlayDelayMs}
             on:change={(e) => setAutoPlayDelay(e.currentTarget.value)}
             aria-label="Slideshow speed in milliseconds per frame"
@@ -821,7 +821,7 @@
         </div>
 
         <button
-          class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sky-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
+          class="ui-slideshow-control-btn inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-sky-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
           on:click={openCurrentImageModal}
           aria-label="Open current image"
           title="Open current image"
@@ -835,7 +835,7 @@
         </button>
 
         <button
-          class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
+          class="ui-slideshow-control-btn inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
           on:click={captureFrameForSimilarity}
           aria-label="Capture frame for similarity"
         >
@@ -875,11 +875,11 @@
         {/if}
       </div>
 
-      <div class="px-4 py-3 bg-gray-800 border-t border-gray-700">
+      <div class="ui-slideshow-timeline-panel px-4 py-3 bg-gray-800 border-t border-gray-700">
         <div class="space-y-2">
           <div
             bind:this={timelineContainer}
-            class="relative h-2 bg-slate-800 ring-1 ring-slate-600/70 rounded-full cursor-pointer group hover:h-2.5 transition-all"
+            class="ui-slideshow-timeline-track relative h-2 bg-slate-800 ring-1 ring-slate-600/70 rounded-full cursor-pointer group hover:h-2.5 transition-all"
             on:mousemove={handleTimelineHover}
             on:mouseleave={handleTimelineLeave}
             on:click={handleTimelineClick}
@@ -915,7 +915,7 @@
                 class="absolute bottom-full mb-3 pointer-events-none z-50"
                 style="left: {(Math.max(0, Math.min(frames.length - 1, hoveredIndex)) / Math.max(1, frames.length - 1)) * 100}%; transform: translateX(-50%);"
               >
-                <div class="bg-gray-900 rounded-lg shadow-2xl border border-slate-600 overflow-hidden">
+                <div class="ui-slideshow-preview bg-gray-900 rounded-lg shadow-2xl border border-slate-600 overflow-hidden">
                   <img
                     src={hoveredFrame.thumbnailUrl || hoveredFrame.imageUrl}
                     alt="Timeline preview"
@@ -939,14 +939,14 @@
 
           <div
             bind:this={keyframeStripEl}
-            class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-800/50"
+            class="ui-slideshow-strip w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-600/70 scrollbar-track-slate-800/50"
             on:wheel={handleKeyframeStripWheel}
           >
             <div class="flex items-center gap-2 min-w-max py-1">
               {#each frames as frame, idx}
                 <button
                   type="button"
-                  class="relative group shrink-0 rounded border transition-all {idx === currentIndex ? 'border-cyan-400 ring-2 ring-cyan-400/40' : (highlightedSet.has(frame.imgId) ? 'hover:opacity-95' : 'border-slate-700 hover:border-slate-500')}"
+                  class="ui-slideshow-thumb relative group shrink-0 rounded border transition-all {idx === currentIndex ? 'border-cyan-400 ring-2 ring-cyan-400/40' : (highlightedSet.has(frame.imgId) ? 'hover:opacity-95' : 'border-slate-700 hover:border-slate-500')}"
                   style={highlightedSet.has(frame.imgId) && idx !== currentIndex ? `border-color: ${getRankColor(frame.imgId)}; box-shadow: 0 0 0 1px ${getRankColor(frame.imgId)}55;` : undefined}
                   data-kf-index={idx}
                   on:click={() => jumpToIndex(idx, 'seekKeyframe')}
@@ -958,7 +958,7 @@
                     class="w-20 h-12 object-cover rounded"
                     loading="lazy"
                   />
-                  <span class="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 whitespace-nowrap">
+                  <span class="ui-slideshow-thumb-time absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 whitespace-nowrap">
                     {formatSeconds(frame.timestamp) || `#${idx + 1}`}
                   </span>
 

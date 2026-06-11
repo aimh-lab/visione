@@ -39,6 +39,13 @@
 
   // Advanced controls state
   const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4, 8, 16];
+  const RANK_COLORS = [
+    { r: 233, g: 62, b: 58 },
+    { r: 237, g: 104, b: 60 },
+    { r: 243, g: 144, b: 63 },
+    { r: 253, g: 199, b: 12 },
+    { r: 255, g: 243, b: 59 }
+  ];
   let playbackSpeed = 1;
   let showSpeedMenu = false;
   let isVideoPaused = true;
@@ -587,31 +594,28 @@
     const maxRank = Math.max(...Array.from(rankMap.values()));
     const normalized = maxRank > 0 ? rank / maxRank : 0;
     
-    const colors = [
-      { r: 233, g: 62,  b: 58  }, // #e93e3a
-      { r: 237, g: 104, b: 60  }, // #ed683c
-      { r: 243, g: 144, b: 63  }, // #f3903f
-      { r: 253, g: 199, b: 12  }, // #fdc70c
-      { r: 255, g: 243, b: 59  }  // #fff33b
-    ];
-    
-    const position = normalized * (colors.length - 1);
+    const position = normalized * (RANK_COLORS.length - 1);
     const index = Math.floor(position);
     const t = position - index;
     
-    if (index >= colors.length - 1) {
-      const c = colors[colors.length - 1];
+    if (index >= RANK_COLORS.length - 1) {
+      const c = RANK_COLORS[RANK_COLORS.length - 1];
       return `rgb(${c.r}, ${c.g}, ${c.b})`;
     }
     
-    const c1 = colors[index];
-    const c2 = colors[index + 1];
+    const c1 = RANK_COLORS[index];
+    const c2 = RANK_COLORS[index + 1];
     
     const r = Math.round(c1.r + (c2.r - c1.r) * t);
     const g = Math.round(c1.g + (c2.g - c1.g) * t);
     const b = Math.round(c1.b + (c2.b - c1.b) * t);
     
     return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function getRankPaletteColor(index: number) {
+    const c = RANK_COLORS[Math.max(0, Math.min(RANK_COLORS.length - 1, index))];
+    return `rgb(${c.r}, ${c.g}, ${c.b})`;
   }
   
   function getRankLabel(imgId: string) {
@@ -652,18 +656,18 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] bg-black/80 flex items-center justify-center">
+  <div use:focusTrap class="ui-video-player-overlay fixed inset-0 z-[var(--z-modal-overlay)] bg-black/80 flex items-center justify-center">
     <button
       type="button"
       class="absolute inset-0"
       on:click={() => dispatch("close")}
       aria-label="Close video player modal"
     ></button>
-    <div class="relative z-[var(--z-modal-content)] bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
+    <div class="ui-video-player-modal relative z-[var(--z-modal-content)] bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
       
       <!-- Header -->
       <div
-        class="px-4 py-3 bg-gray-800 rounded-t-xl border-b border-gray-700 flex items-center justify-between cursor-move select-none touch-none"
+        class="ui-video-player-header px-4 py-3 bg-gray-800 rounded-t-xl border-b border-gray-700 flex items-center justify-between cursor-move select-none touch-none"
         on:pointerdown={startDrag}
         on:pointermove={moveDrag}
         on:pointerup={endDrag}
@@ -676,7 +680,7 @@
           <span class="text-sm font-medium text-white">{title}</span>
         </div>
         <button 
-          class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          class="ui-video-player-control-btn text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={() => dispatch("close")}
           use:tooltip={{ text: 'Close', shortcut: 'Esc' }}
           aria-label="Close video player"
@@ -688,7 +692,7 @@
       </div>
 
       <!-- Video -->
-      <div class="relative bg-black group">
+      <div class="ui-video-player-stage relative bg-black group">
         <!-- svelte-ignore a11y_media_has_caption -->
         <video
           bind:this={videoEl}
@@ -713,10 +717,10 @@
 
 
       <!-- Controls bar -->
-      <div class="px-4 py-2 bg-gray-850 border-t border-gray-700 flex items-center gap-3">
+      <div class="ui-video-player-controls px-4 py-2 bg-gray-850 border-t border-gray-700 flex items-center gap-3">
         <!-- Play/Pause -->
         <button
-          class="text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+          class="ui-video-player-control-btn text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
           on:click={togglePlayPause}
           use:tooltip={{ text: isVideoPaused ? 'Play' : 'Pause', shortcut: 'Space' }}
           aria-label={isVideoPaused ? 'Play' : 'Pause'}
@@ -734,7 +738,7 @@
           use:tooltip={{ text: 'Previous frame (pause first)', shortcut: ',' }}
         >
           <button
-            class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
+            class="ui-video-player-control-btn text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
             on:mousedown={() => startFrameStep(-1)}
             on:mouseup={stopFrameStep}
             on:mouseleave={stopFrameStep}
@@ -753,7 +757,7 @@
           use:tooltip={{ text: 'Next frame (pause first)', shortcut: '.' }}
         >
           <button
-            class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
+            class="ui-video-player-control-btn text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 {isVideoPaused ? '' : 'opacity-40 pointer-events-none'}"
             on:mousedown={() => startFrameStep(1)}
             on:mouseup={stopFrameStep}
             on:mouseleave={stopFrameStep}
@@ -766,7 +770,7 @@
           </button>
         </span>
 
-        <div class="w-px h-5 bg-gray-600"></div>
+        <div class="ui-video-player-divider w-px h-5 bg-gray-600"></div>
 
         <!-- Playback speed -->
         <div class="relative">
@@ -779,7 +783,7 @@
             {playbackSpeed}x
           </button>
           {#if showSpeedMenu}
-            <div class="absolute bottom-full mb-1 left-0 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 z-50 min-w-[72px]">
+            <div class="ui-video-player-speed-menu absolute bottom-full mb-1 left-0 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 z-50 min-w-[72px]">
               {#each PLAYBACK_SPEEDS as speed}
                 <button
                   class="block w-full text-left text-xs font-mono px-3 py-1.5 transition-colors {speed === playbackSpeed ? 'bg-blue-600/30 text-blue-300' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}"
@@ -798,11 +802,11 @@
           {/if}
         </div>
 
-        <div class="w-px h-5 bg-gray-600"></div>
+        <div class="ui-video-player-divider w-px h-5 bg-gray-600"></div>
 
         <!-- Capture frame for similarity -->
         <button
-          class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
+          class="ui-video-player-control-btn inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-gray-700"
           on:click={captureFrameForSimilarity}
           use:tooltip={{ text: 'Capture frame for similarity' }}
           aria-label="Capture frame for similarity"
@@ -840,11 +844,11 @@
       </div>
 
       <!-- Timeline -->
-      <div class="px-4 py-3 bg-gray-800 border-t border-gray-700">
+      <div class="ui-video-player-timeline-panel px-4 py-3 bg-gray-800 border-t border-gray-700">
         <div class="space-y-2">
           <div 
             bind:this={timelineContainer}
-            class="relative h-2 bg-slate-800 ring-1 ring-slate-600/70 rounded-full cursor-pointer group hover:h-2.5 transition-all"
+            class="ui-video-player-timeline relative h-2 bg-slate-800 ring-1 ring-slate-600/70 rounded-full cursor-pointer group hover:h-2.5 transition-all"
             on:mousemove={handleTimelineHover}
             on:mouseleave={handleTimelineLeave}
             on:click={handleTimelineClick}
@@ -872,7 +876,7 @@
                 class="absolute bottom-full mb-3 pointer-events-none z-50 transition-all duration-75"
                 style="left: {(hoveredTime / videoDuration * 100)}%; transform: translateX(-50%);"
               >
-                <div class="bg-gray-900 rounded-lg shadow-2xl border-2 overflow-hidden"
+                <div class="ui-video-player-preview bg-gray-900 rounded-lg shadow-2xl border-2 overflow-hidden"
                      style="border-color: {getRankColor(hoveredKeyframe.imgId)}">
                   <div class="relative">
                     <img 
@@ -903,7 +907,7 @@
                     </div>
                   </div>
                   
-                  <div class="px-2 py-1 bg-gray-800">
+                  <div class="ui-video-player-preview-strip px-2 py-1 bg-gray-800">
                     <div class="text-center">
                       <span class="text-xs font-mono font-semibold text-white">{formatTime(hoveredTime)}</span>
                     </div>
@@ -959,11 +963,11 @@
               <div class="flex items-center space-x-1.5 text-[10px]">
                 <span class="text-gray-500">•</span>
                 <span class="font-semibold">{highlightedKeyframes.length} in results:</span>
-                <div class="w-2 h-2 rounded-full" style="background-color: rgb(233, 62, 58)" title="Best (Top ranked)"></div>
-                <span style="color: rgb(237, 104, 60)">→</span>
-                <div class="w-2 h-2 rounded-full" style="background-color: rgb(243, 144, 63)" title="Good (Mid ranked)"></div>
-                <span style="color: rgb(253, 199, 12)">→</span>
-                <div class="w-2 h-2 rounded-full" style="background-color: rgb(255, 243, 59)" title="Lower (Low ranked)"></div>
+                <div class="w-2 h-2 rounded-full" style="background-color: {getRankPaletteColor(0)}" title="Best (Top ranked)"></div>
+                <span style="color: {getRankPaletteColor(1)}">→</span>
+                <div class="w-2 h-2 rounded-full" style="background-color: {getRankPaletteColor(2)}" title="Good (Mid ranked)"></div>
+                <span style="color: {getRankPaletteColor(3)}">→</span>
+                <div class="w-2 h-2 rounded-full" style="background-color: {getRankPaletteColor(4)}" title="Lower (Low ranked)"></div>
               </div>
             {/if}
           </div>
@@ -973,7 +977,7 @@
             <div
               bind:this={keyframeStripEl}
               class="flex gap-1 overflow-x-auto py-1 scrollbar-thin"
-              style="scrollbar-color: #4B5563 transparent;"
+              style="scrollbar-color: var(--ui-scrollbar-thumb) transparent;"
               on:wheel|preventDefault={(e) => {
                 if (keyframeStripEl) keyframeStripEl.scrollLeft += e.deltaY;
               }}
@@ -1010,6 +1014,61 @@
 {/if}
 
 <style>
+  .ui-video-player-overlay {
+    background: var(--ui-video-player-overlay-bg);
+  }
+
+  .ui-video-player-modal {
+    background: var(--ui-video-player-bg);
+  }
+
+  .ui-video-player-header,
+  .ui-video-player-timeline-panel,
+  .ui-video-player-speed-menu,
+  .ui-video-player-preview-strip {
+    background: var(--ui-video-player-panel-bg);
+    border-color: var(--ui-video-player-border);
+  }
+
+  .ui-video-player-header {
+    background: var(--ui-video-player-header-bg);
+  }
+
+  .ui-video-player-stage {
+    background: var(--ui-video-player-stage-bg);
+  }
+
+  .ui-video-player-controls {
+    background: var(--ui-video-player-controls-bg);
+    border-color: var(--ui-video-player-border);
+  }
+
+  .ui-video-player-control-btn {
+    color: var(--ui-video-player-button-muted);
+  }
+
+  .ui-video-player-control-btn:hover {
+    background: var(--ui-video-player-button-hover-bg);
+    color: var(--ui-toast-text);
+  }
+
+  .ui-video-player-divider {
+    background: var(--ui-video-player-divider);
+  }
+
+  .ui-video-player-speed-menu {
+    border-color: var(--ui-video-player-menu-border);
+  }
+
+  .ui-video-player-timeline {
+    background: var(--ui-video-player-timeline-bg);
+    box-shadow: 0 0 0 1px var(--ui-video-player-timeline-ring);
+  }
+
+  .ui-video-player-preview {
+    background: var(--ui-video-player-preview-bg);
+  }
+
   video::-webkit-media-controls-timeline {
     display: none;
   }
@@ -1020,10 +1079,10 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #4B5563;
+    background: var(--ui-scrollbar-thumb);
     border-radius: 2px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: #6B7280;
+    background: var(--ui-scrollbar-thumb-hover);
   }
 </style>

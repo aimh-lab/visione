@@ -316,11 +316,11 @@
     ></button>
 
     <div
-      class="video-summary-modal fixed z-[var(--z-modal-content)] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-[0_24px_60px_rgba(2,6,23,0.65)] ring-1 ring-sky-500/30 flex flex-col animate-modal-in"
+      class="video-summary-modal ui-context-modal fixed z-[var(--z-modal-content)] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-[0_24px_60px_rgba(2,6,23,0.65)] ring-1 ring-sky-500/30 flex flex-col animate-modal-in"
       style={`left:${modalRect.x}px; top:${modalRect.y}px; width:${modalRect.width}px; height:${modalRect.height}px;`}
     >
       <div
-        class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950 cursor-move select-none"
+        class="ui-context-modal-header flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-700 bg-gradient-to-b from-slate-900 to-slate-950 cursor-move select-none"
         on:mousedown={startDrag}
       >
         <div class="min-w-0 flex items-start gap-2.5">
@@ -337,7 +337,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <div class="inline-flex rounded-md border border-slate-600/70 bg-slate-800/80 p-0.5">
+          <div class="ui-context-scope-toggle inline-flex rounded-md border border-slate-600/70 bg-slate-800/80 p-0.5">
             <button
               type="button"
               class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'hour' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
@@ -371,7 +371,7 @@
           </button>
           <button
             type="button"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600/70 bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition-colors"
+            class="ui-context-close-btn inline-flex items-center justify-center w-8 h-8 rounded-md border border-slate-600/70 bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition-colors"
             on:click={onClose}
             title="Close"
             aria-label="Close"
@@ -384,7 +384,7 @@
       </div>
 
       {#if pinnedSummaries.length > 0}
-        <div class="px-4 py-2 border-b border-slate-700 bg-slate-900/85 flex items-center gap-2 flex-wrap">
+        <div class="ui-context-pinned-bar px-4 py-2 border-b border-slate-700 bg-slate-900/85 flex items-center gap-2 flex-wrap">
           <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Pinned</span>
           {#each pinnedSummaries as item}
             <div
@@ -418,12 +418,12 @@
         </div>
       {/if}
 
-      <div class="flex-1 overflow-hidden bg-slate-900">
+      <div class="ui-context-modal-body flex-1 overflow-hidden bg-slate-900">
         {#if loading}
               <div class="h-full flex items-center justify-center text-slate-300 text-sm">Loading context…</div>
         {:else if error}
           <div class="h-full flex items-center justify-center px-6">
-            <div class="rounded-lg border border-red-500/40 bg-red-900/20 text-red-200 px-4 py-3 text-sm">{error}</div>
+            <div class="ui-context-error rounded-lg border border-red-500/40 bg-red-900/20 text-red-200 px-4 py-3 text-sm">{error}</div>
           </div>
         {:else if !hasFrames}
           <div class="h-full flex items-center justify-center text-slate-400 text-sm">No keyframes available</div>
@@ -463,7 +463,7 @@
 
       <button
         type="button"
-        class="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-sm bg-slate-700/70 hover:bg-slate-600/90 border border-slate-500/70 cursor-se-resize"
+        class="ui-context-resize-handle absolute bottom-1.5 right-1.5 w-4 h-4 rounded-sm bg-slate-700/70 hover:bg-slate-600/90 border border-slate-500/70 cursor-se-resize"
         title="Resize"
         aria-label="Resize summary window"
         on:mousedown={startResize}

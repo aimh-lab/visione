@@ -847,17 +847,17 @@
 
 .resize-handle:not(.collapsed):hover {
   width: 10px;
-  background: rgba(100, 116, 139, 0.45);
+  background: var(--ui-resize-handle-bg);
 }
 
 .resize-handle.collapsed {
   width: 10px;
-  background: rgba(100, 116, 139, 0.28);
+  background: var(--ui-resize-handle-collapsed-bg);
   cursor: pointer;
 }
 
 .resize-handle.collapsed:hover {
-  background: rgba(100, 116, 139, 0.5);
+  background: var(--ui-resize-handle-hover-bg);
 }
 
 .hover-indicator {
@@ -867,7 +867,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 48px;
-  background: rgba(100, 116, 139, 0.45);
+  background: var(--ui-resize-handle-bg);
   border-radius: 4px 0 0 4px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -917,17 +917,17 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--ui-scrollbar-track);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.45);
+  background: var(--ui-scrollbar-thumb);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.6);
+  background: var(--ui-scrollbar-thumb-hover);
 }
 
 .qa-stream-panel {
@@ -975,9 +975,9 @@
   clip-path: polygon(100% 0, 0 100%, 100% 100%);
   background: repeating-linear-gradient(
     135deg,
-    rgba(148, 163, 184, 0) 0 2px,
-    rgba(148, 163, 184, 0.75) 2px 3px,
-    rgba(148, 163, 184, 0) 3px 5px
+    transparent 0 2px,
+    var(--ui-qa-resize-grip) 2px 3px,
+    transparent 3px 5px
   );
   opacity: 0.75;
 }
@@ -987,58 +987,58 @@
 }
 
 .qa-panel-resize-grip:focus-visible {
-  outline: 1px solid rgba(148, 163, 184, 0.85);
+  outline: 1px solid var(--ui-qa-resize-focus);
   outline-offset: 1px;
 }
 
 .qa-event-block {
   border-left-width: 3px;
-  background: rgba(15, 23, 42, 0.42);
-  border-color: rgba(71, 85, 105, 0.55);
+  background: var(--ui-qa-event-bg);
+  border-color: var(--ui-qa-event-border);
 }
 
 .qa-event-label {
-  color: #cbd5e1;
+  color: var(--ui-qa-event-label);
 }
 
 .qa-event-plan {
-  background: #1a2533;
-  border-color: #60a5fa;
+  background: var(--ui-qa-event-plan-bg);
+  border-color: var(--ui-qa-event-plan-border);
 }
 
 .qa-event-plan-review {
-  background: #1f1a33;
-  border-color: #9575cd;
+  background: var(--ui-qa-event-plan-review-bg);
+  border-color: var(--ui-qa-event-plan-review-border);
 }
 
 .qa-event-thinking {
-  background: #1a1f2c;
-  border-color: #b39ddb;
+  background: var(--ui-qa-event-thinking-bg);
+  border-color: var(--ui-qa-event-thinking-border);
 }
 
 .qa-event-tool-call {
-  background: #1f2618;
-  border-color: #f59e0b;
+  background: var(--ui-qa-event-tool-call-bg);
+  border-color: var(--ui-qa-event-tool-call-border);
 }
 
 .qa-event-tool-result {
-  background: #1a1f2c;
-  border-color: #94a3b8;
+  background: var(--ui-qa-event-tool-result-bg);
+  border-color: var(--ui-qa-event-tool-result-border);
 }
 
 .qa-event-evaluation {
-  background: #1a2020;
-  border-color: #4dd0e1;
+  background: var(--ui-qa-event-evaluation-bg);
+  border-color: var(--ui-qa-event-evaluation-border);
 }
 
 .qa-event-answer {
-  background: #162216;
-  border-color: #66bb6a;
+  background: var(--ui-qa-event-answer-bg);
+  border-color: var(--ui-qa-event-answer-border);
 }
 
 .qa-event-error {
-  background: #2a1515;
-  border-color: #ef5350;
+  background: var(--ui-qa-event-error-bg);
+  border-color: var(--ui-qa-event-error-border);
 }
 
 .qa-tool-results-grid {
@@ -1051,8 +1051,8 @@
 }
 
 .qa-result-card {
-  background: #1f2937;
-  border: 1px solid #334155;
+  background: var(--ui-qa-result-card-bg);
+  border: 1px solid var(--ui-qa-result-card-border);
   border-radius: 6px;
   padding: 8px;
   font-size: 11px;
@@ -1068,13 +1068,13 @@
 
 .qa-result-id {
   font-weight: 700;
-  color: #93c5fd;
+  color: var(--ui-qa-result-id);
   word-break: break-all;
   margin-bottom: 4px;
 }
 
 .qa-result-meta {
-  color: #cbd5e1;
+  color: var(--ui-qa-result-meta);
   line-height: 1.35;
 }
 
@@ -1092,14 +1092,14 @@
 }
 
 .qa-event-body :global(code) {
-  background: #1f2937;
+  background: var(--ui-qa-code-bg);
   padding: 1px 4px;
   border-radius: 3px;
 }
 
 .qa-event-body :global(pre) {
-  background: #1f2937;
-  border: 1px solid #334155;
+  background: var(--ui-qa-code-bg);
+  border: 1px solid var(--ui-qa-code-border);
   border-radius: 6px;
   padding: 8px;
   overflow-x: auto;
