@@ -179,11 +179,10 @@ if __name__ == "__main__":
         print(f"Registrato modello {model_name} su endpoint /{endpoint_name}")
 
     router_app = ModelRouter.bind(model_handles=model_handles, models_config=selected_models)
-    
+
+    serve.start(http_options={"host": args.host, "port": args.port})
     serve.run(
         router_app,
-        host=args.host,
-        port=args.port,
         route_prefix="/"
     )
     
