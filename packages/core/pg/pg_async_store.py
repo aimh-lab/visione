@@ -1161,28 +1161,66 @@ class AsyncPGVectorStore(VectorStore):
                 params[wp] = windows[idx - 1]
                 params[jlp] = int(node.get("k", dense_limit))
 
-                join_conds = []
-                if groupby_column:
-                    join_conds.append("l.groupby_value = r.groupby_value")
-                join_conds.append(
-                    f"r.start_time BETWEEN (l.end_time - :{wp}) AND (l.end_time + :{wp})"
-                    if also_backwards
-                    else f"r.start_time BETWEEN l.end_time AND (l.end_time + :{wp})"
+                # ── Time-bucketing for hash-based equijoin ──────────────
+                # The exact range condition forces a block-nested-loop join.
+                # We avoid that by:
+                #   1. Expanding the left side with generate_series so each
+                #      left row emits one row per bucket it could match
+                #      (at most 2 buckets forward-only, 3 buckets bidirectional).
+                #   2. Computing the bucket of every right-side row.
+                #   3. Hash-joining on bucket equality.
+                #   4. Filtering with the exact range condition to drop false
+                #      positives — no true match can be lost.
+                if also_backwards:
+                    l_bucket_lo = f"floor((l_inner.end_time - :{wp}) / :{wp})::bigint"
+                    l_bucket_hi = f"floor((l_inner.end_time + :{wp}) / :{wp})::bigint"
+                    exact_cond  = (
+                        f"rb.start_time BETWEEN"
+                        f" (lb.end_time - :{wp}) AND (lb.end_time + :{wp})"
+                    )
+                else:
+                    l_bucket_lo = f"floor(l_inner.end_time / :{wp})::bigint"
+                    l_bucket_hi = f"floor((l_inner.end_time + :{wp}) / :{wp})::bigint"
+                    exact_cond  = (
+                        f"rb.start_time BETWEEN"
+                        f" lb.end_time AND (lb.end_time + :{wp})"
+                    )
+
+                r_bucket_expr = f"floor(r_inner.start_time / :{wp})::bigint"
+
+                groupby_eq = (
+                    "AND l_inner.groupby_value = r_inner.groupby_value"
+                    if groupby_column else ""
                 )
 
                 cte_statements.append(
                     f"""
                     {jn} AS (
                         SELECT
-                            l.id_chain || r.id_chain AS id_chain,
-                            l.start_time AS start_time,
-                            r.end_time AS end_time,
-                            COALESCE(l.groupby_value, r.groupby_value) AS groupby_value,
-                            (l.score + r.score) AS score
-                        FROM {current} l
-                        JOIN {right} r
-                          ON {' AND '.join(join_conds)}
-                        ORDER BY score DESC
+                            lb.id_chain || rb.id_chain AS id_chain,
+                            lb.start_time              AS start_time,
+                            rb.end_time                AS end_time,
+                            COALESCE(lb.groupby_value,
+                                     rb.groupby_value) AS groupby_value,
+                            (lb.score + rb.score)      AS score
+                        FROM (
+                            SELECT l_inner.*,
+                                   gs._bucket AS _bucket
+                            FROM {current} l_inner,
+                            LATERAL generate_series(
+                                {l_bucket_lo},
+                                {l_bucket_hi}
+                            ) AS gs(_bucket)
+                        ) lb
+                        JOIN (
+                            SELECT r_inner.*,
+                                   {r_bucket_expr} AS _bucket
+                            FROM {right} r_inner
+                        ) rb
+                          ON lb._bucket = rb._bucket
+                         AND {exact_cond}
+                         {groupby_eq}
+                        ORDER BY (lb.score + rb.score) DESC
                         LIMIT :{jlp}
                     )
                     """.strip()
