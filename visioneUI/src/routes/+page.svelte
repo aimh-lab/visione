@@ -1630,7 +1630,7 @@
       ]
     };
 
-    setTimeout(() => runSearchImmediate(), 0);
+    setTimeout(() => triggerSearchFromQueryChange(), 0);
   }
 
   function handleCloseSimilarityStep(e) {
@@ -1677,7 +1677,7 @@
       textareas = restoreSimilarityDisabledSteps(result.textareas);
       textareaImages = result.textareaImages;
       if (shouldSearchFrom(textareas)) {
-        setTimeout(() => runSearchImmediate(), 0);
+        setTimeout(() => triggerSearchFromQueryChange(), 0);
       }
       return;
     }
@@ -1696,7 +1696,7 @@
     textareas = restoreSimilarityDisabledSteps(nextTextareas);
 
     if (shouldSearchFrom(textareas)) {
-      setTimeout(() => runSearchImmediate(), 0);
+      setTimeout(() => triggerSearchFromQueryChange(), 0);
     }
   }
 
@@ -1905,6 +1905,36 @@
     if (!step) return;
     const current = Number(get(uiStore).slideshowModalScale) || 160;
     uiStore.actions.applySettings({ slideshowModalScale: Math.max(80, Math.round(current + step)) });
+  }
+
+  function adjustKeyframeSize(delta = 0) {
+    const step = Number(delta) || 0;
+    if (!step) return false;
+    const current = Number(get(uiStore).keyframeSize) || 130;
+    const next = current + step;
+    const safe = Math.min(400, Math.max(80, Number(next) || 130));
+    if (safe === current) return false;
+    uiStore.actions.setKeyframeSize(safe);
+    return true;
+  }
+
+  function adjustActiveImageViewScale(delta = 0) {
+    const step = Number(delta) || 0;
+    if (!step) return false;
+
+    if (isSlideshowOpen) {
+      adjustSlideshowModalScale(step);
+      return true;
+    }
+
+    if (isVideoPlayerOpen) return false;
+
+    if ($searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || pinnedImageModalOpen) {
+      adjustImageModalScale(step);
+      return true;
+    }
+
+    return adjustKeyframeSize(step);
   }
 
   function handleChangeChallengeType(e) {
@@ -2458,6 +2488,13 @@ function handleViewSubmitted() {
   }
 
   async function focusSearchBox() {
+    if (isSlideshowOpen) isSlideshowOpen = false;
+    if (isVideoPlayerOpen) isVideoPlayerOpen = false;
+    if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
+    if (pinnedImageModalOpen) pinnedImageModalOpen = false;
+    searchModal.close({ keepSelection: true });
+    similarityModal.close({ keepSelection: true });
+    videoModal.close({ keepSelection: true });
     uiStore.actions.setLayoutTab("View1");
     if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
     await tick();
@@ -2483,6 +2520,14 @@ function handleViewSubmitted() {
     const textareasOverride = Array.isArray(payload?.textareas) ? payload.textareas : null;
     searchTextareasSnapshot = getTextareasForSearch(textareasOverride || textareas);
     return searchController.runSearchImmediate({ textareasOverride });
+  }
+
+  function triggerSearchFromQueryChange() {
+    if (typeof searchViewRef?.triggerSearchLikeButton === 'function') {
+      searchViewRef.triggerSearchLikeButton();
+      return;
+    }
+    runSearch();
   }
 
 
@@ -2673,7 +2718,7 @@ function handleViewSubmitted() {
 
     uiStore.actions.setLayoutTab("View1");
     toasts.info(existingSimilarityIndex >= 0 ? "Similarity image replaced in query step" : "Similarity added as new query step");
-    setTimeout(() => runSearchImmediate(), 0);
+    setTimeout(() => triggerSearchFromQueryChange(), 0);
   }
 
   // ---------------------------
@@ -2692,11 +2737,7 @@ function handleViewSubmitted() {
     if (result.shouldSearch) {
       toasts.info("Query step removed, updating results...");
       setTimeout(() => {
-        if (typeof searchViewRef?.triggerSearchLikeButton === 'function') {
-          searchViewRef.triggerSearchLikeButton();
-        } else {
-          runSearchImmediate();
-        }
+        triggerSearchFromQueryChange();
       }, 0);
     } else if (result.textareas !== previousTextareas) {
       toasts.info("Query step removed");
@@ -2721,17 +2762,8 @@ function handleViewSubmitted() {
     textareas = next;
     toasts.info(`Query step ${index + 1} ${status}`);
 
-    const searchTextareas = getTextareasForSearch(next);
-    const shouldSearch = searchTextareas.some((t) => {
-      if (!t?.enabled) return false;
-      const text = String(t?.value || '').trim();
-      const simId = String(t?.similarityImgId || '').trim();
-      return text.length > 0 || simId.length > 0;
-    });
-
-    if (shouldSearch) {
-      setTimeout(() => runSearchImmediate(), 0);
-    }
+    // TextareasManager dispatches a search event on toggle via
+    // triggerSearchWithMetadata(), which is the same path as Search button.
   }
 
   function swapTextareas(indexA, indexB, mode = "swap") {
@@ -2874,7 +2906,7 @@ function handleViewSubmitted() {
   function loadExampleQuery(queries) {
     textareas = _loadExampleQuery(queries).map((t) => normalizeTextareaModels(t));
     toasts.info("Example loaded! Running search...");
-    setTimeout(() => runSearchImmediate(), 300);
+    setTimeout(() => triggerSearchFromQueryChange(), 300);
   }
 
 </script>
@@ -2912,6 +2944,9 @@ function handleViewSubmitted() {
   }}
   onToggleSidebar={() => uiStore.actions.toggleSidebar()}
   onOpenSettings={() => (isSettingsOpen = true)}
+  onIncreaseActiveImageSize={() => adjustActiveImageViewScale(10)}
+  onDecreaseActiveImageSize={() => adjustActiveImageViewScale(-10)}
+  onFocusQuery={focusSearchBox}
   onRFPositiveSelected={() => {
     const item = getSelectedItemForShortcuts();
     if (item?.imgId) addRFPositiveByImg(item.imgId, item);
@@ -3228,12 +3263,7 @@ function handleViewSubmitted() {
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
   on:changeViewMode={(e) => uiStore.actions.setViewMode(e.detail.mode)}
   on:changeSortMode={(e) => uiStore.actions.setSortMode(e.detail.mode)}
-  on:adjustKeyframeSize={(e) => {
-    const delta = Number(e?.detail?.delta) || 0;
-    const next = $uiStore.keyframeSize + delta;
-    const safe = Math.min(400, Math.max(80, Number(next) || 130));
-    uiStore.actions.setKeyframeSize(safe);
-  }}
+  on:adjustKeyframeSize={(e) => adjustKeyframeSize(e?.detail?.delta)}
   on:openSettings={() => (isSettingsOpen = true)}
   on:changeChallengeType={handleChangeChallengeType}
   on:requestEvaluationOptions={refreshDresEvaluationOptions}

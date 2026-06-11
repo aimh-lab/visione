@@ -626,7 +626,9 @@
 
   export function focusPrimaryTextarea() {
     const first = textareaRefs[0];
-    first?.focus({ preventScroll: true });
+    if (!first) return;
+    first.focus({ preventScroll: true });
+    first.select();
   }
   
   const add = (i: number) => dispatch("add", { index: i });
