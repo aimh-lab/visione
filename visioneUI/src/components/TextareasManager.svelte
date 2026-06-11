@@ -2744,13 +2744,13 @@
           on:dragleave={(e) => handleTextareaDragLeave(i, e)}
         >
           <div
-            class="flex items-center justify-between gap-1.5 px-1.5 py-1 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''}"
-            draggable={showSequenceChrome && textareas.length > 1}
+            class="ui-query-step-header flex items-center justify-between gap-1.5 px-1.5 py-1 border-b border-slate-700/45 {showSequenceChrome && textareas.length > 1 && textarea.enabled ? 'cursor-grab active:cursor-grabbing' : ''} {openStepActionsIndex === i ? 'ui-query-step-header--menu-open' : ''}"
+            draggable={showSequenceChrome && textareas.length > 1 && textarea.enabled}
             on:dragstart={(e) => startStepDrag(i, e)}
             on:dragend={handleStepDragEnd}
             role="group"
             aria-label={`Step ${i + 1} header drag area`}
-            title={showSequenceChrome && textareas.length > 1 ? 'Drag this header to reorder step' : undefined}
+            title={showSequenceChrome && textareas.length > 1 && textarea.enabled ? 'Drag this header to reorder step' : undefined}
           >
             <div class="flex items-center gap-1.5 min-w-0">
               <div class="text-[10px] font-semibold uppercase tracking-[0.16em]" style={`color: ${textarea.enabled ? withAlpha(stepColor, 0.92) : 'rgb(148, 163, 184)'};`}>
@@ -2865,9 +2865,13 @@
               </button>
 
               {#if textareas.length > 1}
-                <div class="relative step-actions-menu">
+                <div class="relative z-50 step-actions-menu">
                   <button
                     type="button"
+                    draggable="false"
+                    on:pointerdown|stopPropagation
+                    on:mousedown|stopPropagation
+                    on:dragstart|stopPropagation
                     on:click|stopPropagation={() => toggleStepActions(i)}
                     title="Delete step"
                     aria-label="Delete step"
@@ -2883,11 +2887,15 @@
                   </button>
 
                   {#if openStepActionsIndex === i}
-                    <div class="absolute right-0 mt-1 w-36 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-50 p-1" role="menu">
+                    <div class="absolute right-0 mt-1 w-36 rounded-lg border border-gray-700 bg-gray-800 shadow-xl z-[80] p-1" role="menu" tabindex="-1" on:pointerdown|stopPropagation on:mousedown|stopPropagation>
                       <button
                         type="button"
+                        draggable="false"
+                        on:pointerdown|stopPropagation
+                        on:mousedown|stopPropagation
+                        on:dragstart|stopPropagation
                         on:click|stopPropagation={() => removeStepFromMenu(i)}
-                        class="w-full text-left px-2.5 py-2 rounded-md text-xs text-red-200 hover:text-red-100 hover:bg-red-900/35 transition-colors"
+                        class="ui-step-delete-confirm-btn w-full text-left px-2.5 py-2 rounded-md text-xs text-red-200 hover:text-red-100 hover:bg-red-900/35 transition-colors"
                         role="menuitem"
                       >
                         Delete step
@@ -3442,7 +3450,6 @@
 
   .ui-query-step-card--disabled {
     position: relative;
-    filter: grayscale(0.35) saturate(0.38) brightness(0.78);
   }
 
   .ui-query-step-card--disabled::after {
@@ -3460,11 +3467,44 @@
     z-index: 1;
   }
 
+  .ui-query-step-header--menu-open {
+    z-index: 90 !important;
+  }
+
   .ui-query-step-card--disabled textarea,
   .ui-query-step-card--disabled select,
   .ui-query-step-card--disabled button,
   .ui-query-step-card--disabled .ui-query-plus-btn {
     opacity: 0.78;
+  }
+
+  .ui-query-step-card--disabled .step-actions-menu,
+  .ui-query-step-card--disabled .step-actions-menu button {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    filter: none !important;
+  }
+
+  .ui-query-step-card--disabled .step-actions-menu .ui-step-delete-btn {
+    background: rgba(127, 29, 29, 0.56) !important;
+    border-color: rgba(248, 113, 113, 0.72) !important;
+    color: rgba(254, 226, 226, 0.98) !important;
+  }
+
+  .ui-query-step-card--disabled .step-actions-menu .ui-step-delete-btn:hover {
+    background: rgba(153, 27, 27, 0.78) !important;
+    border-color: rgba(252, 165, 165, 0.86) !important;
+    color: #fff !important;
+  }
+
+  .ui-query-step-card--disabled .step-actions-menu .ui-step-delete-confirm-btn {
+    color: rgba(254, 202, 202, 1) !important;
+  }
+
+  .ui-query-step-card--disabled .step-actions-menu .ui-step-delete-confirm-btn:hover {
+    background: rgba(127, 29, 29, 0.48) !important;
+    color: #fff !important;
   }
 
   .ui-query-step-card--disabled .ui-query-step-header-badge {
