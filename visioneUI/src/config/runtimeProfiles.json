@@ -4,9 +4,9 @@
       "servicesHost": ""
     },
     "settingsDefaults": {
-      "version": "search-defaults-7200-57600",
+      "version": "search-defaults-7200-25200",
       "queryResultK": 7200,
-      "temporalWindowSeconds": 57600
+      "temporalWindowSeconds": 25200
     },
     "media": {
       "hasVideos": true

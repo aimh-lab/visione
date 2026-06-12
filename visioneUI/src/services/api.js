@@ -24,7 +24,7 @@ export class VisioneAPI {
     this.middleTimestampInFlight = new Map();
     this.middleTimestampCacheMax = 500;
     this.middleTimestampTtlMs = 5 * 60 * 1000;
-    this.defaultTextModel = 'openclip_clip_vit_b_32';
+    this.defaultTextModel = 'smart';
     this.defaultImageModel = 'dinov2_base';
     this.defaultSubqueryK = 10000;
     this.defaultSingleK = 1000;

@@ -5,27 +5,27 @@
   export let isOpen = false;
   export let theme = 'default';
   export let resultsAutoFit = true;
-  export let keyframeSize = 130;
-  export let contextKeyframeSize = 130;
-  export let resultsPerGroup = 8;
+  export let keyframeSize = 170;
+  export let contextKeyframeSize = 170;
+  export let resultsPerGroup = 5;
   export let queryResultK = 7200;
   export let justifyResultRows = false;
-  export let cacheEnabled = true;
+  export let cacheEnabled = false;
   export let dedupeResults = true;
   export let apiServicesHostOverrideEnabled = false;
   export let apiServicesHost = '';
   export let dataserverHostOverrideEnabled = false;
-  export let dataserverHost = '';
+  export let dataserverHost = 'https://localhost:43333';
   export let virtualizationEnabled = true;
   export let tupleIndicatorMode = 'badge+bar';
   export let resultsetBadgeLabelMode = 'both';
   export let showLocalTimeInTitles = true;
   export let timeBadgeTimezoneOverride = 'profile';
   export let virtualizationThreshold = 40;
-  export let dresEnabled = false;
+  export let dresEnabled = true;
   export let dresChallengeType = 'KIS';
-  export let dresSubmitServer = '';
-  export let dresUsername = '';
+  export let dresSubmitServer = 'https://vbs.videobrowsing.org/';
+  export let dresUsername = 'VISIONE';
   export let dresPassword = '';
   export let dresMemberId = '';
   export let logCount = 0;
@@ -34,18 +34,18 @@
   export let isDeletingLogs = false;
   export let autoTranslateQueries = true;
   export let showAutoTranslateToggle = true;
-  export let temporalWindowSeconds = 57600;
+  export let temporalWindowSeconds = 25200;
   export let videoPlayerModalMode = 'profile';
-  export let imageModalScale = 100;
-  export let slideshowModalScale = 100;
+  export let imageModalScale = 500;
+  export let slideshowModalScale = 500;
   export let modelSelectionPerStepEnabled = true;
-  export let defaultTextModel = 'openclip_clip_vit_b_32';
+  export let defaultTextModel = 'smart';
   export let defaultImageModel = 'dinov2_base';
   export let availableModels = [];
   export let videoBadgeOrientation = 'vertical';
 
   const dispatch = createEventDispatcher();
-  const FALLBACK_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const FALLBACK_TEXT_MODEL = 'smart';
   const FALLBACK_IMAGE_MODEL = 'dinov2_base';
 
   function normalizeAvailableModelEntry(input) {
@@ -100,6 +100,12 @@
   $: imageModelOptions = discoveredImageModels.length > 0
     ? discoveredImageModels
     : [FALLBACK_IMAGE_MODEL];
+
+  function resolveSmartTextModelOption(options = []) {
+    return (Array.isArray(options) ? options : [])
+      .map((name) => String(name || '').trim())
+      .find((name) => name.toLowerCase().startsWith(FALLBACK_TEXT_MODEL)) || '';
+  }
 
   function buildLocalState() {
     return {
@@ -203,24 +209,27 @@
 
   function save() {
     hasLocalEdits = true;
-    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
-    const contextKf = Math.min(400, Math.max(80, Number(local.contextKeyframeSize) || 130));
-    const perGroup = Math.max(1, Number(local.resultsPerGroup) || 8);
+    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 170));
+    const contextKf = Math.min(400, Math.max(80, Number(local.contextKeyframeSize) || 170));
+    const perGroup = Math.max(1, Number(local.resultsPerGroup) || 5);
     const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 7200)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
-    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 57600));
+    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 25200));
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
-    const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || 160));
-    const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || 160));
+    const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || 500));
+    const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || 500));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
+    const smartTextModelOption = resolveSmartTextModelOption(textModelOptions);
     const safeDefaultTextModel = discoveredTextModels.length === 0
       ? (safeDefaultTextModelRaw || FALLBACK_TEXT_MODEL)
       : textModelOptions.includes(safeDefaultTextModelRaw)
       ? safeDefaultTextModelRaw
-      : (textModelOptions[0] || FALLBACK_TEXT_MODEL);
+      : (safeDefaultTextModelRaw.toLowerCase() === FALLBACK_TEXT_MODEL && smartTextModelOption)
+      ? smartTextModelOption
+      : (smartTextModelOption || textModelOptions[0] || FALLBACK_TEXT_MODEL);
     const safeDefaultImageModel = discoveredImageModels.length === 0
       ? (safeDefaultImageModelRaw || FALLBACK_IMAGE_MODEL)
       : imageModelOptions.includes(safeDefaultImageModelRaw)
@@ -315,7 +324,7 @@
     const parsed = Number(local.temporalWindowSeconds);
     local.temporalWindowSeconds = Number.isFinite(parsed)
       ? Math.min(99999, Math.max(1, Math.trunc(parsed)))
-      : 57600;
+      : 25200;
     save();
   }
 
@@ -344,7 +353,7 @@
     const parsed = Number(local.keyframeSize);
     const safe = Number.isFinite(parsed)
       ? Math.min(400, Math.max(80, Math.trunc(parsed)))
-      : 130;
+      : 170;
 
     local.keyframeSize = safe;
     document.documentElement.style.setProperty('--kf-size', `${safe}px`);
@@ -373,7 +382,7 @@
     const parsed = Number(local.contextKeyframeSize);
     local.contextKeyframeSize = Number.isFinite(parsed)
       ? Math.min(400, Math.max(80, Math.trunc(parsed)))
-      : 130;
+      : 170;
     save();
   }
 </script>
