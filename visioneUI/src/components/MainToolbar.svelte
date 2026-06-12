@@ -280,18 +280,6 @@
             <button
               type="button"
               class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
-              on:click={() => adjustKeyframeSize(10)}
-              aria-label="Increase thumbnail size"
-              title="Increase thumbnail size"
-              disabled={keyframeSize >= 400}
-            >
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
               on:click={() => adjustKeyframeSize(-10)}
               aria-label="Decrease thumbnail size"
               title="Decrease thumbnail size"
@@ -299,6 +287,18 @@
             >
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
                 <path d="M5 12h14"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="ui-toolbar-btn w-9 h-9 rounded-full border border-gray-300 bg-white font-extrabold leading-none text-gray-700 hover:bg-blue-50 hover:border-blue-400 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed shadow-sm transition-all inline-flex items-center justify-center"
+              on:click={() => adjustKeyframeSize(10)}
+              aria-label="Increase thumbnail size"
+              title="Increase thumbnail size"
+              disabled={keyframeSize >= 400}
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"/>
               </svg>
             </button>
           </div>
@@ -434,7 +434,7 @@
                 {#each evaluationOptions as item}
                   <button
                     type="button"
-                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {selectedEvaluationId === item.id ? 'ui-sort-option-active' : ''}"
                     on:click={() => setEvaluationId(item.id)}
                     title={item.displayName || item.name || 'Evaluation'}
                   >

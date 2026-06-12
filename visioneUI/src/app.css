@@ -645,9 +645,9 @@ html[data-dres-enabled='false'] .ui-challenge-control {
   --ui-input-placeholder: #94a3b8;
   --ui-input-focus-border: #60a5fa;
   --ui-input-focus-ring: rgba(96, 165, 250, 0.3);
-  --ui-input-disabled-text: #94a3b8;
-  --ui-input-disabled-bg: #111827;
-  --ui-input-disabled-border: #374151;
+  --ui-input-disabled-text: #64748b;
+  --ui-input-disabled-bg: #0b1220;
+  --ui-input-disabled-border: #1f2937;
   --ui-input-option-bg: #111827;
   --ui-input-option-text: #f8fafc;
   --ui-code-bg: #1f2937;
@@ -1138,6 +1138,10 @@ body {
 .ui-sort-option.ui-sort-option-active {
   background: var(--ui-sort-option-active-bg);
 }
+.ui-sort-option.ui-sort-option-active .text-gray-800,
+.ui-sort-option.ui-sort-option-active .text-gray-500 {
+  color: var(--ui-sort-option-active-text);
+}
 .ui-sort-option.ui-sort-option-active .text-blue-700,
 .ui-sort-option.ui-sort-option-active .text-blue-600 {
   color: var(--ui-sort-option-active-text);
@@ -1191,9 +1195,12 @@ body {
   box-shadow: 0 0 0 2px var(--ui-input-focus-ring);
 }
 .ui-settings-input:disabled {
-  color: var(--ui-input-disabled-text);
-  background-color: var(--ui-input-disabled-bg);
-  border-color: var(--ui-input-disabled-border);
+  color: var(--ui-input-disabled-text) !important;
+  -webkit-text-fill-color: var(--ui-input-disabled-text);
+  background-color: var(--ui-input-disabled-bg) !important;
+  border-color: var(--ui-input-disabled-border) !important;
+  cursor: not-allowed;
+  opacity: 1;
 }
 .ui-settings-input option {
   background-color: var(--ui-input-option-bg);
