@@ -407,7 +407,7 @@
   $: totalImages = images.length;
 
   // Query UI
-  const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const DEFAULT_TEXT_MODEL = 'smart';
   const DEFAULT_IMAGE_MODEL = 'dinov2_base';
   const DEFAULT_RF_MODEL = 'qwen_embedding_8B';
   let textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
@@ -500,12 +500,17 @@
   function getGlobalDefaultTextModel() {
     const configured = String(get(uiStore).defaultTextModel || '').trim();
     const discovered = getDiscoveredModelNames('text');
+    const smartText = resolveSmartTextModel(discovered);
+
+    if (configured.toLowerCase() === DEFAULT_TEXT_MODEL && smartText) {
+      return smartText;
+    }
 
     if (configured && (discovered.length === 0 || discovered.includes(configured))) {
       return configured;
     }
 
-    return discovered[0] || DEFAULT_TEXT_MODEL;
+    return smartText || discovered[0] || DEFAULT_TEXT_MODEL;
   }
 
   function getGlobalDefaultImageModel() {
@@ -561,6 +566,12 @@
     return Array.from(new Set(filtered.map((m) => m.name).filter(Boolean)));
   }
 
+  function resolveSmartTextModel(models = []) {
+    return (Array.isArray(models) ? models : [])
+      .map((name) => String(name || '').trim())
+      .find((name) => name.toLowerCase().startsWith(DEFAULT_TEXT_MODEL)) || '';
+  }
+
   function normalizeTextareaModels(textarea) {
     const legacyModel = String(textarea?.model || '').trim();
     const rawTextModel = String(textarea?.textModel || legacyModel || getGlobalDefaultTextModel()).trim();
@@ -592,11 +603,12 @@
     const ui = get(uiStore);
     const configuredText = String(ui?.defaultTextModel || '').trim();
     const configuredImage = String(ui?.defaultImageModel || '').trim();
+    const smartText = resolveSmartTextModel(discoveredText);
 
-    const shouldAutoSetText = !configuredText;
+    const shouldAutoSetText = !configuredText || (configuredText.toLowerCase() === DEFAULT_TEXT_MODEL && !!smartText);
     const shouldAutoSetImage = !configuredImage;
 
-    const fallbackText = discoveredText[0] || configuredText || DEFAULT_TEXT_MODEL;
+    const fallbackText = smartText || discoveredText[0] || configuredText || DEFAULT_TEXT_MODEL;
     const fallbackImage = discoveredImage[0] || configuredImage || DEFAULT_IMAGE_MODEL;
 
     const nextText = shouldAutoSetText ? fallbackText : configuredText;
@@ -1004,7 +1016,7 @@
     getCacheEnabled: () => get(uiStore).cacheEnabled,
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
-    getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 57600,
+    getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 25200,
     getQueryResultK: () => Number(get(uiStore).queryResultK) || 7200,
     getSubmittedIds: getSubmittedLookup,
     getSimilarityPreview: getRecentSimilarityPreview,
@@ -1099,7 +1111,7 @@
         sortType: 'feedbackModel',
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
-        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 57600,
+        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 25200,
         buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(get(uiStore).queryResultK) || 7200),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
@@ -1924,23 +1936,23 @@
   function adjustImageModalScale(delta = 0) {
     const step = Number(delta) || 0;
     if (!step) return;
-    const current = Number(get(uiStore).imageModalScale) || 160;
+    const current = Number(get(uiStore).imageModalScale) || 500;
     uiStore.actions.applySettings({ imageModalScale: Math.max(80, Math.round(current + step)) });
   }
 
   function adjustSlideshowModalScale(delta = 0) {
     const step = Number(delta) || 0;
     if (!step) return;
-    const current = Number(get(uiStore).slideshowModalScale) || 160;
+    const current = Number(get(uiStore).slideshowModalScale) || 500;
     uiStore.actions.applySettings({ slideshowModalScale: Math.max(80, Math.round(current + step)) });
   }
 
   function adjustKeyframeSize(delta = 0) {
     const step = Number(delta) || 0;
     if (!step) return false;
-    const current = Number(get(uiStore).keyframeSize) || 130;
+    const current = Number(get(uiStore).keyframeSize) || 170;
     const next = current + step;
-    const safe = Math.min(400, Math.max(80, Number(next) || 130));
+    const safe = Math.min(400, Math.max(80, Number(next) || 170));
     if (safe === current) return false;
     uiStore.actions.setKeyframeSize(safe);
     return true;
@@ -1949,9 +1961,9 @@
   function adjustContextKeyframeSize(delta = 0) {
     const step = Number(delta) || 0;
     if (!step) return false;
-    const current = Number(get(uiStore).contextKeyframeSize) || 130;
+    const current = Number(get(uiStore).contextKeyframeSize) || 170;
     const next = current + step;
-    const safe = Math.min(400, Math.max(80, Number(next) || 130));
+    const safe = Math.min(400, Math.max(80, Number(next) || 170));
     if (safe === current) return false;
     uiStore.actions.setContextKeyframeSize(safe);
     return true;

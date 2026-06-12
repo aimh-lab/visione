@@ -145,7 +145,7 @@
   let enabledStepCount = 0;
   let showSequenceChrome = false;
 
-  const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+  const DEFAULT_TEXT_MODEL = 'smart';
   const DEFAULT_IMAGE_MODEL = 'dinov2_base';
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;

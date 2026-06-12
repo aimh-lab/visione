@@ -4,7 +4,7 @@
 // in the multi-step query builder. Each function returns the new state
 // so the caller can assign it back.
 
-const DEFAULT_TEXT_MODEL = 'openclip_clip_vit_b_32';
+const DEFAULT_TEXT_MODEL = 'smart';
 const DEFAULT_IMAGE_MODEL = 'dinov2_base';
 
 /**
