@@ -18,6 +18,7 @@ const DEFAULT = {
   sidebarRightTab: 'RF',       // 'RF' | 'Submitted'
 
   keyframeSize: 130,
+  contextKeyframeSize: 130,
   resultsPerGroup: 8,
   queryResultK: 7200,
   resultsAutoFit: true,
@@ -180,6 +181,7 @@ function createUIStore() {
         sidebarRightTab: s.sidebarRightTab ?? u.sidebarRightTab,
 
         keyframeSize: s.keyframeSize ?? u.keyframeSize,
+        contextKeyframeSize: s.contextKeyframeSize ?? s.keyframeSize ?? u.contextKeyframeSize,
         resultsPerGroup: (s.resultsPerGroup ?? s.resultsPerRow) ?? u.resultsPerGroup,
         queryResultK: normalizeQueryResultK(s.queryResultK, u.queryResultK),
         resultsAutoFit: true,
@@ -275,6 +277,7 @@ function createUIStore() {
         sidebarRightWidth: DEFAULT.sidebarRightWidth,
         sidebarRightTab: DEFAULT.sidebarRightTab,
         keyframeSize: DEFAULT.keyframeSize,
+        contextKeyframeSize: DEFAULT.contextKeyframeSize,
         resultsPerGroup: DEFAULT.resultsPerGroup,
         queryResultK: DEFAULT.queryResultK,
         resultsAutoFit: DEFAULT.resultsAutoFit,
@@ -375,6 +378,12 @@ function createUIStore() {
       persist({ keyframeSize: safe });
     },
 
+    setContextKeyframeSize(contextKeyframeSize) {
+      const safe = Math.min(400, Math.max(80, Number(contextKeyframeSize) || DEFAULT.contextKeyframeSize));
+      update(u => ({ ...u, contextKeyframeSize: safe }));
+      persist({ contextKeyframeSize: safe });
+    },
+
     setContentScale(contentScale) {
       update(u => ({ ...u, contentScale }));
       persist({ contentScale });
@@ -449,6 +458,9 @@ function createUIStore() {
         const safeQueryResultK = patch.queryResultK == null
           ? u.queryResultK
           : normalizeQueryResultK(patch.queryResultK, u.queryResultK || DEFAULT.queryResultK);
+        const safeContextKeyframeSize = patch.contextKeyframeSize == null
+          ? u.contextKeyframeSize
+          : Math.min(400, Math.max(80, Number(patch.contextKeyframeSize) || u.contextKeyframeSize || DEFAULT.contextKeyframeSize));
         const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)
           ? patch.videoPlayerModalMode
           : u.videoPlayerModalMode;
@@ -468,6 +480,7 @@ function createUIStore() {
           ...u,
           theme: safeTheme,
           keyframeSize: patch.keyframeSize ?? u.keyframeSize,
+          contextKeyframeSize: safeContextKeyframeSize,
           resultsPerGroup: patch.resultsPerGroup ?? patch.resultsPerRow ?? u.resultsPerGroup,
           queryResultK: safeQueryResultK,
           resultsAutoFit: true,
@@ -512,6 +525,7 @@ function createUIStore() {
         persist({
           theme: nextState.theme,
           keyframeSize: nextState.keyframeSize,
+          contextKeyframeSize: nextState.contextKeyframeSize,
           resultsPerGroup: nextState.resultsPerGroup,
           queryResultK: nextState.queryResultK,
           resultsAutoFit: nextState.resultsAutoFit,

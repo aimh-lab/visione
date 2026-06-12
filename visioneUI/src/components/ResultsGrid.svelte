@@ -28,8 +28,13 @@
   export let resultsetBadgeLabelMode = "both";
   export let strongSelectedHighlight = false;
   export let modalSelectionEmphasis = false;
+  export let imageSize = null;
 
   $: timeBadgeTimezoneOverride = String($uiStore?.timeBadgeTimezoneOverride || 'profile').trim().toLowerCase();
+  $: safeImageSize = Number.isFinite(Number(imageSize)) && Number(imageSize) > 0 ? Math.round(Number(imageSize)) : null;
+  $: imageSizeStyle = safeImageSize
+    ? `--kf-size: ${safeImageSize}px; --min-card-w: ${Math.round(safeImageSize * 1.1)}px;`
+    : '';
 
   function getVideoBadgeModeOverride() {
     if (resultsetBadgeLabelMode === 'id') return 'raw';
@@ -1246,7 +1251,7 @@
   });
 </script>
 
-<div class="relative h-full">
+<div class="relative h-full" style={imageSizeStyle}>
 <div bind:this={containerEl} class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" on:scroll={handleScroll}>
   {#if topSpacer > 0}
     <div style={`height: ${topSpacer}px;`} aria-hidden="true"></div>

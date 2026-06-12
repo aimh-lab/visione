@@ -106,6 +106,7 @@
   const summaryKey = (item) => `${String(item?.scope || 'hour').trim()}::${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   $: pinnedCount = (pinnedVideoSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
+  $: showImageSizeControls = showViewModeRadios || active === "View2";
   
   function handleClickOutside(event) {
     if (showPositionMenu && !event.target.closest('.position-menu-container')) {
@@ -410,8 +411,8 @@
       
       <div class="flex-1"></div>
       
-      <!-- Sort dropdown (solo se showViewModeRadios) -->
-      {#if showViewModeRadios}
+      <!-- Image size controls -->
+      {#if showImageSizeControls}
         <div class="flex flex-col items-center gap-1">
           <button
             type="button"
@@ -438,7 +439,9 @@
             </svg>
           </button>
         </div>
+      {/if}
 
+      {#if showViewModeRadios}
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
@@ -788,8 +791,8 @@
       
       <div class="flex-1"></div>
       
-      <!-- Sort dropdown -->
-      {#if showViewModeRadios}
+      <!-- Image size controls -->
+      {#if showImageSizeControls}
         <div class="flex flex-col items-center gap-1">
           <button
             type="button"
@@ -816,7 +819,9 @@
             </svg>
           </button>
         </div>
+      {/if}
 
+      {#if showViewModeRadios}
         <div class="relative sort-dropdown-container">
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}

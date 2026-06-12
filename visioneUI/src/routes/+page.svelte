@@ -1946,6 +1946,17 @@
     return true;
   }
 
+  function adjustContextKeyframeSize(delta = 0) {
+    const step = Number(delta) || 0;
+    if (!step) return false;
+    const current = Number(get(uiStore).contextKeyframeSize) || 130;
+    const next = current + step;
+    const safe = Math.min(400, Math.max(80, Number(next) || 130));
+    if (safe === current) return false;
+    uiStore.actions.setContextKeyframeSize(safe);
+    return true;
+  }
+
   function adjustActiveImageViewScale(delta = 0) {
     const step = Number(delta) || 0;
     if (!step) return false;
@@ -1957,9 +1968,17 @@
 
     if (isVideoPlayerOpen) return false;
 
+    if (isVideoSummaryModalOpen) {
+      return adjustContextKeyframeSize(step);
+    }
+
     if ($searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || pinnedImageModalOpen) {
       adjustImageModalScale(step);
       return true;
+    }
+
+    if (get(uiStore).layoutTab === "View2") {
+      return adjustContextKeyframeSize(step);
     }
 
     return adjustKeyframeSize(step);
@@ -3205,6 +3224,8 @@ function handleViewSubmitted() {
   {runtimeProfile}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
+  contentScale={$uiStore.contentScale}
+  contextKeyframeSize={$uiStore.contextKeyframeSize}
   imageModalScale={$uiStore.imageModalScale}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
   virtualizationEnabled={$uiStore.virtualizationEnabled}
@@ -3219,6 +3240,7 @@ function handleViewSubmitted() {
   onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
   onPinImage={pinImage}
   {isImagePinned}
+  onAdjustContextKeyframeSize={adjustContextKeyframeSize}
   onAdjustImageModalScale={adjustImageModalScale}
   addRFPositiveByImg={addRFPositiveByImg}
   addRFNegativeByImg={addRFNegativeByImg}
@@ -3230,6 +3252,7 @@ function handleViewSubmitted() {
   isOpen={isSettingsOpen}
   theme={$uiStore.theme}
   keyframeSize={$uiStore.keyframeSize}
+  contextKeyframeSize={$uiStore.contextKeyframeSize}
   resultsPerGroup={$uiStore.resultsPerGroup}
   queryResultK={$uiStore.queryResultK}
   resultsAutoFit={$uiStore.resultsAutoFit}
@@ -3281,7 +3304,7 @@ function handleViewSubmitted() {
   isSidebarRightOpen={$uiStore.isSidebarRightOpen}
   viewMode={$uiStore.viewMode}
   sortMode={$uiStore.sortMode}
-  keyframeSize={$uiStore.keyframeSize}
+  keyframeSize={$uiStore.layoutTab === "View2" ? $uiStore.contextKeyframeSize : $uiStore.keyframeSize}
   showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
   {runtimeProfile}
   dresEnabled={$uiStore.dresEnabled}
@@ -3297,7 +3320,7 @@ function handleViewSubmitted() {
   on:toggleRightSidebar={() => uiStore.actions.toggleRightSidebar()}
   on:changeViewMode={(e) => uiStore.actions.setViewMode(e.detail.mode)}
   on:changeSortMode={(e) => uiStore.actions.setSortMode(e.detail.mode)}
-  on:adjustKeyframeSize={(e) => adjustKeyframeSize(e?.detail?.delta)}
+  on:adjustKeyframeSize={(e) => adjustActiveImageViewScale(e?.detail?.delta)}
   on:openSettings={() => (isSettingsOpen = true)}
   on:changeChallengeType={handleChangeChallengeType}
   on:requestEvaluationOptions={refreshDresEvaluationOptions}
@@ -3353,6 +3376,7 @@ function handleViewSubmitted() {
         videoBadgeOrientation={$uiStore.videoBadgeOrientation}
         showSubmitUI={$uiStore.dresEnabled}
         challengeType={$uiStore.dresChallengeType}
+        contextKeyframeSize={$uiStore.contextKeyframeSize}
         imageModalScale={$uiStore.imageModalScale}
         {runtimeProfile}
         {discoveryMetadataFields}
