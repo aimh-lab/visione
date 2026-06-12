@@ -30,7 +30,7 @@ const DEFAULT = {
   dataserverHost: 'https://localhost:43333',
   justifyResultRows: false,
   tupleIndicatorMode: 'badge+bar',
-  videoBadgeOrientation: 'vertical',
+  videoBadgeOrientation: 'horizontal',
   resultsetBadgeLabelMode: 'both',
   showLocalTimeInTitles: true,
   timeBadgeTimezoneOverride: 'profile',
