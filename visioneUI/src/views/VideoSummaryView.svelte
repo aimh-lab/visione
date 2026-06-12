@@ -20,6 +20,7 @@
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
+  export let contextKeyframeSize = 130;
   export let imageModalScale = 100;
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
@@ -133,6 +134,7 @@
               {runtimeProfile}
               {showLocalTimeInTitles}
               {resultsetBadgeLabelMode}
+              imageSize={contextKeyframeSize}
               {justifyResultRows}
               {tupleIndicatorMode}
               virtualizeRows={virtualizationEnabled}

@@ -33,6 +33,8 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
+  export let contentScale = 1;
+  export let contextKeyframeSize = 130;
   export let imageModalScale = 100;
   export let rfPositive: Frame[] = [];
   export let rfNegative: Frame[] = [];
@@ -53,6 +55,7 @@
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: unknown) => {};
+  export let onAdjustContextKeyframeSize = (_delta: number) => {};
   export let onAdjustImageModalScale = (_delta: number) => {};
 
   const summaryKey = (item: PinnedSummary) =>
@@ -74,6 +77,7 @@
   $: contextSubtitle = safeContextScope === "day"
     ? `Day${contextDayLabel ? ` ${contextDayLabel}` : ""}`
     : (videoId ? `Hour ${videoId}` : "Quick inspect mode");
+  $: effectiveContextImageSize = Math.round((Number(contextKeyframeSize) || 130) * (Number(contentScale) || 1));
 
   const MIN_WIDTH = 820;
   const MIN_HEIGHT = 520;
@@ -139,7 +143,35 @@
     localSelectedFrameId = String(nextFrame?.imgId || '') || null;
   }
 
+  function isTypingTarget(target: EventTarget | null) {
+    const el = target as HTMLElement | null;
+    const tagName = String(el?.tagName || "").toLowerCase();
+    return tagName === "input" || tagName === "textarea" || tagName === "select" || !!el?.isContentEditable;
+  }
+
+  function isIncreaseKey(event: KeyboardEvent) {
+    return event.key === "+" || event.key === "=" || event.code === "Equal" || event.code === "NumpadAdd";
+  }
+
+  function isDecreaseKey(event: KeyboardEvent) {
+    return event.key === "-" || event.code === "Minus" || event.code === "NumpadSubtract";
+  }
+
   function handleSummaryWindowKeydown(event: KeyboardEvent) {
+    if (!isOpen || isTypingTarget(event.target)) return;
+
+    if (isIncreaseKey(event) || isDecreaseKey(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const delta = isIncreaseKey(event) ? 10 : -10;
+      if (summaryImageModalOpen) {
+        onAdjustImageModalScale(delta);
+      } else {
+        onAdjustContextKeyframeSize(delta);
+      }
+      return;
+    }
+
     if (!summaryImageModalOpen) return;
     if (!["Escape", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
 
@@ -337,6 +369,35 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <div class="inline-flex items-center gap-1 rounded-md border border-slate-600/70 bg-slate-800/80 p-0.5" title="Context image size">
+            <button
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              on:mousedown|stopPropagation
+              on:click={() => onAdjustContextKeyframeSize(-10)}
+              disabled={Number(contextKeyframeSize) <= 80}
+              aria-label="Decrease context image size"
+              title="Decrease context image size"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M5 12h14"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              on:mousedown|stopPropagation
+              on:click={() => onAdjustContextKeyframeSize(10)}
+              disabled={Number(contextKeyframeSize) >= 400}
+              aria-label="Increase context image size"
+              title="Increase context image size"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+
           <div class="ui-context-scope-toggle inline-flex rounded-md border border-slate-600/70 bg-slate-800/80 p-0.5">
             <button
               type="button"
@@ -441,6 +502,7 @@
               {runtimeProfile}
               {showLocalTimeInTitles}
               {resultsetBadgeLabelMode}
+              imageSize={effectiveContextImageSize}
               strongSelectedHighlight={true}
               {rfPositive}
               {rfNegative}

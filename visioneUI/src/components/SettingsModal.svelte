@@ -6,6 +6,7 @@
   export let theme = 'default';
   export let resultsAutoFit = true;
   export let keyframeSize = 130;
+  export let contextKeyframeSize = 130;
   export let resultsPerGroup = 8;
   export let queryResultK = 7200;
   export let justifyResultRows = false;
@@ -104,6 +105,7 @@
     return {
       theme,
       keyframeSize,
+      contextKeyframeSize: contextKeyframeSize ?? keyframeSize,
       resultsPerGroup,
       queryResultK,
       resultsAutoFit,
@@ -145,6 +147,7 @@
   let themeTouched = false;
   let hasLocalEdits = false;
   let showDresPassword = false;
+  let lastSyncedContextKeyframeSize = contextKeyframeSize;
   const settingsTabs = [
     { id: 'search', label: 'Search' },
     { id: 'appearance', label: 'Display' },
@@ -155,6 +158,14 @@
   $: if (isOpen && !hasLocalEdits) {
     local = buildLocalState();
   }
+
+  $: if (isOpen && contextKeyframeSize !== lastSyncedContextKeyframeSize) {
+    local = {
+      ...local,
+      contextKeyframeSize: contextKeyframeSize ?? keyframeSize
+    };
+    lastSyncedContextKeyframeSize = contextKeyframeSize;
+  }
   
   $: if (isOpen && !wasOpen) {
     local = buildLocalState();
@@ -162,6 +173,7 @@
     themeTouched = false;
     activeSettingsTab = 'search';
     showDresPassword = false;
+    lastSyncedContextKeyframeSize = contextKeyframeSize;
   }
 
   $: wasOpen = isOpen;
@@ -192,6 +204,7 @@
   function save() {
     hasLocalEdits = true;
     const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 130));
+    const contextKf = Math.min(400, Math.max(80, Number(local.contextKeyframeSize) || 130));
     const perGroup = Math.max(1, Number(local.resultsPerGroup) || 8);
     const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 7200)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
@@ -230,6 +243,7 @@
     const newSettings = {
       theme: safeTheme,
       keyframeSize: kf,
+      contextKeyframeSize: contextKf,
       resultsPerGroup: perGroup,
       queryResultK: safeQueryResultK,
       resultsAutoFit: true,
@@ -337,6 +351,31 @@
     document.documentElement.style.setProperty('--min-card-w', `${Math.round(safe * 1.1)}px`);
     save();
   }
+
+  function handleContextKeyframeSizeInput(event) {
+    hasLocalEdits = true;
+    const raw = String(event?.currentTarget?.value ?? '');
+    if (raw.trim() === '') {
+      local.contextKeyframeSize = '';
+      return;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+
+    local.contextKeyframeSize = Math.min(400, Math.trunc(parsed));
+    if (local.contextKeyframeSize >= 80 && local.contextKeyframeSize <= 400) {
+      save();
+    }
+  }
+
+  function commitContextKeyframeSizeInput() {
+    const parsed = Number(local.contextKeyframeSize);
+    local.contextKeyframeSize = Number.isFinite(parsed)
+      ? Math.min(400, Math.max(80, Math.trunc(parsed)))
+      : 130;
+    save();
+  }
 </script>
 
 <!-- Template invariato, cambiano solo i binding on:input e on:change -->
@@ -429,6 +468,34 @@
                       <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                     </button>
                     <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease keyframe size" on:click={() => adjustNumber('keyframeSize', -10, 80, 400)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <span class="ui-settings-unit text-xs text-gray-500">px</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-context-keyframe-size" class="ui-settings-label text-sm font-medium text-gray-700">Context image size</label>
+              <div class="flex items-center space-x-2">
+                <div class="relative">
+                  <input
+                    id="settings-context-keyframe-size"
+                    type="number"
+                    min="80"
+                    max="400"
+                    step="10"
+                    class="ui-settings-input w-20 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                    bind:value={local.contextKeyframeSize}
+                    on:input={handleContextKeyframeSizeInput}
+                    on:blur={commitContextKeyframeSizeInput}
+                  />
+                  <div class="ui-settings-stepper">
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Increase context image size" on:click={() => adjustNumber('contextKeyframeSize', 10, 80, 400)}>
+                      <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                    </button>
+                    <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease context image size" on:click={() => adjustNumber('contextKeyframeSize', -10, 80, 400)}>
                       <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                     </button>
                   </div>

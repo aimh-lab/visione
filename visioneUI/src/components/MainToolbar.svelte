@@ -101,6 +101,7 @@
   $: pinnedCount = (pinnedSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: hasTabs = Array.isArray(tabs) && tabs.length > 0;
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
+  $: showImageSizeControls = showViewModeRadios || active === "View2";
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
   $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
@@ -273,8 +274,8 @@
         {/if}
       </div>
 
-      <!-- Results layout dropdown with order options -->
-      {#if showViewModeRadios}
+      <!-- Image size controls -->
+      {#if showImageSizeControls}
         <div class="flex items-center space-x-2">
           <div class="flex items-center gap-1.5 mr-3" title="Thumbnail size">
             <button
@@ -302,7 +303,11 @@
               </svg>
             </button>
           </div>
+        </div>
+      {/if}
 
+      {#if showViewModeRadios}
+        <div class="flex items-center space-x-2">
         <div class="relative group-dropdown-container">
           <button
             on:click|stopPropagation={() => isGroupDropdownOpen = !isGroupDropdownOpen}
