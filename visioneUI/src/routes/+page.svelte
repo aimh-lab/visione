@@ -286,6 +286,7 @@
   let selectedDresEvaluationLabel = '';
   let dresEvaluationLoadKey = '';
   let isLoadingDresEvaluationOptions = false;
+  let dresEvaluationRefreshTimer = null;
   let isQaAnswerModalOpen = false;
   let qaAnswerContext = { imgId: '', source: '', title: '' };
   let qaAgentStream = { isStreaming: false, events: [], finalAnswer: '', error: '' };
@@ -329,9 +330,21 @@
   $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
+  function getAnySelectedDresEvaluationId(mapLike) {
+    const map = mapLike && typeof mapLike === 'object' ? mapLike : {};
+    for (const key of ['KIS', 'AVS', 'Q&A']) {
+      const id = String(map[key] || '').trim();
+      if (id) return id;
+    }
+    return '';
+  }
+  function getSelectedDresEvaluationIdForChallenge(mapLike, challengeType) {
+    const map = mapLike && typeof mapLike === 'object' ? mapLike : {};
+    return String(map[challengeType] || '').trim() || getAnySelectedDresEvaluationId(map);
+  }
   $: {
     const challengeType = String($uiStore.dresChallengeType || 'KIS');
-    const selectedId = String($uiStore.dresEvaluationIdByChallenge?.[challengeType] || '').trim();
+    const selectedId = getSelectedDresEvaluationIdForChallenge($uiStore.dresEvaluationIdByChallenge, challengeType);
     const match = dresEvaluationOptions.find((item) => item.id === selectedId);
     selectedDresEvaluationLabel = String(match?.displayName || match?.name || '').trim();
   }
@@ -1251,18 +1264,6 @@
   async function handleTestDresConnection(e) {
     const result = await dresCtrl.testConnection(e);
     if (!result?.ok) return;
-
-    const testedSettings = e?.detail || {};
-    dresEvaluationLoadKey = computeDresEvaluationLoadKey(testedSettings);
-    dresEvaluationOptions = normalizeEvaluationOptions(result.evaluations);
-
-    const challengeType = String(testedSettings.dresChallengeType || get(uiStore).dresChallengeType || 'KIS');
-    const selectedEvaluationId = String(get(uiStore).dresEvaluationIdByChallenge?.[challengeType] || '').trim();
-    const firstAvailable = String(dresEvaluationOptions[0]?.id || '').trim();
-    const selectedStillAvailable = dresEvaluationOptions.some((item) => item.id === selectedEvaluationId);
-    if (firstAvailable && (!selectedEvaluationId || !selectedStillAvailable)) {
-      uiStore.actions.setDresEvaluationId(challengeType, firstAvailable);
-    }
   }
 
   function normalizeEvaluationOptions(entries) {
@@ -1304,8 +1305,7 @@
       String(!!settings?.dresEnabled),
       String(settings?.dresSubmitServer || '').trim(),
       String(settings?.dresUsername || '').trim(),
-      String(settings?.dresPassword || '').trim(),
-      String(settings?.dresChallengeType || 'KIS').trim()
+      String(settings?.dresPassword || '').trim()
     ].join('|');
   }
 
@@ -1313,14 +1313,47 @@
     const currentSettings = get(uiStore);
     if (!canLoadDresEvaluations(currentSettings)) {
       dresEvaluationOptions = [];
+      dresEvaluationLoadKey = '';
       return;
     }
 
     const currentKey = computeDresEvaluationLoadKey(currentSettings);
-    if (currentKey !== dresEvaluationLoadKey) {
-      dresEvaluationOptions = [];
+    if (currentKey === dresEvaluationLoadKey && dresEvaluationOptions.length > 0) {
       return;
     }
+
+    isLoadingDresEvaluationOptions = true;
+    try {
+      const evaluations = await dresCtrl.listEvaluations();
+      const options = normalizeEvaluationOptions(evaluations);
+      dresEvaluationOptions = options;
+      dresEvaluationLoadKey = currentKey;
+
+      const challengeType = String(currentSettings.dresChallengeType || 'KIS');
+      const selectedEvaluationId = getAnySelectedDresEvaluationId(currentSettings.dresEvaluationIdByChallenge);
+      const firstAvailable = String(options[0]?.id || '').trim();
+      if (firstAvailable && !selectedEvaluationId) {
+        uiStore.actions.setDresEvaluationId(challengeType, firstAvailable);
+      }
+    } catch (error) {
+      dresEvaluationOptions = [];
+      dresEvaluationLoadKey = '';
+      console.warn('[DRES] Unable to load evaluations', error);
+    } finally {
+      isLoadingDresEvaluationOptions = false;
+    }
+  }
+
+  function scheduleDresEvaluationRefresh(delay = 500) {
+    if (dresEvaluationRefreshTimer) {
+      clearTimeout(dresEvaluationRefreshTimer);
+      dresEvaluationRefreshTimer = null;
+    }
+
+    dresEvaluationRefreshTimer = setTimeout(() => {
+      dresEvaluationRefreshTimer = null;
+      refreshDresEvaluationOptions().catch(() => {});
+    }, delay);
   }
 
   async function stopQaAgent() {
@@ -1529,6 +1562,8 @@
         await restoreFromURLState(urlState);
         isRestoringFromHistory = false;
       }
+
+      refreshDresEvaluationOptions().catch(() => {});
     };
 
     const handlePopState = async () => {
@@ -1549,6 +1584,10 @@
     if (urlSyncTimer) {
       clearTimeout(urlSyncTimer);
       urlSyncTimer = null;
+    }
+    if (dresEvaluationRefreshTimer) {
+      clearTimeout(dresEvaluationRefreshTimer);
+      dresEvaluationRefreshTimer = null;
     }
     scrollMgr.destroy();
   });
@@ -1871,6 +1910,8 @@
     const nextDresKey = computeDresEvaluationLoadKey({ ...get(uiStore), ...detail });
     if (nextDresKey !== previousDresKey && nextDresKey !== dresEvaluationLoadKey) {
       dresEvaluationOptions = [];
+      dresEvaluationLoadKey = '';
+      scheduleDresEvaluationRefresh();
     }
 
     vbsLogger.logInteractionEvent({
@@ -3246,7 +3287,7 @@ function handleViewSubmitted() {
   dresEnabled={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
   evaluationOptions={dresEvaluationOptions}
-  selectedEvaluationId={$uiStore.dresEvaluationIdByChallenge?.[$uiStore.dresChallengeType] || ''}
+  selectedEvaluationId={getSelectedDresEvaluationIdForChallenge($uiStore.dresEvaluationIdByChallenge, $uiStore.dresChallengeType)}
   loadingEvaluationOptions={isLoadingDresEvaluationOptions}
   {pinnedVideoSummaries}
   {pinnedImages}

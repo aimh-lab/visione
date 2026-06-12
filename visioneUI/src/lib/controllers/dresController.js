@@ -91,7 +91,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       settings?.dresEvaluationIdByChallenge ?? settings?.dresEvaluationIdsByChallenge
     );
     if (!CHALLENGE_TYPES.includes(challengeType)) return '';
-    return String(map[challengeType] || '').trim();
+    return String(map[challengeType] || map.KIS || map.AVS || map['Q&A'] || '').trim();
   }
 
   function normalizeVerdict(value) {
@@ -438,19 +438,12 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       const client = createDresClientFromSettings(config);
 
       await client.login();
-      const evaluations = await client.listEvaluations();
-      const activeEvaluations = evaluations.filter((item) => item?.status === 'ACTIVE');
-      const activeList = activeEvaluations.map((item) => item.id).join(', ');
-      toasts.success(
-        activeEvaluations.length > 0
-          ? `DRES connected. Active evaluations: ${activeList}`
-          : 'DRES connected. No ACTIVE evaluations available for this user.'
-      );
+      toasts.success('DRES connected.');
 
-      try { await client.logout(); } catch { /* ignore logout errors after test */ }
+      //  try { await client.logout(); } catch { /* ignore logout errors after test */ }
       return {
         ok: true,
-        evaluations: Array.isArray(evaluations) ? evaluations : []
+        evaluations: []
       };
     } catch (error) {
       const message = error instanceof DresClientError || error instanceof Error

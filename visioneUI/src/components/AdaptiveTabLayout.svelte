@@ -546,7 +546,7 @@
                 {#each evaluationOptions as item}
                   <button
                     type="button"
-                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {selectedEvaluationId === item.id ? 'ui-sort-option-active' : ''}"
                     on:click={() => setEvaluationId(item.id)}
                     title={item.displayName || item.name || 'Evaluation'}
                   >
@@ -924,7 +924,7 @@
                 {#each evaluationOptions as item}
                   <button
                     type="button"
-                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                    class="ui-sort-option w-full flex items-center justify-between gap-2 px-3 py-2 transition-colors text-left {selectedEvaluationId === item.id ? 'ui-sort-option-active' : ''}"
                     on:click={() => setEvaluationId(item.id)}
                     title={item.displayName || item.name || 'Evaluation'}
                   >
