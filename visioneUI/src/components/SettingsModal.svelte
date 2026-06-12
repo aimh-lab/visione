@@ -42,7 +42,7 @@
   export let defaultTextModel = 'smart';
   export let defaultImageModel = 'dinov2_base';
   export let availableModels = [];
-  export let videoBadgeOrientation = 'vertical';
+  export let videoBadgeOrientation = 'horizontal';
 
   const dispatch = createEventDispatcher();
   const FALLBACK_TEXT_MODEL = 'smart';
@@ -264,7 +264,7 @@
       dataserverHost: String(local.dataserverHost ?? '').trim(),
       justifyResultRows: !!local.justifyResultRows,
       tupleIndicatorMode: safeTupleIndicatorMode,
-      videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'vertical',
+      videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'horizontal',
       resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
       showLocalTimeInTitles: !!local.showLocalTimeInTitles,
       timeBadgeTimezoneOverride: safeTimeBadgeTimezoneOverride,
