@@ -122,9 +122,9 @@
 <svelte:window on:click={handleClickOutside} />
 
 <div class="w-full bg-gradient-to-b from-gray-100 to-gray-200 border-b border-gray-300 shadow-sm">
-  <div class="w-full px-4 flex items-end justify-between relative">
+  <div class="main-toolbar-shell w-full px-4 flex items-end justify-between relative">
     <!-- Tab buttons (left) -->
-    <div class="ml-8 flex items-end gap-2">
+    <div class="main-toolbar-left ml-8 flex items-end gap-2 min-w-0">
       {#if hasTabs}
         <div class="ui-main-tab-strip flex items-end space-x-1 p-1 rounded-t-xl border border-gray-300 bg-gray-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
           {#each tabs as view, idx}
@@ -163,7 +163,7 @@
     </div>
 
     <!-- Logo + Label al centro -->
-    <div class="absolute left-1/2 -translate-x-1/2 pb-1 flex items-center">
+    <div class="main-toolbar-logo pb-1 flex items-center flex-shrink-0 mx-4">
       <button 
         on:click={() => dispatch('reset')}
         class="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1"
@@ -174,7 +174,7 @@
     </div>
 
     <!-- Right side: controls -->
-    <div class="flex items-center space-x-3 pb-0">
+    <div class="main-toolbar-right flex items-center space-x-3 pb-0 flex-shrink-0">
       <div class="relative pinned-dropdown-container">
         <button
           type="button"
@@ -529,3 +529,26 @@
     </div>
   </div>
 </div>
+
+<style>
+  @media (max-width: 760px) {
+    .main-toolbar-logo {
+      display: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .main-toolbar-shell {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+
+    .main-toolbar-left {
+      margin-left: 0;
+    }
+
+    .main-toolbar-right {
+      gap: 0.375rem;
+    }
+  }
+</style>
