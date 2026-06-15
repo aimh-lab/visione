@@ -106,6 +106,8 @@
   const summaryKey = (item) => `${String(item?.scope || 'hour').trim()}::${String(item?.videoId || '').trim()}::${String(item?.highlightImgId || '').trim()}`;
   $: pinnedCount = (pinnedVideoSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
+  $: currentSort = sortOptions.find((option) => option.value === viewMode) || sortOptions[0] || { label: 'Standard', icon: '' };
+  $: currentSortMode = SORT_MODE_OPTIONS.find((option) => option.value === sortMode) || SORT_MODE_OPTIONS[0] || { label: 'Relevance', icon: '' };
   $: showImageSizeControls = showViewModeRadios || active === "View2";
   
   function handleClickOutside(event) {
@@ -192,12 +194,12 @@
       </button>
 
       <button
-        class="top-toolbar-logo absolute top-1.5 left-12 z-[220] p-1 rounded-lg hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="top-toolbar-logo absolute top-2 left-12 z-[220] p-1 rounded-lg bg-white/80 hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
         on:click={() => dispatch('reset')}
         title="Clear current search session"
         aria-label="Clear current search session"
       >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
+        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-5"/>
       </button>
       
       {#if showPositionMenu}
@@ -262,7 +264,7 @@
 {:else if $tabsPosition === 'left'}
   <!-- Layout LEFT -->
   <div class="flex h-full">
-    <div class="w-10 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 flex flex-col items-center py-4 space-y-2 shadow-sm">
+    <div class="w-10 bg-gradient-to-b from-gray-100 to-gray-200 border-r border-gray-300 flex flex-col items-center pt-4 pb-12 space-y-2 shadow-sm">
       <!-- Menu grip in alto -->
       <button 
         class="ui-toolbar-btn ui-position-menu-btn p-1.5 bg-white/95 border border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 rounded-lg shadow-sm transition-all position-menu-container"
@@ -275,6 +277,15 @@
           <circle cx="12" cy="12" r="1"/>
           <circle cx="12" cy="19" r="1"/>
         </svg>
+      </button>
+
+      <button
+        class="p-1 rounded-lg bg-white/80 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
+        on:click={() => dispatch('reset')}
+        title="Clear current search session"
+        aria-label="Clear current search session"
+      >
+        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
       </button>
       
       {#if showPositionMenu}
@@ -455,18 +466,17 @@
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Results layout and order"
-            aria-label="Results layout and order"
+            title={`Results layout: ${currentSort.label}; order: ${currentSortMode.label}`}
+            aria-label={`Results layout: ${currentSort.label}; order: ${currentSortMode.label}`}
           >
-            <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 5h10"/>
-              <path d="M11 12h7"/>
-              <path d="M11 19h4"/>
-              <path d="M4 17l-2 2 2 2"/>
-              <path d="M2 19h5"/>
-              <path d="M6 7l2-2 2 2"/>
-              <path d="M8 5v14"/>
-            </svg>
+            <span class="inline-flex flex-col items-center justify-center gap-0.5 text-gray-600">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {@html currentSort.icon}
+              </svg>
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {@html currentSortMode.icon}
+              </svg>
+            </span>
           </button>
           
           {#if isSortDropdownOpen}
@@ -624,15 +634,6 @@
         </svg>
       </button>
 
-      <!-- Reset session -->
-      <button
-        class="p-1 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
-        on:click={() => dispatch('reset')}
-        title="Clear current search session"
-        aria-label="Clear current search session"
-      >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
-      </button>
     </div>
     
     <div class="flex-1 overflow-hidden">
@@ -647,7 +648,7 @@
       <slot />
     </div>
     
-    <div class="w-10 bg-gradient-to-b from-gray-100 to-gray-200 border-l border-gray-300 flex flex-col items-center py-4 space-y-2 shadow-sm">
+    <div class="w-10 bg-gradient-to-b from-gray-100 to-gray-200 border-l border-gray-300 flex flex-col items-center pt-4 pb-12 space-y-2 shadow-sm">
       <button 
         class="p-1.5 hover:bg-white/80 rounded-md transition-all position-menu-container"
         on:click|stopPropagation={() => showPositionMenu = !showPositionMenu}
@@ -658,6 +659,15 @@
           <circle cx="12" cy="12" r="1"/>
           <circle cx="12" cy="19" r="1"/>
         </svg>
+      </button>
+
+      <button
+        class="p-1 rounded-lg bg-white/80 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
+        on:click={() => dispatch('reset')}
+        title="Clear current search session"
+        aria-label="Clear current search session"
+      >
+        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
       </button>
       
       {#if showPositionMenu}
@@ -835,18 +845,17 @@
           <button
             on:click|stopPropagation={() => isSortDropdownOpen = !isSortDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort p-1.5 rounded-lg border border-gray-300 hover:border-blue-400 shadow-sm transition-all"
-            title="Results layout and order"
-            aria-label="Results layout and order"
+            title={`Results layout: ${currentSort.label}; order: ${currentSortMode.label}`}
+            aria-label={`Results layout: ${currentSort.label}; order: ${currentSortMode.label}`}
           >
-            <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 5h10"/>
-              <path d="M11 12h7"/>
-              <path d="M11 19h4"/>
-              <path d="M4 17l-2 2 2 2"/>
-              <path d="M2 19h5"/>
-              <path d="M6 7l2-2 2 2"/>
-              <path d="M8 5v14"/>
-            </svg>
+            <span class="inline-flex flex-col items-center justify-center gap-0.5 text-gray-600">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {@html currentSort.icon}
+              </svg>
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {@html currentSortMode.icon}
+              </svg>
+            </span>
           </button>
           
           {#if isSortDropdownOpen}
@@ -990,14 +999,6 @@
         </svg>
       </button>
 
-      <button
-        class="p-1 rounded-lg bg-white/60 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
-        on:click={() => dispatch('reset')}
-        title="Clear current search session"
-        aria-label="Clear current search session"
-      >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
-      </button>
     </div>
   </div>
 {/if}
