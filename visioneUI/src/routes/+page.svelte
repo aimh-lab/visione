@@ -416,7 +416,7 @@
   $: rfPositive = $sessionStore.rfPositive;
   $: rfNegative = $sessionStore.rfNegative;
   let rfEnabled = true;
-  let rfMethod = 'svm';
+  let rfMethod = 'rocchio';
   let selectedIndex = 0;
 
   // View2 state
@@ -1002,6 +1002,17 @@
     logBrowsingLight('videoPlayer', value);
   }
 
+  function logSlideshow(action, payload = '') {
+    const value = `action:${action}${payload ? ` ${payload}` : ''}`;
+    logBrowsingLight('slideshow', value);
+  }
+
+  function getResultLogSortType(settings = get(uiStore)) {
+    const order = resolveSortMode(settings?.sortMode);
+    const layout = resolveGroupByConfig(settings?.viewMode, runtimeProfile).mode;
+    return `${order}/${layout}`;
+  }
+
   const searchController = createSearchController({
     api: visioneAPI,
     recentSearches,
@@ -1103,21 +1114,23 @@
       });
       translatedQueryHints = normalizeTranslationHints(hints, textareas);
 
+      const settings = get(uiStore);
+
       vbsLogger.logResultSet({
         textareas: queryTextareas,
         relevanceFeedback,
         resultSet,
-        source: source === 'cache' ? 'displayModel' : 'rankingModel',
-        sortType: 'feedbackModel',
+        source: source === 'cache' ? 'rankingModel' : 'displayModel',
+        sortType: getResultLogSortType(settings),
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
-        temporalWindowSeconds: Number(get(uiStore).temporalWindowSeconds) || 25200,
-        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(get(uiStore).queryResultK) || 7200),
+        temporalWindowSeconds: Number(settings.temporalWindowSeconds) || 25200,
+        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(settings.queryResultK) || 7200),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
-          activeTab: get(uiStore).layoutTab,
-          viewMode: get(uiStore).viewMode,
-          sortMode: get(uiStore).sortMode,
+          activeTab: settings.layoutTab,
+          viewMode: settings.viewMode,
+          sortMode: settings.sortMode,
           translationEnabled: !!translation?.enabled,
           translatedSteps: Number(translation?.translatedCount) || 0
         }
@@ -2276,7 +2289,7 @@
         highlightedKeyframes: videoPlayerCtrl.getHighlightedKeyframesForVideo(normalizedVideoId)
       };
       isSlideshowOpen = true;
-      logVideoPlayer('openSlideshow', `imgId:${normalizedImgId} video:${normalizedVideoId}`);
+      logSlideshow('open', `imgId:${normalizedImgId} video:${normalizedVideoId}`);
       return;
     }
 
@@ -3132,17 +3145,8 @@ function handleViewSubmitted() {
   {runtimeProfile}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   {isImagePinned}
-  on:playerAction={(e) => {
-    const d = e?.detail || {};
-    const action = String(d.action || 'unknown');
-    const idx = Number(d.currentIndex ?? -1);
-    const ts = Number(d.timestamp ?? 0);
-    const img = String(d.imgId || '');
-    logVideoPlayer(`slideshow:${action}`, `idx:${idx} ts:${ts.toFixed(3)} imgId:${img}`);
-  }}
   on:submitFrame={(e) => {
     const { imgId, videoId, dataUrl, currentTime } = e.detail || {};
-    logVideoPlayer('slideshow:submitFrame', `imgId:${String(imgId || '')} t:${Number(currentTime || 0).toFixed(3)}`);
     submitByImgId(imgId, {
       imgId,
       videoId,
@@ -3152,8 +3156,6 @@ function handleViewSubmitted() {
     }, 'slideshow');
   }}
   on:captureForSimilarity={(e) => {
-    const t = Number(e?.detail?.currentTime || 0);
-    logVideoPlayer('slideshow:captureForSimilarity', `t:${t.toFixed(3)}`);
     isSlideshowOpen = false;
     const frameFromEvent = (e?.detail?.frame && typeof e.detail.frame === 'object') ? e.detail.frame : null;
     const eventUrl = String(e?.detail?.dataUrl || '').trim();
@@ -3181,7 +3183,6 @@ function handleViewSubmitted() {
   on:adjustScale={(e) => adjustSlideshowModalScale(e?.detail?.delta)}
   on:adjustImageScale={(e) => adjustImageModalScale(e?.detail?.delta)}
   on:close={() => {
-    logVideoPlayer('closeSlideshow');
     isSlideshowOpen = false;
   }}
 />
