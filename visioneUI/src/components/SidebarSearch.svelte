@@ -29,6 +29,7 @@
   export let askQaAgent = (_question) => Promise.resolve({});
   export let stopQaAgent = () => {};
   export let sessionResetKey = 0;
+  export let queryStateRevision = 0;
   export let qaStreamPanelHeight = 288;
   export let onUpdateQaAgentPanelPrefs = (_patch) => {};
   export let qaAgentStream = /** @type {{ isStreaming: boolean, events: Array<Record<string, unknown>>, finalAnswer: string, error: string }} */ ({
@@ -464,6 +465,7 @@
             {modelSelectionPerStepEnabled}
             {runtimeProfile}
             {discoveryMetadataFields}
+            {queryStateRevision}
             availableImages={images}
             {textareaImages}
             on:updateImages={(e) => dispatch('updateImages', e.detail)}

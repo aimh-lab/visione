@@ -293,6 +293,7 @@
   let qaAgentAbortController = null;
   let qaAgentRequestId = '';
   let sessionResetKey = 0;
+  let queryStateRevision = 0;
   let pinnedVideoSummaries = [];
   let pinnedImages = [];
   let pinnedImageModalOpen = false;
@@ -1503,6 +1504,7 @@
     if (urlState.textareas) {
       restoredTextareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
       textareas = restoredTextareas;
+      queryStateRevision += 1;
     }
     await hydrateInlineTextareaImagesFromState(urlState);
     await hydrateSimilarityTextareaImagesFromState();
@@ -2618,6 +2620,7 @@ function handleViewSubmitted() {
     if (urlState.textareas && urlState.textareas.length > 0) {
       restoredTextareas = urlState.textareas.map((t) => normalizeTextareaModels(t));
       textareas = restoredTextareas;
+      queryStateRevision += 1;
       await hydrateInlineTextareaImagesFromState(urlState);
       await hydrateSimilarityTextareaImagesFromState();
     }
@@ -2634,12 +2637,14 @@ function handleViewSubmitted() {
     const savedTextareas = Array.isArray(e?.detail?.textareas) ? e.detail.textareas : [];
     if (savedTextareas.length === 0) return;
 
-    textareas = savedTextareas.map((t) => ({ ...t }));
+    const restoredTextareas = savedTextareas.map((t) => ({ ...t }));
+    textareas = restoredTextareas;
+    queryStateRevision += 1;
     await hydrateSimilarityTextareaImagesFromState();
     uiStore.actions.setLayoutTab('View1');
 
     await tick();
-    await runSearchImmediate();
+    await runSearchImmediate({ textareas: getTextareasForSearch(restoredTextareas) });
   }
 
   async function openVideoSummary(videoId, highlightImgId = null, scope = 'hour') {
@@ -2910,6 +2915,7 @@ function handleViewSubmitted() {
     uiStore.actions.setLayoutTab('View1');
 
     textareas = [{ value: "", enabled: true, textModel: getGlobalDefaultTextModel(), imageModel: getGlobalDefaultImageModel() }];
+    queryStateRevision += 1;
     textareaImages = {};
 
     images = [];
@@ -2954,6 +2960,7 @@ function handleViewSubmitted() {
 
     sessionStore.actions.clearAll();
     sessionResetKey += 1;
+    queryStateRevision += 1;
     toasts.success("🔄 Search session cleared (settings preserved)");
   }
 
@@ -2985,6 +2992,7 @@ function handleViewSubmitted() {
   // Se vuoi auto-run di query esempio
   function loadExampleQuery(queries) {
     textareas = _loadExampleQuery(queries).map((t) => normalizeTextareaModels(t));
+    queryStateRevision += 1;
     toasts.info("Example loaded! Running search...");
     setTimeout(() => triggerSearchFromQueryChange(), 300);
   }
@@ -3404,6 +3412,7 @@ function handleViewSubmitted() {
         stopQaAgent={stopQaAgent}
         {qaAgentStream}
         {sessionResetKey}
+        {queryStateRevision}
         qaStreamPanelHeight={$uiStore.qaStreamPanelHeight}
         onUpdateQaAgentPanelPrefs={(patch) => {
           uiStore.actions.applySettings(patch || {});
@@ -3500,6 +3509,7 @@ function handleViewSubmitted() {
         on:clearQueryInputs={() => {
           textareas = [{ value: "", enabled: true, textModel: getGlobalDefaultTextModel(), imageModel: getGlobalDefaultImageModel() }];
           textareaImages = {};
+          queryStateRevision += 1;
           toasts.info("Query inputs cleared");
         }}
       />
