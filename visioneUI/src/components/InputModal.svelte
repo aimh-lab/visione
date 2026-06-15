@@ -20,7 +20,7 @@
   let formValues = {};
   let showAdvancedFields = false;
   let contentEl;
-  let wasOpen = false;
+  let lastAutoFocusKey = '';
   let dropdownStyle = '';
 
   const DROPDOWN_WIDTH = 360;
@@ -96,13 +96,20 @@
 
   $: isCompactDropdown = presentation === 'dropdown' && isDateFilterLayout;
 
-  $: if (isOpen && !wasOpen && autoFocusFirstTextInput) {
+  $: autoFocusKey = isOpen && autoFocusFirstTextInput
+    ? `${presentation}:${title}:${visibleFields.map((field) => `${field?.name || ''}:${field?.type || 'text'}`).join('|')}`
+    : '';
+
+  $: if (autoFocusKey && autoFocusKey !== lastAutoFocusKey) {
+    lastAutoFocusKey = autoFocusKey;
     void focusFirstTextInput();
   }
 
-  $: dropdownStyle = computeDropdownStyle(anchorRect, isCompactDropdown);
+  $: if (!isOpen && lastAutoFocusKey) {
+    lastAutoFocusKey = '';
+  }
 
-  $: wasOpen = isOpen;
+  $: dropdownStyle = computeDropdownStyle(anchorRect, isCompactDropdown);
   
   // Inizializza form values dai fields
   $: if (isOpen && fields.length > 0) {

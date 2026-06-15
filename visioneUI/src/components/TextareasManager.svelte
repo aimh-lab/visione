@@ -3424,7 +3424,7 @@
   fields={modalConfig.fields}
   submitLabel={modalConfig.filterType.startsWith('metadata') ? 'Apply' : 'Submit'}
   submitOnEnter={modalConfig.filterType.startsWith('metadata')}
-  autoFocusFirstTextInput={modalConfig.filterType.startsWith('metadata')}
+  autoFocusFirstTextInput={modalConfig.filterType.startsWith('metadata') || modalConfig.filterType === 'dateRange'}
   presentation={modalConfig.filterType.startsWith('metadata') ? 'dropdown' : 'modal'}
   anchorRect={modalAnchorRect as any}
   on:submit={handleModalSubmit}

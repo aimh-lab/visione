@@ -190,6 +190,15 @@
           <circle cx="12" cy="19" r="1"/>
         </svg>
       </button>
+
+      <button
+        class="top-toolbar-logo absolute top-1.5 left-12 z-20 p-1 rounded-lg hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+        on:click={() => dispatch('reset')}
+        title="Clear current search session"
+        aria-label="Clear current search session"
+      >
+        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-7"/>
+      </button>
       
       {#if showPositionMenu}
         <div class="ui-sort-dropdown-menu absolute top-12 left-3 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container min-w-36">
@@ -992,3 +1001,11 @@
     </div>
   </div>
 {/if}
+
+<style>
+  @media (max-width: 900px) {
+    .top-toolbar-logo {
+      display: none;
+    }
+  }
+</style>
