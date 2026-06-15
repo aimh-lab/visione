@@ -3076,6 +3076,7 @@ function handleViewSubmitted() {
   icon="default"
   submitLabel="Submit answer"
   cancelLabel="Cancel"
+  autoFocusFirstTextInput={true}
   description={qaAnswerContext.imgId
     ? `Frame ${qaAnswerContext.imgId}${qaAnswerContext.source ? ` · from ${qaAnswerContext.source}` : ''}`
     : 'Type the textual answer to submit to DRES'}
