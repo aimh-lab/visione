@@ -179,7 +179,7 @@
       />
       
       <button 
-        class="ui-toolbar-btn ui-position-menu-btn absolute top-2 left-3 p-1.5 bg-white/95 border border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 rounded-lg shadow-sm transition-all z-20 position-menu-container"
+        class="ui-toolbar-btn ui-position-menu-btn absolute top-2 left-3 p-1.5 bg-white/95 border border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 rounded-lg shadow-sm transition-all z-[220] position-menu-container"
         on:click|stopPropagation={() => showPositionMenu = !showPositionMenu}
         title="Change tabs position"
         aria-label="Change tabs position"
@@ -192,7 +192,7 @@
       </button>
 
       <button
-        class="top-toolbar-logo absolute top-1.5 left-12 z-20 p-1 rounded-lg hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="top-toolbar-logo absolute top-1.5 left-12 z-[220] p-1 rounded-lg hover:bg-white/80 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
         on:click={() => dispatch('reset')}
         title="Clear current search session"
         aria-label="Clear current search session"
@@ -201,7 +201,7 @@
       </button>
       
       {#if showPositionMenu}
-        <div class="ui-sort-dropdown-menu absolute top-12 left-3 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50 position-menu-container min-w-36">
+        <div class="ui-sort-dropdown-menu absolute top-12 left-3 rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[230] position-menu-container min-w-36">
           <div class="ui-position-menu-header px-3 py-2 border-b">
             <span class="text-xs font-semibold">Tabs Position</span>
           </div>
