@@ -123,6 +123,7 @@
   export let modelSelectionPerStepEnabled = true;
   export let runtimeProfile: Record<string, unknown> = {};
   export let discoveryMetadataFields: string[] = [];
+  export let queryStateRevision = 0;
   export let availableImages: AvailableImage[] = [];
   export let textareaImages: Record<number, AttachedImage[]> = {};
 
@@ -159,6 +160,7 @@
   let discoveryMetadataSet: Set<string> = new Set();
   let runtimeMetadataSet: Set<string> = new Set();
   let metadataTokensByIndex: Record<number, string[]> = {};
+  let lastHandledQueryStateRevision = queryStateRevision;
   let hasDateFilterSupport = false;
   let hasCountryFilterSupport = false;
   let hasLocationFilterSupport = false;
@@ -1754,6 +1756,29 @@
       ...metadataTokensByIndex,
       [index]: normalized
     };
+  }
+
+  function syncMetadataTokensFromTextareas() {
+    const nextTokensByIndex: Record<number, string[]> = {};
+
+    textareas.forEach((textarea, index) => {
+      const currentValue = String(textarea?.value || '');
+      const { cleanText, tokens } = parseMetadataTokensFromText(currentValue, { extractTrailingToken: true });
+      const normalized = normalizeMetadataTokens(tokens);
+      if (normalized.length > 0) {
+        nextTokensByIndex[index] = normalized;
+      }
+      if (cleanText !== currentValue) {
+        update(index, cleanText);
+      }
+    });
+
+    metadataTokensByIndex = nextTokensByIndex;
+  }
+
+  $: if (queryStateRevision !== lastHandledQueryStateRevision) {
+    lastHandledQueryStateRevision = queryStateRevision;
+    syncMetadataTokensFromTextareas();
   }
 
   $: {
