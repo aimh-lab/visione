@@ -2269,18 +2269,20 @@
     return mode === 'slideshow';
   }
 
-  async function openVideoPlayerBy(imgId, videoId, startAt, item = null) {
+  async function openVideoPlayerBy(imgId, videoId, startAt, item = null, options = {}) {
     const normalizedVideoId = normalizeVideoId(videoId || extractVideoIdFromImageId(imgId));
     const normalizedImgId = String(imgId || '');
     const sourceItem = item && typeof item === 'object' ? item : { imgId: normalizedImgId, videoId: normalizedVideoId };
+    const shouldUseSlideshow = useSlideshowModal();
+    const shouldKeepVideoSummaryOpen = shouldUseSlideshow && options?.closeVideoSummary === false;
 
     // Ensure the dedicated player modal is never layered behind the summary modal.
-    if (isVideoSummaryModalOpen) {
+    if (isVideoSummaryModalOpen && !shouldKeepVideoSummaryOpen) {
       isVideoSummaryModalOpen = false;
       await tick();
     }
 
-    if (useSlideshowModal()) {
+    if (shouldUseSlideshow) {
       slideshowPlayer = {
         videoId: normalizedVideoId,
         selectedImgId: normalizedImgId,
@@ -3140,6 +3142,7 @@ function handleViewSubmitted() {
   contextItem={slideshowPlayer.contextItem}
   modalScale={$uiStore.slideshowModalScale}
   imageModalScale={$uiStore.imageModalScale}
+  layer={isVideoSummaryModalOpen ? 'dialog' : 'modal'}
   highlightedKeyframes={slideshowPlayer.highlightedKeyframes}
   showSubmitUI={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
