@@ -2705,7 +2705,7 @@
       {@const translationHint = getTranslationHint(i)}
       <div
         bind:this={stepRefs[i]}
-        class="group relative transition-all rounded-xl {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
+        class="group relative transition-all rounded-xl {openMenuIndex === i ? 'z-[140]' : 'z-0'} {draggedStepIndex !== null && dropStepIndex === i && draggedStepIndex !== i ? 'ring-2 ring-cyan-400/40 bg-cyan-900/10' : ''}"
         role="group"
         aria-label={`Query step ${i + 1}`}
       >
@@ -3100,7 +3100,7 @@
 
           <!-- Footer toolbar -->
           <div class="flex items-center justify-between px-1.5 py-0.5">
-            <div class="menu-container relative z-[120]">
+            <div class="menu-container relative {openMenuIndex === i ? 'z-[150]' : 'z-10'}">
               <div class="relative flex items-center gap-1">
                 <button
                   bind:this={menuTriggerRefs[i]}
@@ -3122,7 +3122,7 @@
                 {#if openMenuIndex === i}
                   <div
                     bind:this={menuPanelRefs[i]}
-                    class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-[130] animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
+                    class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-[160] animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
                   >
                     <div class="px-3 py-2 bg-gray-900/50 border-b border-gray-700">
                       <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Add to Query</span>
