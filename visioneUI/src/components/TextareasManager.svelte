@@ -1042,6 +1042,7 @@
   async function toggleMenu(index: number) {
     openMenuIndex = openMenuIndex === index ? null : index;
     openImageSubmenuIndex = null;
+    closeStepActions();
 
     if (openMenuIndex === index) {
       await tick();
@@ -2865,7 +2866,7 @@
               </button>
 
               {#if textareas.length > 1}
-                <div class="relative z-50 step-actions-menu">
+                <div class="relative step-actions-menu {openMenuIndex === i ? 'z-20' : 'z-50'}">
                   <button
                     type="button"
                     draggable="false"
@@ -3099,7 +3100,7 @@
 
           <!-- Footer toolbar -->
           <div class="flex items-center justify-between px-1.5 py-0.5">
-            <div class="menu-container z-40">
+            <div class="menu-container relative z-[120]">
               <div class="relative flex items-center gap-1">
                 <button
                   bind:this={menuTriggerRefs[i]}
@@ -3121,7 +3122,7 @@
                 {#if openMenuIndex === i}
                   <div
                     bind:this={menuPanelRefs[i]}
-                    class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-50 animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
+                    class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-[130] animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
                   >
                     <div class="px-3 py-2 bg-gray-900/50 border-b border-gray-700">
                       <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Add to Query</span>

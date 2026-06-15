@@ -12,6 +12,7 @@
   export let contextItem = null;
   export let modalScale = 100;
   export let imageModalScale = 100;
+  export let layer = "modal";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
   export let runtimeProfile = {};
@@ -572,6 +573,8 @@
   $: shellHeightPx = Math.max(360, stageHeightPx + 190);
   $: modalWidth = `min(98vw, ${shellWidthPx}px)`;
   $: modalHeight = `min(96vh, ${shellHeightPx}px)`;
+  $: overlayZClass = layer === "dialog" ? "z-[var(--z-dialog-overlay)]" : "z-[var(--z-modal-overlay)]";
+  $: contentZClass = layer === "dialog" ? "z-[var(--z-dialog-content)]" : "z-[var(--z-modal-content)]";
   $: previewHeight = `${safeModalScale}px`;
   $: timelineProgress = frames.length > 1 ? (currentIndex / (frames.length - 1)) * 100 : 0;
   $: highlightedSet = new Set((Array.isArray(highlightedKeyframes) ? highlightedKeyframes : []).map((entry) => typeof entry === "string" ? entry : entry?.imgId).filter(Boolean));
@@ -648,7 +651,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="fixed inset-0 z-[var(--z-modal-overlay)] flex items-center justify-center p-4">
+  <div use:focusTrap class={`fixed inset-0 ${overlayZClass} flex items-center justify-center p-4`}>
     <button
       type="button"
       class="absolute inset-0 bg-black/60"
@@ -657,7 +660,7 @@
     ></button>
 
     <div
-      class="ui-slideshow-modal relative z-[var(--z-modal-content)] w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col"
+      class={`ui-slideshow-modal relative ${contentZClass} w-full bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col`}
       style="width: {modalWidth}; height: {modalHeight}; transform: translate({dragOffsetX}px, {dragOffsetY}px);"
     >
       <div
