@@ -156,6 +156,15 @@ function normalizeEvaluationIdByChallenge(value, fallback = DEFAULT.dresEvaluati
   };
 }
 
+function getFirstSelectedEvaluationId(value) {
+  const map = normalizeEvaluationIdByChallenge(value, DEFAULT.dresEvaluationIdByChallenge);
+  for (const key of ['KIS', 'AVS', 'Q&A']) {
+    const id = String(map[key] || '').trim();
+    if (id) return id;
+  }
+  return '';
+}
+
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
 
@@ -342,8 +351,27 @@ function createUIStore() {
 
     setDresChallengeType(dresChallengeType) {
       const safe = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
-      update((u) => ({ ...u, dresChallengeType: safe }));
-      persist({ dresChallengeType: safe });
+      update((u) => {
+        const currentMap = normalizeEvaluationIdByChallenge(
+          u.dresEvaluationIdByChallenge,
+          DEFAULT.dresEvaluationIdByChallenge
+        );
+        const selectedEvaluationId = String(currentMap[u.dresChallengeType] || '').trim()
+          || getFirstSelectedEvaluationId(currentMap);
+        const nextMap = selectedEvaluationId
+          ? { ...currentMap, [safe]: selectedEvaluationId }
+          : currentMap;
+
+        persist({
+          dresChallengeType: safe,
+          dresEvaluationIdByChallenge: nextMap
+        });
+        return {
+          ...u,
+          dresChallengeType: safe,
+          dresEvaluationIdByChallenge: nextMap
+        };
+      });
     },
 
     setDresEvaluationId(challengeType, evaluationId) {
