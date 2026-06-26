@@ -1,7 +1,0 @@
-faiss-cpu==1.7.3
-flask==2.2.3
-Werkzeug>=2.2,<3.0
-h5py
-more-itertools
-pyyaml
-tqdm

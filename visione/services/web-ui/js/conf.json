@@ -1,8 +1,0 @@
-{
-    "serviceUrl": "services/core/",
-    "thumbnailUrl": "frames/tiny/",
-    "videoUrl":"videos/",
-    "videoshrinkUrl":"videos/tiny/",
-    "keyFramesUrl":"frames/",
-    "translate": "translate"
-  }
