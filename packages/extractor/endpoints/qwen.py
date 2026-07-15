@@ -18,10 +18,9 @@ from transformers.modeling_outputs import ModelOutput
 from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs
 from transformers.cache_utils import Cache
-from transformers.utils.generic import check_model_inputs
 from qwen_vl_utils.vision_process import process_vision_info
 
-from .common import decode_image_data
+from .common import decode_image_data, validate_media_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -290,13 +289,7 @@ class Qwen3VLEmbedder():
             )
         except Exception as e:
             logger.error(f"Error in processing vision info: {e}")
-            images = None
-            video_inputs = None
-            video_kwargs = {'do_sample_frames': False}
-            text = self.processor.apply_chat_template(
-                [{'role': 'user', 'content': [{'type': 'text', 'text': 'NULL'}]}], 
-                add_generation_prompt=True, tokenize=False
-            )
+            raise RuntimeError(f"Vision preprocessing failed: {e}") from e
 
         if video_inputs is not None:
             videos, video_metadata = zip(*video_inputs)
@@ -468,6 +461,58 @@ class QwenFeatureExtractor:
         for i in range(batch_size):
             if results[i] is None: results[i] = {"success": False, "error": "Unknown error"}
             
+        return results
+
+    @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
+    async def extract_video(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Extract embeddings from HTTP(S) video URLs."""
+        batch_size = len(requests)
+        logger.info(f"🎥 Processing video batch: {batch_size}")
+
+        inputs = []
+        indices_map = []
+        results = [None] * batch_size
+
+        for i, req in enumerate(requests):
+            try:
+                video_url = validate_media_url(req.get("video"), "video")
+                inputs.append({"video": video_url})
+                indices_map.append(i)
+            except Exception as e:
+                results[i] = {
+                    "success": False,
+                    "error": f"Preprocessing error: {str(e)}",
+                    "model": self.model_name,
+                }
+
+        if inputs:
+            try:
+                embeddings = self.embedder.process(inputs)
+                for idx, tensor_emb in enumerate(embeddings):
+                    original_idx = indices_map[idx]
+                    results[original_idx] = {
+                        "success": True,
+                        "features": tensor_emb.tolist(),
+                        "feature_dim": len(tensor_emb),
+                        "model": self.model_name,
+                    }
+            except Exception as e:
+                logger.error(f"Video inference error: {e}")
+                for idx in indices_map:
+                    results[idx] = {
+                        "success": False,
+                        "error": f"Model error: {str(e)}",
+                        "model": self.model_name,
+                    }
+
+        for i in range(batch_size):
+            if results[i] is None:
+                results[i] = {
+                    "success": False,
+                    "error": "Unknown error",
+                    "model": self.model_name,
+                }
+
         return results
     
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)

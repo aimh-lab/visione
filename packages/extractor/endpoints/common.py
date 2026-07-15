@@ -1,12 +1,29 @@
 import base64
 import io
+import os
 from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
 from PIL import Image
 import requests
 import requests_cache
 
-requests_cache.install_cache('feature_xtractor_cache', expire_after=60)
+if os.environ.get("FEATURE_EXTRACTOR_DISABLE_CACHE") != "1":
+    requests_cache.install_cache('feature_xtractor_cache', expire_after=60)
+
+
+def validate_media_url(media_data: str, field_name: str = "media") -> str:
+    """Validate an HTTP(S) media URL without rewriting it."""
+    if not isinstance(media_data, str):
+        raise ValueError(f"'{field_name}' must be an HTTP(S) URL string")
+
+    media_url = media_data.strip()
+    parsed_url = urlparse(media_url)
+    if not media_url or parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        raise ValueError(f"'{field_name}' must be a valid HTTP(S) URL")
+
+    # Return the original value so signed URLs and temporal query parameters are
+    # passed to the media reader exactly as supplied by the caller.
+    return media_data
 
 def decode_image_data(image_data: str) -> Image.Image:
     """

@@ -4,8 +4,11 @@ import base64
 import time
 import asyncio
 import aiohttp
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Union
 from concurrent.futures import ThreadPoolExecutor
+
+from torch import cosine_similarity
+import torch
 
 class CLIPMultiModelClient:
     def __init__(self, server_url: str = "http://localhost:8000"):
@@ -20,20 +23,51 @@ class CLIPMultiModelClient:
             encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             return f"data:image/jpeg;base64,{encoded_string}"
     
-    def extract_features(self, data: str, type: str, model: str = "base") -> Dict[str, Any]:
+    def extract_features(
+        self,
+        data: Union[str, Dict[str, str]],
+        type: str,
+        model: str = "base",
+        task: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Invia richiesta di estrazione features al server per una singola immagine
+        Invia una richiesta di estrazione per una singola modalità.
         
         Args:
-            image: URL o stringa base64 dell'immagine
-            model: Nome del modello da utilizzare (base, large, base16, large14)
+            data: Valore singolo oppure mapping per le modalità combinate.
+            type: image, text, video, image+text oppure video+audio.
+            model: Nome del modello da utilizzare.
+            task: Ruolo query/document richiesto da Omni-Embed.
             
         Returns:
             Risposta del server con features estratte
         """
         endpoint = f"{self.server_url}/{model}"
-        assert type in ["image", "text"], "Type must be 'image' or 'text'"
-        payload = {"image": data} if type == "image" else {"text": data}
+        supported_types = {"image", "text", "video", "image+text", "video+audio"}
+        if type not in supported_types:
+            raise ValueError(f"Unsupported extraction type: {type}")
+        if model == "omni_embed_nemotron_3B" and task is None:
+            raise ValueError("Task is required for omni_embed_nemotron_3B")
+
+        if type in {"image", "text", "video"}:
+            if not isinstance(data, str):
+                raise ValueError(f"Data for '{type}' must be a string")
+            payload = {type: data}
+        else:
+            if not isinstance(data, dict):
+                raise ValueError(f"Data for '{type}' must be a dictionary")
+            required_fields = type.split("+")
+            missing_fields = [field for field in required_fields if field not in data]
+            if missing_fields:
+                raise ValueError(
+                    f"Missing fields for '{type}': {', '.join(missing_fields)}"
+                )
+            payload = {field: data[field] for field in required_fields}
+
+        if task is not None:
+            if task not in {"query", "document"}:
+                raise ValueError("Task must be 'query' or 'document'")
+            payload["task"] = task
         
         try:
             response = requests.post(
@@ -47,8 +81,36 @@ class CLIPMultiModelClient:
         
         except requests.RequestException as e:
             return {"success": False, "error": f"Errore nella richiesta: {str(e)}"}
+
+    def extract_video_features_parallel(
+        self,
+        videos: List[str],
+        model: str = "base",
+        max_workers: int = 4,
+        task: Optional[str] = None,
+        include_audio: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Estrae features da URL video in parallelo."""
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(
+                    self.extract_features,
+                    video,
+                    "video" if not include_audio else "video+audio",
+                    model,
+                    task,
+                )
+                for video in videos
+            ]
+            return [future.result() for future in futures]
     
-    def extract_image_features_parallel(self, images: List[str], model: str = "base", max_workers: int = 10) -> List[Dict[str, Any]]:
+    def extract_image_features_parallel(
+        self,
+        images: List[str],
+        model: str = "base",
+        max_workers: int = 10,
+        task: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Estrae features da multiple immagini in parallelo
         
@@ -62,14 +124,20 @@ class CLIPMultiModelClient:
         """
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(self.extract_features, image, 'image', model) 
+                executor.submit(self.extract_features, image, 'image', model, task)
                 for image in images
             ]
             results = [future.result() for future in futures]
         
         return results
     
-    def extract_text_features_parallel(self, texts: List[str], model: str = "base", max_workers: int = 10) -> List[Dict[str, Any]]:
+    def extract_text_features_parallel(
+        self,
+        texts: List[str],
+        model: str = "base",
+        max_workers: int = 10,
+        task: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Estrae features da multiple stringhe di testo in parallelo
         
@@ -83,7 +151,7 @@ class CLIPMultiModelClient:
         """
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(self.extract_features, text, 'text', model) 
+                executor.submit(self.extract_features, text, 'text', model, task)
                 for text in texts
             ]
             results = [future.result() for future in futures]
@@ -101,10 +169,40 @@ class CLIPMultiModelClient:
         except requests.RequestException as e:
             print(f"⚠️  Errore nel recupero dei modelli disponibili: {str(e)}")
             return []
+        
+
+def test_video_extraction(models=["omni_embed_nemotron_3B"]):
+    """Test con un singolo video su diversi modelli"""
+    client = CLIPMultiModelClient(server_url="http://localhost:2222")
+    
+    test_video = "https://visione.isti.cnr.it:43333/v3c/04567.mp4?start=1&end=10"
+
+    print("🔧 Test singolo video su modelli diversi")
+    print(f"🎥  Video: {test_video[:60]}...")
+    
+    available_models = client.get_available_models()
+    print(f"📱 Modelli disponibili: {available_models}")
+
+    assert set(models).issubset(set(available_models)), f"Modelli richiesti {models} non tutti disponibili {available_models}"
+    
+    for model in models:  # Test primi 2 modelli
+        print(f"\n🤖 Testing modello: {model}")
+        
+        start_time = time.time()
+        result = client.extract_features(test_video, 'video', model, task='document')
+        end_time = time.time()
+        
+        print(f"⏱️  Tempo: {end_time - start_time:.2f}s")
+        
+        if result.get("success"):
+            print(f"✅ Successo! Features dim: {result['feature_dim']}")
+            print(f"📊 Prime 5 features: {result['features'][:5]}")
+        else:
+            print(f"❌ Errore: {result.get('error', 'Errore sconosciuto')}")
 
 def test_single_image(models=["dinov2_base"]):
     """Test con una singola immagine su diversi modelli"""
-    client = CLIPMultiModelClient()
+    client = CLIPMultiModelClient(server_url="http://localhost:2222")
     
     # test_image = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/512px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
     test_image = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg"
@@ -121,7 +219,7 @@ def test_single_image(models=["dinov2_base"]):
         print(f"\n🤖 Testing modello: {model}")
         
         start_time = time.time()
-        result = client.extract_features(test_image, 'image', model)
+        result = client.extract_features(test_image, 'image', model, task='document')
         end_time = time.time()
         
         print(f"⏱️  Tempo: {end_time - start_time:.2f}s")
@@ -158,6 +256,47 @@ def test_single_text():
             print(f"📊 Prime 5 features: {result['features'][:5]}")
         else:
             print(f"❌ Errore: {result.get('error', 'Errore sconosciuto')}")
+
+def test_text_to_video_retrieval(model="omni_embed_nemotron_3B"):
+    """Test di retrieval testo -> video"""
+    client = CLIPMultiModelClient(server_url="http://localhost:2222")
+    
+    test_text = "A person speaking french"
+    test_videos = [f"https://visione.isti.cnr.it:43333/v3c/04572.mp4?start={s}&end={s+10}" for s in range(0, 300, 10)]  # 3 video segmenti
+    
+    print("🔧 Test retrieval testo -> video")
+    print(f"📜 Testo: {test_text[:60]}...")
+    
+    available_models = client.get_available_models()
+    print(f"📱 Modelli disponibili: {available_models}")
+    
+    assert model in available_models, f"Modello richiesto {model} non disponibile {available_models}"
+    
+    # Estrazione features per il testo
+    text_result = client.extract_features(test_text, 'text', model, task='query')
+    
+    if not text_result.get("success"):
+        print(f"❌ Errore nell'estrazione features testo: {text_result.get('error', 'Errore sconosciuto')}")
+        return
+    
+    text_features = text_result['features']
+    
+    # Estrazione features per i video
+    video_results = client.extract_video_features_parallel(test_videos, model, max_workers=3, task='document')
+    
+    # Calcolo similarità e ranking
+    video_features = [res['features'] for res in video_results if res.get("success")]
+    video_features_torch = torch.tensor(video_features)
+    text_features_torch = torch.tensor(text_features)
+
+    # Calcolo similarità e ranking
+    similarities = torch.cosine_similarity(text_features_torch.unsqueeze(0), video_features_torch).squeeze(0).tolist()
+
+    # Ordina i video per similarità decrescente
+    ranked_videos = sorted(zip(test_videos, similarities), key=lambda x: x[1], reverse=True)
+    print(f"🎥 Video ordinati per similarità:")
+    for i, (video, similarity) in enumerate(ranked_videos[:5]):  # Mostra i primi 5
+        print(f"   {i+1}. {video} (Similarità: {similarity:.4f})")
 
 def test_batch_processing(model="openclip_clip_vit_l_14"):
     """Test del batching automatico di Ray Serve"""
@@ -302,11 +441,17 @@ if __name__ == "__main__":
     
     try:
         # # Test singola immagine
-        # test_single_image(models=["openclip_clip_vit_l_14"])
+        # test_single_image(models=["omni_embed_nemotron_3B"])
         # print("\n" + "="*60 + "\n")
         
         # Test batching
-        test_batch_processing(model="dinov2_base")
+        # test_batch_processing(model="dinov2_base")
+
+        # Test video extraction
+        # test_video_extraction(models=["omni_embed_nemotron_3B"])
+        # test_video_extraction(models=["qwen_embedding_8B"])
+        test_text_to_video_retrieval(model="omni_embed_nemotron_3B")
+
         print("\n" + "="*60 + "\n")
 
         # test_single_text()

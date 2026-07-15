@@ -1,7 +1,6 @@
 import json
 import logging
-from typing import List, Dict, Any, Union
-from urllib.parse import urlparse
+from typing import Dict, Any
 import time
 import ray
 from ray import serve
@@ -11,10 +10,34 @@ from endpoints.openclip import OpenCLIPFeatureExtractor
 from endpoints.clip import CLIPFeatureExtractor
 from endpoints.qwen import QwenFeatureExtractor
 from endpoints.dino import DINOFeatureExtractor
+from endpoints.omni import OmniFeatureExtractor
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ray.serve")
+
+
+MEDIA_FIELDS = frozenset({"image", "text", "video", "audio"})
+MODALITY_ROUTES = {
+    frozenset({"image"}): ("image", "extract_image"),
+    frozenset({"text"}): ("text", "extract_text"),
+    frozenset({"video"}): ("video", "extract_video"),
+    frozenset({"image", "text"}): ("image+text", "extract_image_text"),
+    frozenset({"video", "audio"}): ("video+audio", "extract_video_audio"),
+}
+
+
+def resolve_request_modality(data: Dict[str, Any]) -> tuple[str, str]:
+    """Return the declared modality and deployment method for a request body."""
+    if not isinstance(data, dict):
+        raise ValueError("Il corpo della richiesta deve essere un oggetto JSON")
+
+    provided_media_fields = frozenset(data.keys()) & MEDIA_FIELDS
+    route = MODALITY_ROUTES.get(provided_media_fields)
+    if route is None:
+        fields = ", ".join(sorted(provided_media_fields)) or "nessuno"
+        raise ValueError(f"Combinazione di modalità non supportata: {fields}")
+    return route
 
 
 # Router per gestire più modelli
@@ -23,7 +46,11 @@ logger = logging.getLogger("ray.serve")
     ray_actor_options={"num_cpus": 0.1}
 )
 class ModelRouter:
-    def __init__(self, model_handles: Dict[str, DeploymentHandle], models_config: Dict[str, str]):
+    def __init__(
+        self,
+        model_handles: Dict[str, DeploymentHandle],
+        models_config: Dict[str, Dict[str, Any]],
+    ):
         """
         Router per gestire richieste a diversi modelli CLIP
         
@@ -62,36 +89,22 @@ class ModelRouter:
             else:
                 data = request
             
-            if "image" in data and "text" in data:
-                if "image+text" not in self.models_config[model_endpoint]["modalities"]:
-                    return {
-                        "error": "Non possono essere presenti sia image che text nella richiesta"
-                    }
-                model_handle = self.model_handles[model_endpoint]
-                result = await model_handle.extract_image_text.remote(data)
-            
-            elif "image" in data:
-                if "image" not in self.models_config[model_endpoint]["modalities"]:
-                    return {
-                        "error": f"Il modello '{model_endpoint}' non supporta l'estrazione da immagini"
-                    }
-                model_handle = self.model_handles[model_endpoint]
-                result = await model_handle.extract_image.remote(data)
-
-            elif "text" in data:
-                if "text" not in self.models_config[model_endpoint]["modalities"]:
-                    return {
-                        "error": f"Il modello '{model_endpoint}' non supporta l'estrazione da testo"
-                    }
-                model_handle = self.model_handles[model_endpoint]
-                result = await model_handle.extract_text.remote(data)
-
-            else:
+            try:
+                modality, method_name = resolve_request_modality(data)
+            except ValueError as exc:
                 return {
-                    "error": "Richiesta non compilata correttamente"
-                }            
-            
-            return result
+                    "error": str(exc)
+                }
+
+            supported_modalities = self.models_config[model_endpoint]["modalities"]
+            if modality not in supported_modalities:
+                return {
+                    "error": f"Il modello '{model_endpoint}' non supporta la modalità '{modality}'"
+                }
+
+            model_handle = self.model_handles[model_endpoint]
+            method_handle = getattr(model_handle, method_name)
+            return await method_handle.remote(data)
             
         except Exception as e:
             logger.error(f"Errore nel router: {str(e)}")
@@ -135,8 +148,12 @@ MODELS_CONFIG = {
     #"openclip_clip_vit_b_32": {"name": "hf-hub:laion/CLIP-ViT-B-32-laion2B-s34B-b79K", "modalities": ["image", "text"]},
     "openclip_clip_vit_l_14": {"name": "hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K", "modalities": ["image", "text"]},
     "openclip_clip_vit_h_14": {"name": "hf-hub:laion/CLIP-ViT-H-14-laion2B-s32B-b79K", "modalities": ["image", "text"]},
-    "qwen_embedding_8B": {"name": "Qwen/Qwen3-VL-Embedding-8B", "modalities": ["image", "text", "image+text"]},
-    #"qwen_embedding_2B": {"name": "Qwen/Qwen3-VL-Embedding-2B", "modalities": ["image", "text", "image+text"]},
+    "qwen_embedding_8B": {"name": "Qwen/Qwen3-VL-Embedding-8B", "modalities": ["image", "text", "image+text", "video"]},
+    #"qwen_embedding_2B": {"name": "Qwen/Qwen3-VL-Embedding-2B", "modalities": ["image", "text", "image+text", "video"]},
+    "omni_embed_nemotron_3B": {
+        "name": "nvidia/omni-embed-nemotron-3b",
+        "modalities": ["video", "video+audio", "image", "image+text", "text"]
+    },
     "dinov2_base": {"name": "facebook/dinov2-base", "modalities": ["image"]}
     # "base16": "openai/clip-vit-base-patch16",
     # "large14": "openai/clip-vit-large-patch14-336"
@@ -174,6 +191,8 @@ if __name__ == "__main__":
             model_handles[endpoint_name] = CLIPFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         elif "qwen" in endpoint_name.lower():
             model_handles[endpoint_name] = QwenFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
+        elif "omni" in endpoint_name.lower():
+            model_handles[endpoint_name] = OmniFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         elif "dino" in endpoint_name.lower():
             model_handles[endpoint_name] = DINOFeatureExtractor.options(name=model_name.replace('/', '-')).bind(model_name=model_name)
         print(f"Registrato modello {model_name} su endpoint /{endpoint_name}")
