@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Dict, Any
 import time
 import ray
@@ -11,11 +12,15 @@ from endpoints.clip import CLIPFeatureExtractor
 from endpoints.qwen import QwenFeatureExtractor
 from endpoints.dino import DINOFeatureExtractor
 from endpoints.omni import OmniFeatureExtractor
+import requests_cache
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ray.serve")
 
+if os.environ.get("FEATURE_EXTRACTOR_DISABLE_CACHE") != "1":
+    requests_cache.install_cache('feature_xtractor_cache', expire_after=60)
+    logger.info("Abilitata cache per richieste HTTP (durata 60s)")
 
 MEDIA_FIELDS = frozenset({"image", "text", "video", "audio"})
 MODALITY_ROUTES = {
@@ -60,6 +65,7 @@ class ModelRouter:
         self.models_config = models_config
         self.model_handles = model_handles
         self.start_time = time.time()
+        self.received_requests_after_cache_delete = 0
         
 
     async def __call__(self, request) -> Dict[str, Any]:
@@ -104,6 +110,13 @@ class ModelRouter:
 
             model_handle = self.model_handles[model_endpoint]
             method_handle = getattr(model_handle, method_name)
+
+            self.received_requests_after_cache_delete += 1
+            if self.received_requests_after_cache_delete > 1000:
+                # Reset della cache dopo 1000 richieste per evitare accumulo di dati
+                requests_cache.delete(expired=True)
+                self.received_requests_after_cache_delete = 0
+
             return await method_handle.remote(data)
             
         except Exception as e:

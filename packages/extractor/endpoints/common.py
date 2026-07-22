@@ -5,10 +5,6 @@ from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
 from PIL import Image
 import requests
-import requests_cache
-
-if os.environ.get("FEATURE_EXTRACTOR_DISABLE_CACHE") != "1":
-    requests_cache.install_cache('feature_xtractor_cache', expire_after=60)
 
 
 def validate_media_url(media_data: str, field_name: str = "media") -> str:
