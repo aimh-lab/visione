@@ -12,6 +12,9 @@ embedding:
     - name: "qwen_embedding_8B"
       dim: 4096
       mrl_dim: 1024
+    - name: "omni_embed_nemotron_3B"
+      dim: 2048
+      mrl_dim: null
     # - name: "openclip_clip_vit_b_32"
     #   dim: 512
     #   mrl_dim: null 

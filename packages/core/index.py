@@ -7,6 +7,8 @@ from hydra.utils import instantiate
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from extraction_config import resolve_extraction_specs
+
 
 async def get_index_validity(conn, index_name: str):
     """
@@ -32,6 +34,7 @@ async def get_index_validity(conn, index_name: str):
 async def run(cfg: DictConfig):
     loader = instantiate(cfg.loader, data_server_url=cfg.data.server_url)
     table_name = loader.get_table_name()
+    extraction_specs = resolve_extraction_specs(cfg.loader, cfg.embedding)
 
     connection_string = (
         f"postgresql+asyncpg://{cfg.database.user}:{cfg.database.password}"
@@ -47,19 +50,17 @@ async def run(cfg: DictConfig):
     # ------------------------------------------------------------------
     print("=== Step 1: Creating MRL generated columns ===")
     async with engine.begin() as conn:
-        for model_conf in cfg.embedding.models:
-            mrl_dim = model_conf.get("mrl_dim")
-            if not mrl_dim:
+        for spec in extraction_specs:
+            if not spec.mrl_dim:
                 continue
-            model_name = model_conf.name
-            mrl_col = f"{model_name}_MRL{mrl_dim}"
+            mrl_col = spec.searchable_column
             print(f"  Adding column '{mrl_col}' to table '{table_name}'...")
             await conn.execute(
                 text(
                     f'ALTER TABLE "{table_name}" '
-                    f'ADD COLUMN IF NOT EXISTS "{mrl_col}" halfvec({mrl_dim}) '
+                    f'ADD COLUMN IF NOT EXISTS "{mrl_col}" halfvec({spec.mrl_dim}) '
                     f'GENERATED ALWAYS AS ('
-                    f'    ("{model_name}"::vector::real[])[1:{mrl_dim}]::halfvec'
+                    f'    ("{spec.native_column}"::vector::real[])[1:{spec.mrl_dim}]::halfvec'
                     f') STORED'
                 )
             )
@@ -73,10 +74,8 @@ async def run(cfg: DictConfig):
         await conn.execute(
             text(f"SET maintenance_work_mem = '{cfg.hnsw.maintenance_work_mem}'")
         )
-        for model_conf in cfg.embedding.models:
-            model_name = model_conf.name
-            mrl_dim = model_conf.get("mrl_dim")
-            embedding_col = f"{model_name}_MRL{mrl_dim}" if mrl_dim else model_name
+        for spec in extraction_specs:
+            embedding_col = spec.searchable_column
             index_name = f"idx_{table_name}_{embedding_col}_hnsw".lower()
 
             validity = await get_index_validity(conn, index_name)

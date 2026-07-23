@@ -1,0 +1,11 @@
+_target_: loaders.V3CLoader
+name: v3c
+v3c_root_folder: "/data2/v3c-2026-data"
+
+extraction:
+  # - model: "omni_embed_nemotron_3B"
+  #   modality: "video"
+  - model: "omni_embed_nemotron_3B"
+    modality: "video+audio"
+  - model: "qwen_embedding_8B"
+    modality: "video"

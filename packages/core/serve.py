@@ -3,6 +3,7 @@ import uvicorn
 import hydra
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+# from fastapi.middleware.cors import CORSMiddleware
 from omegaconf import DictConfig
 from hydra.utils import instantiate
 
@@ -16,6 +17,7 @@ from endpoints.search import router as search_router
 from endpoints.translate import router as translate_router
 from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
+from extraction_config import ExtractionSpec, resolve_extraction_specs
 from langchain_postgres.v2.indexes import QueryOptions
 
 class PGVectorQueryOptions(QueryOptions):
@@ -41,6 +43,46 @@ class PGVectorQueryOptions(QueryOptions):
         """Convert index attributes to string."""
         return f"(ef_search = {self.ef_search}, iterative_scan = {self.iterative_scan}, max_scan_tuples = {self.max_scan_tuples}, random_page_cost = {self.random_page_cost})"
 
+
+def build_available_model_info(
+    spec: ExtractionSpec,
+    remote_model_info: dict,
+) -> dict:
+    """Build the collection-specific model descriptor exposed by discovery."""
+    return {
+        "name": spec.public_name,
+        "model": spec.model,
+        "modality": spec.modality,
+        "modalities": list(remote_model_info.get("modalities", [])),
+    }
+
+
+def build_combined_model_infos(
+    combined_model_configs,
+    available_public_names: set[str],
+) -> list[dict]:
+    """Return only combined models whose child extraction IDs are available."""
+    combined_model_infos = []
+    for model_conf in combined_model_configs:
+        missing_models = [
+            model_name
+            for model_name in model_conf.models
+            if model_name not in available_public_names
+        ]
+        if missing_models:
+            print(
+                f"Warning: Skipping combined model '{model_conf.name}'; "
+                f"missing extraction(s): {missing_models}"
+            )
+            continue
+        combined_model_infos.append(
+            {
+                "name": model_conf.name,
+                "modalities": list(model_conf.modalities),
+            }
+        )
+    return combined_model_infos
+
 # --- Lifecycle Manager ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,39 +105,37 @@ async def lifespan(app: FastAPI):
     print("Database connection established.")
 
     # 2. Initialize one multi-model Vector Store
+    extraction_specs = resolve_extraction_specs(cfg.loader, cfg.embedding)
     embedders = {}
-    model_names = []
+    embedding_column_names = []
     model_column_map = {}
     available_model_infos = []
-    for model_conf in cfg.embedding.models:
-        mrl_dim = model_conf.get("mrl_dim")
-        if mrl_dim is None:
-            mrl_dim = model_conf.get("mrl_dim_serve")
+    for spec in extraction_specs:
+        try:
+            embedder = RemoteEmbeddings(
+                embedding_server_url=cfg.embedding.server_url,
+                data_server_url=cfg.data.server_url,
+                data_loader=loader,
+                model=spec.model,
+                modality=spec.modality,
+                timeout=cfg.embedding.timeout,
+                mrl_dimension=spec.mrl_dim,
+            )
+        except ValueError as exc:
+            print(f"Warning: Skipping extraction '{spec.public_name}': {exc}")
+            continue
 
-        model_name = model_conf.name
-        embedding_column_name = f"{model_name}_MRL{mrl_dim}" if mrl_dim else model_name
-
-        embedder = RemoteEmbeddings(
-            embedding_server_url=cfg.embedding.server_url,
-            data_server_url=cfg.data.server_url,
-            data_loader=loader,
-            model=model_name,
-            timeout=cfg.embedding.timeout,
-            mrl_dimension=mrl_dim if mrl_dim else None,
-        )
         embedder_models = embedder.available_models
-        entry = [m for m in embedder_models if m["name"] == model_name]
+        entry = [m for m in embedder_models if m["name"] == spec.model]
         if len(entry) == 0:
-            print(f"Warning: Model '{model_name}' not available in embedding server. Available models: {[m['name'] for m in embedder_models]}")
+            print(f"Warning: Model '{spec.model}' not available in embedding server. Available models: {[m['name'] for m in embedder_models]}")
             continue
 
         entry = entry[0]
-        embedders[embedding_column_name] = embedder
-        model_names.append(embedding_column_name)
-        model_column_map[model_name] = embedding_column_name
-    
-        available_model_infos.append(entry)
-        # available_model_names.add(embedding_column_name)
+        embedders[spec.searchable_column] = embedder
+        embedding_column_names.append(spec.searchable_column)
+        model_column_map[spec.public_name] = spec.searchable_column
+        available_model_infos.append(build_available_model_info(spec, entry))
 
     index_options = PGVectorQueryOptions(
         ef_search=cfg.index_query_options.ef_search,
@@ -108,7 +148,7 @@ async def lifespan(app: FastAPI):
         engine=engine,
         table_name=table_name,
         embedding_service=embedders,
-        embedding_column=model_names,
+        embedding_column=embedding_column_names,
         model_column_map=model_column_map,
         metadata_columns=app.state.loader.get_retrieved_metadata_columns(),
         groupby_column=loader.get_temporal_groupby_column(),
@@ -117,8 +157,13 @@ async def lifespan(app: FastAPI):
         fts_language=cfg.get("fts_language", "simple"),
     )
 
-    # add to available models the combined retrieval models
-    available_model_infos.extend({"name": model_conf.name, "modalities": list(model_conf.modalities)} for model_conf in cfg.combined_retrieval_models)
+    # Add only combined models whose collection-specific children are available.
+    available_model_infos.extend(
+        build_combined_model_infos(
+            cfg.combined_retrieval_models,
+            set(model_column_map),
+        )
+    )
 
     app.state.available_models = available_model_infos
     app.state.model_column_map = model_column_map
@@ -129,6 +174,12 @@ async def lifespan(app: FastAPI):
 
 # --- FastAPI App ---
 app = FastAPI(lifespan=lifespan)
+# app.add_middleware(
+#    CORSMiddleware,
+#    allow_origins=["*"],
+#    allow_methods=["*"],
+#    allow_headers=["*"],
+#)
 
 app.include_router(search_router)
 app.include_router(llm_query_router)

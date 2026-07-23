@@ -8,6 +8,7 @@ from hydra.utils import instantiate
 
 # Imports from your custom modules
 from embeddings import RemoteEmbeddings
+from extraction_config import resolve_extraction_specs
 from pg.pg_store import PGVectorStore
 from pg.pg_engine import PGEngineWithMultiVector
 from utils import generate_doc_id
@@ -25,19 +26,19 @@ async def run_pipeline(cfg: DictConfig):
     print(f"Loaded {len(documents)} documents.")
 
     # --- 2. Setup Embeddings ---
-    # Convert OmegaConf Dict to standard Python Dict for iteration
-    models = cfg.embedding.models if cfg.embedding.models else []
-    models_config = list(models)
-    model_names = [m['name'] for m in models]
-    
+    extraction_specs = resolve_extraction_specs(cfg.loader, cfg.embedding)
+    embedding_column_names = [spec.native_column for spec in extraction_specs]
+
     embedders = {
-        name: RemoteEmbeddings(
+        spec.native_column: RemoteEmbeddings(
             embedding_server_url=cfg.embedding.server_url,
             data_server_url=cfg.data.server_url,
             data_loader=loader,
-            model=name,
-            timeout=cfg.embedding.timeout
-        ) for name in model_names
+            model=spec.model,
+            modality=spec.modality,
+            timeout=cfg.embedding.timeout,
+        )
+        for spec in extraction_specs
     }
 
     # --- 3. Database Connection ---
@@ -50,7 +51,9 @@ async def run_pipeline(cfg: DictConfig):
     metadata_columns = loader.get_column_schema()
     pg_engine = PGEngineWithMultiVector.from_connection_string(url=connection_string)
 
-    model_size_dict = {m['name']: m['dim'] for m in models_config}
+    model_size_dict = {
+        spec.native_column: spec.dim for spec in extraction_specs
+    }
 
     try:
         await pg_engine.ainit_vectorstore_table(
@@ -74,7 +77,7 @@ async def run_pipeline(cfg: DictConfig):
     vector_store = await PGVectorStore.create(
         engine=pg_engine,
         table_name=table_name,
-        embedding_column=model_names,
+        embedding_column=embedding_column_names,
         embedding_service=embedders,
         metadata_columns=[col.name for col in metadata_columns]
     )
@@ -86,7 +89,7 @@ async def run_pipeline(cfg: DictConfig):
         f"@{cfg.database.host}/{cfg.database.dbname}"
     )
     
-    if len(models) > 0:
+    if extraction_specs:
         print("Checking for existing documents in DB...")
         try:
             conn = await asyncpg.connect(raw_conn_string)
@@ -102,8 +105,8 @@ async def run_pipeline(cfg: DictConfig):
             query = f'SELECT {pk_column} FROM "{table_name}" WHERE {pk_column} = ANY($1)'
             
             # Add checks for specific vector columns to ensure we only skip if THESE embeddings exist
-            for model in model_names:
-                query += f' AND "{model}" IS NOT NULL'
+            for embedding_column in embedding_column_names:
+                query += f' AND "{embedding_column}" IS NOT NULL'
             
             results = await conn.fetch(query, all_hashed_ids)
             existing_ids_set = {str(row[pk_column]).replace('-', '') for row in results}

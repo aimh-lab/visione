@@ -12,11 +12,13 @@ class LSCLoader:
             self,
             name,
             data_server_url,
-            metadata_file
+            metadata_file,
+            extraction=None,
             ):
         self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
+        self.extraction = extraction or []
 
     def _generate_metadata(self):
         df = pd.read_csv(

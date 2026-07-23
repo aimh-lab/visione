@@ -12,6 +12,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
 from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncEngine
+import asyncio
 
 from langchain_postgres.v2.engine import PGEngine
 from langchain_postgres.v2.hybrid_search_config import HybridSearchConfig
@@ -384,24 +385,38 @@ class AsyncPGVectorStore(VectorStore):
         # Skip if no embedding columns are configured.
         
         if has_embedding_columns and isinstance(self.embedding_service, dict):
+            pending: list[tuple[str, Embeddings]] = []
+
             for col_name, embedder in self.embedding_service.items():
-                
-                # A. Check if this column is already provided in the input
-                # (We check the first element to decide for the batch)
-                if normalized_embeddings and col_name in normalized_embeddings[0]:
+                # Prefer checking every row, rather than only the first row.
+                if all(col_name in row for row in normalized_embeddings):
                     continue
 
-                # B. Check if this is an "Inline" embedder (DB-side)
-                # If so, we SKIP generation here; it is handled in the SQL loop below.
+                # Inline embedders are evaluated later in SQL.
                 if callable(getattr(embedder, "embed_query_inline", None)):
                     continue
 
-                # C. Generate Python-side
-                # This fills in the gaps for columns that weren't passed in but are configured
-                col_vectors = await embedder.aembed_documents(text_list)
-                
+                pending.append((col_name, embedder))
+
+            # All embedding services start concurrently.
+            results = await asyncio.gather(
+                *(
+                    embedder.aembed_documents(text_list)
+                    for _, embedder in pending
+                )
+            )
+
+            # Merge results after all tasks complete.
+            for (col_name, _), col_vectors in zip(pending, results):
+                if len(col_vectors) != num_texts:
+                    raise ValueError(
+                        f"Embedder for {col_name!r} returned {len(col_vectors)} "
+                        f"vectors for {num_texts} texts."
+                    )
+
                 for i, vector in enumerate(col_vectors):
-                    normalized_embeddings[i][col_name] = vector
+                    # Preserve explicitly supplied embeddings.
+                    normalized_embeddings[i].setdefault(col_name, vector)
 
         # Legacy fallback (if embedding_service is just a single object)
         elif has_embedding_columns and self.embedding_service and not normalized_embeddings[0].get(self.embedding_column):

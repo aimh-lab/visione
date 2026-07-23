@@ -1,3 +1,13 @@
 _target_: loaders.LSCLoader
 name: lsc
 metadata_file: "/data1/lsc-common-data/lsc25-data/lsc25_metadata_clean_v2.csv"
+
+extraction:
+  - model: "qwen_embedding_8B"
+    modality: "image"
+  - model: "openclip_clip_vit_l_14"
+    modality: "image"
+  - model: "openclip_clip_vit_h_14"
+    modality: "image"
+  - model: "dinov2_base"
+    modality: "image"
