@@ -1,3 +1,7 @@
+from native_runtime import preload_conda_native_libs
+
+preload_conda_native_libs()
+
 import torch
 import torch.nn.functional as F
 import unicodedata
@@ -26,12 +30,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants for configuration
-MAX_LENGTH = 8192
+MAX_LENGTH = 32768
 IMAGE_BASE_FACTOR = 16
 IMAGE_FACTOR = IMAGE_BASE_FACTOR * 2
 MIN_PIXELS = 4 * IMAGE_FACTOR * IMAGE_FACTOR
 MAX_PIXELS = 1800 * IMAGE_FACTOR * IMAGE_FACTOR
-FPS = 1
+FPS = 2
 MAX_FRAMES = 64
 FRAME_MAX_PIXELS = 768 * IMAGE_FACTOR * IMAGE_FACTOR
 MAX_TOTAL_PIXELS = 10 * FRAME_MAX_PIXELS

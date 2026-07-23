@@ -1,6 +1,12 @@
 import logging
 import time
+from functools import wraps
 from typing import Any, Dict, List
+import numpy as np
+
+from native_runtime import preload_conda_native_libs
+
+preload_conda_native_libs()
 
 import torch
 from ray import serve
@@ -22,6 +28,51 @@ VIDEO_PROCESSING_KWARGS = {
     "fps": 2,
 }
 AUDIO_PROCESSING_KWARGS = {"max_length": 2048000}
+FRAME_INDEX_SAFETY_MARGIN = 1
+
+
+def _clamp_video_frame_indices(
+    indices: Any,
+    total_num_frames: int,
+) -> Any:
+    """Avoid TorchCodec's unreliable final metadata frame."""
+    safe_last_index = max(
+        int(total_num_frames) - 1 - FRAME_INDEX_SAFETY_MARGIN,
+        0,
+    )
+
+    if torch.is_tensor(indices):
+        return indices.clamp(max=safe_last_index)
+    if isinstance(indices, np.ndarray):
+        return np.minimum(indices, safe_last_index)
+    if isinstance(indices, tuple):
+        return tuple(min(index, safe_last_index) for index in indices)
+    return [min(index, safe_last_index) for index in indices]
+
+
+def _install_safe_video_sampler(transformer_module: Any) -> None:
+    """Preserve the model sampler while clamping its unreliable last frame."""
+    video_processor = transformer_module.processor.video_processor
+    original_sample_frames = video_processor.sample_frames
+
+    @wraps(original_sample_frames)
+    def safe_sample_frames(*args: Any, **kwargs: Any) -> Any:
+        metadata = kwargs.get("metadata")
+        if metadata is None and args:
+            metadata = args[0]
+
+        indices = original_sample_frames(*args, **kwargs)
+        total_num_frames = (
+            metadata.get("total_num_frames")
+            if isinstance(metadata, dict)
+            else getattr(metadata, "total_num_frames", None)
+        )
+        if total_num_frames is None:
+            return indices
+
+        return _clamp_video_frame_indices(indices, total_num_frames)
+
+    video_processor.sample_frames = safe_sample_frames
 
 
 @serve.deployment(
@@ -57,6 +108,7 @@ class OmniFeatureExtractor:
                 "audio": dict(AUDIO_PROCESSING_KWARGS),
             }
         )
+        _install_safe_video_sampler(self.embedder[0])
         self.embedder.eval()
 
         load_time = time.time() - self.startup_time

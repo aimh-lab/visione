@@ -3,6 +3,12 @@ import logging
 import os
 from typing import Dict, Any
 import time
+
+from native_runtime import preload_conda_native_libs
+
+
+preload_conda_native_libs()
+
 import ray
 from ray import serve
 from ray.serve.handle import DeploymentHandle
