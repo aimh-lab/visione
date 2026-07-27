@@ -1,10 +1,35 @@
 import base64
 import io
 import os
+from pathlib import Path
+import socket
+import tempfile
 from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
+
 from PIL import Image
 import requests
+
+
+def configure_http_cache() -> bool:
+    """Install an isolated requests cache only when explicitly enabled."""
+    if os.environ.get("FEATURE_EXTRACTOR_CACHE_ENABLED") != "1":
+        return False
+
+    import requests_cache
+
+    cache_root = Path(
+        os.environ.get("FEATURE_EXTRACTOR_CACHE_DIR", tempfile.gettempdir())
+    ).expanduser()
+    cache_root.mkdir(parents=True, exist_ok=True)
+    replica_id = f"{socket.gethostname()}_{os.getpid()}"
+    cache_path = cache_root / f"feature_extractor_cache_{replica_id}"
+    cache_ttl = int(os.environ.get("FEATURE_EXTRACTOR_CACHE_TTL_SECONDS", "60"))
+    requests_cache.install_cache(str(cache_path), expire_after=cache_ttl)
+    return True
+
+
+HTTP_CACHE_ENABLED = configure_http_cache()
 
 
 def validate_media_url(media_data: str, field_name: str = "media") -> str:
@@ -14,7 +39,11 @@ def validate_media_url(media_data: str, field_name: str = "media") -> str:
 
     media_url = media_data.strip()
     parsed_url = urlparse(media_url)
-    if not media_url or parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+    if (
+        not media_url
+        or parsed_url.scheme not in {"http", "https"}
+        or not parsed_url.netloc
+    ):
         raise ValueError(f"'{field_name}' must be a valid HTTP(S) URL")
 
     # Return the original value so signed URLs and temporal query parameters are

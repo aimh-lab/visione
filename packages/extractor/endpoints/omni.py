@@ -75,10 +75,7 @@ def _install_safe_video_sampler(transformer_module: Any) -> None:
     video_processor.sample_frames = safe_sample_frames
 
 
-@serve.deployment(
-    ray_actor_options={"num_cpus": 4, "num_gpus": 0.1},
-    max_concurrent_queries=16,
-)
+@serve.deployment
 class OmniFeatureExtractor:
     """Ray Serve deployment for NVIDIA Omni-Embed-Nemotron-3B."""
 

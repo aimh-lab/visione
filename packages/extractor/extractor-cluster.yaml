@@ -1,0 +1,81 @@
+# Default single-node topology. For a multi-node deployment, give every node a
+# stable ID/address and assign each model to one or more nodes.
+cluster:
+  head_node: head
+  ray_port: 6379
+  dashboard_port: 8265
+  dashboard_host: visione.isti.cnr.it
+  http_host: 127.0.0.1
+  http_port: 2222
+
+nodes:
+  head:
+    address: visione.isti.cnr.it
+    num_cpus: 20
+    num_gpus: 1
+  nicola-ai:
+    address: sk-messina.isti.cnr.it
+    num_cpus: 20
+    num_gpus: 1
+    models:
+      - openclip_clip_vit_l_14
+      - openclip_clip_vit_h_14
+      - qwen_embedding_8B
+      - omni_embed_nemotron_3B
+      - dinov2_base
+  visione-ai:
+    address: 146.48.87.75
+    num_cpus: 20
+    num_gpus: 1
+    models:
+      - openclip_clip_vit_l_14
+      - openclip_clip_vit_h_14
+      - qwen_embedding_8B
+      - omni_embed_nemotron_3B
+      - dinov2_base
+
+models:
+  openclip_clip_vit_l_14:
+    implementation: openclip
+    model_name: hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K
+    modalities: [image, text]
+    resources:
+      num_cpus: 1
+      num_gpus: 0.1
+    max_ongoing_requests: 100
+
+  openclip_clip_vit_h_14:
+    implementation: openclip
+    model_name: hf-hub:laion/CLIP-ViT-H-14-laion2B-s32B-b79K
+    modalities: [image, text]
+    resources:
+      num_cpus: 1
+      num_gpus: 0.1
+    max_ongoing_requests: 100
+
+  qwen_embedding_8B:
+    implementation: qwen
+    model_name: Qwen/Qwen3-VL-Embedding-8B
+    modalities: [image, text, image+text, video]
+    resources:
+      num_cpus: 4
+      num_gpus: 0.1
+    max_ongoing_requests: 50
+
+  omni_embed_nemotron_3B:
+    implementation: omni
+    model_name: nvidia/omni-embed-nemotron-3b
+    modalities: [video, video+audio, image, image+text, text]
+    resources:
+      num_cpus: 4
+      num_gpus: 0.1
+    max_ongoing_requests: 16
+
+  dinov2_base:
+    implementation: dino
+    model_name: facebook/dinov2-base
+    modalities: [image]
+    resources:
+      num_cpus: 1
+      num_gpus: 0.1
+    max_ongoing_requests: 100

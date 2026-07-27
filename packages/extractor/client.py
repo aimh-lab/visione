@@ -175,7 +175,7 @@ def test_video_extraction(models=["omni_embed_nemotron_3B"]):
     """Test con un singolo video su diversi modelli"""
     client = CLIPMultiModelClient(server_url="http://localhost:2222")
     
-    test_video = "https://visione.isti.cnr.it:43333/v3c/04567.mp4?start=1&end=10"
+    test_video = "https://visione.isti.cnr.it:43333/v3c/03606/video?start=56.39&end=58.992"
 
     print("🔧 Test singolo video su modelli diversi")
     print(f"🎥  Video: {test_video[:60]}...")
@@ -300,7 +300,7 @@ def test_text_to_video_retrieval(model="omni_embed_nemotron_3B"):
 
 def test_batch_processing(model="openclip_clip_vit_l_14"):
     """Test del batching automatico di Ray Serve"""
-    client = CLIPMultiModelClient()
+    client = CLIPMultiModelClient(server_url="http://localhost:2222")
 
     available_models = client.get_available_models()
     print(f"📱 Modelli disponibili: {available_models}")
@@ -335,8 +335,8 @@ def test_batch_processing(model="openclip_clip_vit_l_14"):
     print(f"📦 Invio {len(test_images) + len(test_texts)} richieste in parallelo")
     
     start_time = time.time()
-    results_images = client.extract_image_features_parallel(test_images, model=model, max_workers=16)
-    results_texts = client.extract_text_features_parallel(test_texts, model=model, max_workers=16)
+    results_images = client.extract_image_features_parallel(test_images, model=model, max_workers=16, task='document')
+    results_texts = client.extract_text_features_parallel(test_texts, model=model, max_workers=16, task='query')
     end_time = time.time()
     
     print(f"⏱️  Tempo totale: {end_time - start_time:.2f}s")
@@ -445,12 +445,12 @@ if __name__ == "__main__":
         # print("\n" + "="*60 + "\n")
         
         # Test batching
-        # test_batch_processing(model="dinov2_base")
+        test_batch_processing(model="openclip_clip_vit_h_14")
 
         # Test video extraction
         # test_video_extraction(models=["omni_embed_nemotron_3B"])
         # test_video_extraction(models=["qwen_embedding_8B"])
-        test_text_to_video_retrieval(model="omni_embed_nemotron_3B")
+        # test_text_to_video_retrieval(model="omni_embed_nemotron_3B")
 
         print("\n" + "="*60 + "\n")
 
