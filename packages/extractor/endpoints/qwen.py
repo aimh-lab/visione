@@ -24,7 +24,7 @@ from transformers.utils import TransformersKwargs
 from transformers.cache_utils import Cache
 from qwen_vl_utils.vision_process import process_vision_info
 
-from .common import decode_image_data, validate_media_url
+from .common import ConfigurableBatching, decode_image_data, validate_media_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -343,7 +343,7 @@ class Qwen3VLEmbedder():
     
 
 @serve.deployment
-class QwenFeatureExtractor:
+class QwenFeatureExtractor(ConfigurableBatching):
     def __init__(self, model_name: str = "Qwen/Qwen3-VL-Embedding-8B"):
         self.model_name = model_name
         self.startup_time = time.time()

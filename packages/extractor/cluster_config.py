@@ -17,6 +17,19 @@ SUPPORTED_IMPLEMENTATIONS = frozenset({"clip", "dino", "omni", "openclip", "qwen
 SUPPORTED_MODALITIES = frozenset(
     {"image", "text", "video", "image+text", "video+audio"}
 )
+DEFAULT_BATCH_SIZES = {
+    "clip": {"image": 32, "text": 32},
+    "dino": {"image": 32},
+    "openclip": {"image": 32, "text": 32},
+    "qwen": {"image": 32, "text": 32, "image+text": 32, "video": 2},
+    "omni": {
+        "text": 32,
+        "image": 32,
+        "image+text": 32,
+        "video": 4,
+        "video+audio": 4,
+    },
+}
 _RESOURCE_COMPONENT = re.compile(r"[^A-Za-z0-9_]")
 _ENDPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
@@ -50,6 +63,12 @@ def _resource_count(value: Any, location: str, *, allow_zero: bool = False) -> i
     return value
 
 
+def _positive_integer(value: Any, location: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ClusterConfigError(f"{location} must be a positive integer")
+    return value
+
+
 def model_resource_name(endpoint: str) -> str:
     """Return the custom Ray resource used to place one model replica."""
     component = _RESOURCE_COMPONENT.sub("_", endpoint)
@@ -62,6 +81,7 @@ class ModelSpec:
     implementation: str
     model_name: str
     modalities: Tuple[str, ...]
+    batch_sizes: Mapping[str, int]
     num_cpus: float
     num_gpus: float
     max_ongoing_requests: int
@@ -96,6 +116,40 @@ class ModelSpec:
                 f"models.{endpoint}.modalities contains unsupported values: "
                 f"{', '.join(unsupported)}"
             )
+        unsupported_by_implementation = sorted(
+            set(modalities) - set(DEFAULT_BATCH_SIZES[implementation])
+        )
+        if unsupported_by_implementation:
+            raise ClusterConfigError(
+                f"models.{endpoint}.implementation '{implementation}' does not "
+                f"support modalities: {', '.join(unsupported_by_implementation)}"
+            )
+
+        batch_sizes_raw = _mapping(
+            raw.get("batch_sizes", {}), f"models.{endpoint}.batch_sizes"
+        )
+        unknown_batch_modalities = sorted(
+            str(modality)
+            for modality in batch_sizes_raw
+            if str(modality) not in modalities
+        )
+        if unknown_batch_modalities:
+            raise ClusterConfigError(
+                f"models.{endpoint}.batch_sizes contains modalities not declared "
+                f"by the model: {', '.join(unknown_batch_modalities)}"
+            )
+        configured_batch_sizes = {
+            str(modality): _positive_integer(
+                value, f"models.{endpoint}.batch_sizes.{modality}"
+            )
+            for modality, value in batch_sizes_raw.items()
+        }
+        batch_sizes = {
+            modality: configured_batch_sizes.get(
+                modality, DEFAULT_BATCH_SIZES[implementation][modality]
+            )
+            for modality in modalities
+        }
 
         resources = _mapping(raw.get("resources", {}), f"models.{endpoint}.resources")
         num_cpus = _positive_number(
@@ -122,6 +176,7 @@ class ModelSpec:
             implementation=implementation,
             model_name=model_name,
             modalities=modalities,
+            batch_sizes=batch_sizes,
             num_cpus=num_cpus,
             num_gpus=num_gpus,
             max_ongoing_requests=max_ongoing_requests,
@@ -135,6 +190,7 @@ class ModelSpec:
         return {
             "name": self.model_name,
             "modalities": list(self.modalities),
+            "batch_sizes": dict(self.batch_sizes),
             "deployment": self.deployment_name,
             "desired_replicas": len(assigned_nodes),
             "assigned_nodes": list(assigned_nodes),

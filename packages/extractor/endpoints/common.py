@@ -11,6 +11,42 @@ from PIL import Image
 import requests
 
 
+_BATCH_METHODS = {
+    "image": "extract_image",
+    "text": "extract_text",
+    "video": "extract_video",
+    "image+text": "extract_image_text",
+    "video+audio": "extract_video_audio",
+}
+
+
+class ConfigurableBatching:
+    """Apply Ray Serve batch limits without reconstructing a model replica."""
+
+    def reconfigure(self, user_config: Dict[str, Any]) -> None:
+        batch_sizes = user_config.get("batch_sizes", {})
+        if not isinstance(batch_sizes, dict):
+            raise ValueError("user_config.batch_sizes must be a mapping")
+
+        for modality, max_batch_size in batch_sizes.items():
+            if (
+                isinstance(max_batch_size, bool)
+                or not isinstance(max_batch_size, int)
+                or max_batch_size <= 0
+            ):
+                raise ValueError(
+                    f"batch size for modality '{modality}' must be a positive integer"
+                )
+            method_name = _BATCH_METHODS.get(modality)
+            batch_handler = getattr(self, method_name, None) if method_name else None
+            if batch_handler is None:
+                raise ValueError(
+                    f"{type(self).__name__} does not support batching modality "
+                    f"'{modality}'"
+                )
+            batch_handler.set_max_batch_size(max_batch_size)
+
+
 def configure_http_cache() -> bool:
     """Install an isolated requests cache only when explicitly enabled."""
     if os.environ.get("FEATURE_EXTRACTOR_CACHE_ENABLED") != "1":

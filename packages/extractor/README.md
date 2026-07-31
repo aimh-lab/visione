@@ -133,3 +133,34 @@ After changing assignments or model resources:
 Serve applies the new fixed replica counts. A replica remains pending when its
 assigned model slot is unavailable and starts automatically when a matching
 node rejoins the cluster.
+
+## Request batching
+
+Each model endpoint can set a maximum batch size independently for every
+declared modality:
+
+```yaml
+models:
+  qwen_embedding_8B:
+    implementation: qwen
+    model_name: Qwen/Qwen3-VL-Embedding-8B
+    modalities: [image, text, image+text, video]
+    batch_sizes:
+      image: 16
+      text: 64
+      image+text: 16
+      video: 2
+    resources:
+      num_cpus: 4
+      num_gpus: 0.1
+    max_ongoing_requests: 64
+```
+
+Omitted sizes use the implementation's existing defaults. Batch sizes are
+applied independently to each replica. Deploying a batch-size-only change uses
+Ray Serve reconfiguration and does not reload the model.
+
+`max_ongoing_requests` is not adjusted automatically. It should be at least the
+largest configured batch size because, with the default single concurrent
+batch, a replica cannot fill a larger batch than its request admission limit.
+The batch wait timeout remains 0.1 seconds.

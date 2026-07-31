@@ -13,7 +13,7 @@ from ray import serve
 from sentence_transformers import SentenceTransformer
 from transformers.utils import is_flash_attn_2_available
 
-from .common import decode_image_data, validate_media_url
+from .common import ConfigurableBatching, decode_image_data, validate_media_url
 
 
 logging.basicConfig(level=logging.INFO)
@@ -76,7 +76,7 @@ def _install_safe_video_sampler(transformer_module: Any) -> None:
 
 
 @serve.deployment
-class OmniFeatureExtractor:
+class OmniFeatureExtractor(ConfigurableBatching):
     """Ray Serve deployment for NVIDIA Omni-Embed-Nemotron-3B."""
 
     def __init__(self, model_name: str = MODEL_NAME):

@@ -6,7 +6,7 @@ from ray import serve
 from PIL import Image
 import torch
 
-from .common import decode_image_data
+from .common import ConfigurableBatching, decode_image_data
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 import open_clip
 @serve.deployment
-class OpenCLIPFeatureExtractor:
+class OpenCLIPFeatureExtractor(ConfigurableBatching):
     def __init__(self, model_name: str):
         """
         Inizializza l'estrattore di features CLIP per un singolo modello
