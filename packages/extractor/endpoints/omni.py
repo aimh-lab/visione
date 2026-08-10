@@ -9,11 +9,17 @@ from native_runtime import preload_conda_native_libs
 preload_conda_native_libs()
 
 import torch
+from PIL import Image
 from ray import serve
 from sentence_transformers import SentenceTransformer
 from transformers.utils import is_flash_attn_2_available
 
-from .common import ConfigurableBatching, decode_image_data, validate_media_url
+from .common import (
+    ConfigurableBatching,
+    decode_image_data,
+    load_image_batch,
+    validate_media_url,
+)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -125,7 +131,12 @@ class OmniFeatureExtractor(ConfigurableBatching):
         if modality in {"image", "image+text"}:
             if "image" not in request:
                 raise ValueError("Missing 'image' field")
-            image = decode_image_data(request["image"])
+            image_value = request["image"]
+            image = (
+                image_value
+                if isinstance(image_value, Image.Image)
+                else decode_image_data(image_value)
+            )
             if modality == "image":
                 return {"image": image}
 
@@ -145,7 +156,10 @@ class OmniFeatureExtractor(ConfigurableBatching):
         raise ValueError(f"Unsupported modality: {modality}")
 
     def _extract_batch(
-        self, requests: List[Dict[str, Any]], modality: str
+        self,
+        requests: List[Dict[str, Any]],
+        modality: str,
+        preloaded_images: List[Image.Image | Exception] | None = None,
     ) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any] | None] = [None] * len(requests)
         grouped_inputs = {
@@ -155,7 +169,15 @@ class OmniFeatureExtractor(ConfigurableBatching):
 
         for index, request in enumerate(requests):
             try:
-                model_input = self._prepare_input(request, modality)
+                prepared_request = request
+                if preloaded_images is not None:
+                    loaded_image = preloaded_images[index]
+                    if isinstance(loaded_image, Exception):
+                        raise loaded_image
+                    prepared_request = dict(request)
+                    prepared_request["image"] = loaded_image
+
+                model_input = self._prepare_input(prepared_request, modality)
                 task = request["task"]
                 grouped_inputs[task]["inputs"].append(model_input)
                 grouped_inputs[task]["indices"].append(index)
@@ -215,17 +237,32 @@ class OmniFeatureExtractor(ConfigurableBatching):
             for result in results
         ]
 
+    async def _extract_image_batch(
+        self, requests: List[Dict[str, Any]], modality: str
+    ) -> List[Dict[str, Any]]:
+        loaded_images = await load_image_batch(
+            [request.get("image") for request in requests],
+            download_concurrency=self.image_download_concurrency,
+            decode_concurrency=self.image_decode_concurrency,
+            label=f"{self.model_name}:{modality}",
+        )
+        return self._extract_batch(
+            requests,
+            modality,
+            preloaded_images=loaded_images,
+        )
+
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
     async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return self._extract_batch(requests, "text")
 
     @serve.batch(max_batch_size=16, batch_wait_timeout_s=0.1)
     async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return self._extract_batch(requests, "image")
+        return await self._extract_image_batch(requests, "image")
 
     @serve.batch(max_batch_size=16, batch_wait_timeout_s=0.1)
     async def extract_image_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return self._extract_batch(requests, "image+text")
+        return await self._extract_image_batch(requests, "image+text")
 
     @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
     async def extract_video(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

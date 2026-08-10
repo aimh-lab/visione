@@ -164,3 +164,22 @@ Ray Serve reconfiguration and does not reload the model.
 largest configured batch size because, with the default single concurrent
 batch, a replica cannot fill a larger batch than its request admission limit.
 The batch wait timeout remains 0.1 seconds.
+
+Image-capable endpoints load each replica batch concurrently. The two limits
+can be tuned independently per model:
+
+```yaml
+models:
+  dinov2_base:
+    # ...
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
+```
+
+The defaults are 16 simultaneous HTTP downloads and 4 simultaneous PIL
+decodes per replica. With four image model replicas sharing a node, that
+allows at most 64 downloads and 16 decodes on that node at once. Changes are
+applied through Serve reconfiguration without reloading the model. The HTTP
+timeout remains 10 seconds, and failures remain isolated to their individual
+requests.

@@ -6,7 +6,7 @@ from ray import serve
 from PIL import Image
 import torch
 
-from .common import ConfigurableBatching, decode_image_data
+from .common import ConfigurableBatching, load_image_batch
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
@@ -113,29 +113,30 @@ class OpenCLIPFeatureExtractor(ConfigurableBatching):
                 "model": self.model_name
             })
         
-        # Carica e valida tutte le immagini
-        for idx, request in enumerate(requests):
-            try:
-                # Estrai dati immagine dalla richiesta
-                if "image" not in request:
-                    results[idx] = {
-                        "success": False,
-                        "error": "Campo 'image' mancante nella richiesta",
-                        "model": self.model_name
-                    }
-                    continue
-                
-                image_data = request["image"]
-                image = decode_image_data(image_data)
-                successful_images.append(image)
-                successful_indices.append(idx)
-                
-            except Exception as e:
+        loaded_images = await load_image_batch(
+            [request.get("image") for request in requests],
+            download_concurrency=self.image_download_concurrency,
+            decode_concurrency=self.image_decode_concurrency,
+            label=self.model_name,
+        )
+        for idx, (request, loaded_image) in enumerate(
+            zip(requests, loaded_images)
+        ):
+            if "image" not in request:
                 results[idx] = {
                     "success": False,
-                    "error": str(e),
+                    "error": "Campo 'image' mancante nella richiesta",
                     "model": self.model_name
                 }
+            elif isinstance(loaded_image, Exception):
+                results[idx] = {
+                    "success": False,
+                    "error": str(loaded_image),
+                    "model": self.model_name
+                }
+            else:
+                successful_images.append(loaded_image)
+                successful_indices.append(idx)
         
         # Estrai features per le immagini valide (se ce ne sono)
         if successful_images:

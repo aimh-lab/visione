@@ -39,6 +39,12 @@ models:
     implementation: openclip
     model_name: hf-hub:laion/CLIP-ViT-L-14-laion2B-s32B-b82K
     modalities: [image, text]
+    batch_sizes:
+      image: 64
+      text: 64
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
     resources:
       num_cpus: 1
       num_gpus: 0.1
@@ -48,6 +54,12 @@ models:
     implementation: openclip
     model_name: hf-hub:laion/CLIP-ViT-H-14-laion2B-s32B-b79K
     modalities: [image, text]
+    batch_sizes:
+      image: 64
+      text: 64
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
     resources:
       num_cpus: 1
       num_gpus: 0.1
@@ -57,6 +69,14 @@ models:
     implementation: qwen
     model_name: Qwen/Qwen3-VL-Embedding-8B
     modalities: [image, text, image+text, video]
+    batch_sizes:
+      image: 64
+      text: 64
+      image+text: 64
+      video: 4
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
     resources:
       num_cpus: 4
       num_gpus: 0.1
@@ -66,6 +86,15 @@ models:
     implementation: omni
     model_name: nvidia/omni-embed-nemotron-3b
     modalities: [video, video+audio, image, image+text, text]
+    batch_sizes:
+      video: 4
+      video+audio: 4
+      image: 16
+      image+text: 16
+      text: 64
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
     resources:
       num_cpus: 4
       num_gpus: 0.1
@@ -75,6 +104,11 @@ models:
     implementation: dino
     model_name: facebook/dinov2-base
     modalities: [image]
+    batch_sizes:
+      image: 64
+    image_loading:
+      download_concurrency: 16
+      decode_concurrency: 4
     resources:
       num_cpus: 1
       num_gpus: 0.1

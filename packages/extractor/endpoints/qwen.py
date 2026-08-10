@@ -24,7 +24,7 @@ from transformers.utils import TransformersKwargs
 from transformers.cache_utils import Cache
 from qwen_vl_utils.vision_process import process_vision_info
 
-from .common import ConfigurableBatching, decode_image_data, validate_media_url
+from .common import ConfigurableBatching, load_image_batch, validate_media_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -370,18 +370,25 @@ class QwenFeatureExtractor(ConfigurableBatching):
         indices_map = []
         results = [None] * batch_size
 
-        for i, req in enumerate(requests):
+        loaded_images = await load_image_batch(
+            [request.get("image") for request in requests],
+            download_concurrency=self.image_download_concurrency,
+            decode_concurrency=self.image_decode_concurrency,
+            label=self.model_name,
+        )
+        for i, (req, loaded_image) in enumerate(zip(requests, loaded_images)):
             if "image" not in req:
                 results[i] = {"success": False, "error": "Missing 'image' field"}
                 continue
-            
-            try:
-                # Prepara l'input nel formato atteso da Qwen3VLEmbedder: [{"image": ...}]
-                source = decode_image_data(req["image"])
-                inputs.append({"image": source})
-                indices_map.append(i)
-            except Exception as e:
-                results[i] = {"success": False, "error": f"Preprocessing error: {str(e)}"}
+            if isinstance(loaded_image, Exception):
+                results[i] = {
+                    "success": False,
+                    "error": f"Preprocessing error: {loaded_image}",
+                }
+                continue
+
+            inputs.append({"image": loaded_image})
+            indices_map.append(i)
 
         if inputs:
             try:
@@ -519,17 +526,25 @@ class QwenFeatureExtractor(ConfigurableBatching):
         indices_map = []
         results = [None] * batch_size
 
-        for i, req in enumerate(requests):
+        loaded_images = await load_image_batch(
+            [request.get("image") for request in requests],
+            download_concurrency=self.image_download_concurrency,
+            decode_concurrency=self.image_decode_concurrency,
+            label=f"{self.model_name}:image+text",
+        )
+        for i, (req, loaded_image) in enumerate(zip(requests, loaded_images)):
             if "image" not in req or "text" not in req:
                 results[i] = {"success": False, "error": "Missing 'image' or 'text' field"}
                 continue
-            
-            try:
-                source = decode_image_data(req["image"])
-                inputs.append({"image": source, "text": req["text"]})
-                indices_map.append(i)
-            except Exception as e:
-                results[i] = {"success": False, "error": f"Preprocessing error: {str(e)}"}
+            if isinstance(loaded_image, Exception):
+                results[i] = {
+                    "success": False,
+                    "error": f"Preprocessing error: {loaded_image}",
+                }
+                continue
+
+            inputs.append({"image": loaded_image, "text": req["text"]})
+            indices_map.append(i)
 
         if inputs:
             try:

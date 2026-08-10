@@ -30,6 +30,10 @@ DEFAULT_BATCH_SIZES = {
         "video+audio": 4,
     },
 }
+DEFAULT_IMAGE_LOADING = {
+    "download_concurrency": 16,
+    "decode_concurrency": 4,
+}
 _RESOURCE_COMPONENT = re.compile(r"[^A-Za-z0-9_]")
 _ENDPOINT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
@@ -82,6 +86,7 @@ class ModelSpec:
     model_name: str
     modalities: Tuple[str, ...]
     batch_sizes: Mapping[str, int]
+    image_loading: Mapping[str, int]
     num_cpus: float
     num_gpus: float
     max_ongoing_requests: int
@@ -151,6 +156,27 @@ class ModelSpec:
             for modality in modalities
         }
 
+        image_loading_raw = _mapping(
+            raw.get("image_loading", {}), f"models.{endpoint}.image_loading"
+        )
+        unknown_image_loading_keys = sorted(
+            str(key)
+            for key in image_loading_raw
+            if str(key) not in DEFAULT_IMAGE_LOADING
+        )
+        if unknown_image_loading_keys:
+            raise ClusterConfigError(
+                f"models.{endpoint}.image_loading contains unknown keys: "
+                f"{', '.join(unknown_image_loading_keys)}"
+            )
+        image_loading = {
+            key: _positive_integer(
+                image_loading_raw.get(key, default),
+                f"models.{endpoint}.image_loading.{key}",
+            )
+            for key, default in DEFAULT_IMAGE_LOADING.items()
+        }
+
         resources = _mapping(raw.get("resources", {}), f"models.{endpoint}.resources")
         num_cpus = _positive_number(
             resources.get("num_cpus", 1), f"models.{endpoint}.resources.num_cpus"
@@ -177,6 +203,7 @@ class ModelSpec:
             model_name=model_name,
             modalities=modalities,
             batch_sizes=batch_sizes,
+            image_loading=image_loading,
             num_cpus=num_cpus,
             num_gpus=num_gpus,
             max_ongoing_requests=max_ongoing_requests,
@@ -191,6 +218,7 @@ class ModelSpec:
             "name": self.model_name,
             "modalities": list(self.modalities),
             "batch_sizes": dict(self.batch_sizes),
+            "image_loading": dict(self.image_loading),
             "deployment": self.deployment_name,
             "desired_replicas": len(assigned_nodes),
             "assigned_nodes": list(assigned_nodes),

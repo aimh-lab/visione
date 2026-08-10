@@ -225,7 +225,10 @@ def build_application_from_config(config: ClusterSpec):
             num_replicas=len(assigned_nodes),
             ray_actor_options=actor_options,
             max_ongoing_requests=model.max_ongoing_requests,
-            user_config={"batch_sizes": dict(model.batch_sizes)},
+            user_config={
+                "batch_sizes": dict(model.batch_sizes),
+                "image_loading": dict(model.image_loading),
+            },
         ).bind(model_name=model.model_name)
         models_config[endpoint] = model.router_config(assigned_nodes)
         logger.info(
