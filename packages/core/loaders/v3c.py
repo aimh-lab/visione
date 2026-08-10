@@ -27,7 +27,7 @@ class V3CLoader:
     def _generate_metadata(self):
         # Load all the *.scenes.csv files in the v3c_root_folder/detected_scenes/ searching them recursively and concatenate them into a single DataFrame
         
-        scenes_pattern = os.path.join(self.v3c_root_folder, "detected-scenes", "**", "*-scenes.csv")
+        scenes_pattern = os.path.join(self.v3c_root_folder, "**", "*-scenes.csv")
         scene_files = glob.glob(scenes_pattern, recursive=True)
 
         dfs = []
@@ -44,14 +44,17 @@ class V3CLoader:
                 "End Time (seconds)": float,
                 "Length (seconds)": float,
             })
-            # Extract numeric part from filename stem (e.g., "001_scenes.csv" -> "001")
+
+            df["pad_to"] = max(3, len(str(df["Scene Number"].max())))
+
+            # Extract numeric part from filename stem (e.g., "00001-scenes.csv" -> "00001")
             stem = os.path.splitext(os.path.basename(file))[0]
             numeric_part = stem.split("-")[0]
             df["video_id"] = numeric_part
             df["id"] = df["video_id"] + "_" + df["Scene Number"].astype(str)            
             dfs.append(df)
 
-            if self.debug and i >= 10:
+            if self.debug and i >= 30:
                 break  # Limit to first 10 files for debugging
         
         metadata_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
@@ -93,14 +96,17 @@ class V3CLoader:
         Given an image name (e.g. '20190101_205237.webp'), construct its URL.
         The relative path is what/id_str, where what is the collection path (e.g. 'images') and id_str is the image name.
         """
-        path = id_str[:5] + "/" + what
+        
         if what == "video":
             start_end_seconds = self.metadata_df.loc[self.metadata_df["id"] == id_str, ["start_timecode", "end_timecode"]].values[0]
             start_seconds, end_seconds = start_end_seconds
             # TODO: bad to put segment extension here: these are here in place so that extraction works on extended video margins
             start_seconds -= 1.5
             end_seconds += 1.5
-            path += f"?start={start_seconds}&end={end_seconds}"
+            path = id_str[:5] + "/" + what + f"?start={start_seconds}&end={end_seconds}"
+        elif what == "image":
+            video_id, shot_id, pad_to = self.metadata_df.loc[self.metadata_df["id"] == id_str, ["video_id", "scene_number", "pad_to"]].values[0]
+            path = video_id + "/" + f"{shot_id:0{pad_to}d}" + "/" + what
         return self.data_server_url + "/" + self.name + "/" + path
     
     def get_retrieved_metadata_columns(self):
@@ -171,21 +177,23 @@ class V3CLoader:
 
 
 if __name__ == "__main__":
-    data_server_url = "http://localhost:8000"
-    v3c_root_folder = "/data2/v3c-2026-data"
+    data_server_url = "https://visione.isti.cnr.it:43333"
+    v3c_root_folder = "/data1/v3c-collection/selected-frames" #"/data2/v3c-2026-data"
 
-    lsc = V3CLoader("v3c", data_server_url, v3c_root_folder)
-    video_url = lsc.get_collection_element_url_from_id("19826_1", what="video")
-    image_url = lsc.get_collection_element_url_from_id("19826_1", what="image")
-    print(video_url)
-    print(image_url)
+    lsc = V3CLoader("v3c", data_server_url, v3c_root_folder, debug=True)
 
     docs, ids = lsc.generate_docs()
+    id = ids[0]
+
+    video_url = lsc.get_collection_element_url_from_id(id, what="video")
+    image_url = lsc.get_collection_element_url_from_id(id, what="image")
+    print(video_url)
+    print(image_url)
 
     # 10 random idx from 0 to len(ids)-1
     import random
     random.seed(42)
-    sample_ids = random.sample(range(len(ids)), min(10, len(ids)))
+    sample_ids = random.sample(range(len(ids)), min(1000, len(ids)))
 
     print(f"Generated {len(docs)} documents.")
     if len(docs) > 0:
@@ -194,3 +202,5 @@ if __name__ == "__main__":
             print(f"  ID: {ids[idx]}")
             print(f"  Content: {docs[idx].page_content}")
             print(f"  Metadata: {docs[idx].metadata}")
+            print(f"  Video URL: {lsc.get_collection_element_url_from_id(ids[idx], what='video')}")
+            print(f"  Image URL: {lsc.get_collection_element_url_from_id(ids[idx], what='image')}")

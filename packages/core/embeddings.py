@@ -47,7 +47,7 @@ class RemoteEmbeddings(Embeddings):
         model: str = "base",
         modality: str = "image",
         timeout: float = 120.0,
-        max_concurrent_requests: int = 64,
+        max_concurrent_requests: int = 1024,
         mrl_dimension: Optional[int] = None,
     ):
         self.embedding_server_url = embedding_server_url.rstrip("/")
