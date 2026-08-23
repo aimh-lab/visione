@@ -1,3 +1,4 @@
+import asyncio
 import time
 import uvicorn
 import hydra
@@ -119,6 +120,9 @@ async def lifespan(app: FastAPI):
                 model=spec.model,
                 modality=spec.modality,
                 timeout=cfg.embedding.timeout,
+                max_concurrent_requests=cfg.embedding.get(
+                    "max_concurrent_requests", 128
+                ),
                 mrl_dimension=spec.mrl_dim,
             )
         except ValueError as exc:
@@ -169,8 +173,14 @@ async def lifespan(app: FastAPI):
     app.state.model_column_map = model_column_map
 
     print(f"Ready. Available models: {app.state.available_models}")
-    yield
-    print("Shutting down...")
+    try:
+        yield
+    finally:
+        await asyncio.gather(
+            *(embedder.aclose() for embedder in embedders.values()),
+            return_exceptions=True,
+        )
+        print("Shutting down...")
 
 # --- FastAPI App ---
 app = FastAPI(lifespan=lifespan)

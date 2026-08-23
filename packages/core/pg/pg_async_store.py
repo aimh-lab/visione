@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import copy
 import json
+import re
+import time
 import uuid
+from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, List, Dict
 
 import numpy as np
@@ -11,6 +14,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore, utils
 from sqlalchemy import RowMapping, text
+from sqlalchemy.exc import DBAPIError, DataError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine
 import asyncio
 
@@ -55,6 +59,120 @@ SUPPORTED_OPERATORS = (
     .union(LOGICAL_OPERATORS)
     .union(SPECIAL_CASED_OPERATORS)
 )
+
+_BIND_PARAMETER_PATTERN = re.compile(r"(?<!:):([A-Za-z_][A-Za-z0-9_]*)")
+_MAX_BULK_BIND_PARAMETERS = 60_000
+
+
+@dataclass
+class _PreparedUpsert:
+    index: int
+    document_id: str
+    insert_sql: str
+    values_sql: str
+    upsert_sql: str
+    values: dict[str, Any]
+
+    @property
+    def shape(self) -> tuple[str, str, str]:
+        return (self.insert_sql, self.values_sql, self.upsert_sql)
+
+
+def _chunk_compatible_upserts(
+    rows: list[_PreparedUpsert],
+) -> list[list[_PreparedUpsert]]:
+    """Build ordered chunks with one SQL shape and no duplicate IDs."""
+    chunks: list[list[_PreparedUpsert]] = []
+    current: list[_PreparedUpsert] = []
+    current_shape: Optional[tuple[str, str, str]] = None
+    current_ids: set[str] = set()
+    bind_count = 0
+
+    for row in rows:
+        row_bind_count = len(row.values)
+        if row_bind_count > _MAX_BULK_BIND_PARAMETERS:
+            raise ValueError(
+                f"Document {row.document_id!r} requires {row_bind_count} bind "
+                "parameters, exceeding PostgreSQL's bulk statement limit."
+            )
+
+        must_flush = bool(current) and (
+            row.shape != current_shape
+            or row.document_id in current_ids
+            or bind_count + row_bind_count > _MAX_BULK_BIND_PARAMETERS
+        )
+        if must_flush:
+            chunks.append(current)
+            current = []
+            current_ids = set()
+            bind_count = 0
+
+        if not current:
+            current_shape = row.shape
+        current.append(row)
+        current_ids.add(row.document_id)
+        bind_count += row_bind_count
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _render_bulk_upsert(
+    rows: list[_PreparedUpsert],
+) -> tuple[str, dict[str, Any]]:
+    """Render compatible prepared rows as one multi-value upsert."""
+    if not rows:
+        raise ValueError("Cannot render an empty upsert batch.")
+
+    first = rows[0]
+    row_sql: list[str] = []
+    bulk_values: dict[str, Any] = {}
+
+    for row_number, row in enumerate(rows):
+        if row.shape != first.shape:
+            raise ValueError("Bulk upsert rows must share one SQL shape.")
+
+        def rename_parameter(match: re.Match[str]) -> str:
+            parameter_name = match.group(1)
+            if parameter_name not in row.values:
+                return match.group(0)
+            bulk_name = f"{parameter_name}_{row_number}"
+            bulk_values[bulk_name] = row.values[parameter_name]
+            return f":{bulk_name}"
+
+        row_sql.append(_BIND_PARAMETER_PATTERN.sub(rename_parameter, row.values_sql))
+
+    return (
+        f"{first.insert_sql} VALUES {', '.join(row_sql)}{first.upsert_sql}",
+        bulk_values,
+    )
+
+
+def _is_isolatable_row_error(exc: Exception) -> bool:
+    """Return whether retrying smaller row groups can identify bad input."""
+    if isinstance(exc, (DataError, IntegrityError, TypeError, ValueError)):
+        return True
+    if not isinstance(exc, DBAPIError) or exc.connection_invalidated:
+        return False
+
+    original = getattr(exc, "orig", None)
+    original_type_names = {
+        cls.__name__ for cls in type(original).__mro__
+    } if original is not None else set()
+    return bool(
+        original_type_names
+        & {
+            "CheckViolationError",
+            "DataError",
+            "ForeignKeyViolationError",
+            "IntegrityConstraintViolationError",
+            "NotNullViolationError",
+            "NumericValueOutOfRangeError",
+            "StringDataRightTruncationError",
+            "UniqueViolationError",
+        }
+    )
 
 
 class AsyncPGVectorStore(VectorStore):
@@ -151,6 +269,7 @@ class AsyncPGVectorStore(VectorStore):
         self.temporal_column = temporal_column
         self.model_column_map = model_column_map or {}
         self.fts_language = fts_language
+        self.last_ingestion_metrics: dict[str, Any] = {}
 
     @classmethod
     async def create(
@@ -350,9 +469,11 @@ class AsyncPGVectorStore(VectorStore):
         **kwargs: Any,
     ) -> list[str]:
         """
-        Add data to the table. 
+        Add data to the table and return only successfully persisted IDs.
+
         If 'embeddings' are not provided, they will be generated using self.embedding_service.
         """
+        batch_started = time.perf_counter()
         text_list = list(texts)
         num_texts = len(text_list)
 
@@ -360,12 +481,22 @@ class AsyncPGVectorStore(VectorStore):
             ids = [str(uuid.uuid4()) for _ in range(num_texts)]
         else:
             ids = [id if id is not None else str(uuid.uuid4()) for id in ids]
+
+        if len(ids) != num_texts:
+            raise ValueError(
+                f"Expected {num_texts} ids for {num_texts} texts, got {len(ids)}."
+            )
         
         if not metadatas:
             metadatas = [{} for _ in range(num_texts)]
+        elif len(metadatas) != num_texts:
+            raise ValueError(
+                f"Expected {num_texts} metadata rows for {num_texts} texts, "
+                f"got {len(metadatas)}."
+            )
 
         # --- Check if embeddings are configured ---
-        has_embedding_columns = self.embedding_columns and len(self.embedding_columns) > 0
+        has_embedding_columns = bool(self.embedding_columns)
 
         # --- 1. Normalize & Initialize Embeddings ---
         # We want a List[Dict[str, Any]] structure.
@@ -380,9 +511,16 @@ class AsyncPGVectorStore(VectorStore):
             # Already List[Dict], assume valid
             normalized_embeddings = embeddings # type: ignore
 
+        if len(normalized_embeddings) != num_texts:
+            raise ValueError(
+                f"Expected {num_texts} embedding rows for {num_texts} texts, "
+                f"got {len(normalized_embeddings)}."
+            )
+
         # --- 2. Generate Missing Embeddings (Batch Processing) ---
         # We do this OUTSIDE the DB loop for performance (batching).
         # Skip if no embedding columns are configured.
+        embedding_started = time.perf_counter()
         
         if has_embedding_columns and isinstance(self.embedding_service, dict):
             pending: list[tuple[str, Embeddings]] = []
@@ -403,32 +541,116 @@ class AsyncPGVectorStore(VectorStore):
                 *(
                     embedder.aembed_documents(text_list)
                     for _, embedder in pending
-                )
+                ),
+                return_exceptions=True,
             )
 
             # Merge results after all tasks complete.
             for (col_name, _), col_vectors in zip(pending, results):
+                if isinstance(col_vectors, BaseException):
+                    if not isinstance(col_vectors, Exception):
+                        raise col_vectors
+                    print(
+                        f"Warning: Embedder for {col_name!r} failed for the batch: "
+                        f"{col_vectors}"
+                    )
+                    continue
+
                 if len(col_vectors) != num_texts:
-                    raise ValueError(
+                    print(
+                        "Warning: "
                         f"Embedder for {col_name!r} returned {len(col_vectors)} "
                         f"vectors for {num_texts} texts."
                     )
+                    continue
 
                 for i, vector in enumerate(col_vectors):
                     # Preserve explicitly supplied embeddings.
                     normalized_embeddings[i].setdefault(col_name, vector)
 
         # Legacy fallback (if embedding_service is just a single object)
-        elif has_embedding_columns and self.embedding_service and not normalized_embeddings[0].get(self.embedding_column):
-             if not callable(getattr(self.embedding_service, "embed_query_inline", None)):
-                 vecs = await self.embedding_service.aembed_documents(text_list)
-                 for i, v in enumerate(vecs):
-                     normalized_embeddings[i][self.embedding_column] = v
+        elif (
+            has_embedding_columns
+            and self.embedding_service
+            and num_texts > 0
+            and not normalized_embeddings[0].get(self.embedding_column)
+        ):
+            if not callable(
+                getattr(self.embedding_service, "embed_query_inline", None)
+            ):
+                try:
+                    vecs = await self.embedding_service.aembed_documents(text_list)
+                except Exception as exc:
+                    print(f"Warning: Embedder failed for the batch: {exc}")
+                else:
+                    if len(vecs) != num_texts:
+                        print(
+                            "Warning: Embedder returned "
+                            f"{len(vecs)} vectors for {num_texts} texts."
+                        )
+                    else:
+                        for i, v in enumerate(vecs):
+                            normalized_embeddings[i][self.embedding_column] = v
+
+        embedding_seconds = time.perf_counter() - embedding_started
 
         # --- 3. Database Insertion Loop ---
-        statements: list[tuple[str, dict]] = []
+        preparation_started = time.perf_counter()
+        prepared_rows: list[_PreparedUpsert] = []
+        failed_ids: list[str] = []
 
-        for id, content, embedding_dict, metadata in zip(ids, text_list, normalized_embeddings, metadatas):
+        inline_embedding_columns: set[str] = set()
+        if has_embedding_columns and isinstance(self.embedding_service, dict):
+            inline_embedding_columns = {
+                col_name
+                for col_name, embedder in self.embedding_service.items()
+                if callable(getattr(embedder, "embed_query_inline", None))
+            }
+        elif (
+            has_embedding_columns
+            and self.embedding_column
+            and callable(
+                getattr(self.embedding_service, "embed_query_inline", None)
+            )
+        ):
+            inline_embedding_columns.add(self.embedding_column)
+
+        required_embedding_columns = set(self.embedding_columns).difference(
+            inline_embedding_columns
+        )
+
+        for id, content, embedding_dict, metadata in zip(
+            ids, text_list, normalized_embeddings, metadatas
+        ):
+            missing_embedding_columns = sorted(
+                col_name
+                for col_name in required_embedding_columns
+                if col_name not in embedding_dict
+                or embedding_dict[col_name] is None
+                or not hasattr(embedding_dict[col_name], "__len__")
+                or len(embedding_dict[col_name]) == 0
+            )
+            if missing_embedding_columns:
+                print(
+                    f"Warning: Skipping document {id!r}; missing embeddings for "
+                    f"columns {missing_embedding_columns}."
+                )
+                failed_ids.append(id)
+                continue
+
+            try:
+                serialized_embeddings = {
+                    col_name: str(
+                        [float(dimension) for dimension in vector]
+                    )
+                    for col_name, vector in embedding_dict.items()
+                }
+            except (TypeError, ValueError, OverflowError) as exc:
+                print(
+                    f"Warning: Skipping document {id!r}; invalid embedding: {exc}"
+                )
+                failed_ids.append(id)
+                continue
             
             # --- Prepare SQL Parts ---
             embedding_col_names_str = ""
@@ -440,10 +662,10 @@ class AsyncPGVectorStore(VectorStore):
             }
 
             # 3a. Add Computed/Provided Embeddings
-            for col_name, vector in embedding_dict.items():
+            for col_name in embedding_dict:
                 safe_col = f'"{col_name}"'
                 embedding_col_names_str += f', {safe_col}'
-                values[col_name] = str([float(dimension) for dimension in vector])
+                values[col_name] = serialized_embeddings[col_name]
                 embedding_placeholders_str += f", :{col_name}"
 
             # 3b. Handle Inline Embeddings (SQL-side generation)
@@ -543,16 +765,106 @@ class AsyncPGVectorStore(VectorStore):
 
             upsert_stmt += ";"
 
-            query = insert_stmt + values_stmt + upsert_stmt
-            
-            statements.append((query, values))
+            prepared_rows.append(
+                _PreparedUpsert(
+                    index=len(prepared_rows),
+                    document_id=id,
+                    insert_sql=insert_stmt,
+                    values_sql=values_stmt[len("VALUES ") :],
+                    upsert_sql=upsert_stmt,
+                    values=values,
+                )
+            )
 
-        async with self.engine.connect() as conn:
-            for query, values in statements:
-                await conn.execute(text(query), values)
-            await conn.commit()
+        chunks = _chunk_compatible_upserts(prepared_rows)
+        preparation_seconds = time.perf_counter() - preparation_started
+        persistence_started = time.perf_counter()
+        successful_rows: list[_PreparedUpsert] = []
+        retry_attempts = 0
+        persistence_statements = 0
 
-        return ids
+        async def execute_rows(conn: Any, rows: list[_PreparedUpsert]) -> None:
+            nonlocal persistence_statements
+            query, values = _render_bulk_upsert(rows)
+            persistence_statements += 1
+            await conn.execute(text(query), values)
+
+        async def persist_with_isolation(
+            conn: Any,
+            rows: list[_PreparedUpsert],
+        ) -> None:
+            nonlocal retry_attempts
+            retry_attempts += 1
+            try:
+                async with conn.begin_nested():
+                    await execute_rows(conn, rows)
+            except Exception as exc:
+                if getattr(conn, "invalidated", False) or not _is_isolatable_row_error(
+                    exc
+                ):
+                    raise
+                if len(rows) == 1:
+                    failed_row = rows[0]
+                    print(
+                        f"Warning: Failed to persist document "
+                        f"{failed_row.document_id!r}: {exc}"
+                    )
+                    failed_ids.append(failed_row.document_id)
+                    return
+
+                midpoint = len(rows) // 2
+                await persist_with_isolation(conn, rows[:midpoint])
+                await persist_with_isolation(conn, rows[midpoint:])
+            else:
+                successful_rows.extend(rows)
+
+        if chunks:
+            try:
+                async with self.engine.connect() as conn:
+                    async with conn.begin():
+                        for chunk in chunks:
+                            await execute_rows(conn, chunk)
+            except Exception as exc:
+                if not _is_isolatable_row_error(exc):
+                    raise
+
+                successful_rows = []
+                async with self.engine.connect() as conn:
+                    async with conn.begin():
+                        for chunk in chunks:
+                            await persist_with_isolation(conn, chunk)
+            else:
+                successful_rows = list(prepared_rows)
+
+        successful_rows.sort(key=lambda row: row.index)
+        successful_ids = [row.document_id for row in successful_rows]
+        persistence_seconds = time.perf_counter() - persistence_started
+        total_seconds = time.perf_counter() - batch_started
+        documents_per_second = (
+            len(successful_ids) / total_seconds if total_seconds > 0 else 0.0
+        )
+        self.last_ingestion_metrics = {
+            "requested": num_texts,
+            "succeeded": len(successful_ids),
+            "failed": len(failed_ids),
+            "embedding_seconds": embedding_seconds,
+            "preparation_seconds": preparation_seconds,
+            "persistence_seconds": persistence_seconds,
+            "total_seconds": total_seconds,
+            "documents_per_second": documents_per_second,
+            "persistence_statements": persistence_statements,
+            "retry_attempts": retry_attempts,
+        }
+        print(
+            "Ingestion batch: "
+            f"{len(successful_ids)}/{num_texts} persisted, "
+            f"embedding={embedding_seconds:.3f}s, "
+            f"prepare={preparation_seconds:.3f}s, "
+            f"database={persistence_seconds:.3f}s, "
+            f"throughput={documents_per_second:.1f} docs/s, "
+            f"statements={persistence_statements}, retries={retry_attempts}."
+        )
+        return successful_ids
 
     async def aadd_texts(
         self,

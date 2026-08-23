@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import time
 import asyncpg
 import hydra
 from omegaconf import DictConfig
@@ -37,6 +38,9 @@ async def run_pipeline(cfg: DictConfig):
             model=spec.model,
             modality=spec.modality,
             timeout=cfg.embedding.timeout,
+            max_concurrent_requests=cfg.embedding.get(
+                "max_concurrent_requests", 128
+            ),
         )
         for spec in extraction_specs
     }
@@ -135,26 +139,67 @@ async def run_pipeline(cfg: DictConfig):
     print(f"{len(docs_to_process)} new documents to process.")
 
     # --- 7. Processing Loop ---
-    if docs_to_process:
-        batch_size = cfg.batch_size
-        total_batches = (len(docs_to_process) + batch_size - 1) // batch_size
+    succeeded_count = 0
+    failed_count = 0
+    ingestion_started = time.perf_counter()
+    embedding_seconds = 0.0
+    persistence_seconds = 0.0
+    try:
+        if docs_to_process:
+            batch_size = cfg.batch_size
 
-        for i in tqdm(range(0, len(docs_to_process), batch_size), desc="Ingesting Batches"):
-            batch_docs = docs_to_process[i : i + batch_size]
-            batch_ids = ids_to_process[i : i + batch_size]
-            
-            try:
-                await vector_store.aadd_documents(
-                    documents=batch_docs,
-                    ids=batch_ids
-                )
-            except Exception as e:
-                print(f"Error adding batch at index {i}: {e}")
-                continue
-    else:
-        print("No new documents to add.")
-    
-    print("Pipeline finished.")
+            for i in tqdm(range(0, len(docs_to_process), batch_size), desc="Ingesting Batches"):
+                batch_docs = docs_to_process[i : i + batch_size]
+                batch_ids = ids_to_process[i : i + batch_size]
+
+                try:
+                    persisted_ids = await vector_store.aadd_documents(
+                        documents=batch_docs,
+                        ids=batch_ids
+                    )
+                    batch_succeeded = len(persisted_ids)
+                    batch_failed = len(batch_ids) - batch_succeeded
+                    succeeded_count += batch_succeeded
+                    failed_count += batch_failed
+                    batch_metrics = vector_store.last_ingestion_metrics
+                    embedding_seconds += batch_metrics.get("embedding_seconds", 0.0)
+                    persistence_seconds += batch_metrics.get(
+                        "persistence_seconds", 0.0
+                    )
+                    if batch_failed:
+                        persisted_id_set = set(persisted_ids)
+                        failed_ids = [
+                            document_id
+                            for document_id in batch_ids
+                            if document_id not in persisted_id_set
+                        ]
+                        print(
+                            f"Batch at index {i} partially succeeded: "
+                            f"{batch_succeeded} persisted, {batch_failed} failed. "
+                            f"Failed IDs: {failed_ids}"
+                        )
+                except Exception as e:
+                    failed_count += len(batch_ids)
+                    print(f"Error adding batch at index {i}: {e}")
+                    continue
+        else:
+            print("No new documents to add.")
+
+        ingestion_seconds = time.perf_counter() - ingestion_started
+        throughput = (
+            succeeded_count / ingestion_seconds if ingestion_seconds > 0 else 0.0
+        )
+        print(
+            f"Pipeline finished: {succeeded_count} documents persisted, "
+            f"{failed_count} failed in {ingestion_seconds:.3f}s "
+            f"({throughput:.1f} docs/s; embedding={embedding_seconds:.3f}s, "
+            f"database={persistence_seconds:.3f}s)."
+        )
+    finally:
+        await asyncio.gather(
+            *(embedder.aclose() for embedder in embedders.values()),
+            return_exceptions=True,
+        )
 
 @hydra.main(version_base=None, config_path="configs", config_name="load")
 def main(cfg: DictConfig):

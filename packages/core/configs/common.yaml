@@ -7,6 +7,7 @@ database:
 embedding:
   server_url: "localhost:1234"
   timeout: 120
+  max_concurrent_requests: 1024
   # Define available models here
   models:
     - name: "qwen_embedding_8B"

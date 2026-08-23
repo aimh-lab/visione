@@ -47,7 +47,7 @@ class RemoteEmbeddings(Embeddings):
         model: str = "base",
         modality: str = "image",
         timeout: float = 120.0,
-        max_concurrent_requests: int = 1024,
+        max_concurrent_requests: int = 128,
         mrl_dimension: Optional[int] = None,
     ):
         self.embedding_server_url = embedding_server_url.rstrip("/")
@@ -56,9 +56,13 @@ class RemoteEmbeddings(Embeddings):
         self.model = model
         self.modality = modality
         self.timeout = timeout
+        if max_concurrent_requests <= 0:
+            raise ValueError("max_concurrent_requests must be a positive integer")
         self.max_concurrent_requests = max_concurrent_requests
         self.mrl_dimension = mrl_dimension
         self.endpoint_url = f"{self.embedding_server_url}/{self.model}"
+        self._async_session: Optional[aiohttp.ClientSession] = None
+        self._async_session_loop: Optional[asyncio.AbstractEventLoop] = None
 
         self.available_models = self._get_available_models()
         model_info = next(
@@ -213,17 +217,58 @@ class RemoteEmbeddings(Embeddings):
         except Exception as exc:
             raise RuntimeError(f"Feature extraction failed: {exc}") from exc
 
+    async def _get_async_session(self) -> aiohttp.ClientSession:
+        loop = asyncio.get_running_loop()
+        if self._async_session is not None and not self._async_session.closed:
+            if self._async_session_loop is not loop:
+                raise RuntimeError(
+                    "RemoteEmbeddings async session cannot be shared across event loops"
+                )
+            return self._async_session
+
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        connector = aiohttp.TCPConnector(
+            limit=self.max_concurrent_requests,
+            limit_per_host=self.max_concurrent_requests,
+            ttl_dns_cache=300,
+        )
+        self._async_session = aiohttp.ClientSession(
+            timeout=timeout,
+            connector=connector,
+        )
+        self._async_session_loop = loop
+        return self._async_session
+
+    async def aclose(self) -> None:
+        """Close the reusable asynchronous HTTP connection pool."""
+        session = self._async_session
+        session_loop = self._async_session_loop
+        self._async_session = None
+        self._async_session_loop = None
+        if session is not None and not session.closed:
+            current_loop = asyncio.get_running_loop()
+            if (
+                session_loop is not None
+                and session_loop is not current_loop
+                and session_loop.is_running()
+            ):
+                close_future = asyncio.run_coroutine_threadsafe(
+                    session.close(), session_loop
+                )
+                await asyncio.wrap_future(close_future)
+            else:
+                await session.close()
+
     async def _extract_features_async(self, payload: dict[str, Any]) -> List[float]:
         try:
-            timeout = aiohttp.ClientTimeout(total=self.timeout)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    self.endpoint_url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                ) as response:
-                    response.raise_for_status()
-                    return self._extract_response_features(await response.json())
+            session = await self._get_async_session()
+            async with session.post(
+                self.endpoint_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            ) as response:
+                response.raise_for_status()
+                return self._extract_response_features(await response.json())
         except aiohttp.ClientError as exc:
             raise RuntimeError(f"Async request to embedding server failed: {exc}") from exc
         except Exception as exc:

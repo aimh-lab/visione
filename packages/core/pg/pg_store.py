@@ -189,6 +189,11 @@ class PGVectorStore(VectorStore):
     def embeddings(self) -> Union[Embeddings, Dict[str, Embeddings]]:
         return self.__vs.embedding_service
 
+    @property
+    def last_ingestion_metrics(self) -> dict[str, Any]:
+        """Return timing and outcome metrics for the latest ingestion batch."""
+        return dict(self.__vs.last_ingestion_metrics)
+
     async def aadd_embeddings(
         self,
         texts: Iterable[str],
@@ -199,7 +204,13 @@ class PGVectorStore(VectorStore):
     ) -> list[str]:
         """Add data along with embeddings to the table."""
         return await self._engine._run_as_async(
-            self.__vs.aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
+            self.__vs.aadd_embeddings(
+                texts,
+                ids=ids,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                **kwargs,
+            )
         )
 
     async def aadd_texts(
@@ -243,7 +254,13 @@ class PGVectorStore(VectorStore):
     ) -> list[str]:
         """Add data along with embeddings to the table."""
         return self._engine._run_as_sync(
-            self.__vs.aadd_embeddings(texts, embeddings, metadatas, ids, **kwargs)
+            self.__vs.aadd_embeddings(
+                texts,
+                ids=ids,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                **kwargs,
+            )
         )
 
     def add_texts(
