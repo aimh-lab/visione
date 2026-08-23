@@ -24,7 +24,12 @@ from transformers.utils import TransformersKwargs
 from transformers.cache_utils import Cache
 from qwen_vl_utils.vision_process import process_vision_info
 
-from .common import ConfigurableBatching, load_image_batch, validate_media_url
+from .common import (
+    ConfigurableBatching,
+    cuda_memory_managed_batch,
+    load_image_batch,
+    validate_media_url,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -358,6 +363,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         logger.info(f"✅ READY: Servizio Qwen3-VL attivo ({load_time:.2f}s)")
 
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Endpoint per immagini.
@@ -393,7 +399,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         if inputs:
             try:
                 # Chiamata diretta alla classe fornita
-                embeddings = self.embedder.process(inputs)
+                embeddings = self.embedder.process(inputs).detach().cpu()
                 
                 # Mappatura output
                 for idx, tensor_emb in enumerate(embeddings):
@@ -405,6 +411,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
                         "model": self.model_name
                     }
             except Exception as e:
+                self.note_cuda_oom(e)
                 logger.error(f"Inference error: {e}")
                 for idx in indices_map:
                     results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
@@ -416,6 +423,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         return results
 
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Endpoint per testo.
@@ -440,7 +448,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         if inputs:
             try:
                 # Chiamata diretta alla classe fornita
-                embeddings = self.embedder.process(inputs)
+                embeddings = self.embedder.process(inputs).detach().cpu()
                 
                 for idx, tensor_emb in enumerate(embeddings):
                     original_idx = indices_map[idx]
@@ -451,6 +459,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
                         "model": self.model_name
                     }
             except Exception as e:
+                self.note_cuda_oom(e)
                 logger.error(f"Inference error: {e}")
                 for idx in indices_map:
                     results[idx] = {"success": False, "error": f"Model error: {str(e)}"}
@@ -462,6 +471,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         return results
 
     @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_video(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Extract embeddings from HTTP(S) video URLs."""
         batch_size = len(requests)
@@ -485,7 +495,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
 
         if inputs:
             try:
-                embeddings = self.embedder.process(inputs)
+                embeddings = self.embedder.process(inputs).detach().cpu()
                 for idx, tensor_emb in enumerate(embeddings):
                     original_idx = indices_map[idx]
                     results[original_idx] = {
@@ -495,6 +505,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
                         "model": self.model_name,
                     }
             except Exception as e:
+                self.note_cuda_oom(e)
                 logger.error(f"Video inference error: {e}")
                 for idx in indices_map:
                     results[idx] = {
@@ -514,6 +525,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
         return results
     
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_image_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Endpoint per input multimodali (immagine + testo).
@@ -548,7 +560,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
 
         if inputs:
             try:
-                embeddings = self.embedder.process(inputs)
+                embeddings = self.embedder.process(inputs).detach().cpu()
                 
                 for idx, tensor_emb in enumerate(embeddings):
                     original_idx = indices_map[idx]
@@ -559,6 +571,7 @@ class QwenFeatureExtractor(ConfigurableBatching):
                         "model": self.model_name
                     }
             except Exception as e:
+                self.note_cuda_oom(e)
                 logger.error(f"Inference error: {e}")
                 for idx in indices_map:
                     results[idx] = {"success": False, "error": f"Model error: {str(e)}"}

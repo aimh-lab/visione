@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import gc
 import io
 import logging
 import os
@@ -7,12 +8,14 @@ from pathlib import Path
 import socket
 import tempfile
 import time
+from functools import wraps
 from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
 
 import aiohttp
 from PIL import Image
 import requests
+import torch
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,7 @@ IMAGE_REQUEST_HEADERS = {
 IMAGE_REQUEST_TIMEOUT_SECONDS = 10
 DEFAULT_IMAGE_DOWNLOAD_CONCURRENCY = 16
 DEFAULT_IMAGE_DECODE_CONCURRENCY = 4
+DEFAULT_CUDA_CLEANUP_INTERVAL_SECONDS = 60
 
 _BATCH_METHODS = {
     "image": "extract_image",
@@ -41,6 +45,58 @@ class ConfigurableBatching:
 
     image_download_concurrency = DEFAULT_IMAGE_DOWNLOAD_CONCURRENCY
     image_decode_concurrency = DEFAULT_IMAGE_DECODE_CONCURRENCY
+    cuda_cleanup_interval_seconds = DEFAULT_CUDA_CLEANUP_INTERVAL_SECONDS
+
+    def note_cuda_oom(self, exc: BaseException) -> bool:
+        """Request forced cleanup when an exception represents a CUDA OOM."""
+        if not is_cuda_out_of_memory(exc):
+            return False
+        self._cuda_oom_cleanup_pending = True
+        return True
+
+    def cleanup_cuda_memory_after_batch(self) -> None:
+        """Release unused CUDA allocator blocks at a safe batch boundary."""
+        if not torch.cuda.is_available():
+            return
+
+        now = time.monotonic()
+        force_oom_cleanup = bool(
+            getattr(self, "_cuda_oom_cleanup_pending", False)
+        )
+        last_cleanup = getattr(self, "_cuda_cleanup_last_at", now)
+        interval = self.cuda_cleanup_interval_seconds
+        periodic_cleanup_due = interval > 0 and now - last_cleanup >= interval
+        if not force_oom_cleanup and not periodic_cleanup_due:
+            return
+
+        reason = "oom" if force_oom_cleanup else "periodic"
+        try:
+            allocated_before = torch.cuda.memory_allocated()
+            reserved_before = torch.cuda.memory_reserved()
+            gc.collect()
+            torch.cuda.empty_cache()
+            allocated_after = torch.cuda.memory_allocated()
+            reserved_after = torch.cuda.memory_reserved()
+            logger.info(
+                "CUDA cleanup completed for model=%s reason=%s "
+                "allocated=%d->%d reserved=%d->%d bytes",
+                getattr(self, "model_name", type(self).__name__),
+                reason,
+                allocated_before,
+                allocated_after,
+                reserved_before,
+                reserved_after,
+            )
+            self._cuda_oom_cleanup_pending = False
+        except Exception:
+            self._cuda_oom_cleanup_pending = force_oom_cleanup
+            logger.exception(
+                "CUDA cleanup failed for model=%s reason=%s",
+                getattr(self, "model_name", type(self).__name__),
+                reason,
+            )
+        finally:
+            self._cuda_cleanup_last_at = now
 
     def reconfigure(self, user_config: Dict[str, Any]) -> None:
         batch_sizes = user_config.get("batch_sizes", {})
@@ -88,6 +144,62 @@ class ConfigurableBatching:
                     f"image loading {key} must be a positive integer"
                 )
             setattr(self, f"image_{key}", value)
+
+        cuda_memory = user_config.get("cuda_memory", {})
+        if not isinstance(cuda_memory, dict):
+            raise ValueError("user_config.cuda_memory must be a mapping")
+        unknown_cuda_keys = sorted(
+            set(cuda_memory) - {"cleanup_interval_seconds"}
+        )
+        if unknown_cuda_keys:
+            raise ValueError(
+                "user_config.cuda_memory contains unknown keys: "
+                + ", ".join(unknown_cuda_keys)
+            )
+        cleanup_interval = cuda_memory.get(
+            "cleanup_interval_seconds",
+            DEFAULT_CUDA_CLEANUP_INTERVAL_SECONDS,
+        )
+        if (
+            isinstance(cleanup_interval, bool)
+            or not isinstance(cleanup_interval, int)
+            or cleanup_interval < 0
+        ):
+            raise ValueError(
+                "CUDA cleanup interval must be a non-negative integer"
+            )
+        self.cuda_cleanup_interval_seconds = cleanup_interval
+        self._cuda_cleanup_last_at = time.monotonic()
+        self._cuda_oom_cleanup_pending = False
+
+
+def is_cuda_out_of_memory(exc: BaseException) -> bool:
+    """Recognize direct and wrapped CUDA out-of-memory exceptions."""
+    current: BaseException | None = exc
+    visited: set[int] = set()
+    while current is not None and id(current) not in visited:
+        visited.add(id(current))
+        if isinstance(current, torch.cuda.OutOfMemoryError):
+            return True
+        if "cuda out of memory" in str(current).lower():
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def cuda_memory_managed_batch(handler):
+    """Run CUDA cleanup only after a batch handler frame has unwound."""
+    @wraps(handler)
+    async def wrapped(self, *args, **kwargs):
+        try:
+            return await handler(self, *args, **kwargs)
+        except Exception as exc:
+            self.note_cuda_oom(exc)
+            raise
+        finally:
+            self.cleanup_cuda_memory_after_batch()
+
+    return wrapped
 
 
 def configure_http_cache() -> bool:

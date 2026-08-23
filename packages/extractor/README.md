@@ -122,6 +122,23 @@ Every replica uses a cache file containing its hostname and process ID, so
 several replicas never share one SQLite database. The former
 `FEATURE_EXTRACTOR_DISABLE_CACHE` variable is obsolete.
 
+## CUDA memory cleanup
+
+Every GPU replica periodically releases unused PyTorch allocator cache at a
+completed batch boundary. The default interval is 60 seconds and can be set in
+the cluster manifest; use `0` to disable periodic cleanup:
+
+```yaml
+cluster:
+  cuda_cleanup_interval_seconds: 60
+```
+
+A detected CUDA out-of-memory error always requests cleanup at the end of the
+failed batch, even when periodic cleanup is disabled. Cleanup releases only
+unused cached and request-local allocations. Warm model weights remain resident,
+so models whose weights do not fit together must be assigned to different GPUs
+or loaded with a lower-memory configuration.
+
 ## Updating the topology
 
 After changing assignments or model resources:

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from functools import wraps
@@ -16,6 +17,7 @@ from transformers.utils import is_flash_attn_2_available
 
 from .common import (
     ConfigurableBatching,
+    cuda_memory_managed_batch,
     decode_image_data,
     load_image_batch,
     validate_media_url,
@@ -35,6 +37,57 @@ VIDEO_PROCESSING_KWARGS = {
 }
 AUDIO_PROCESSING_KWARGS = {"max_length": 2048000}
 FRAME_INDEX_SAFETY_MARGIN = 1
+AUDIO_PROBE_TIMEOUT_SECONDS = 30
+
+
+async def _probe_audio_stream(media_url: str) -> bool:
+    """Return whether ffprobe confirms that the media has an audio stream."""
+    command = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "a:0",
+        "-show_entries",
+        "stream=codec_type",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        media_url,
+    ]
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("ffprobe was not found in PATH") from exc
+
+    try:
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(
+            process.communicate(),
+            timeout=AUDIO_PROBE_TIMEOUT_SECONDS,
+        )
+    except TimeoutError as exc:
+        process.kill()
+        await process.communicate()
+        raise RuntimeError(
+            f"ffprobe timed out after {AUDIO_PROBE_TIMEOUT_SECONDS} seconds"
+        ) from exc
+
+    stdout = stdout_bytes.decode(errors="replace")
+    stderr = stderr_bytes.decode(errors="replace")
+    if process.returncode != 0:
+        detail = stderr.strip() or f"exit status {process.returncode}"
+        raise RuntimeError(f"ffprobe failed: {detail}")
+
+    stream_types = [line.strip() for line in stdout.splitlines() if line.strip()]
+    if not stream_types:
+        return False
+    if all(stream_type == "audio" for stream_type in stream_types):
+        return True
+    raise RuntimeError(f"ffprobe returned unexpected stream data: {stdout.strip()}")
 
 
 def _clamp_video_frame_indices(
@@ -155,17 +208,51 @@ class OmniFeatureExtractor(ConfigurableBatching):
 
         raise ValueError(f"Unsupported modality: {modality}")
 
+    async def _inspect_audio_presence(
+        self, requests: List[Dict[str, Any]]
+    ) -> List[bool | Exception]:
+        """Inspect each distinct audio URL without blocking the Serve event loop."""
+        results: List[bool | Exception | None] = [None] * len(requests)
+        indices_by_url: Dict[str, List[int]] = {}
+
+        for index, request in enumerate(requests):
+            try:
+                audio_url = validate_media_url(request.get("audio"), "audio")
+                indices_by_url.setdefault(audio_url, []).append(index)
+            except Exception as exc:
+                results[index] = exc
+
+        urls = list(indices_by_url)
+        outcomes = await asyncio.gather(
+            *(_probe_audio_stream(url) for url in urls),
+            return_exceptions=True,
+        )
+        for url, outcome in zip(urls, outcomes):
+            if isinstance(outcome, BaseException) and not isinstance(outcome, Exception):
+                raise outcome
+            value = outcome if isinstance(outcome, Exception) else bool(outcome)
+            for index in indices_by_url[url]:
+                results[index] = value
+
+        return [
+            result
+            if result is not None
+            else RuntimeError("Audio stream inspection did not produce a result")
+            for result in results
+        ]
+
     def _extract_batch(
         self,
         requests: List[Dict[str, Any]],
         modality: str,
         preloaded_images: List[Image.Image | Exception] | None = None,
+        audio_presence: List[bool | Exception] | None = None,
     ) -> List[Dict[str, Any]]:
+        if audio_presence is not None and len(audio_presence) != len(requests):
+            raise ValueError("audio_presence must match the request batch length")
+
         results: List[Dict[str, Any] | None] = [None] * len(requests)
-        grouped_inputs = {
-            "query": {"inputs": [], "indices": []},
-            "document": {"inputs": [], "indices": []},
-        }
+        grouped_inputs: Dict[tuple[str, str], Dict[str, List[Any]]] = {}
 
         for index, request in enumerate(requests):
             try:
@@ -177,10 +264,29 @@ class OmniFeatureExtractor(ConfigurableBatching):
                     prepared_request = dict(request)
                     prepared_request["image"] = loaded_image
 
-                model_input = self._prepare_input(prepared_request, modality)
+                effective_modality = modality
+                if modality == "video+audio" and audio_presence is not None:
+                    presence = audio_presence[index]
+                    if isinstance(presence, Exception):
+                        raise presence
+                    if not presence:
+                        effective_modality = "video"
+                        logger.info(
+                            "No audio stream found; using video-only input for %s",
+                            request.get("video"),
+                        )
+
+                model_input = self._prepare_input(
+                    prepared_request,
+                    effective_modality,
+                )
                 task = request["task"]
-                grouped_inputs[task]["inputs"].append(model_input)
-                grouped_inputs[task]["indices"].append(index)
+                group = grouped_inputs.setdefault(
+                    (task, effective_modality),
+                    {"inputs": [], "indices": []},
+                )
+                group["inputs"].append(model_input)
+                group["indices"].append(index)
             except Exception as exc:
                 results[index] = {
                     "success": False,
@@ -188,7 +294,7 @@ class OmniFeatureExtractor(ConfigurableBatching):
                     "model": self.model_name,
                 }
 
-        for task, group in grouped_inputs.items():
+        for (task, effective_modality), group in grouped_inputs.items():
             inputs = group["inputs"]
             indices = group["indices"]
             if not inputs:
@@ -217,8 +323,14 @@ class OmniFeatureExtractor(ConfigurableBatching):
                         "model": self.model_name,
                     }
             except Exception as exc:
+                self.note_cuda_oom(exc)
                 # raise
-                logger.error("%s %s inference error: %s", modality, task, exc)
+                logger.error(
+                    "%s %s inference error: %s",
+                    effective_modality,
+                    task,
+                    exc,
+                )
                 for index in indices:
                     results[index] = {
                         "success": False,
@@ -253,21 +365,31 @@ class OmniFeatureExtractor(ConfigurableBatching):
         )
 
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return self._extract_batch(requests, "text")
 
     @serve.batch(max_batch_size=16, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return await self._extract_image_batch(requests, "image")
 
     @serve.batch(max_batch_size=16, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_image_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return await self._extract_image_batch(requests, "image+text")
 
     @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_video(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return self._extract_batch(requests, "video")
 
     @serve.batch(max_batch_size=4, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_video_audio(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return self._extract_batch(requests, "video+audio")
+        audio_presence = await self._inspect_audio_presence(requests)
+        return self._extract_batch(
+            requests,
+            "video+audio",
+            audio_presence=audio_presence,
+        )

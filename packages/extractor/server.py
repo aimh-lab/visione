@@ -228,9 +228,17 @@ def build_application_from_config(config: ClusterSpec):
             user_config={
                 "batch_sizes": dict(model.batch_sizes),
                 "image_loading": dict(model.image_loading),
+                "cuda_memory": {
+                    "cleanup_interval_seconds": (
+                        config.cuda_cleanup_interval_seconds
+                    ),
+                },
             },
         ).bind(model_name=model.model_name)
         models_config[endpoint] = model.router_config(assigned_nodes)
+        models_config[endpoint]["cuda_memory"] = {
+            "cleanup_interval_seconds": config.cuda_cleanup_interval_seconds,
+        }
         logger.info(
             "Registered %s as %s with %d warm replicas on %s",
             endpoint,

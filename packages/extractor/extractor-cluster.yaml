@@ -7,6 +7,7 @@ cluster:
   dashboard_host: visione.isti.cnr.it
   http_host: 127.0.0.1
   http_port: 2222
+  cuda_cleanup_interval_seconds: 60
 
 nodes:
   head:

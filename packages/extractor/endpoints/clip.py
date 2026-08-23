@@ -7,7 +7,7 @@ import torch
 import logging
 from transformers import CLIPProcessor, CLIPModel, CLIPTokenizer
 
-from .common import ConfigurableBatching, load_image_batch
+from .common import ConfigurableBatching, cuda_memory_managed_batch, load_image_batch
 
 # Configurazione logging
 logging.basicConfig(level=logging.INFO)
@@ -92,6 +92,7 @@ class CLIPFeatureExtractor(ConfigurableBatching):
             return text_features.cpu()
 
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_image(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Processa un batch di richieste di estrazione features
@@ -161,6 +162,7 @@ class CLIPFeatureExtractor(ConfigurableBatching):
                     }
                     
             except Exception as e:
+                self.note_cuda_oom(e)
                 # Se l'estrazione batch fallisce, aggiorna gli errori
                 for idx in successful_indices:
                     results[idx] = {
@@ -175,6 +177,7 @@ class CLIPFeatureExtractor(ConfigurableBatching):
         return results
 
     @serve.batch(max_batch_size=64, batch_wait_timeout_s=0.1)
+    @cuda_memory_managed_batch
     async def extract_text(self, requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Processa un batch di richieste di estrazione features da testo
@@ -241,6 +244,7 @@ class CLIPFeatureExtractor(ConfigurableBatching):
                     }
                     
             except Exception as e:
+                self.note_cuda_oom(e)
                 # Se l'estrazione batch fallisce, aggiorna gli errori
                 for idx in successful_indices:
                     results[idx] = {

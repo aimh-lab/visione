@@ -267,6 +267,7 @@ class ClusterSpec:
     dashboard_host: str
     http_host: str
     http_port: int
+    cuda_cleanup_interval_seconds: int
     nodes: Mapping[str, NodeSpec]
     models: Mapping[str, ModelSpec]
 
@@ -302,6 +303,7 @@ class ClusterSpec:
             "head_node": self.head_node,
             "ray_address": self.ray_address(),
             "http_address": f"http://{self.head.address}:{self.http_port}",
+            "cuda_cleanup_interval_seconds": self.cuda_cleanup_interval_seconds,
             "nodes": {
                 node_id: {
                     "address": node.address,
@@ -345,6 +347,11 @@ def load_cluster_config(path: str | Path) -> ClusterSpec:
     http_port = _port(cluster.get("http_port", 8000), "cluster.http_port")
     dashboard_host = str(cluster.get("dashboard_host", "0.0.0.0"))
     http_host = str(cluster.get("http_host", "0.0.0.0"))
+    cuda_cleanup_interval_seconds = _resource_count(
+        cluster.get("cuda_cleanup_interval_seconds", 60),
+        "cluster.cuda_cleanup_interval_seconds",
+        allow_zero=True,
+    )
 
     models_raw = _mapping(root.get("models", {}), "models")
     if not models_raw:
@@ -416,6 +423,7 @@ def load_cluster_config(path: str | Path) -> ClusterSpec:
         dashboard_host=dashboard_host,
         http_host=http_host,
         http_port=http_port,
+        cuda_cleanup_interval_seconds=cuda_cleanup_interval_seconds,
         nodes=nodes,
         models=models,
     )
