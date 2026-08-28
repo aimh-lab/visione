@@ -4,8 +4,7 @@
 // in the multi-step query builder. Each function returns the new state
 // so the caller can assign it back.
 
-const DEFAULT_TEXT_MODEL = 'smart';
-const DEFAULT_IMAGE_MODEL = 'dinov2_base';
+import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from '../../config/modelDefaults.js';
 
 /**
  * Insert a new empty textarea after `index`.

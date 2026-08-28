@@ -1,6 +1,8 @@
 <script>
   import * as ui from '../utils/ui';
   import { createModalController } from '../stores/modalController.js';
+  import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
+  import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   import SearchView from "../views/SearchView.svelte";
   import VideoSummaryView from "../views/VideoSummaryView.svelte";
   import SimilarityView from "../views/SimilarityView.svelte";
@@ -333,7 +335,7 @@
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
   function getAnySelectedDresEvaluationId(mapLike) {
     const map = mapLike && typeof mapLike === 'object' ? mapLike : {};
-    for (const key of ['KIS', 'AVS', 'Q&A']) {
+    for (const key of DRES_CHALLENGE_TYPES) {
       const id = String(map[key] || '').trim();
       if (id) return id;
     }
@@ -408,9 +410,6 @@
   $: totalImages = images.length;
 
   // Query UI
-  const DEFAULT_TEXT_MODEL = 'smart';
-  const DEFAULT_IMAGE_MODEL = 'dinov2_base';
-  const DEFAULT_RF_MODEL = 'qwen_embedding_8B';
   let textareas = [{ value: "", enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }];
   let availableModels = [];
   let textareaImages = {};

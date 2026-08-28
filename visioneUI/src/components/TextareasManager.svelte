@@ -2,6 +2,7 @@
   import { createEventDispatcher, tick } from "svelte";
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
+  import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from "../config/modelDefaults.js";
 
   type QueryTextarea = {
     value: string;
@@ -146,8 +147,6 @@
   let enabledStepCount = 0;
   let showSequenceChrome = false;
 
-  const DEFAULT_TEXT_MODEL = 'smart';
-  const DEFAULT_IMAGE_MODEL = 'dinov2_base';
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
   const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
