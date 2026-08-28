@@ -1,52 +1,55 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { focusTrap } from "../utils/ui";
-  
+  import { APP_SETTINGS_DEFAULTS as D } from "../config/appDefaults.js";
+  import { DRES_CHALLENGE_TYPES } from "../config/dresConfig.js";
+  import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from "../config/searchLimits.js";
+
   export let isOpen = false;
-  export let theme = 'default';
-  export let resultsAutoFit = true;
-  export let keyframeSize = 170;
-  export let contextKeyframeSize = 170;
-  export let resultsPerGroup = 5;
-  export let queryResultK = 7200;
-  export let justifyResultRows = false;
-  export let cacheEnabled = false;
-  export let dedupeResults = true;
-  export let apiServicesHostOverrideEnabled = false;
-  export let apiServicesHost = '';
-  export let dataserverHostOverrideEnabled = false;
-  export let dataserverHost = 'https://localhost:43333';
-  export let virtualizationEnabled = true;
-  export let tupleIndicatorMode = 'badge+bar';
-  export let resultsetBadgeLabelMode = 'both';
-  export let showLocalTimeInTitles = true;
-  export let timeBadgeTimezoneOverride = 'profile';
-  export let virtualizationThreshold = 40;
-  export let dresEnabled = true;
-  export let dresChallengeType = 'KIS';
-  export let dresSubmitServer = 'https://vbs.videobrowsing.org/';
-  export let dresUsername = 'VISIONE';
-  export let dresPassword = '';
-  export let dresMemberId = '';
+  export let theme = D.theme;
+  export let resultsAutoFit = D.resultsAutoFit;
+  export let keyframeSize = D.keyframeSize;
+  export let contextKeyframeSize = D.contextKeyframeSize;
+  export let resultsPerGroup = D.resultsPerGroup;
+  export let queryResultK = D.queryResultK;
+  export let justifyResultRows = D.justifyResultRows;
+  export let cacheEnabled = D.cacheEnabled;
+  export let dedupeResults = D.dedupeResults;
+  export let apiServicesHostOverrideEnabled = D.apiServicesHostOverrideEnabled;
+  export let apiServicesHost = D.apiServicesHost;
+  export let dataserverHostOverrideEnabled = D.dataserverHostOverrideEnabled;
+  export let dataserverHost = D.dataserverHost;
+  export let virtualizationEnabled = D.virtualizationEnabled;
+  export let tupleIndicatorMode = D.tupleIndicatorMode;
+  export let resultsetBadgeLabelMode = D.resultsetBadgeLabelMode;
+  export let showLocalTimeInTitles = D.showLocalTimeInTitles;
+  export let timeBadgeTimezoneOverride = D.timeBadgeTimezoneOverride;
+  export let virtualizationThreshold = D.virtualizationThreshold;
+  export let dresEnabled = D.dresEnabled;
+  export let dresChallengeType = D.dresChallengeType;
+  export let dresSubmitServer = D.dresSubmitServer;
+  export let dresUsername = D.dresUsername;
+  export let dresPassword = D.dresPassword;
+  export let dresMemberId = D.dresMemberId;
   export let logCount = 0;
   export let logUserFolder = 'unknown-user';
   export let isExportingLogs = false;
   export let isDeletingLogs = false;
-  export let autoTranslateQueries = true;
-  export let showAutoTranslateToggle = true;
-  export let temporalWindowSeconds = 25200;
-  export let videoPlayerModalMode = 'profile';
-  export let imageModalScale = 500;
-  export let slideshowModalScale = 500;
-  export let modelSelectionPerStepEnabled = true;
-  export let defaultTextModel = 'smart';
-  export let defaultImageModel = 'dinov2_base';
+  export let autoTranslateQueries = D.autoTranslateQueries;
+  export let showAutoTranslateToggle = D.showAutoTranslateToggle;
+  export let temporalWindowSeconds = D.temporalWindowSeconds;
+  export let videoPlayerModalMode = D.videoPlayerModalMode;
+  export let imageModalScale = D.imageModalScale;
+  export let slideshowModalScale = D.slideshowModalScale;
+  export let modelSelectionPerStepEnabled = D.modelSelectionPerStepEnabled;
+  export let defaultTextModel = D.defaultTextModel;
+  export let defaultImageModel = D.defaultImageModel;
   export let availableModels = [];
-  export let videoBadgeOrientation = 'horizontal';
+  export let videoBadgeOrientation = D.videoBadgeOrientation;
 
   const dispatch = createEventDispatcher();
-  const FALLBACK_TEXT_MODEL = 'smart';
-  const FALLBACK_IMAGE_MODEL = 'dinov2_base';
+  const FALLBACK_TEXT_MODEL = D.defaultTextModel;
+  const FALLBACK_IMAGE_MODEL = D.defaultImageModel;
 
   function normalizeAvailableModelEntry(input) {
     if (typeof input === 'string') {
@@ -191,7 +194,7 @@
   function testDresConnection() {
     dispatch('testDres', {
       dresEnabled: !!local.dresEnabled,
-      dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(local.dresChallengeType) ? local.dresChallengeType : 'KIS',
+      dresChallengeType: DRES_CHALLENGE_TYPES.includes(local.dresChallengeType) ? local.dresChallengeType : DRES_CHALLENGE_TYPES[0],
       dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',
@@ -209,17 +212,17 @@
 
   function save() {
     hasLocalEdits = true;
-    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || 170));
-    const contextKf = Math.min(400, Math.max(80, Number(local.contextKeyframeSize) || 170));
-    const perGroup = Math.max(1, Number(local.resultsPerGroup) || 5);
-    const safeQueryResultK = Math.min(100000, Math.max(1, Math.floor(Number(local.queryResultK) || 7200)));
-    const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || 40));
-    const safeTemporalWindowSeconds = Math.min(99999, Math.max(1, Number(local.temporalWindowSeconds) || 25200));
+    const kf = Math.min(400, Math.max(80, Number(local.keyframeSize) || D.keyframeSize));
+    const contextKf = Math.min(400, Math.max(80, Number(local.contextKeyframeSize) || D.contextKeyframeSize));
+    const perGroup = Math.max(1, Number(local.resultsPerGroup) || D.resultsPerGroup);
+    const safeQueryResultK = Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(Number(local.queryResultK) || D.queryResultK)));
+    const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || D.virtualizationThreshold));
+    const safeTemporalWindowSeconds = Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(local.temporalWindowSeconds) || D.temporalWindowSeconds));
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
-    const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || 500));
-    const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || 500));
+    const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || D.imageModalScale));
+    const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || D.slideshowModalScale));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
     const smartTextModelOption = resolveSmartTextModelOption(textModelOptions);
@@ -271,7 +274,7 @@
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       dresEnabled: !!local.dresEnabled,
-      dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(local.dresChallengeType) ? local.dresChallengeType : 'KIS',
+      dresChallengeType: DRES_CHALLENGE_TYPES.includes(local.dresChallengeType) ? local.dresChallengeType : DRES_CHALLENGE_TYPES[0],
       dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',
@@ -316,15 +319,15 @@
     const parsed = Number(raw);
     if (!Number.isFinite(parsed)) return;
 
-    local.temporalWindowSeconds = Math.min(99999, Math.max(1, Math.trunc(parsed)));
+    local.temporalWindowSeconds = Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Math.trunc(parsed)));
     save();
   }
 
   function commitTemporalWindowInput() {
     const parsed = Number(local.temporalWindowSeconds);
     local.temporalWindowSeconds = Number.isFinite(parsed)
-      ? Math.min(99999, Math.max(1, Math.trunc(parsed)))
-      : 25200;
+      ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Math.trunc(parsed)))
+      : D.temporalWindowSeconds;
     save();
   }
 
@@ -353,7 +356,7 @@
     const parsed = Number(local.keyframeSize);
     const safe = Number.isFinite(parsed)
       ? Math.min(400, Math.max(80, Math.trunc(parsed)))
-      : 170;
+      : D.keyframeSize;
 
     local.keyframeSize = safe;
     document.documentElement.style.setProperty('--kf-size', `${safe}px`);
@@ -382,7 +385,7 @@
     const parsed = Number(local.contextKeyframeSize);
     local.contextKeyframeSize = Number.isFinite(parsed)
       ? Math.min(400, Math.max(80, Math.trunc(parsed)))
-      : 170;
+      : D.contextKeyframeSize;
     save();
   }
 </script>
@@ -525,7 +528,7 @@
                     class="ui-settings-input w-16 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                     bind:value={local.resultsPerGroup}
                     on:input={(e) => {
-                      const n = Math.max(1, Number(e.currentTarget.value)||8);
+                      const n = Math.max(1, Number(e.currentTarget.value) || D.resultsPerGroup);
                       local.resultsPerGroup = n;
                       save();
                     }}
@@ -700,22 +703,22 @@
                 <input
                   id="settings-query-result-k"
                   type="number"
-                  min="1"
-                  max="100000"
+                  min={MIN_QUERY_RESULT_K}
+                  max={MAX_QUERY_RESULT_K}
                   step="100"
                   class="ui-settings-input w-28 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.queryResultK}
                   on:input={(e) => {
-                    const n = Math.min(100000, Math.max(1, Math.floor(Number(e.currentTarget.value) || 7200)));
+                    const n = Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(Number(e.currentTarget.value) || D.queryResultK)));
                     local.queryResultK = n;
                     save();
                   }}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase max results per query" on:click={() => adjustNumber('queryResultK', 100, 1, 100000)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase max results per query" on:click={() => adjustNumber('queryResultK', 100, MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease max results per query" on:click={() => adjustNumber('queryResultK', -100, 1, 100000)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease max results per query" on:click={() => adjustNumber('queryResultK', -100, MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
@@ -732,8 +735,8 @@
                 <input
                   id="settings-temporal-window-seconds"
                   type="number"
-                  min="1"
-                  max="99999"
+                  min={MIN_TEMPORAL_WINDOW_SECONDS}
+                  max={MAX_TEMPORAL_WINDOW_SECONDS}
                   step="1"
                   class="ui-settings-input w-24 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                   bind:value={local.temporalWindowSeconds}
@@ -741,10 +744,10 @@
                   on:blur={commitTemporalWindowInput}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, 1, 99999)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase temporal window" on:click={() => adjustNumber('temporalWindowSeconds', 1, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, 1, 99999)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease temporal window" on:click={() => adjustNumber('temporalWindowSeconds', -1, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
@@ -870,7 +873,7 @@
                   bind:value={local.virtualizationThreshold}
                   disabled={!local.virtualizationEnabled}
                   on:input={(e) => {
-                    const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || 40));
+                    const n = Math.min(300, Math.max(10, Number(e.currentTarget.value) || D.virtualizationThreshold));
                     local.virtualizationThreshold = n;
                     save();
                   }}

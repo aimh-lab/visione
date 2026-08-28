@@ -8,6 +8,7 @@ import { visioneAPI } from '../../services/api.js';
 import { uiStore } from '../../stores/uiStore.js';
 import { toasts } from '../../stores/toastStore.js';
 import { get } from 'svelte/store';
+import { DRES_CHALLENGE_TYPES } from '../../config/dresConfig.js';
 
 /**
  * @param {Object} deps
@@ -23,7 +24,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
   let clientInstance = null;
   let clientSignature = '';
 
-  const CHALLENGE_TYPES = ['KIS', 'AVS', 'Q&A'];
+  const CHALLENGE_TYPES = DRES_CHALLENGE_TYPES;
 
   // ---- Singleton client ------------------------------------------------
 

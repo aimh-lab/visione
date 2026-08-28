@@ -1,5 +1,6 @@
 // src/stores/persistentState.js
 import { writable } from 'svelte/store';
+import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
 
 class PersistentStore {
   constructor(key, initialValue = null) {
@@ -95,57 +96,7 @@ class PersistentSet extends PersistentStore {
 }
 
 // App-specific stores
-export const appSettingsStore = new PersistentStore('visione-app-settings', {
-  theme: 'default',
-  contentScale: 1,
-  viewMode: 'byvideo',
-  sortMode: 'relevance',
-  isSidebarOpen: true,
-  isSidebarRightOpen: false,
-  sidebarLeftWidth: 18,
-  sidebarRightWidth: 18,
-  keyframeSize: 170,
-  contextKeyframeSize: 170,
-  resultsPerGroup: 5,
-  queryResultK: 7200,
-  resultsAutoFit: true,
-  cacheEnabled: false,
-  dedupeResults: true,
-  apiServicesHostOverrideEnabled: false,
-  apiServicesHost: '',
-  dataserverHostOverrideEnabled: false,
-  dataserverHost: 'https://localhost:43333',
-  justifyResultRows: false,
-  tupleIndicatorMode: 'badge+bar',
-  videoBadgeOrientation: 'horizontal',
-  resultsetBadgeLabelMode: 'both',
-  showLocalTimeInTitles: true,
-  timeBadgeTimezoneOverride: 'profile',
-  virtualizationEnabled: true,
-  virtualizationThreshold: 40,
-  dresEnabled: true,
-  dresChallengeType: 'KIS',
-  dresEvaluationIdByChallenge: {
-    KIS: '',
-    AVS: '',
-    'Q&A': ''
-  },
-  dresSubmitServer: 'https://vbs.videobrowsing.org/',
-  dresUsername: 'VISIONE',
-  dresPassword: '',
-  dresMemberId: '',
-  autoTranslateQueries: true,
-  showAutoTranslateToggle: true,
-  temporalWindowSeconds: 25200,
-  videoPlayerModalMode: 'profile',
-  imageModalScale: 500,
-  slideshowModalScale: 500,
-  qaStreamPanelHeight: 288,
-  modelSelectionPerStepEnabled: true,
-  defaultTextModel: 'smart',
-  defaultImageModel: 'dinov2_base',
-  runtimeSettingsDefaultsVersion: ''
-});
+export const appSettingsStore = new PersistentStore('visione-app-settings', APP_SETTINGS_DEFAULTS);
 
 // Utility functions
 export function createPersistentStore(key, initialValue) {

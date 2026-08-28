@@ -1,5 +1,7 @@
 // src/services/api.js
 import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL, VISIONE_SEARCH_URL } from '$lib/urlConfig.js';
+import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL } from '../config/modelDefaults.js';
+import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -24,13 +26,13 @@ export class VisioneAPI {
     this.middleTimestampInFlight = new Map();
     this.middleTimestampCacheMax = 500;
     this.middleTimestampTtlMs = 5 * 60 * 1000;
-    this.defaultTextModel = 'smart';
-    this.defaultImageModel = 'dinov2_base';
+    this.defaultTextModel = DEFAULT_TEXT_MODEL;
+    this.defaultImageModel = DEFAULT_IMAGE_MODEL;
     this.defaultSubqueryK = 10000;
     this.defaultSingleK = 1000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
-    this.defaultRelevanceFeedbackModel = 'qwen_embedding_8B';
+    this.defaultRelevanceFeedbackModel = DEFAULT_RELEVANCE_FEEDBACK_MODEL;
     this.defaultMetadataToRetrieve = ['hour_id', 'location_country'];
     this.supportsVideos = true;
     this.elementUrlCache = new Map();
@@ -52,7 +54,7 @@ export class VisioneAPI {
   #normalizeResultK(value, fallback = this.defaultSingleK) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return fallback;
-    return Math.min(100000, Math.max(1, Math.floor(numeric)));
+    return Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(numeric)));
   }
 
   /** Fetch /discovery once and cache the result for the session. */
@@ -938,7 +940,7 @@ export class VisioneAPI {
     }
 
     const safeTemporalWindowSeconds = Number.isFinite(Number(temporalWindowSeconds))
-      ? Math.min(99999, Math.max(1, Number(temporalWindowSeconds)))
+      ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(temporalWindowSeconds)))
       : this.defaultTemporalWindowSeconds;
 
     const temporalQuery = {

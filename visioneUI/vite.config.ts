@@ -18,19 +18,31 @@ export default defineConfig(({ mode }) => {
     );
   }
 
+  // Extra hostnames/IPs mkcert should issue the dev HTTPS cert for, e.g. when
+  // accessing the dev server from another machine on the LAN. Configure per
+  // developer via .env.local (gitignored), comma-separated:
+  //   VITE_DEV_MKCERT_HOSTS=my-machine.local,192.168.1.42
+  const devMkcertHosts = (env.VITE_DEV_MKCERT_HOSTS || process.env.VITE_DEV_MKCERT_HOSTS || '')
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean);
+  const mkcertHosts = ['localhost', ...devMkcertHosts];
+
+  const devServerPort = Number(env.VITE_DEV_SERVER_PORT || process.env.VITE_DEV_SERVER_PORT) || 8080;
+
   return {
     plugins: [
-      tailwindcss(), 
-      sveltekit(), 
+      tailwindcss(),
+      sveltekit(),
       ...(!hasDevHttpsCerts
         ? [
             mkcert({
-              hosts: ['localhost', 'tuo-hostname.local', '192.168.x.x']
+              hosts: mkcertHosts
             })
           ]
         : [])
     ],
-    server: { 
+    server: {
       https: hasDevHttpsCerts
         ? {
             key: readFileSync(devHttpsKey),
@@ -38,7 +50,7 @@ export default defineConfig(({ mode }) => {
           }
         : true,
       host: true,  // o '0.0.0.0' per accettare connessioni da tutti gli indirizzi
-      port: 8080
+      port: devServerPort
     },
     resolve: {
       alias: {

@@ -1,64 +1,16 @@
 import { writable } from 'svelte/store';
 import { appSettingsStore } from './persistentState.js';
+import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
+import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
+import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
 
 const DEFAULT = {
   // Runtime UI (non-persistent)
   layoutTab: 'View1',          // 'View1' | 'View2' | 'Similarity'
-
-  // Persistent
-  theme: 'default',            // 'default' | 'dark' | 'light'
-  viewMode: 'byvideo',
-  sortMode: 'relevance',
-  contentScale: 1,
-
-  isSidebarOpen: true,
-  isSidebarRightOpen: false,
-  sidebarLeftWidth: 18,
-  sidebarRightWidth: 18,
   sidebarRightTab: 'RF',       // 'RF' | 'Submitted'
 
-  keyframeSize: 170,
-  contextKeyframeSize: 170,
-  resultsPerGroup: 5,
-  queryResultK: 7200,
-  resultsAutoFit: true,
-  cacheEnabled: false,
-  dedupeResults: true,
-  apiServicesHostOverrideEnabled: false,
-  apiServicesHost: '',
-  dataserverHostOverrideEnabled: false,
-  dataserverHost: 'https://localhost:43333',
-  justifyResultRows: false,
-  tupleIndicatorMode: 'badge+bar',
-  videoBadgeOrientation: 'horizontal',
-  resultsetBadgeLabelMode: 'both',
-  showLocalTimeInTitles: true,
-  timeBadgeTimezoneOverride: 'profile',
-  virtualizationEnabled: true,
-  virtualizationThreshold: 40,
-
-  dresEnabled: true,
-  dresChallengeType: 'KIS',
-  dresEvaluationIdByChallenge: {
-    KIS: '',
-    AVS: '',
-    'Q&A': ''
-  },
-  dresSubmitServer: 'https://vbs.videobrowsing.org/',
-  dresUsername: 'VISIONE',
-  dresPassword: '',
-  dresMemberId: '',
-  autoTranslateQueries: true,
-  showAutoTranslateToggle: true,
-  temporalWindowSeconds: 25200,
-  videoPlayerModalMode: 'profile',
-  imageModalScale: 500,
-  slideshowModalScale: 500,
-  qaStreamPanelHeight: 288,
-  modelSelectionPerStepEnabled: true,
-  defaultTextModel: 'smart',
-  defaultImageModel: 'dinov2_base',
-  runtimeSettingsDefaultsVersion: ''
+  // Persistent (single source of truth: src/config/appDefaults.js)
+  ...APP_SETTINGS_DEFAULTS
 };
 
 function normalizeModalSizePx(value, fallback = 160) {
@@ -83,7 +35,7 @@ function normalizeQaStreamPanelHeight(value, fallback = 288) {
 function normalizeQueryResultK(value, fallback = 7200) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(100000, Math.max(1, Math.floor(numeric)));
+  return Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(numeric)));
 }
 
 function normalizeSidebarWidth(value, fallback = 18) {
@@ -158,7 +110,7 @@ function normalizeEvaluationIdByChallenge(value, fallback = DEFAULT.dresEvaluati
 
 function getFirstSelectedEvaluationId(value) {
   const map = normalizeEvaluationIdByChallenge(value, DEFAULT.dresEvaluationIdByChallenge);
-  for (const key of ['KIS', 'AVS', 'Q&A']) {
+  for (const key of DRES_CHALLENGE_TYPES) {
     const id = String(map[key] || '').trim();
     if (id) return id;
   }
@@ -210,7 +162,7 @@ function createUIStore() {
         virtualizationThreshold: s.virtualizationThreshold ?? u.virtualizationThreshold,
 
         dresEnabled: s.dresEnabled ?? u.dresEnabled,
-        dresChallengeType: ['KIS', 'AVS', 'Q&A'].includes(s.dresChallengeType) ? s.dresChallengeType : u.dresChallengeType,
+        dresChallengeType: DRES_CHALLENGE_TYPES.includes(s.dresChallengeType) ? s.dresChallengeType : u.dresChallengeType,
         dresEvaluationIdByChallenge: normalizeEvaluationIdByChallenge(
           s.dresEvaluationIdByChallenge ?? s.dresEvaluationIdsByChallenge,
           u.dresEvaluationIdByChallenge
@@ -222,7 +174,7 @@ function createUIStore() {
         autoTranslateQueries: s.autoTranslateQueries ?? u.autoTranslateQueries,
         showAutoTranslateToggle: s.showAutoTranslateToggle ?? u.showAutoTranslateToggle,
         temporalWindowSeconds: Number.isFinite(Number(s.temporalWindowSeconds))
-          ? Math.min(99999, Math.max(1, Number(s.temporalWindowSeconds)))
+          ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(s.temporalWindowSeconds)))
           : u.temporalWindowSeconds,
         videoPlayerModalMode: ['profile', 'video', 'slideshow'].includes(s.videoPlayerModalMode)
           ? s.videoPlayerModalMode
@@ -251,7 +203,7 @@ function createUIStore() {
             : u.queryResultK;
         const nextTemporalWindowSeconds = Number.isFinite(Number(defaults?.temporalWindowSeconds))
           && !Number.isFinite(Number(u.temporalWindowSeconds))
-            ? Math.min(99999, Math.max(1, Number(defaults.temporalWindowSeconds)))
+            ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(defaults.temporalWindowSeconds)))
             : u.temporalWindowSeconds;
 
         nextState = {
@@ -350,7 +302,7 @@ function createUIStore() {
     },
 
     setDresChallengeType(dresChallengeType) {
-      const safe = ['KIS', 'AVS', 'Q&A'].includes(dresChallengeType) ? dresChallengeType : 'KIS';
+      const safe = DRES_CHALLENGE_TYPES.includes(dresChallengeType) ? dresChallengeType : DRES_CHALLENGE_TYPES[0];
       update((u) => {
         const currentMap = normalizeEvaluationIdByChallenge(
           u.dresEvaluationIdByChallenge,
@@ -375,7 +327,7 @@ function createUIStore() {
     },
 
     setDresEvaluationId(challengeType, evaluationId) {
-      const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(challengeType) ? challengeType : null;
+      const safeChallengeType = DRES_CHALLENGE_TYPES.includes(challengeType) ? challengeType : null;
       const safeEvaluationId = String(evaluationId ?? '').trim();
       if (!safeChallengeType) return;
 
@@ -473,7 +425,7 @@ function createUIStore() {
         const safeDataserverHost = patch.dataserverHost == null
           ? u.dataserverHost
           : normalizeDataserverHost(patch.dataserverHost, u.dataserverHost);
-        const safeChallengeType = ['KIS', 'AVS', 'Q&A'].includes(patch.dresChallengeType)
+        const safeChallengeType = DRES_CHALLENGE_TYPES.includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
         const patchEvaluationMap = patch.dresEvaluationIdByChallenge ?? patch.dresEvaluationIdsByChallenge;
@@ -482,7 +434,7 @@ function createUIStore() {
           : normalizeEvaluationIdByChallenge(patchEvaluationMap, u.dresEvaluationIdByChallenge);
         const safeTemporalWindowSeconds = patch.temporalWindowSeconds == null
           ? u.temporalWindowSeconds
-          : Math.min(99999, Math.max(1, Number(patch.temporalWindowSeconds) || u.temporalWindowSeconds || DEFAULT.temporalWindowSeconds));
+          : Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(patch.temporalWindowSeconds) || u.temporalWindowSeconds || DEFAULT.temporalWindowSeconds));
         const safeQueryResultK = patch.queryResultK == null
           ? u.queryResultK
           : normalizeQueryResultK(patch.queryResultK, u.queryResultK || DEFAULT.queryResultK);
