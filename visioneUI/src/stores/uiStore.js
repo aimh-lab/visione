@@ -3,6 +3,7 @@ import { appSettingsStore } from './persistentState.js';
 import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
 import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
 import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
+import { warnFallback } from '../lib/fallbackWarn.js';
 
 const DEFAULT = {
   // Runtime UI (non-persistent)
@@ -15,7 +16,12 @@ const DEFAULT = {
 
 function normalizeModalSizePx(value, fallback = 160) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
+  if (!Number.isFinite(numeric)) {
+    if (value !== undefined) {
+      warnFallback('uiStore.normalizeModalSizePx', `Non-numeric modal size "${value}", using fallback ${fallback}.`, { value, fallback });
+    }
+    return fallback;
+  }
 
   return Math.max(80, Math.round(numeric));
 }
@@ -28,19 +34,34 @@ function clampSidebarWidthVw(value, fallback = 18) {
 
 function normalizeQaStreamPanelHeight(value, fallback = 288) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
+  if (!Number.isFinite(numeric)) {
+    if (value !== undefined) {
+      warnFallback('uiStore.normalizeQaStreamPanelHeight', `Non-numeric QA panel height "${value}", using fallback ${fallback}.`, { value, fallback });
+    }
+    return fallback;
+  }
   return Math.max(160, Math.min(720, Math.round(numeric)));
 }
 
 function normalizeQueryResultK(value, fallback = 7200) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
+  if (!Number.isFinite(numeric)) {
+    if (value !== undefined) {
+      warnFallback('uiStore.normalizeQueryResultK', `Non-numeric queryResultK "${value}", using fallback ${fallback}.`, { value, fallback });
+    }
+    return fallback;
+  }
   return Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(numeric)));
 }
 
 function normalizeSidebarWidth(value, fallback = 18) {
   const numeric = Number.parseFloat(String(value));
-  if (!Number.isFinite(numeric)) return fallback;
+  if (!Number.isFinite(numeric)) {
+    if (value !== undefined) {
+      warnFallback('uiStore.normalizeSidebarWidth', `Non-numeric sidebar width "${value}", using fallback ${fallback}.`, { value, fallback });
+    }
+    return fallback;
+  }
 
   if (numeric > 100) {
     if (typeof window !== 'undefined' && window.innerWidth > 0) {
@@ -56,18 +77,21 @@ function normalizeSidebarWidth(value, fallback = 18) {
 function normalizeTupleIndicatorMode(value, fallback = 'badge+bar') {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === 'badge' || raw === 'none' || raw === 'badge+bar') return raw;
+  if (raw) warnFallback('uiStore.normalizeTupleIndicatorMode', `Unrecognized tupleIndicatorMode "${value}", using fallback "${fallback}".`, { value, fallback });
   return fallback;
 }
 
 function normalizeResultsetBadgeLabelMode(value, fallback = 'both') {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === 'id' || raw === 'date' || raw === 'both') return raw;
+  if (raw) warnFallback('uiStore.normalizeResultsetBadgeLabelMode', `Unrecognized resultsetBadgeLabelMode "${value}", using fallback "${fallback}".`, { value, fallback });
   return fallback;
 }
 
 function normalizeTimeBadgeTimezoneOverride(value, fallback = 'profile') {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === 'profile' || raw === 'utc' || raw === 'local') return raw;
+  if (raw) warnFallback('uiStore.normalizeTimeBadgeTimezoneOverride', `Unrecognized timeBadgeTimezoneOverride "${value}", using fallback "${fallback}".`, { value, fallback });
   return fallback;
 }
 
@@ -291,17 +315,26 @@ function createUIStore() {
     setSortMode(sortMode) {
       const raw = String(sortMode || '').trim().toLowerCase();
       const safe = raw === 'time' ? 'time_asc' : (['time_asc', 'time_desc'].includes(raw) ? raw : 'relevance');
+      if (raw && raw !== 'time' && safe === 'relevance' && raw !== 'relevance') {
+        warnFallback('uiStore.setSortMode', `Unrecognized sortMode "${sortMode}", using "relevance".`, { sortMode });
+      }
       update(u => ({ ...u, sortMode: safe }));
       persist({ sortMode: safe });
     },
 
     setTheme(theme) {
       const safe = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+      if (theme !== undefined && safe !== theme) {
+        warnFallback('uiStore.setTheme', `Unrecognized theme "${theme}", using "default".`, { theme });
+      }
       update(u => ({ ...u, theme: safe }));
       persist({ theme: safe });
     },
 
     setDresChallengeType(dresChallengeType) {
+      if (dresChallengeType !== undefined && !DRES_CHALLENGE_TYPES.includes(dresChallengeType)) {
+        warnFallback('uiStore.setDresChallengeType', `Unrecognized dresChallengeType "${dresChallengeType}", using "${DRES_CHALLENGE_TYPES[0]}".`, { dresChallengeType });
+      }
       const safe = DRES_CHALLENGE_TYPES.includes(dresChallengeType) ? dresChallengeType : DRES_CHALLENGE_TYPES[0];
       update((u) => {
         const currentMap = normalizeEvaluationIdByChallenge(
@@ -329,7 +362,10 @@ function createUIStore() {
     setDresEvaluationId(challengeType, evaluationId) {
       const safeChallengeType = DRES_CHALLENGE_TYPES.includes(challengeType) ? challengeType : null;
       const safeEvaluationId = String(evaluationId ?? '').trim();
-      if (!safeChallengeType) return;
+      if (!safeChallengeType) {
+        warnFallback('uiStore.setDresEvaluationId', `Unrecognized challengeType "${challengeType}"; evaluationId "${safeEvaluationId}" was silently dropped.`, { challengeType, evaluationId });
+        return;
+      }
 
       update((u) => {
         const normalized = normalizeEvaluationIdByChallenge(
@@ -406,7 +442,13 @@ function createUIStore() {
       let nextState = null;
 
       update((u) => {
+        if (patch.theme !== undefined && !['default', 'dark', 'light'].includes(patch.theme)) {
+          warnFallback('uiStore.applySettings.theme', `Unrecognized theme "${patch.theme}", keeping current theme "${u.theme}".`, { theme: patch.theme });
+        }
         const safeTheme = ['default', 'dark', 'light'].includes(patch.theme) ? patch.theme : u.theme;
+        if (patch.videoBadgeOrientation !== undefined && !['horizontal', 'vertical'].includes(patch.videoBadgeOrientation)) {
+          warnFallback('uiStore.applySettings.videoBadgeOrientation', `Unrecognized videoBadgeOrientation "${patch.videoBadgeOrientation}", keeping current value.`, { videoBadgeOrientation: patch.videoBadgeOrientation });
+        }
         const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(patch.videoBadgeOrientation)
           ? patch.videoBadgeOrientation
           : u.videoBadgeOrientation;
@@ -425,6 +467,9 @@ function createUIStore() {
         const safeDataserverHost = patch.dataserverHost == null
           ? u.dataserverHost
           : normalizeDataserverHost(patch.dataserverHost, u.dataserverHost);
+        if (patch.dresChallengeType !== undefined && !DRES_CHALLENGE_TYPES.includes(patch.dresChallengeType)) {
+          warnFallback('uiStore.applySettings.dresChallengeType', `Unrecognized dresChallengeType "${patch.dresChallengeType}", keeping current value.`, { dresChallengeType: patch.dresChallengeType });
+        }
         const safeChallengeType = DRES_CHALLENGE_TYPES.includes(patch.dresChallengeType)
           ? patch.dresChallengeType
           : u.dresChallengeType;
@@ -441,6 +486,9 @@ function createUIStore() {
         const safeContextKeyframeSize = patch.contextKeyframeSize == null
           ? u.contextKeyframeSize
           : Math.min(400, Math.max(80, Number(patch.contextKeyframeSize) || u.contextKeyframeSize || DEFAULT.contextKeyframeSize));
+        if (patch.videoPlayerModalMode !== undefined && !['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)) {
+          warnFallback('uiStore.applySettings.videoPlayerModalMode', `Unrecognized videoPlayerModalMode "${patch.videoPlayerModalMode}", keeping current value.`, { videoPlayerModalMode: patch.videoPlayerModalMode });
+        }
         const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(patch.videoPlayerModalMode)
           ? patch.videoPlayerModalMode
           : u.videoPlayerModalMode;
