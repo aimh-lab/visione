@@ -4,9 +4,10 @@
   import { visioneAPI } from "../services/api.js";
   import { uiStore } from "../stores/uiStore.js";
   import VideoOverlay from "./VideoOverlay.svelte";
-  import { resolveGroupByConfig } from "$lib/groupByConfig.js";
+  import { resolveGroupByConfig, isVideoLikeGroupBy, isVideoLikeGroupByMetadata } from "$lib/groupByConfig.js";
   import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
   import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
+  import { resolveVideoId } from "$lib/videoIdentity.js";
 
   export let items = [];
   export let selectedId = null;
@@ -44,9 +45,7 @@
   }
 
   function shouldFormatTemporalGroupBadge() {
-    const kind = String(activeGroupBy?.kind || '').trim().toLowerCase();
-    const metadata = String(activeGroupBy?.metadata || '').trim().toLowerCase();
-    return kind === 'video' || (kind === 'metadata' && metadata === 'hour_id');
+    return isVideoLikeGroupBy(activeGroupBy);
   }
 
 
@@ -59,10 +58,7 @@
 
   let preview = { imgId: null, videoUrl: null, start: 0, end: 0 };
 
-  const getVideoId = (item) => {
-    const vid = item.videoId ?? String(getId(item)).split("-")[0];
-    return String(vid);
-  };
+  const getVideoId = (item) => resolveVideoId(getId(item), item.videoId).videoId;
 
   const getId = (item) => item.imgId;
   const getIndex = (item) => item.index ?? item.idx ?? -1;
@@ -304,7 +300,7 @@
       const metadataField = String(activeGroupBy?.metadata || '').trim();
       if (!metadataField) return String(getVideoId(item));
 
-      if (metadataField.toLowerCase() === 'hour_id') {
+      if (isVideoLikeGroupByMetadata(metadataField)) {
         return buildHourGroupKey(item) || 'N/A';
       }
 
@@ -376,7 +372,9 @@
     if (!item || typeof item !== 'object') return null;
 
     const metadata = getRawMetadata(item);
-    const source = String(runtimeProfile?.videoPlayer?.startSource || 'hour_msb_middletime').trim();
+    // No explicit config: fall through to the generic "classic frame-time" branch
+    // below instead of assuming LSC's hour-bucket semantics.
+    const source = String(runtimeProfile?.videoPlayer?.startSource || '').trim();
 
     if (source === 'epoch') {
       const epoch = toFiniteNumber(
@@ -855,13 +853,7 @@
       const groupLabelRowIndex = Math.floor(groupRowCount / 2);
       const groupItems = getItemsForRowGroup(row, rowIndex, groupValue);
 
-      const displayGroupValue = (
-        String(activeGroupBy?.kind || '').trim().toLowerCase() === 'video'
-        || (
-          String(activeGroupBy?.kind || '').trim().toLowerCase() === 'metadata'
-          && String(activeGroupBy?.metadata || '').trim().toLowerCase() === 'hour_id'
-        )
-      )
+      const displayGroupValue = shouldFormatTemporalGroupBadge()
           ? formatGroupHourLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, groupItems)
           : (shouldFormatTemporalGroupBadge()
             ? formatVideoGroupLabel(groupValue, firstItem, runtimeProfile, showLocalTimeInTitles, getVideoBadgeModeOverride())

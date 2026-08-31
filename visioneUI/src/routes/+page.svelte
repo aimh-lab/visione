@@ -34,9 +34,10 @@
   import { createDresController } from '$lib/controllers/dresController.js';
   import { createScrollManager } from '$lib/controllers/scrollManager.js';
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
+  import { resolveVideoId, parseVideoIdFromImgId } from '$lib/videoIdentity.js';
   import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
-  import { resolveGroupByConfig, resolveViewMode, resolveSortMode } from '$lib/groupByConfig.js';
+  import { resolveGroupByConfig, resolveViewMode, resolveSortMode, isVideoLikeGroupBy } from '$lib/groupByConfig.js';
   import { formatGroupDateLabel, formatGroupHourLabel } from '$lib/titleFormatting.js';
   import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
@@ -692,8 +693,7 @@
       );
       if (alreadyHasQueryImage) return;
 
-      const hourMatch = rawImgId.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
-      const videoId = hourMatch?.[1] || rawImgId.split('-')[0] || '';
+      const { videoId } = parseVideoIdFromImgId(rawImgId);
       if (!videoId) return;
 
       nextTextareaImages[idx] = [
@@ -1202,7 +1202,7 @@
       return fallback
         ? {
             title: fallback.title ?? fallback.imgId,
-            videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
+            videoId: resolveVideoId(fallback.imgId, fallback.videoId).videoId,
             imgId: fallback.imgId,
             url: fallback.url || "",
             submitted: true,
@@ -1787,10 +1787,9 @@
       return !!name && !!normalizedCollection && name === normalizedCollection;
     });
 
-    const selectedByLsc26 = entries.find((entry) => String(entry?.name || '').trim().toLowerCase() === 'lsc26');
     const selectedByMetadata = entries.find((entry) => Array.isArray(entry?.metadata) && entry.metadata.length > 0);
 
-    return selectedByCollection || selectedByLsc26 || selectedByMetadata || entries[0] || null;
+    return selectedByCollection || selectedByMetadata || entries[0] || null;
   }
 
   function configureSearchMetadataFromDiscovery(data, profile = runtimeProfile) {
@@ -1801,6 +1800,10 @@
     const availableSet = new Set(available);
     const hasAvailabilityList = availableSet.size > 0;
 
+    // Same set drives which typed shortcuts (y:, hr:, music:, ...) VisioneAPI accepts
+    // as structured filters vs. plain free-text search — see #isKnownMetadataField.
+    visioneAPI.knownMetadataFields = availableSet;
+
     const canRequestField = (field) => {
       const normalized = String(field || '').trim();
       if (!normalized) return false;
@@ -1808,7 +1811,12 @@
     };
 
     const groupingField = String(selectedDiscovery?.groupby_attribute || 'hour_id').trim() || 'hour_id';
-    const requested = [groupingField, 'location_country'];
+    const requested = [groupingField];
+
+    // Dataset-declared field used to fetch "all frames in this video/group"
+    // (see VisioneAPI#getVideoKeyframes) — sourced the same way as groupingField
+    // above, so both stay in sync with whatever the active dataset calls it.
+    visioneAPI.videoGroupField = groupingField;
 
     const configuredGroupByMetadata = Array.isArray(profile?.groupBy?.modes)
       ? profile.groupBy.modes
@@ -1834,6 +1842,7 @@
       'utc_offset_hours',
       'video_offset_seconds',
       'hour_msb_middletime',
+      'location_country',
       ...configuredTitleFormattingFields
     ];
     for (const field of optionalFields) {
@@ -2138,11 +2147,7 @@
   }
 
   function extractVideoIdFromImageId(imgId) {
-    const raw = String(imgId || '').trim();
-    if (!raw) return '';
-    const hourMatch = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
-    if (hourMatch) return hourMatch[1];
-    return raw.split('-')[0] || '';
+    return parseVideoIdFromImgId(imgId).videoId;
   }
 
   function getRawMetadata(item) {
@@ -2241,7 +2246,6 @@
     const fallback = String(videoId || '').trim();
     const activeGroupBy = resolveGroupByConfig($uiStore.viewMode, runtimeProfile);
     const kind = String(activeGroupBy?.kind || '').trim().toLowerCase();
-    const metadata = String(activeGroupBy?.metadata || '').trim().toLowerCase();
 
     if (kind === 'date') {
       const dayKey = buildDayGroupKeyForItem(item);
@@ -2249,7 +2253,7 @@
       return label || fallback;
     }
 
-    if (kind === 'video' || (kind === 'metadata' && metadata === 'hour_id')) {
+    if (isVideoLikeGroupBy(activeGroupBy)) {
       const hourKey = buildHourGroupKeyForItem(item, fallback);
       const label = hourKey ? formatGroupHourLabel(hourKey, item, runtimeProfile, $uiStore.showLocalTimeInTitles) : '';
       return label || fallback;
@@ -3049,7 +3053,7 @@ function handleViewSubmitted() {
   onVideoSummarySelected={() => {
     const item = getSelectedItemForShortcuts();
     if (!item?.imgId) return;
-    const videoId = item.videoId ?? String(item.imgId).split("-")[0];
+    const videoId = resolveVideoId(item.imgId, item.videoId).videoId;
     openVideoSummary(videoId, item.imgId);
   }}
   onOpenAtSelected={() => {
@@ -3246,6 +3250,7 @@ function handleViewSubmitted() {
   {rfPositive}
   {rfNegative}
   {runtimeProfile}
+  {discoveryMetadataFields}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
   contentScale={$uiStore.contentScale}

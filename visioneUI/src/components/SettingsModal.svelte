@@ -625,11 +625,11 @@
               >
                 <option value="profile">Use profile</option>
                 <option value="utc">Force UTC</option>
-                <option value="local">Force local (utc_offset_hours)</option>
+                <option value="local">Force local (dataset UTC offset)</option>
               </select>
             </div>
             <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
-              Profile follows runtime config; UTC ignores offsets; Local applies <code>utc_offset_hours</code> when available.
+              Profile follows runtime config; UTC ignores offsets; Local applies the dataset's configured UTC offset field when available.
             </p>
 
             <div class="flex items-center justify-between py-2">

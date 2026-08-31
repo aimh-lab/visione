@@ -27,7 +27,8 @@
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
   export let challengeType = "KIS";
-  export let runtimeProfile = {};
+  export let runtimeProfile: any = {};
+  export let discoveryMetadataFields: string[] = [];
   export let showLocalTimeInTitles = true;
   export let resultsetBadgeLabelMode = "both";
   export let virtualizationEnabled = true;
@@ -74,9 +75,19 @@
   $: contextDayLabel = contextDay?.year && contextDay?.month && contextDay?.day
     ? `${String(contextDay.day).padStart(2, "0")}/${String(contextDay.month).padStart(2, "0")}/${contextDay.year}`
     : "";
+  // For real video datasets the "hour" scope is really "this video"; LSC-style
+  // datasets (hasVideos: false) group pseudo-videos by hour bucket instead.
+  $: hasVideos = runtimeProfile?.media?.hasVideos !== false;
+  $: hourScopeLabel = hasVideos ? "Video" : "Hour";
+  $: hasDayFilterSupport = ['year', 'month', 'day'].some((field) => {
+    const normalized = field.toLowerCase();
+    if ((discoveryMetadataFields || []).some((f) => String(f || '').trim().toLowerCase() === normalized)) return true;
+    const configured = runtimeProfile?.queryFilters?.metadataFields;
+    return Array.isArray(configured) && configured.some((f) => String(f || '').trim().toLowerCase() === normalized);
+  });
   $: contextSubtitle = safeContextScope === "day"
     ? `Day${contextDayLabel ? ` ${contextDayLabel}` : ""}`
-    : (videoId ? `Hour ${videoId}` : "Quick inspect mode");
+    : (videoId ? `${hourScopeLabel} ${videoId}` : "Quick inspect mode");
   $: effectiveContextImageSize = Math.round((Number(contextKeyframeSize) || 130) * (Number(contentScale) || 1));
 
   const MIN_WIDTH = 820;
@@ -403,18 +414,20 @@
               type="button"
               class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'hour' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
               on:click={() => requestScope("hour")}
-              title="Show frames from the same hour"
+              title={hasVideos ? "Show frames from the same video" : "Show frames from the same hour"}
             >
-              Hour
+              {hourScopeLabel}
             </button>
-            <button
-              type="button"
-              class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'day' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
-              on:click={() => requestScope("day")}
-              title="Show frames from the same day"
-            >
-              Day
-            </button>
+            {#if hasDayFilterSupport}
+              <button
+                type="button"
+                class="px-2 py-1 text-[11px] font-semibold rounded transition-colors {safeContextScope === 'day' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:bg-slate-700'}"
+                on:click={() => requestScope("day")}
+                title="Show frames from the same day"
+              >
+                Day
+              </button>
+            {/if}
           </div>
           <button
             type="button"

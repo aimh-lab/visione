@@ -4,6 +4,7 @@
 // (URL, startTime, highlighted keyframes).
 
 import { visioneAPI } from '../../services/api.js';
+import { parseVideoIdFromImgId } from '../videoIdentity.js';
 
 /**
  * @param {Object} deps
@@ -15,13 +16,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
     return String(value || '');
   };
 
-  const extractVideoIdFromImageId = (imgId) => {
-    const raw = String(imgId || '').trim();
-    if (!raw) return '';
-    const match = raw.match(/^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i);
-    if (match) return match[1];
-    return raw.split('-')[0] || '';
-  };
+  const extractVideoIdFromImageId = (imgId) => parseVideoIdFromImgId(imgId).videoId;
 
   const toFiniteNumber = (value) => {
     if (value == null) return null;

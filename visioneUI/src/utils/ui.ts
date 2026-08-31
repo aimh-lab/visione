@@ -1,4 +1,6 @@
 // src/utils/ui.ts
+import { resolveVideoId } from '../lib/videoIdentity.js';
+
 type ImgLike = {
   index?: number;
   idx?: number;
@@ -22,7 +24,7 @@ export function ensureImgObj(imgId: string | number, fallback: ImgLike | null | 
   return {
     index: fallback.idx ?? -1,
     title: String(fallback.title ?? fallback.imgId ?? ""),
-    videoId: fallback.videoId ?? String(fallback.imgId).split("-")[0],
+    videoId: resolveVideoId(String(fallback.imgId), fallback.videoId).videoId,
     imgId: fallback.imgId,
     url: fallback.url,
     submitted: !!fallback.submitted,

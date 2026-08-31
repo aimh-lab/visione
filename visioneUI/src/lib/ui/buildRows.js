@@ -1,5 +1,5 @@
 // src/lib/ui/buildRows.js
-import { resolveGroupByConfig } from '$lib/groupByConfig.js';
+import { resolveGroupByConfig, isVideoLikeGroupByMetadata } from '$lib/groupByConfig.js';
 
 export function buildRows(items, {
   viewMode,
@@ -25,7 +25,7 @@ export function buildRows(items, {
   const mode = String(groupBy?.mode || viewMode || 'byrank');
   const kind = String(groupBy?.kind || '').trim().toLowerCase();
   const metadataField = String(groupBy?.metadata || '').trim();
-  const isHourMetadataGrouping = kind === 'metadata' && metadataField.toLowerCase() === 'hour_id';
+  const isHourMetadataGrouping = kind === 'metadata' && isVideoLikeGroupByMetadata(metadataField);
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
@@ -195,7 +195,7 @@ export function buildRows(items, {
     groupByKey(
       arr,
       (img) => {
-        if (String(field || '').trim().toLowerCase() === 'hour_id') {
+        if (isVideoLikeGroupByMetadata(field)) {
           return buildHourGroupKey(img) || 'N/A';
         }
 
