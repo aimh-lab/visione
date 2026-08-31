@@ -23,23 +23,21 @@
         },
         {
           "value": "byvideo",
-          "label": "By Hour"
+          "label": "By Video"
         }
       ]
     },
     "timeBadge": {
-      "source": "hour_msb_middletime",
+      "source": "epoch",
       "format": "mm:ss",
       "epochUnit": "auto",
       "timezone": "local"
     },
     "videoPlayer": {
-      "startSource": "hour_msb_middletime",
       "modal": "video"
     },
     "fieldAliases": {
-      "epoch": "epoch",
-      "middleTime": "hour_msb_middletime"
+      "epoch": "epoch"
     }
   },
   "collections": {

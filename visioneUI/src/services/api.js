@@ -34,7 +34,15 @@ export class VisioneAPI {
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
     this.defaultRelevanceFeedbackModel = DEFAULT_RELEVANCE_FEEDBACK_MODEL;
-    this.defaultMetadataToRetrieve = ['hour_id', 'location_country'];
+    // Bootstrap defaults only: both are overwritten as soon as /discovery resolves
+    // (see configureSearchMetadataFromDiscovery in +page.svelte), which is the
+    // dataset-agnostic source of truth (discovery's groupby_attribute, runtime
+    // profile's queryFilters/titleFormatting fields).
+    this.defaultMetadataToRetrieve = [];
+    this.videoGroupField = 'hour_id';
+    // Empty = unrestricted (discovery not resolved yet); populated with the active
+    // dataset's real column names once available (see #isKnownMetadataField below).
+    this.knownMetadataFields = new Set();
     this.supportsVideos = true;
     this.elementUrlCache = new Map();
     this.elementUrlInFlight = new Map();
@@ -554,9 +562,12 @@ export class VisioneAPI {
 
     const normalizedVideoId = this.#normalizeVideoId(videoId);
 
-    // New API: /field?select_field=hour_id&select_value=<videoId>&field=image_name
+    // New API: /field?select_field=<videoGroupField>&select_value=<videoId>&field=image_name
+    // videoGroupField is dataset-dependent (discovery's groupby_attribute; see
+    // configureSearchMetadataFromDiscovery in +page.svelte), 'hour_id' is just the
+    // LSC-era bootstrap fallback.
     const params = new URLSearchParams();
-    params.set('select_field', 'hour_id');
+    params.set('select_field', this.videoGroupField);
     params.set('select_value', normalizedVideoId);
     [
       'image_name',
@@ -1125,12 +1136,24 @@ export class VisioneAPI {
     };
   }
 
+  // True when `attribute` is a real column of the active dataset. `knownMetadataFields`
+  // is populated from /discovery's column schema (see configureSearchMetadataFromDiscovery
+  // in +page.svelte); when empty (discovery not resolved yet, or the backend didn't
+  // report a schema) we stay permissive, matching the pre-existing canRequestField
+  // behavior elsewhere in the app.
+  #isKnownMetadataField(attribute) {
+    const set = this.knownMetadataFields;
+    if (!(set instanceof Set) || set.size === 0) return true;
+    return set.has(String(attribute || '').trim());
+  }
+
   #parseFilterToken(key, rawValue) {
     const alias = String(key || '').trim().toLowerCase();
     const value = this.#unquoteValue(rawValue);
     if (!value) return null;
 
     if (alias === 'epoch_from' || alias === 'ef') {
+      if (!this.#isKnownMetadataField('epoch')) return null;
       const parsed = this.#extractComparatorValue(value, 'gte');
       const numericValue = Number(parsed.value);
       if (!Number.isFinite(numericValue)) return null;
@@ -1140,6 +1163,7 @@ export class VisioneAPI {
     }
 
     if (alias === 'epoch_to' || alias === 'et') {
+      if (!this.#isKnownMetadataField('epoch')) return null;
       const parsed = this.#extractComparatorValue(value, 'lte');
       const numericValue = Number(parsed.value);
       if (!Number.isFinite(numericValue)) return null;
@@ -1148,6 +1172,10 @@ export class VisioneAPI {
       };
     }
 
+    // Shortcut vocabulary for metadata fields that only some datasets have
+    // (LSC-style lifelog fields, mostly). Gated below by #isKnownMetadataField
+    // so a shortcut for a field the active dataset doesn't have falls through
+    // to plain free-text search instead of silently filtering on nothing.
     const numericShortcuts = {
       y: 'year',
       year: 'year',
@@ -1178,12 +1206,14 @@ export class VisioneAPI {
     };
 
     if (alias === 'date') {
+      if (!this.#isKnownMetadataField('epoch')) return null;
       const dateArgs = this.#parseDateFilterArguments(value);
       return dateArgs.length > 0 ? { arguments: dateArgs } : null;
     }
 
     if (Object.prototype.hasOwnProperty.call(numericShortcuts, alias)) {
       const attribute = numericShortcuts[alias];
+      if (!this.#isKnownMetadataField(attribute)) return null;
       const parsed = this.#extractComparatorValue(value, 'eq');
       const numericValue = Number(parsed.value);
       if (!Number.isFinite(numericValue)) return null;
@@ -1194,6 +1224,7 @@ export class VisioneAPI {
 
     if (Object.prototype.hasOwnProperty.call(textShortcuts, alias)) {
       const attribute = textShortcuts[alias];
+      if (!this.#isKnownMetadataField(attribute)) return null;
       const parsed = this.#extractComparatorValue(value, attribute === 'type' ? 'eq' : 'fts');
       const normalized = this.#normalizeTextFilterValue(parsed.value);
       if (!normalized) return null;

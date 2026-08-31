@@ -601,7 +601,7 @@
             <div class="p-2 border-t border-slate-700">
               <textarea
                 class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ask a question about the lifelog..."
+                placeholder="Ask a question about the collection..."
                 bind:value={qaAgentQuestion}
                 on:keydown={handleQaQuestionKeydown}
               ></textarea>

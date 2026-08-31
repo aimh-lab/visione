@@ -9,6 +9,19 @@ import { uiStore } from '../../stores/uiStore.js';
 import { toasts } from '../../stores/toastStore.js';
 import { get } from 'svelte/store';
 import { DRES_CHALLENGE_TYPES } from '../../config/dresConfig.js';
+import { resolveVideoId } from '../videoIdentity.js';
+
+function resolveVideoIdForSubmission(imgId, explicitVideoId) {
+  const { videoId, source } = resolveVideoId(imgId, explicitVideoId);
+  if (source === 'fallbackSplit') {
+    console.warn(
+      `[DRES] Could not resolve a reliable videoId for "${imgId}" (no explicit videoId, no recognized naming ` +
+      `pattern) — falling back to a naive split on "-", which may be wrong for this dataset's keyframe naming ` +
+      `convention. Submitted videoId: "${videoId}".`
+    );
+  }
+  return videoId;
+}
 
 /**
  * @param {Object} deps
@@ -200,7 +213,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
             ? localMiddleSeconds
             : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
           const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
-          const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
+          const videoId = resolveVideoIdForSubmission(imgId, frameObj?.videoId);
 
           return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
         } catch (submitError) {
@@ -215,7 +228,7 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
               ? localMiddleSeconds
               : (visioneAPI.supportsVideos ? await visioneAPI.getMiddleTimestamp(imgId) : 0);
             const timestampMs = Math.max(0, Math.round(Number(middleSeconds) * 1000));
-            const videoId = String(frameObj?.videoId ?? String(imgId).split('-')[0]);
+            const videoId = resolveVideoIdForSubmission(imgId, frameObj?.videoId);
 
             return await client.submitResultByTime(videoId, timestampMs, timestampMs, evaluationId);
           }

@@ -25,8 +25,8 @@ const DEFAULT_GROUP_BY_OPTIONS = [
   },
   {
     value: 'byvideo',
-    label: 'By Hour',
-    description: 'Group results by hour',
+    label: 'By Video',
+    description: 'Group results by video',
     icon: ICONS.video,
     kind: 'video'
   }
@@ -169,4 +169,23 @@ export function resolveGroupByConfig(viewMode, runtimeProfile = {}) {
     kind: active.kind,
     metadata: active.metadata || ''
   };
+}
+
+// Metadata field names that represent a "video-like" temporal bucket even though
+// normalizeEntry() above assigns them kind: 'metadata' (a preset mode combined with
+// a custom `metadata` override loses its preset kind). LSC's "By Video" mode groups
+// by the 'hour_id' column; add more names here if another dataset configures an
+// equivalent custom video-like grouping field, instead of repeating this check
+// as a literal string comparison at each call site.
+const VIDEO_LIKE_GROUP_METADATA_FIELDS = new Set(['hour_id']);
+
+export function isVideoLikeGroupByMetadata(field) {
+  return VIDEO_LIKE_GROUP_METADATA_FIELDS.has(String(field || '').trim().toLowerCase());
+}
+
+export function isVideoLikeGroupBy(groupBy) {
+  const kind = String(groupBy?.kind || '').trim().toLowerCase();
+  if (kind === 'video') return true;
+  if (kind !== 'metadata') return false;
+  return isVideoLikeGroupByMetadata(groupBy?.metadata);
 }

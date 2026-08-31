@@ -1,4 +1,6 @@
 // utils/results.ts
+import { parseVideoIdFromImgId } from '../lib/videoIdentity.js';
+
 export function findResultsArray(obj: any): any[] | null {
   if (!obj) return null;
   if (Array.isArray(obj)) return obj;
@@ -24,8 +26,7 @@ export function extractImageInfo(item: any, i: number) {
   if (typeof baseItem === 'string' || typeof baseItem === 'number') {
     const rawImg = String(baseItem).trim();
     const imgId = rawImg || null;
-    const match = rawImg.match(/-(\d+)-(\d+)(?:\.[^./]+)?$/i);
-    const videoId = match?.[1] ?? (imgId ? imgId.split('-')[0] : null);
+    const videoId = imgId ? (parseVideoIdFromImgId(imgId).videoId || null) : null;
     const url = null;
 
     return {
@@ -85,15 +86,14 @@ export function extractImageInfo(item: any, i: number) {
   let rawVid = pick(baseItem, "videoId", "videoid", "vid", "video", "camera");
 
   if (typeof rawImg === "string") {
+    // Keep the original id exactly as provided by the backend; only use it to
+    // backfill a missing videoId via a recognized keyframe naming pattern.
     const s = String(rawImg);
-    const m = s.match(/-(\d+)-(\d+)(?:\.[^./]+)?$/i);
-    if (m) {
-      rawVid = rawVid ?? m[1];
-      // Keep the original id exactly as provided by the backend.
-      rawImg = s;
-    } else {
-      rawImg = s;
+    const parsedFromImg = parseVideoIdFromImgId(s);
+    if (parsedFromImg.source === 'lscHourBucket' || parsedFromImg.source === 'dashPair') {
+      rawVid = rawVid ?? parsedFromImg.videoId;
     }
+    rawImg = s;
   }
 
   if (!rawVid) {
@@ -109,7 +109,7 @@ export function extractImageInfo(item: any, i: number) {
   }
 
   const imgId = rawImg ? String(rawImg) : null;
-  const videoId = rawVid ? String(rawVid) : (imgId ? imgId.split("-")[0] : null);
+  const videoId = rawVid ? String(rawVid) : (imgId ? parseVideoIdFromImgId(imgId).videoId : null);
   const imageUrl = String(pick(metadata, 'images', 'image_url', 'imageUrl', 'url') || '').trim() || null;
   const thumbnailUrl = String(pick(metadata, 'thumbnails', 'thumbnail_url', 'thumbnailUrl') || '').trim() || null;
   const videoUrl = String(pick(metadata, 'videos', 'video_url', 'videoUrl') || '').trim() || null;

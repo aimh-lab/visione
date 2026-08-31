@@ -372,12 +372,14 @@
   $: hasDateFilterSupport = ['year', 'month', 'day', 'hour'].some((f) => hasSpecialMetadataField(f));
   $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
   $: hasLocationFilterSupport = hasSpecialMetadataField('location');
-  // Keep the dedicated Music filter discoverable even when discovery metadata is delayed/unavailable.
-  $: hasMusicFilterSupport = true;
-  // Keep the dedicated Heart Rate filter discoverable even when discovery metadata is delayed/unavailable.
-  $: hasHeartRateFilterSupport = true;
-  // Keep these filters always available in UI even when discovery metadata is delayed/unavailable.
-  $: hasAnyCustomMetadataFilter = true;
+  $: hasMusicFilterSupport = hasSpecialMetadataField('music');
+  $: hasHeartRateFilterSupport = hasSpecialMetadataField('heart_rate_bpm');
+  $: hasAnyCustomMetadataFilter = hasDateFilterSupport
+    || hasCountryFilterSupport
+    || hasLocationFilterSupport
+    || hasMusicFilterSupport
+    || hasHeartRateFilterSupport
+    || displayMetadataFilterFields.length > 0;
 
   $: displayMetadataFilterFields = metadataFilterFields.filter((field) => {
     const normalized = String(field || '').trim().toLowerCase();
@@ -3255,64 +3257,70 @@
                           </div>
                         </button>
                       {:else}
-                        <button
-                          type="button"
-                          on:click|stopPropagation={() => openDateRangeFilterModal(i)}
-                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                        >
-                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <img src="/icons/data_range.svg" alt="" class="w-5 h-5" aria-hidden="true" />
-                          </div>
-                          <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Date Range</div>
-                            <div class="text-[10px] text-gray-400 font-mono">From / To interval</div>
-                          </div>
-                        </button>
+                        {#if hasDateFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openDateRangeFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <img src="/icons/data_range.svg" alt="" class="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Date Range</div>
+                              <div class="text-[10px] text-gray-400 font-mono">From / To interval</div>
+                            </div>
+                          </button>
 
-                        <button
-                          type="button"
-                          on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
-                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                        >
-                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <img src="/icons/date_hour.svg" alt="" class="w-5 h-5" aria-hidden="true" />
-                          </div>
-                          <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Date/Hour</div>
-                            <div class="text-[10px] text-gray-400 font-mono">year/month/day/hour AND</div>
-                          </div>
-                        </button>
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openDateHourMetadataFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <img src="/icons/date_hour.svg" alt="" class="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Date/Hour</div>
+                              <div class="text-[10px] text-gray-400 font-mono">year/month/day/hour AND</div>
+                            </div>
+                          </button>
+                        {/if}
 
-                        <button
-                          type="button"
-                          on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
-                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                        >
-                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <img src="/icons/country.svg" alt="" class="w-5 h-5" aria-hidden="true" />
-                          </div>
-                          <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Country</div>
-                            <div class="text-[10px] text-gray-400 font-mono">location_country:...</div>
-                          </div>
-                        </button>
+                        {#if hasCountryFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openCountryMetadataFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <img src="/icons/country.svg" alt="" class="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Country</div>
+                              <div class="text-[10px] text-gray-400 font-mono">location_country:...</div>
+                            </div>
+                          </button>
+                        {/if}
 
-                        <button
-                          type="button"
-                          on:click|stopPropagation={() => openLocationMetadataFilterModal(i)}
-                          class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
-                        >
-                          <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
-                            <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                              <circle cx="12" cy="9" r="2.5"/>
-                            </svg>
-                          </div>
-                          <div class="flex-1">
-                            <div class="text-xs font-medium text-white">Location</div>
-                            <div class="text-[10px] text-gray-400 font-mono">location:...</div>
-                          </div>
-                        </button>
+                        {#if hasLocationFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openLocationMetadataFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                                <circle cx="12" cy="9" r="2.5"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Location</div>
+                              <div class="text-[10px] text-gray-400 font-mono">location:...</div>
+                            </div>
+                          </button>
+                        {/if}
 
                         {#if hasMusicFilterSupport}
                           <button

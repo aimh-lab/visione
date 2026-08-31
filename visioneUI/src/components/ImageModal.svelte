@@ -4,6 +4,7 @@
   import SubmitBadge from "./SubmitBadge.svelte";
   import { visioneAPI } from "../services/api";
   import { formatImageDisplayTitle } from "$lib/titleFormatting.js";
+  import { resolveVideoId } from "$lib/videoIdentity.js";
   
   export let isOpen = false;
   export let image = null;
@@ -32,7 +33,7 @@
   const handlePinImage = (e) => { e?.stopPropagation(); dispatch("pinImage", { img: image }); };
   const handleOpenVideoPlayer = (e) => {
     e?.stopPropagation();
-    const videoId = image?.videoId ?? String(image?.imgId).split("-")[0];
+    const videoId = resolveVideoId(image?.imgId, image?.videoId).videoId;
     dispatch("openVideoPlayer", { imgId: image?.imgId, videoId });
   };
 
@@ -239,7 +240,7 @@
       ).trim();
       const selectedFrameUrl = toSelectedFramesUrl(imageUrl);
       const score = toNumberOrNull(entry?.score);
-      const middleTime = toNumberOrNull(metadata?.hour_msb_middletime);
+      const middleTime = toNumberOrNull(metadata?.hour_msb_middletime ?? metadata?.video_offset_seconds);
 
       return {
         index: idx,
