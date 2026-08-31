@@ -1,0 +1,21 @@
+{
+  "media": {
+    "hasVideos": true,
+    "itemIdField": "id"
+  },
+  "groupBy": {
+    "modes": [
+      {
+        "value": "byrank",
+        "label": "Standard"
+      },
+      {
+        "value": "byvideo",
+        "label": "By Video"
+      }
+    ]
+  },
+  "settingsDefaults": {
+    "temporalWindowSeconds": 60
+  }
+}
