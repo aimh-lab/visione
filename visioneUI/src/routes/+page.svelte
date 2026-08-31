@@ -35,6 +35,7 @@
   import { createScrollManager } from '$lib/controllers/scrollManager.js';
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
   import { resolveVideoId, parseVideoIdFromImgId } from '$lib/videoIdentity.js';
+  import { warnFallback } from '$lib/fallbackWarn.js';
   import { createVbsLogger } from '../services/vbsLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
   import { resolveGroupByConfig, resolveViewMode, resolveSortMode, isVideoLikeGroupBy } from '$lib/groupByConfig.js';
@@ -367,6 +368,7 @@
   }
   $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
   $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
+  $: visioneAPI.defaultRelevanceFeedbackModel = resolveRelevanceFeedbackModel();
   function syncVisioneApiHosts(uiState = get(uiStore), profile = runtimeProfile) {
     visioneAPI.setServicesHost(uiState.apiServicesHostOverrideEnabled ? uiState.apiServicesHost : (profile?.api?.servicesHost || ''));
     visioneAPI.setDataserverHost(uiState.dataserverHostOverrideEnabled ? uiState.dataserverHost : '');
@@ -571,6 +573,25 @@
     return (Array.isArray(models) ? models : [])
       .map((name) => String(name || '').trim())
       .find((name) => name.toLowerCase().startsWith(DEFAULT_TEXT_MODEL)) || '';
+  }
+
+  // Relevance feedback needs a model that actually exists for the active dataset —
+  // DEFAULT_RF_MODEL ('qwen_embedding_8B') is an LSC-only model name and the backend
+  // rejects unknown model names outright (see packages/core/endpoints/search.py), so an
+  // RF search would otherwise just fail on any dataset that doesn't happen to have it.
+  function resolveRelevanceFeedbackModel() {
+    const discoveredImage = getDiscoveredModelNames('image');
+    if (discoveredImage.length === 0 || discoveredImage.includes(DEFAULT_RF_MODEL)) {
+      return DEFAULT_RF_MODEL;
+    }
+
+    const chosen = discoveredImage[0];
+    warnFallback(
+      'page.resolveRelevanceFeedbackModel',
+      `Default relevance feedback model "${DEFAULT_RF_MODEL}" is not available for the active dataset (available: ${discoveredImage.join(', ')}); using "${chosen}" instead.`,
+      { defaultModel: DEFAULT_RF_MODEL, chosen, available: discoveredImage }
+    );
+    return chosen;
   }
 
   function normalizeTextareaModels(textarea) {
@@ -1047,7 +1068,7 @@
         positiveIds,
         negativeIds,
         method: rfMethod,
-        model: DEFAULT_RF_MODEL,
+        model: resolveRelevanceFeedbackModel(),
         numAdditionalNegatives: negativeIds.length === 0 ? 4 : 0
       };
     },
@@ -1814,6 +1835,20 @@
     // Same set drives which typed shortcuts (y:, hr:, music:, ...) VisioneAPI accepts
     // as structured filters vs. plain free-text search — see #isKnownMetadataField.
     visioneAPI.knownMetadataFields = availableSet;
+
+    // Field that uniquely identifies an item/frame row (used by getVideoKeyframes).
+    // No dataset-agnostic way to derive this from /discovery (it doesn't declare an
+    // id field), so it must be configured explicitly per collection instead of guessed
+    // (e.g. from column position) — see "media.itemIdField" in runtimeProfiles.json.
+    const itemIdField = String(profile?.media?.itemIdField || '').trim();
+    if (!itemIdField) {
+      throw new Error(
+        `configureSearchMetadataFromDiscovery: collection "${activeCollectionName}" is missing ` +
+        `"media.itemIdField" in runtimeProfiles.json (the field that uniquely identifies an item/frame ` +
+        `row — "image_name" for LSC, "id" for V3C). Add it before using this dataset.`
+      );
+    }
+    visioneAPI.itemIdField = itemIdField;
 
     const canRequestField = (field) => {
       const normalized = String(field || '').trim();

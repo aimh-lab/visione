@@ -41,6 +41,11 @@ export class VisioneAPI {
     // profile's queryFilters/titleFormatting fields).
     this.defaultMetadataToRetrieve = [];
     this.videoGroupField = 'hour_id';
+    // Field name that uniquely identifies an item/frame row in /field responses
+    // (used by getVideoKeyframes). Empty until configureSearchMetadataFromDiscovery
+    // (+page.svelte) sets it from runtimeProfiles.json's "media.itemIdField" — there's
+    // no dataset-agnostic default worth guessing here.
+    this.itemIdField = '';
     // Empty = unrestricted (discovery not resolved yet); populated with the active
     // dataset's real column names once available (see #isKnownMetadataField below).
     this.knownMetadataFields = new Set();
@@ -572,31 +577,30 @@ export class VisioneAPI {
 
   // Video Keyframes API
   // Returns Array<{ imgId: string, timestamp: number | null }>
-  // New API only returns image_name; timestamp is null and may be resolved later.
+  // New API only returns the item id field; timestamp is null and may be resolved later.
   async getVideoKeyframes(videoId) {
     if (!videoId) {
       throw new APIError('VideoId is required', 400);
     }
+    if (!this.itemIdField) {
+      throw new APIError('itemIdField is not configured (configureSearchMetadataFromDiscovery has not run yet)', 500);
+    }
 
     const normalizedVideoId = this.#normalizeVideoId(videoId);
 
-    // New API: /field?select_field=<videoGroupField>&select_value=<videoId>&field=image_name
-    // videoGroupField is dataset-dependent (discovery's groupby_attribute; see
-    // configureSearchMetadataFromDiscovery in +page.svelte), 'hour_id' is just the
-    // LSC-era bootstrap fallback.
+    // New API: /field?select_field=<videoGroupField>&select_value=<videoId>&field=<itemIdField>&...
+    // videoGroupField/itemIdField are dataset-dependent (see configureSearchMetadataFromDiscovery
+    // in +page.svelte). IMPORTANT: /field runs a literal `SELECT <fields> FROM table`, so
+    // requesting a field that doesn't exist for the active dataset fails the *entire* request
+    // (SQL "column does not exist"), not just that one field — hence the #isKnownMetadataField
+    // filter below, instead of requesting a fixed LSC-shaped field list unconditionally.
+    const optionalFields = ['epoch', 'year', 'month', 'day', 'hour', 'utc_offset_hours', 'location_country']
+      .filter((field) => this.#isKnownMetadataField(field));
+
     const params = new URLSearchParams();
     params.set('select_field', this.videoGroupField);
     params.set('select_value', normalizedVideoId);
-    [
-      'image_name',
-      'epoch',
-      'year',
-      'month',
-      'day',
-      'hour',
-      'utc_offset_hours',
-      'location_country'
-    ].forEach((field) => params.append('field', field));
+    [this.itemIdField, ...optionalFields].forEach((field) => params.append('field', field));
 
     const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
       retries: API_CONFIG.FIELD_RETRIES
@@ -608,11 +612,12 @@ export class VisioneAPI {
       throw new APIError('Invalid response from /field: expected array', 500);
     }
 
+    const itemIdField = this.itemIdField;
     return data
-      .filter((item) => item?.image_name)
+      .filter((item) => item?.[itemIdField])
       .map((item) => {
         return {
-          imgId: String(item.image_name),
+          imgId: String(item[itemIdField]),
           timestamp: item?.epoch ?? null,
           epoch: item?.epoch ?? null,
           year: item?.year ?? null,
