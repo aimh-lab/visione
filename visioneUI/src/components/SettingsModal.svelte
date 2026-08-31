@@ -4,6 +4,7 @@
   import { APP_SETTINGS_DEFAULTS as D } from "../config/appDefaults.js";
   import { DRES_CHALLENGE_TYPES } from "../config/dresConfig.js";
   import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from "../config/searchLimits.js";
+  import { VISIONE_SERVICES_URL, VISIONE_BASE_URL } from "$lib/urlConfig.js";
 
   export let isOpen = false;
   export let theme = D.theme;
@@ -810,7 +811,7 @@
               <input
                 id="settings-api-services-host"
                 type="text"
-                placeholder="https://visione.isti.cnr.it:48123"
+                placeholder={VISIONE_SERVICES_URL}
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.apiServicesHost}
                 disabled={!local.apiServicesHostOverrideEnabled}
@@ -836,7 +837,7 @@
               <input
                 id="settings-dataserver-host"
                 type="text"
-                placeholder="https://visione.isti.cnr.it:43333"
+                placeholder={VISIONE_BASE_URL}
                 class="ui-settings-input w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
                 bind:value={local.dataserverHost}
                 disabled={!local.dataserverHostOverrideEnabled}
