@@ -160,12 +160,20 @@ export function resolveViewMode(currentMode, runtimeProfile = {}) {
   if (current && options.some((option) => option.value === current)) {
     return current;
   }
+  const fallback = options[0]?.value || 'byrank';
   if (current) {
-    throw new Error(
-      `resolveViewMode: viewMode "${current}" is not available for the active dataset (available: ${options.map((o) => o.value).join(', ')}).`
+    // Not a config bug: a persisted viewMode from a *different* dataset (e.g. "bydate"
+    // from LSC) legitimately doesn't exist for the active one's groupBy.modes. This is
+    // exactly the case the caller's auto-correction reactive block exists to handle —
+    // fall back quietly instead of throwing, unlike normalizeGroupByOptions above (which
+    // throws because there the *profile itself* would be broken/missing).
+    warnFallback(
+      'groupByConfig.resolveViewMode',
+      `viewMode "${current}" is not available for the active dataset (available: ${options.map((o) => o.value).join(', ')}); using "${fallback}" instead.`,
+      { current, available: options.map((o) => o.value) }
     );
   }
-  return options[0]?.value || 'byrank';
+  return fallback;
 }
 
 export function resolveSortMode(currentMode) {
