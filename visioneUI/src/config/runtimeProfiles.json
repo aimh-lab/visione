@@ -43,7 +43,8 @@
   "collections": {
     "lsc": {
       "media": {
-        "hasVideos": false
+        "hasVideos": false,
+        "itemIdField": "image_name"
       },
       "dres": {
         "submitMode": "byImageId"
@@ -105,6 +106,27 @@
           "applyUtcOffsetHours": true,
           "utcOffsetField": "utc_offset_hours"
         }
+      }
+    },
+    "v3c": {
+      "media": {
+        "hasVideos": true,
+        "itemIdField": "id"
+      },
+      "groupBy": {
+        "modes": [
+          {
+            "value": "byrank",
+            "label": "Standard"
+          },
+          {
+            "value": "byvideo",
+            "label": "By Video"
+          }
+        ]
+      },
+      "settingsDefaults": {
+        "temporalWindowSeconds": 60
       }
     }
   },
