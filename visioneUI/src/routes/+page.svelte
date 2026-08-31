@@ -1789,6 +1789,17 @@
 
     const selectedByMetadata = entries.find((entry) => Array.isArray(entry?.metadata) && entry.metadata.length > 0);
 
+    // A single dataserver entry is unambiguous regardless of its name — use it.
+    // With 2+ entries, guessing which one is "the" active collection risks
+    // silently serving media/metadata from the wrong dataset.
+    if (!selectedByCollection && normalizedCollection && entries.length > 1) {
+      throw new Error(
+        `selectDiscoveryEntry: no dataserver /discovery entry named "${normalizedCollection}" ` +
+        `(available: ${entries.map((e) => e?.name).filter(Boolean).join(', ') || 'none named'}). ` +
+        `Refusing to guess among ${entries.length} candidates.`
+      );
+    }
+
     return selectedByCollection || selectedByMetadata || entries[0] || null;
   }
 
@@ -1810,7 +1821,17 @@
       return !hasAvailabilityList || availableSet.has(normalized);
     };
 
-    const groupingField = String(selectedDiscovery?.groupby_attribute || 'hour_id').trim() || 'hour_id';
+    // Preference order: discovery's own groupby_attribute (live, authoritative —
+    // but the current backend never actually populates it, see below) > the
+    // "byvideo" group-by mode's configured metadata field for this collection
+    // (runtimeProfiles.json, no backend dependency) > 'hour_id' as the last-resort
+    // legacy default.
+    const configuredVideoGroupField = Array.isArray(profile?.groupBy?.modes)
+      ? String(profile.groupBy.modes.find((m) => m?.value === 'byvideo')?.metadata || '').trim()
+      : '';
+    const groupingField = String(selectedDiscovery?.groupby_attribute || '').trim()
+      || configuredVideoGroupField
+      || 'hour_id';
     const requested = [groupingField];
 
     // Dataset-declared field used to fetch "all frames in this video/group"

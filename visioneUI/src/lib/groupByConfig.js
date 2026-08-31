@@ -1,3 +1,5 @@
+import { warnFallback } from './fallbackWarn.js';
+
 const ICONS = {
   rank: `<line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="17" x2="19" y2="17"/>`,
   relevance: `<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.5z"/>`,
@@ -126,7 +128,10 @@ export function normalizeGroupByOptions(runtimeProfile = {}) {
     : null;
 
   if (!configured) {
-    return getDefaultGroupByOptions();
+    throw new Error(
+      'normalizeGroupByOptions: runtimeProfile.groupBy.modes is missing or not an array. ' +
+      'This should always be set (see runtimeProfiles.json "defaults.groupBy.modes") — check how this runtimeProfile was built.'
+    );
   }
 
   const result = [];
@@ -140,7 +145,13 @@ export function normalizeGroupByOptions(runtimeProfile = {}) {
     result.push(normalized);
   });
 
-  return result.length > 0 ? result : getDefaultGroupByOptions();
+  if (result.length === 0) {
+    throw new Error(
+      `normalizeGroupByOptions: runtimeProfile.groupBy.modes (${JSON.stringify(configured)}) normalized to zero valid options.`
+    );
+  }
+
+  return result;
 }
 
 export function resolveViewMode(currentMode, runtimeProfile = {}) {
@@ -149,13 +160,22 @@ export function resolveViewMode(currentMode, runtimeProfile = {}) {
   if (current && options.some((option) => option.value === current)) {
     return current;
   }
+  if (current) {
+    throw new Error(
+      `resolveViewMode: viewMode "${current}" is not available for the active dataset (available: ${options.map((o) => o.value).join(', ')}).`
+    );
+  }
   return options[0]?.value || 'byrank';
 }
 
 export function resolveSortMode(currentMode) {
   const current = toSafeString(currentMode).toLowerCase();
   if (current === 'time') return 'time_asc';
-  return SORT_MODE_OPTIONS.some((option) => option.value === current) ? current : 'relevance';
+  if (SORT_MODE_OPTIONS.some((option) => option.value === current)) return current;
+  if (current) {
+    warnFallback('groupByConfig.resolveSortMode', `Unrecognized sortMode "${currentMode}", using "relevance".`, { currentMode });
+  }
+  return 'relevance';
 }
 
 export function resolveGroupByConfig(viewMode, runtimeProfile = {}) {

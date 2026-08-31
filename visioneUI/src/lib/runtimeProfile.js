@@ -1,4 +1,5 @@
 import runtimeProfiles from '../config/runtimeProfiles.json';
+import { warnFallback } from './fallbackWarn.js';
 
 function isObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -27,11 +28,27 @@ export function resolveRuntimeProfile(collectionName = 'default', competitionNam
   const competitionKey = normalizedCompetition.toUpperCase() === 'QA' ? 'Q&A' : normalizedCompetition.toUpperCase();
 
   const byCollection = runtimeProfiles?.collections?.[collectionKey] || {};
-  const byCompetition = runtimeProfiles?.competitions?.[competitionKey] || runtimeProfiles?.competitions?.default || {};
-  const strictUnknownCollectionOverride = (!isObject(byCollection) || Object.keys(byCollection).length === 0)
-    && collectionKey !== 'default'
-    ? { media: { hasVideos: false } }
-    : {};
+  const isUnknownCollection = (!isObject(byCollection) || Object.keys(byCollection).length === 0)
+    && collectionKey !== 'default';
 
-  return deepMerge(deepMerge(deepMerge(defaults, byCollection), strictUnknownCollectionOverride), byCompetition);
+  if (isUnknownCollection) {
+    throw new Error(
+      `resolveRuntimeProfile: collection "${collectionKey}" has no entry in runtimeProfiles.json. ` +
+      `Add a "collections.${collectionKey}" section (media.hasVideos, groupBy, queryFilters, timeBadge, ` +
+      `videoPlayer, titleFormatting, dres — see the "lsc" entry for reference) before pointing the UI at this dataset.`
+    );
+  }
+
+  const hasCompetitionEntry = !!runtimeProfiles?.competitions?.[competitionKey];
+  const byCompetition = runtimeProfiles?.competitions?.[competitionKey] || runtimeProfiles?.competitions?.default || {};
+
+  if (!hasCompetitionEntry && competitionKey !== 'DEFAULT') {
+    warnFallback(
+      'runtimeProfile.resolveRuntimeProfile.competition',
+      `Competition "${competitionKey}" has no entry in runtimeProfiles.json; using "competitions.default".`,
+      { competitionKey }
+    );
+  }
+
+  return deepMerge(deepMerge(defaults, byCollection), byCompetition);
 }

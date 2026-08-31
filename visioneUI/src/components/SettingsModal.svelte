@@ -5,6 +5,7 @@
   import { DRES_CHALLENGE_TYPES } from "../config/dresConfig.js";
   import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from "../config/searchLimits.js";
   import { VISIONE_SERVICES_URL, VISIONE_BASE_URL } from "$lib/urlConfig.js";
+  import { warnFallback } from "$lib/fallbackWarn.js";
 
   export let isOpen = false;
   export let theme = D.theme;
@@ -219,6 +220,9 @@
     const safeQueryResultK = Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(Number(local.queryResultK) || D.queryResultK)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || D.virtualizationThreshold));
     const safeTemporalWindowSeconds = Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(local.temporalWindowSeconds) || D.temporalWindowSeconds));
+    if (local.videoPlayerModalMode && !['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)) {
+      warnFallback('SettingsModal.save.videoPlayerModalMode', `Unrecognized videoPlayerModalMode "${local.videoPlayerModalMode}", using "profile".`, { value: local.videoPlayerModalMode });
+    }
     const safeVideoPlayerModalMode = ['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)
       ? local.videoPlayerModalMode
       : 'profile';
@@ -226,6 +230,12 @@
     const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || D.slideshowModalScale));
     const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
     const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
+    if (safeDefaultTextModelRaw && discoveredTextModels.length > 0 && !textModelOptions.includes(safeDefaultTextModelRaw)) {
+      warnFallback('SettingsModal.save.defaultTextModel', `Selected text model "${safeDefaultTextModelRaw}" is not available for the active dataset; falling back to a discovered model.`, { value: safeDefaultTextModelRaw, available: textModelOptions });
+    }
+    if (safeDefaultImageModelRaw && discoveredImageModels.length > 0 && !imageModelOptions.includes(safeDefaultImageModelRaw)) {
+      warnFallback('SettingsModal.save.defaultImageModel', `Selected image model "${safeDefaultImageModelRaw}" is not available for the active dataset; falling back to a discovered model.`, { value: safeDefaultImageModelRaw, available: imageModelOptions });
+    }
     const smartTextModelOption = resolveSmartTextModelOption(textModelOptions);
     const safeDefaultTextModel = discoveredTextModels.length === 0
       ? (safeDefaultTextModelRaw || FALLBACK_TEXT_MODEL)
@@ -239,20 +249,40 @@
       : imageModelOptions.includes(safeDefaultImageModelRaw)
       ? safeDefaultImageModelRaw
       : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
+    if (local.tupleIndicatorMode && !['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)) {
+      warnFallback('SettingsModal.save.tupleIndicatorMode', `Unrecognized tupleIndicatorMode "${local.tupleIndicatorMode}", using "badge+bar".`, { value: local.tupleIndicatorMode });
+    }
     const safeTupleIndicatorMode = ['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)
       ? local.tupleIndicatorMode
       : 'badge+bar';
+    if (local.resultsetBadgeLabelMode && !['both', 'id', 'date'].includes(local.resultsetBadgeLabelMode)) {
+      warnFallback('SettingsModal.save.resultsetBadgeLabelMode', `Unrecognized resultsetBadgeLabelMode "${local.resultsetBadgeLabelMode}", using "both".`, { value: local.resultsetBadgeLabelMode });
+    }
     const safeResultsetBadgeLabelMode = ['both', 'id', 'date'].includes(local.resultsetBadgeLabelMode)
       ? local.resultsetBadgeLabelMode
       : 'both';
+    if (local.timeBadgeTimezoneOverride && !['profile', 'utc', 'local'].includes(local.timeBadgeTimezoneOverride)) {
+      warnFallback('SettingsModal.save.timeBadgeTimezoneOverride', `Unrecognized timeBadgeTimezoneOverride "${local.timeBadgeTimezoneOverride}", using "profile".`, { value: local.timeBadgeTimezoneOverride });
+    }
     const safeTimeBadgeTimezoneOverride = ['profile', 'utc', 'local'].includes(local.timeBadgeTimezoneOverride)
       ? local.timeBadgeTimezoneOverride
       : 'profile';
     const currentTheme = ['default', 'dark', 'light'].includes(theme) ? theme : 'default';
+    if (themeTouched && local.theme && !['default', 'dark', 'light'].includes(local.theme)) {
+      warnFallback('SettingsModal.save.theme', `Unrecognized theme "${local.theme}", keeping "${currentTheme}".`, { value: local.theme });
+    }
     const safeTheme = themeTouched
       ? (['default', 'dark', 'light'].includes(local.theme) ? local.theme : currentTheme)
       : currentTheme;
-    
+    if (local.videoBadgeOrientation && !['horizontal', 'vertical'].includes(local.videoBadgeOrientation)) {
+      warnFallback('SettingsModal.save.videoBadgeOrientation', `Unrecognized videoBadgeOrientation "${local.videoBadgeOrientation}", using "horizontal".`, { value: local.videoBadgeOrientation });
+    }
+    const safeVideoBadgeOrientation = ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'horizontal';
+    if (local.dresChallengeType && !DRES_CHALLENGE_TYPES.includes(local.dresChallengeType)) {
+      warnFallback('SettingsModal.save.dresChallengeType', `Unrecognized dresChallengeType "${local.dresChallengeType}", using "${DRES_CHALLENGE_TYPES[0]}".`, { value: local.dresChallengeType });
+    }
+    const safeDresChallengeType = DRES_CHALLENGE_TYPES.includes(local.dresChallengeType) ? local.dresChallengeType : DRES_CHALLENGE_TYPES[0];
+
     const newSettings = {
       theme: safeTheme,
       keyframeSize: kf,
@@ -268,14 +298,14 @@
       dataserverHost: String(local.dataserverHost ?? '').trim(),
       justifyResultRows: !!local.justifyResultRows,
       tupleIndicatorMode: safeTupleIndicatorMode,
-      videoBadgeOrientation: ['horizontal', 'vertical'].includes(local.videoBadgeOrientation) ? local.videoBadgeOrientation : 'horizontal',
+      videoBadgeOrientation: safeVideoBadgeOrientation,
       resultsetBadgeLabelMode: safeResultsetBadgeLabelMode,
       showLocalTimeInTitles: !!local.showLocalTimeInTitles,
       timeBadgeTimezoneOverride: safeTimeBadgeTimezoneOverride,
       virtualizationEnabled: !!local.virtualizationEnabled,
       virtualizationThreshold: virtThreshold,
       dresEnabled: !!local.dresEnabled,
-      dresChallengeType: DRES_CHALLENGE_TYPES.includes(local.dresChallengeType) ? local.dresChallengeType : DRES_CHALLENGE_TYPES[0],
+      dresChallengeType: safeDresChallengeType,
       dresSubmitServer: (local.dresSubmitServer ?? '').trim(),
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',

@@ -3,6 +3,7 @@ import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL, VISIONE_SEARCH_URL } from '$l
 import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL } from '../config/modelDefaults.js';
 import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
 import { API_CONFIG } from '../config/apiConfig.js';
+import { warnFallback } from '../lib/fallbackWarn.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -62,7 +63,12 @@ export class VisioneAPI {
 
   #normalizeResultK(value, fallback = this.defaultSingleK) {
     const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return fallback;
+    if (!Number.isFinite(numeric)) {
+      if (value !== undefined) {
+        warnFallback('api.normalizeResultK', `Non-numeric resultK "${value}", using fallback.`, { value, fallback });
+      }
+      return fallback;
+    }
     return Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(numeric)));
   }
 
@@ -156,6 +162,11 @@ export class VisioneAPI {
 
       // Legacy fallback kept for older deployments.
       if (!Number.isFinite(num)) {
+        warnFallback(
+          'api.getMiddleTimestamp',
+          `Neither hour_msb_middletime nor video_offset_seconds available for "${imgId}"; falling back to legacy /core/getMiddleTimestamp endpoint.`,
+          { imgId }
+        );
         const url = `${this.baseUrl}/core/getMiddleTimestamp?id=${encodeURIComponent(imgId)}`;
         const res = await this.#makeRequest(url, {
           retries: API_CONFIG.LEGACY_MIDDLE_TIMESTAMP_RETRIES,
@@ -297,8 +308,15 @@ export class VisioneAPI {
     }
 
     const active = String(this.activeCollectionName || '').trim().toLowerCase();
-    const selectedCollection = collectionNames.find((name) => String(name || '').trim().toLowerCase() === active)
-      || collectionNames[0];
+    const matchedCollection = collectionNames.find((name) => String(name || '').trim().toLowerCase() === active);
+    if (!matchedCollection && active) {
+      warnFallback(
+        'api.getDataserverCollectionAndTypes',
+        `Active collection "${active}" not found in dataserver /discovery (${collectionNames.join(', ')}); using "${collectionNames[0]}" instead.`,
+        { active, collectionNames }
+      );
+    }
+    const selectedCollection = matchedCollection || collectionNames[0];
 
     const availableTypes = (Array.isArray(map[selectedCollection]) ? map[selectedCollection] : [])
       .map((t) => String(t || '').trim())
@@ -957,6 +975,13 @@ export class VisioneAPI {
       return payload;
     }
 
+    if (temporalWindowSeconds !== undefined && !Number.isFinite(Number(temporalWindowSeconds))) {
+      warnFallback(
+        'api.buildSearchPayload.temporalWindowSeconds',
+        `Non-numeric temporalWindowSeconds "${temporalWindowSeconds}", using default (${this.defaultTemporalWindowSeconds}).`,
+        { temporalWindowSeconds }
+      );
+    }
     const safeTemporalWindowSeconds = Number.isFinite(Number(temporalWindowSeconds))
       ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(temporalWindowSeconds)))
       : this.defaultTemporalWindowSeconds;
@@ -1279,7 +1304,12 @@ export class VisioneAPI {
   #normalizeComparator(comparator) {
     const normalized = String(comparator || '').trim().toLowerCase();
     if (!normalized) return 'eq';
-    return ['eq', 'ne', 'lt', 'gt', 'gte', 'lte', 'fts'].includes(normalized) ? normalized : 'fts';
+    const known = ['eq', 'ne', 'lt', 'gt', 'gte', 'lte', 'fts'];
+    if (!known.includes(normalized)) {
+      warnFallback('api.normalizeComparator', `Unrecognized comparator "${comparator}", using "fts".`, { comparator });
+      return 'fts';
+    }
+    return normalized;
   }
 
   #normalizeFilterComparators(filters) {
@@ -1312,8 +1342,16 @@ export class VisioneAPI {
       const from = this.#toEpochStart(fromRaw);
       const to = this.#toEpochEnd(toRaw);
       const out = [];
-      if (Number.isFinite(from)) out.push({ comparator: 'gt', attribute: 'epoch', value: Math.floor(from) - 1 });
-      if (Number.isFinite(to)) out.push({ comparator: 'lt', attribute: 'epoch', value: Math.floor(to) + 1 });
+      if (Number.isFinite(from)) {
+        out.push({ comparator: 'gt', attribute: 'epoch', value: Math.floor(from) - 1 });
+      } else if (String(fromRaw || '').trim()) {
+        warnFallback('api.parseDateFilterArguments', `Could not parse date range start "${fromRaw}"; dropping that bound.`, { fromRaw });
+      }
+      if (Number.isFinite(to)) {
+        out.push({ comparator: 'lt', attribute: 'epoch', value: Math.floor(to) + 1 });
+      } else if (String(toRaw || '').trim()) {
+        warnFallback('api.parseDateFilterArguments', `Could not parse date range end "${toRaw}"; dropping that bound.`, { toRaw });
+      }
       return out;
     }
 
@@ -1324,6 +1362,7 @@ export class VisioneAPI {
     const end = this.#toEpochEnd(value);
 
     if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      warnFallback('api.parseDateFilterArguments', `Could not parse date value "${value}" from token "date:${input}"; the whole date filter is being silently dropped.`, { input, value });
       return [];
     }
 
@@ -1399,9 +1438,11 @@ export class VisioneAPI {
 
     if (positiveIds.length === 0 && negativeIds.length === 0) return null;
 
-    const method = String(config.method || '').trim().toLowerCase() === 'rocchio'
-      ? 'rocchio'
-      : 'svm';
+    const rawMethod = String(config.method || '').trim().toLowerCase();
+    if (rawMethod && rawMethod !== 'rocchio' && rawMethod !== 'svm') {
+      warnFallback('api.buildRelevanceFeedback.method', `Unrecognized relevance feedback method "${config.method}", using "svm".`, { method: config.method });
+    }
+    const method = rawMethod === 'rocchio' ? 'rocchio' : 'svm';
 
     const model = String(config.model || this.defaultRelevanceFeedbackModel).trim()
       || this.defaultRelevanceFeedbackModel;

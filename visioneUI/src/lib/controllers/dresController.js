@@ -10,14 +10,16 @@ import { toasts } from '../../stores/toastStore.js';
 import { get } from 'svelte/store';
 import { DRES_CHALLENGE_TYPES } from '../../config/dresConfig.js';
 import { resolveVideoId } from '../videoIdentity.js';
+import { warnFallback } from '../fallbackWarn.js';
 
 function resolveVideoIdForSubmission(imgId, explicitVideoId) {
   const { videoId, source } = resolveVideoId(imgId, explicitVideoId);
   if (source === 'fallbackSplit') {
-    console.warn(
-      `[DRES] Could not resolve a reliable videoId for "${imgId}" (no explicit videoId, no recognized naming ` +
-      `pattern) — falling back to a naive split on "-", which may be wrong for this dataset's keyframe naming ` +
-      `convention. Submitted videoId: "${videoId}".`
+    throw new Error(
+      `resolveVideoIdForSubmission: could not resolve a reliable videoId for "${imgId}" (no explicit videoId on ` +
+      `the frame, no recognized keyframe naming pattern matched). Refusing to submit a guessed videoId ("${videoId}") ` +
+      `to DRES — add an explicit video_id/videoId field to this dataset's backend response, or a recognized ` +
+      `naming pattern to src/lib/videoIdentity.js.`
     );
   }
   return videoId;
@@ -77,6 +79,9 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     const type = String(value ?? '').toUpperCase();
     if (type === 'AVS') return 'AVS';
     if (type === 'Q&A') return 'Q&A';
+    if (type && type !== 'KIS') {
+      warnFallback('dresController.normalizeChallengeType', `Unrecognized challengeType "${value}", using "KIS".`, { value });
+    }
     return 'KIS';
   }
 
@@ -105,13 +110,21 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       settings?.dresEvaluationIdByChallenge ?? settings?.dresEvaluationIdsByChallenge
     );
     if (!CHALLENGE_TYPES.includes(challengeType)) return '';
-    return String(map[challengeType] || map.KIS || map.AVS || map['Q&A'] || '').trim();
+    // Deliberately no cross-challenge-type fallback: submitting to whatever
+    // evaluationId happens to be configured for a *different* challenge would
+    // silently send results to the wrong evaluation. Treat "not configured for
+    // this challenge type" the same as "not configured at all" and let the
+    // caller's existing "no evaluationId selected" handling take over.
+    return String(map[challengeType] || '').trim();
   }
 
   function normalizeVerdict(value) {
     const v = String(value ?? '').toUpperCase();
     if (v === 'CORRECT' || v === 'WRONG' || v === 'INDETERMINATE' || v === 'UNDECIDABLE') return v;
     if (v === 'PENDING') return 'PENDING';
+    if (v) {
+      warnFallback('dresController.normalizeVerdict', `Unrecognized DRES verdict "${value}"; treating as no verdict.`, { value });
+    }
     return '';
   }
 
@@ -174,11 +187,22 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
 
-    return normalizedMode === 'byimgid'
+    const byImageId = normalizedMode === 'byimgid'
       || normalizedMode === 'byimageid'
       || normalizedMode === 'imgid'
       || normalizedMode === 'imageid'
       || normalizedMode === 'mediaitemname';
+
+    const byTime = normalizedMode === 'bytime' || normalizedMode === 'time' || !normalizedMode;
+
+    if (!byImageId && !byTime) {
+      throw new Error(
+        `shouldSubmitFrameByImageId: unrecognized dres.submitMode "${profile?.dres?.submitMode}" in runtimeProfile. ` +
+        `Expected one of: byImageId, byTime (or dres.submitByImageId: true/false).`
+      );
+    }
+
+    return byImageId;
   }
 
   // ---- Low-level submit to DRES ----------------------------------------

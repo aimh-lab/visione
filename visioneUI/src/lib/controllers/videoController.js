@@ -1,4 +1,6 @@
 // src/lib/controllers/videoController.js
+import { warnFallback } from '../fallbackWarn.js';
+
 export function createVideoController({
   api,                      // visioneAPI
   transformVideoKeyframes,
@@ -134,7 +136,11 @@ export function createVideoController({
     const req = ++reqId;
 
     const requestedVideoId = String(videoId);
-    const requestedScope = String(scope || 'hour').trim().toLowerCase() === 'day' ? 'day' : 'hour';
+    const rawScope = String(scope || 'hour').trim().toLowerCase();
+    if (rawScope && rawScope !== 'hour' && rawScope !== 'day') {
+      warnFallback('videoController.openVideoSummary', `Unrecognized context scope "${scope}", using "hour".`, { scope });
+    }
+    const requestedScope = rawScope === 'day' ? 'day' : 'hour';
     // Preserve raw imgId (including extensions) to keep selection/anchor
     // aligned with transformed keyframe ids.
     const selectedImgId = highlightImgId ? String(highlightImgId) : null;
