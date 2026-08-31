@@ -30,6 +30,10 @@ export function ensureImgObj(imgId: string | number, fallback: ImgLike | null | 
   };
 }
 
+// Delay before focusing the scrolled-to element: gives the smooth-scroll
+// animation a head start so the focus ring doesn't visibly "jump" mid-scroll.
+const SCROLL_TO_IMAGE_FOCUS_DELAY_MS = 120;
+
 export function scrollToImage(container: Element | null | undefined, target: number | string): void {
   if (!container) return;
   let el: HTMLElement | null = null;
@@ -41,7 +45,7 @@ export function scrollToImage(container: Element | null | undefined, target: num
   }
   if (el) {
     el.scrollIntoView({ block: "center", behavior: "smooth" });
-    setTimeout(() => el.focus?.({ preventScroll: true }), 120);
+    setTimeout(() => el.focus?.({ preventScroll: true }), SCROLL_TO_IMAGE_FOCUS_DELAY_MS);
   }
 }
 
@@ -50,6 +54,9 @@ export function scrollToImage(container: Element | null | undefined, target: num
  * To use: <div use:focusTrap>...</div>
  */
 export function focusTrap(node: HTMLElement) {
+  // Delay before moving focus in/out of the trap: lets the host element (e.g.
+  // a just-opened modal) finish mounting/transitioning first.
+  const FOCUS_TRAP_FOCUS_DELAY_MS = 50;
   const focusableElements = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   function handleKeydown(e: KeyboardEvent) {
@@ -85,7 +92,7 @@ export function focusTrap(node: HTMLElement) {
     if (focusables.length > 0 && !node.contains(document.activeElement)) {
       focusables[0].focus();
     }
-  }, 50);
+  }, FOCUS_TRAP_FOCUS_DELAY_MS);
 
   node.addEventListener('keydown', handleKeydown);
 
@@ -93,7 +100,7 @@ export function focusTrap(node: HTMLElement) {
     destroy() {
       node.removeEventListener('keydown', handleKeydown);
       if (previousFocus && typeof previousFocus.focus === 'function') {
-        setTimeout(() => previousFocus.focus(), 50);
+        setTimeout(() => previousFocus.focus(), FOCUS_TRAP_FOCUS_DELAY_MS);
       }
     }
   };

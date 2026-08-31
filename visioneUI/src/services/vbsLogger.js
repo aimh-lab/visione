@@ -4,6 +4,10 @@ const DB_NAME = 'visione-vbs-logs';
 const DB_VERSION = 1;
 const STORE_LOGS = 'logs';
 
+const MIN_RESULT_LOG_LIMIT = 100;
+const MAX_RESULT_LOG_LIMIT = 10000;
+const DEFAULT_RESULT_LOG_LIMIT = MAX_RESULT_LOG_LIMIT;
+
 function isBrowser() {
   return typeof window !== 'undefined' && typeof indexedDB !== 'undefined';
 }
@@ -197,7 +201,7 @@ function toCompetitionPayload(rawPayload, filenameTimestamp) {
 export function createVbsLogger() {
   let dbPromise = null;
   let loggerOptions = {
-    resultLimit: 10000
+    resultLimit: DEFAULT_RESULT_LOG_LIMIT
   };
   let sessionContext = {
     sessionId: '',
@@ -276,7 +280,7 @@ export function createVbsLogger() {
     const ts = toUnixMs(timestamp);
     const raw = findResultsArray(resultSet) || [];
     const resolvedLimit = Number(maxResults ?? loggerOptions.resultLimit);
-    const boundedLimit = Math.min(10000, Math.max(100, Number.isFinite(resolvedLimit) ? resolvedLimit : 10000));
+    const boundedLimit = Math.min(MAX_RESULT_LOG_LIMIT, Math.max(MIN_RESULT_LOG_LIMIT, Number.isFinite(resolvedLimit) ? resolvedLimit : DEFAULT_RESULT_LOG_LIMIT));
     const results = raw.slice(0, boundedLimit);
     const events = buildQueryEvents({ textareas, relevanceFeedback, timestamp: ts, temporalWindowSeconds, buildSearchPayload });
 
@@ -420,7 +424,7 @@ export function createVbsLogger() {
     setOptions: (next = {}) => {
       const parsed = Number(next?.resultLimit);
       if (Number.isFinite(parsed)) {
-        loggerOptions.resultLimit = Math.min(10000, Math.max(100, Math.floor(parsed)));
+        loggerOptions.resultLimit = Math.min(MAX_RESULT_LOG_LIMIT, Math.max(MIN_RESULT_LOG_LIMIT, Math.floor(parsed)));
       }
     },
     initSession,

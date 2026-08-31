@@ -2,6 +2,7 @@
 import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL, VISIONE_SEARCH_URL } from '$lib/urlConfig.js';
 import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL } from '../config/modelDefaults.js';
 import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
+import { API_CONFIG } from '../config/apiConfig.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -24,8 +25,8 @@ export class VisioneAPI {
     this.searchUrl = searchUrl;
     this.middleTimestampCache = new Map();
     this.middleTimestampInFlight = new Map();
-    this.middleTimestampCacheMax = 500;
-    this.middleTimestampTtlMs = 5 * 60 * 1000;
+    this.middleTimestampCacheMax = API_CONFIG.MIDDLE_TIMESTAMP_CACHE_MAX;
+    this.middleTimestampTtlMs = API_CONFIG.MIDDLE_TIMESTAMP_CACHE_TTL_MS;
     this.defaultTextModel = DEFAULT_TEXT_MODEL;
     this.defaultImageModel = DEFAULT_IMAGE_MODEL;
     this.defaultSubqueryK = 10000;
@@ -37,8 +38,8 @@ export class VisioneAPI {
     this.supportsVideos = true;
     this.elementUrlCache = new Map();
     this.elementUrlInFlight = new Map();
-    this.elementUrlCacheMax = 3000;
-    this.elementUrlTtlMs = 10 * 60 * 1000;
+    this.elementUrlCacheMax = API_CONFIG.ELEMENT_URL_CACHE_MAX;
+    this.elementUrlTtlMs = API_CONFIG.ELEMENT_URL_CACHE_TTL_MS;
     this.dataserverHost = '';
     this.discoveryCache = null;
     this.discoveryInFlight = null;
@@ -47,8 +48,8 @@ export class VisioneAPI {
     this.activeCollectionName = '';
     this.translationCache = new Map();
     this.translationInFlight = new Map();
-    this.translationCacheMax = 1000;
-    this.translationCacheTtlMs = 30 * 60 * 1000;
+    this.translationCacheMax = API_CONFIG.TRANSLATION_CACHE_MAX;
+    this.translationCacheTtlMs = API_CONFIG.TRANSLATION_CACHE_TTL_MS;
   }
 
   #normalizeResultK(value, fallback = this.defaultSingleK) {
@@ -63,7 +64,7 @@ export class VisioneAPI {
     if (this.discoveryInFlight) return this.discoveryInFlight;
 
     const run = (async () => {
-      const response = await this.#makeRequest(`${this.baseUrl}/discovery`, { retries: 2 });
+      const response = await this.#makeRequest(`${this.baseUrl}/discovery`, { retries: API_CONFIG.DISCOVERY_RETRIES });
       const data = await response.json();
       this.discoveryCache = data;
       return data;
@@ -83,7 +84,10 @@ export class VisioneAPI {
 
     const run = (async () => {
       const dataserverBaseUrl = await this.#resolveDataserverBaseUrl();
-      const response = await this.#makeRequest(`${dataserverBaseUrl}/discovery`, { retries: 1, timeout: 12000 });
+      const response = await this.#makeRequest(`${dataserverBaseUrl}/discovery`, {
+        retries: API_CONFIG.DATASERVER_DISCOVERY_RETRIES,
+        timeout: API_CONFIG.DATASERVER_DISCOVERY_TIMEOUT_MS
+      });
       const data = await response.json();
       this.dataserverDiscoveryCache = data;
       return data;
@@ -145,7 +149,10 @@ export class VisioneAPI {
       // Legacy fallback kept for older deployments.
       if (!Number.isFinite(num)) {
         const url = `${this.baseUrl}/core/getMiddleTimestamp?id=${encodeURIComponent(imgId)}`;
-        const res = await this.#makeRequest(url, { retries: 1, timeout: 15000 });
+        const res = await this.#makeRequest(url, {
+          retries: API_CONFIG.LEGACY_MIDDLE_TIMESTAMP_RETRIES,
+          timeout: API_CONFIG.LEGACY_MIDDLE_TIMESTAMP_TIMEOUT_MS
+        });
         const text = await res.text();
         const legacyNum = Number(text);
         if (!Number.isFinite(legacyNum)) throw new APIError(`Non-numeric response: ${text}`, 500);
@@ -308,7 +315,7 @@ export class VisioneAPI {
   }
 
   async #makeRequest(url, options = {}) {
-    const { retries = 1, timeout = 30000, signal: externalSignal, ...fetchOptions } = options;
+    const { retries = API_CONFIG.DEFAULT_RETRIES, timeout = API_CONFIG.DEFAULT_TIMEOUT_MS, signal: externalSignal, ...fetchOptions } = options;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -352,7 +359,7 @@ export class VisioneAPI {
           throw new APIError(`Network error: ${error.message}`, 0, null);
         }
         // Exponential backoff for each retry
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * API_CONFIG.RETRY_BACKOFF_BASE_MS));
       }
     }
   }
@@ -386,7 +393,7 @@ export class VisioneAPI {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      retries: 2
+      retries: API_CONFIG.SEARCH_RETRIES
     });
 
     const data = await response.json();
@@ -434,7 +441,7 @@ export class VisioneAPI {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      retries: 2
+      retries: API_CONFIG.SEARCH_RETRIES
     });
 
     const data = await response.json();
@@ -532,7 +539,7 @@ export class VisioneAPI {
     list.forEach((f) => params.append('field', f));
 
     const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
-      retries: 2
+      retries: API_CONFIG.FIELD_RETRIES
     });
     return response.json();
   }
@@ -563,7 +570,7 @@ export class VisioneAPI {
     ].forEach((field) => params.append('field', field));
 
     const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
-      retries: 2
+      retries: API_CONFIG.FIELD_RETRIES
     });
 
     const data = await response.json();
@@ -643,7 +650,7 @@ export class VisioneAPI {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payloadText,
-        retries: 2
+        retries: API_CONFIG.SEARCH_RETRIES
       });
 
       const data = await response.json();
@@ -659,7 +666,7 @@ export class VisioneAPI {
   async healthCheck() {
     try {
       const response = await this.#makeRequest(`${this.baseUrl}/health`, {
-        timeout: 5000
+        timeout: API_CONFIG.HEALTH_CHECK_TIMEOUT_MS
       });
       return { status: 'ok', timestamp: new Date().toISOString() };
     } catch (error) {
@@ -718,8 +725,8 @@ export class VisioneAPI {
         'Accept': 'text/event-stream'
       },
       body: JSON.stringify(payload),
-      retries: 0,
-      timeout: 0,
+      retries: API_CONFIG.QA_STREAM_RETRIES,
+      timeout: API_CONFIG.QA_STREAM_TIMEOUT_MS,
       signal
     });
 
@@ -829,8 +836,8 @@ export class VisioneAPI {
       const response = await this.#makeRequest(`${this.baseUrl}/qa/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: { Accept: 'application/json' },
-        retries: 0,
-        timeout: 10000
+        retries: API_CONFIG.QA_CANCEL_RETRIES,
+        timeout: API_CONFIG.QA_CANCEL_TIMEOUT_MS
       });
       const payload = await response.json().catch(() => ({}));
       return payload && typeof payload === 'object'
@@ -852,8 +859,8 @@ export class VisioneAPI {
         source_language: source,
         target_language: target
       }),
-      retries: 1,
-      timeout: 10000
+      retries: API_CONFIG.TRANSLATE_RETRIES,
+      timeout: API_CONFIG.TRANSLATE_TIMEOUT_MS
     });
 
     return await this.#extractTranslatedText(response, raw);

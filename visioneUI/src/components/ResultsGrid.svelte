@@ -6,6 +6,7 @@
   import VideoOverlay from "./VideoOverlay.svelte";
   import { resolveGroupByConfig } from "$lib/groupByConfig.js";
   import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
+  import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
 
   export let items = [];
   export let selectedId = null;
@@ -99,15 +100,7 @@
     return `row:${rowIndex}|col:${colIndex}|id:${id}|tr:${Number.isFinite(tupleRank) ? tupleRank : -1}|tm:${Number.isFinite(tupleMemberIndex) ? tupleMemberIndex : -1}`;
   }
 
-  const TUPLE_GROUP_COLORS = [
-    '#0ea5e9',
-    '#14b8a6',
-    '#22c55e',
-    '#eab308',
-    '#f97316',
-    '#ef4444',
-    '#a855f7'
-  ];
+  const TUPLE_GROUP_COLORS = CATEGORICAL_PALETTE;
 
   function getTupleSignature(item) {
     const tuple = Array.isArray(item?.tupleItems) ? item.tupleItems : [];

@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  
+  import { LOGO_SRC } from '../config/branding.js';
+
   const dispatch = createEventDispatcher();
   
   const examples = [
@@ -14,7 +15,7 @@
   <div class="welcome-hero-inner max-w-4xl mx-auto px-5 sm:px-8 py-6 sm:py-10 text-center min-h-full flex flex-col justify-center">
     <!-- Logo grande -->
     <div class="hero-header mb-6 sm:mb-8 animate-fade-in">
-      <img src="./logoVISIONE.png" alt="VISIONE" class="hero-logo h-16 sm:h-24 mx-auto mb-3 sm:mb-4 opacity-90" />
+      <img src={LOGO_SRC} alt="VISIONE" class="hero-logo h-16 sm:h-24 mx-auto mb-3 sm:mb-4 opacity-90" />
       <h1 class="hero-title text-3xl sm:text-4xl font-bold mb-2">
         Welcome to VISIONE
       </h1>

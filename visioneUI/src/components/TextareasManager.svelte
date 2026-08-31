@@ -3,6 +3,7 @@
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from "../config/modelDefaults.js";
+  import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
 
   type QueryTextarea = {
     value: string;
@@ -149,7 +150,10 @@
 
   const MIN_TEXTAREA_ROWS = 1;
   const MAX_TEXTAREA_ROWS = 5;
-  const TIMELINE_STOPS = ["#3b82f6", "#8b5cf6", "#ec4899", "#22c55e"];
+  // Delay before re-triggering search after a step reorder/swap: lets the
+  // "swap"/"move" dispatch settle in the parent before we simulate a click.
+  const SEARCH_LIKE_TRIGGER_DELAY_MS = 100;
+  const TIMELINE_STOPS = CATEGORICAL_PALETTE;
   let normalizedModelEntries: ModelDescriptor[] = [];
   let textModelOptions: string[] = [];
   let imageModelOptions: string[] = [];
@@ -797,7 +801,7 @@
     if (sourceIndex !== targetIndex) {
       reindexMetadataTokensAfterReorder(sourceIndex, targetIndex, "move");
       dispatch("swap", { indexA: sourceIndex, indexB: targetIndex, mode: "move" });
-      setTimeout(() => triggerSearchLikeButton(), 100);
+      setTimeout(() => triggerSearchLikeButton(), SEARCH_LIKE_TRIGGER_DELAY_MS);
     }
   }
 

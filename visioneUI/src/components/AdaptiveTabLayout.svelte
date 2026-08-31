@@ -4,6 +4,7 @@
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
   import MainToolbar from './MainToolbar.svelte';
   import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
+  import { LOGO_SRC } from '../config/branding.js';
   
   export let active;
   export let tabs;
@@ -199,7 +200,7 @@
         title="Clear current search session"
         aria-label="Clear current search session"
       >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-5"/>
+        <img src={LOGO_SRC} alt="Visione Logo" class="h-5"/>
       </button>
       
       {#if showPositionMenu}
@@ -285,7 +286,7 @@
         title="Clear current search session"
         aria-label="Clear current search session"
       >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
+        <img src={LOGO_SRC} alt="Visione Logo" class="h-4"/>
       </button>
       
       {#if showPositionMenu}
@@ -667,7 +668,7 @@
         title="Clear current search session"
         aria-label="Clear current search session"
       >
-        <img src="./logoVISIONE.png" alt="Visione Logo" class="h-4"/>
+        <img src={LOGO_SRC} alt="Visione Logo" class="h-4"/>
       </button>
       
       {#if showPositionMenu}
