@@ -1,0 +1,67 @@
+{
+  "media": {
+    "hasVideos": false,
+    "itemIdField": "image_name"
+  },
+  "dres": {
+    "submitMode": "byImageId"
+  },
+  "groupBy": {
+    "modes": [
+      {
+        "value": "byrank",
+        "label": "Standard"
+      },
+      {
+        "value": "bydate",
+        "label": "By Day"
+      },
+      {
+        "value": "byvideo",
+        "label": "By Hour",
+        "metadata": "hour_id"
+      }
+    ]
+  },
+  "queryFilters": {
+    "metadataFields": [
+      "year",
+      "month",
+      "day",
+      "hour",
+      "timezone",
+      "location_country",
+      "location"
+    ]
+  },
+  "timeBadge": {
+    "source": "epoch",
+    "format": "HH:mm",
+    "epochUnit": "seconds",
+    "timezone": "local"
+  },
+  "videoPlayer": {
+    "startSource": "hour_msb_middletime",
+    "modal": "slideshow"
+  },
+  "titleFormatting": {
+    "videoGroup": {
+      "enabled": true,
+      "mode": "both",
+      "hourPrefix": "h",
+      "separator": " - ",
+      "applyUtcOffsetHours": true,
+      "utcOffsetField": "utc_offset_hours"
+    },
+    "imageTitle": {
+      "enabled": true,
+      "mode": "both",
+      "epochField": "epoch",
+      "epochUnit": "seconds",
+      "includeWeekday": true,
+      "separator": " - ",
+      "applyUtcOffsetHours": true,
+      "utcOffsetField": "utc_offset_hours"
+    }
+  }
+}

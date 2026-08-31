@@ -1,0 +1,41 @@
+{
+  "api": {
+    "servicesHost": ""
+  },
+  "settingsDefaults": {
+    "version": "search-defaults-7200-25200",
+    "queryResultK": 7200,
+    "temporalWindowSeconds": 25200
+  },
+  "media": {
+    "hasVideos": true
+  },
+  "groupBy": {
+    "modes": [
+      {
+        "value": "byrank",
+        "label": "Standard"
+      },
+      {
+        "value": "bydate",
+        "label": "By Day"
+      },
+      {
+        "value": "byvideo",
+        "label": "By Video"
+      }
+    ]
+  },
+  "timeBadge": {
+    "source": "epoch",
+    "format": "mm:ss",
+    "epochUnit": "auto",
+    "timezone": "local"
+  },
+  "videoPlayer": {
+    "modal": "video"
+  },
+  "fieldAliases": {
+    "epoch": "epoch"
+  }
+}

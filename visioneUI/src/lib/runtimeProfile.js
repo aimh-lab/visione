@@ -1,5 +1,20 @@
-import runtimeProfiles from '../config/runtimeProfiles.json';
+import defaults from '../config/runtimeProfiles/defaults.json';
+import competitions from '../config/runtimeProfiles/competitions.json';
 import { warnFallback } from './fallbackWarn.js';
+
+// One file per dataset under config/runtimeProfiles/collections/ — add a new dataset
+// by dropping a new <name>.json there, no registry to update. A deployment built
+// without one of these files (e.g. collections/lsc.json removed for a V3C-only
+// build) simply won't bundle that dataset's config.
+const collectionModules = import.meta.glob('../config/runtimeProfiles/collections/*.json', { eager: true });
+const collections = {};
+for (const path in collectionModules) {
+  const match = path.match(/([^/]+)\.json$/);
+  if (!match) continue;
+  const name = match[1].toLowerCase();
+  const mod = collectionModules[path];
+  collections[name] = mod?.default ?? mod;
+}
 
 function isObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -22,30 +37,30 @@ function deepMerge(base, override) {
 }
 
 export function resolveRuntimeProfile(collectionName = 'default', competitionName = 'default') {
-  const defaults = runtimeProfiles?.defaults || {};
   const collectionKey = String(collectionName || 'default').trim().toLowerCase();
   const normalizedCompetition = String(competitionName || 'default').trim();
   const competitionKey = normalizedCompetition.toUpperCase() === 'QA' ? 'Q&A' : normalizedCompetition.toUpperCase();
 
-  const byCollection = runtimeProfiles?.collections?.[collectionKey] || {};
+  const byCollection = collections[collectionKey] || {};
   const isUnknownCollection = (!isObject(byCollection) || Object.keys(byCollection).length === 0)
     && collectionKey !== 'default';
 
   if (isUnknownCollection) {
     throw new Error(
-      `resolveRuntimeProfile: collection "${collectionKey}" has no entry in runtimeProfiles.json. ` +
-      `Add a "collections.${collectionKey}" section (media.hasVideos, groupBy, queryFilters, timeBadge, ` +
-      `videoPlayer, titleFormatting, dres — see the "lsc" entry for reference) before pointing the UI at this dataset.`
+      `resolveRuntimeProfile: collection "${collectionKey}" has no entry in ` +
+      `src/config/runtimeProfiles/collections/. Add a "${collectionKey}.json" file there ` +
+      `(media.hasVideos, groupBy, queryFilters, timeBadge, videoPlayer, titleFormatting, dres — ` +
+      `see collections/lsc.json for reference) before pointing the UI at this dataset.`
     );
   }
 
-  const hasCompetitionEntry = !!runtimeProfiles?.competitions?.[competitionKey];
-  const byCompetition = runtimeProfiles?.competitions?.[competitionKey] || runtimeProfiles?.competitions?.default || {};
+  const hasCompetitionEntry = !!competitions?.[competitionKey];
+  const byCompetition = competitions?.[competitionKey] || competitions?.default || {};
 
   if (!hasCompetitionEntry && competitionKey !== 'DEFAULT') {
     warnFallback(
       'runtimeProfile.resolveRuntimeProfile.competition',
-      `Competition "${competitionKey}" has no entry in runtimeProfiles.json; using "competitions.default".`,
+      `Competition "${competitionKey}" has no entry in competitions.json; using "default".`,
       { competitionKey }
     );
   }
