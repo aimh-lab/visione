@@ -39,26 +39,11 @@ export function serializeToURL(state) {
     if (packed) params.set('qimg', packed);
   }
   
-  // Active tab
-  if (state.activeTab && state.activeTab !== 'View1') {
-    params.set('tab', state.activeTab);
-  }
-  
   // View mode
  // if (state.viewMode && state.viewMode !== 'byrank') {
  //   params.set('view', state.viewMode);
  // }
-  
-  // Video ID (for VideoSummary)
-  if (state.videoId) {
-    params.set('video', state.videoId);
-  }
-  
-  // Similarity base image
-  if (state.similarityBase) {
-    params.set('sim', state.similarityBase);
-  }
-  
+
   // RF images (imgId only, compact)
   if (state.rfPositive?.length > 0) {
     params.set('rfp', state.rfPositive.map(r => r.imgId).join(','));
@@ -132,30 +117,12 @@ export function deserializeFromURL(urlString) {
     }
   }
   
-  // Active tab
-  const tab = params.get('tab');
-  if (tab && ['View1', 'View2', 'Similarity'].includes(tab)) {
-    state.activeTab = tab;
-  }
-  
   // View mode
   //const view = params.get('view');
   //if (view && ['byrank', 'byvideo'].includes(view)) {
   //  state.viewMode = view;
   //}
-  
-  // Video ID
-  const video = params.get('video');
-  if (video) {
-    state.videoId = video;
-  }
-  
-  // Similarity base
-  const sim = params.get('sim');
-  if (sim) {
-    state.similarityBase = sim;
-  }
-  
+
   // RF images
   const rfp = params.get('rfp');
   if (rfp) {

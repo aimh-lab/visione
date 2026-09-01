@@ -99,47 +99,6 @@ export function transformSearchResults(resultSet, submittedLookup = new Set()) {
   });
 }
 
-export function transformSimilarityResults(resultSet, submittedLookup = new Set()) {
-  const arr = findResultsArray(resultSet) || [];
-  const expanded = expandTupleAwareItems(arr);
-
-  return expanded.map((entry, index) => {
-    const info = extractImageInfo(entry.rawItem, index);
-    const raw = info.raw && typeof info.raw === 'object' ? info.raw : {};
-    const scoreSource = Number(raw.score ?? raw.similarity ?? raw.distance);
-    
-    return applySubmittedState({
-      index,
-      title: info.imgId ?? `Image ${index + 1}`,
-      videoId: info.videoId,
-      imgId: info.imgId,
-      url: info.url,
-      imageUrl: info.imageUrl,
-      thumbnailUrl: info.thumbnailUrl,
-      videoUrl: info.videoUrl,
-      timestamp: info.timestamp,
-      date: info.timestamp,
-      size: info.size ?? null,
-      resolution: info.resolution ?? null,
-      tags: info.tags ?? [],
-      submitted: false,
-      tupleRank: entry.tupleRank,
-      tupleMemberIndex: entry.tupleMemberIndex,
-      tupleGroupKey: entry.tupleGroupKey,
-      
-      // Timecodes are resolved per-frame via getMiddleTimestamp API
-      // (do NOT copy raw timestamp/time/frame_time — they may not be video timecodes)
-      
-      // Similarity score (se disponibile)
-      similarityScore: Number.isFinite(scoreSource) ? scoreSource : 0,
-      
-      raw,
-      tupleItems: entry.tupleItems,
-      tupleSize: entry.tupleSize
-    }, submittedLookup);
-  });
-}
-
 export function transformVideoKeyframes(rawFrames, videoId, submittedLookup = new Set()) {
   return rawFrames.map((item, index) => {
     const imgId = typeof item === 'string'

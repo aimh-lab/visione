@@ -4,15 +4,13 @@
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
   import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   import SearchView from "../views/SearchView.svelte";
-  import VideoSummaryView from "../views/VideoSummaryView.svelte";
-  import SimilarityView from "../views/SimilarityView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
   import SettingsModal from "../components/SettingsModal.svelte";
   import InputModal from "../components/InputModal.svelte";
   import Keybindings from "../components/Keybindings.svelte";
   import { visioneAPI } from '../services/api.js';
-  import { transformSearchResults, transformSimilarityResults, transformVideoKeyframes } from '../services/transformers.js';
+  import { transformSearchResults, transformVideoKeyframes } from '../services/transformers.js';
   import VideoPlayerModal from "../components/VideoPlayerModal.svelte";
   import SlideshowModal from "../components/SlideshowModal.svelte";
   import VideoSummaryModal from "../components/VideoSummaryModal.svelte";
@@ -29,7 +27,6 @@
   import { browser } from '$app/environment';
   import { pushState } from '$app/navigation';
   import { createSearchController } from '$lib/controllers/searchController.js';
-  import { createSimilarityController } from '$lib/controllers/similarityController.js';
   import { createVideoController } from '$lib/controllers/videoController.js';
   import { createDresController } from '$lib/controllers/dresController.js';
   import { createScrollManager } from '$lib/controllers/scrollManager.js';
@@ -54,8 +51,6 @@
 
   // Local refs to containers (updated via register callbacks)
   let imagesContainer;
-  let similarityContainer;
-  let view2Container;
 
   // Drag & Drop for Similarity
   let showDropzone = false;
@@ -153,9 +148,8 @@
     const normalizedHighlight = String(highlightImgId || '').trim();
     if (normalizedHighlight) {
       const fromSearch = images.find((i) => i?.imgId === normalizedHighlight);
-      const fromSimilarity = similarityImages.find((i) => i?.imgId === normalizedHighlight);
       const fromView2 = (view2Frames || []).find((i) => i?.imgId === normalizedHighlight);
-      const source = fromSearch || fromSimilarity || fromView2;
+      const source = fromSearch || fromView2;
       return source?.title || source?.imgId || normalizedHighlight;
     }
     return String(videoId || '').trim();
@@ -317,22 +311,12 @@
 
   // Controller modali
   const searchModal = createModalController();
-  const similarityModal = createModalController();
-  const videoModal = createModalController();
 
   // Stati derivati dai controller
   let selectedImage = null;
   let isModalOpen = false;
 
-  let simSelected = null;
-  let simIsModalOpen = false;
-
-  let view2SelectedFrame = null;
-  let view2IsModalOpen = false;
-
   $: ({ isOpen: isModalOpen, selected: selectedImage } = $searchModal);
-  $: ({ isOpen: simIsModalOpen, selected: simSelected } = $similarityModal);
-  $: ({ isOpen: view2IsModalOpen, selected: view2SelectedFrame } = $videoModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
   function getAnySelectedDresEvaluationId(mapLike) {
@@ -422,7 +406,7 @@
   let rfMethod = 'rocchio';
   let selectedIndex = 0;
 
-  // View2 state
+  // Video summary state (shared by VideoSummaryModal)
   let view2Frames = null;
   let view2VideoId = null;
   let view2Loading = false;
@@ -431,22 +415,10 @@
   let view2ContextDay = null;
   let view2SelectedImgId = null;
 
-  // Similarity state
-  let similarityLoading = false;
-  let similarityError = null;
-  let similarityResultSet = null;
-  let similarityImages = [];
-  let similarityBaseImgId = null;
-
-  // Similarity UI
-  let similarityDisplayRows = [];
   let focusSearchInputHandler = () => {};
   let searchViewRef;
 
-  // Separate variables for each view
   let lastViewedSearchIndex = 0;
-  let lastViewedVideoIndex = 0;
-  let lastViewedSimilarityIndex = 0;
 
   let searchTime = 0;
   let translatedQueryHints = {};
@@ -911,12 +883,8 @@
   // Memoized flat lists (recomputed only when display rows change)
   let flatDisplayList = [];
   $: flatDisplayList = displayRows?.flat?.() ?? [];
-  let flatSimilarityList = [];
-  $: flatSimilarityList = similarityDisplayRows?.flat?.() ?? [];
 
   const registerContainer = (el) => { scrollMgr.registerContainer('View1', el); imagesContainer = el; };
-  const registerSimilarityContainer = (el) => { scrollMgr.registerContainer('Similarity', el); similarityContainer = el; };
-  const registerView2Container = (el) => { scrollMgr.registerContainer('View2', el); view2Container = el; };
 
   let prevLayoutTab = null;
   $: if ($uiStore.layoutTab && $uiStore.layoutTab !== prevLayoutTab) {
@@ -1162,25 +1130,6 @@
     syncURL
   });
 
-  const similarityController = createSimilarityController({
-    api: visioneAPI,
-    toasts,
-    transformSimilarityResults,
-    tick,
-
-    getSubmittedIds: getSubmittedLookup,
-
-    setSimilarityState: ({ loading, error, resultSet, images: imgs }) => {
-      if (loading !== undefined) similarityLoading = loading;
-      if (error !== undefined) similarityError = error;
-      if (resultSet !== undefined) similarityResultSet = resultSet;
-      if (imgs !== undefined) similarityImages = imgs;
-    },
-
-    isRestoringFromHistory: () => isRestoringFromHistory,
-    syncURL
-  });
-
   const videoController = createVideoController({
     api: visioneAPI,
     transformVideoKeyframes,
@@ -1203,10 +1152,8 @@
 
   // Reactive O(1) lookup indexes for imgId-based operations (DRES, RF, etc.)
   let _imagesIdx = new Map();
-  let _simIdx = new Map();
   let _v2Idx = new Map();
   $: _imagesIdx = new Map(images.map((img, i) => [img.imgId, i]));
-  $: _simIdx = new Map(similarityImages.map((img, i) => [img.imgId, i]));
   $: _v2Idx = new Map((view2Frames || []).map((f, i) => [f.imgId, i]));
 
   // DRES submission controller
@@ -1216,8 +1163,6 @@
     findFrame: (imgId, fallback) => {
       const gIdx = _imagesIdx.get(imgId);
       if (gIdx !== undefined) return images[gIdx];
-      const sIdx = _simIdx.get(imgId);
-      if (sIdx !== undefined) return similarityImages[sIdx];
       const fIdx = _v2Idx.get(imgId);
       if (fIdx !== undefined) return view2Frames[fIdx];
       return fallback
@@ -1238,11 +1183,6 @@
         view2Frames[fIdx] = { ...view2Frames[fIdx], submissionVerdict: verdict };
         view2Frames = [...view2Frames];
       }
-      const sIdx = _simIdx.get(imgId);
-      if (sIdx !== undefined) {
-        similarityImages[sIdx] = { ...similarityImages[sIdx], submissionVerdict: verdict };
-        similarityImages = [...similarityImages];
-      }
       const gIdx = _imagesIdx.get(imgId);
       if (gIdx !== undefined) {
         images[gIdx] = { ...images[gIdx], submissionVerdict: verdict };
@@ -1259,11 +1199,6 @@
       if (fIdx !== undefined) {
         view2Frames[fIdx] = { ...view2Frames[fIdx], ...patch };
         view2Frames = [...view2Frames];
-      }
-      const sIdx = _simIdx.get(id);
-      if (sIdx !== undefined) {
-        similarityImages[sIdx] = { ...similarityImages[sIdx], ...patch };
-        similarityImages = [...similarityImages];
       }
       const gIdx = _imagesIdx.get(id);
       if (gIdx !== undefined) {
@@ -1508,13 +1443,10 @@
   // Video player controller
   const videoPlayerCtrl = createVideoPlayerController({
     getImages: () => images,
-    getSimilarityImages: () => similarityImages,
   });
 
   // Aggiorna i dataset nei controller quando cambiano
   $: searchModal.setItems(images);
-  $: if (!$similarityModal.isOpen) similarityModal.setItems(flatSimilarityList);
-  $: if (view2Frames) videoModal.setItems(view2Frames);
 
   // ---------------------------
   // URL restore
@@ -1544,10 +1476,6 @@
       const sourceForSearch = Array.isArray(restoredTextareas) ? restoredTextareas : textareas;
       const searchTextareas = getTextareasForSearch(sourceForSearch);
       await runSearchImmediate({ textareas: searchTextareas });
-    }
-
-    if (urlState.similarityBase) {
-      await openSimilarity(urlState.similarityBase);
     }
   }
 
@@ -2071,13 +1999,9 @@
       return adjustContextKeyframeSize(step);
     }
 
-    if ($searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || pinnedImageModalOpen) {
+    if ($searchModal.isOpen || pinnedImageModalOpen) {
       adjustImageModalScale(step);
       return true;
-    }
-
-    if (get(uiStore).layoutTab === "View2") {
-      return adjustContextKeyframeSize(step);
     }
 
     return adjustKeyframeSize(step);
@@ -2425,85 +2349,6 @@
     }
   }
 
-  function openSimilarityModalByImg(img) {
-    similarityModal.open(img);
-    lastViewedSimilarityIndex = img.index ?? 0;
-    logRankedList('openSimilarityResult', `index:${lastViewedSimilarityIndex} imgId:${String(img?.imgId || '')}`);
-  }
-
-  function closeSimilarityModal() {
-    logRankedList('closeSimilarityResult');
-    similarityModal.close({ keepSelection: true });
-  }
-
-  function moveSimilarityBy(offset, toFirstOfRow = false) {
-    const items = flatSimilarityList;
-    if (!items || items.length === 0) return;
-
-    const currentIndex = $similarityModal.selected?.index ?? lastViewedSimilarityIndex ?? -1;
-    let targetIndex = -1;
-
-    if (toFirstOfRow) {
-      targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
-    } else {
-      // Navigate in display order (respects byvideo/bydate grouping)
-      const curPos = items.findIndex(item => item.index === currentIndex);
-      const nextPos = curPos < 0
-        ? 0
-        : (curPos + offset + items.length) % items.length;
-      targetIndex = items[nextPos]?.index ?? 0;
-    }
-
-    if (targetIndex >= 0 && targetIndex < similarityImages.length) {
-      const targetItem = similarityImages[targetIndex];
-      similarityModal.select(targetItem);
-      lastViewedSimilarityIndex = targetIndex;
-      logRankedList('navigateSimilarity', `from:${currentIndex} to:${targetIndex} mode:${toFirstOfRow ? 'row' : 'linear'}`);
-      tick().then(() => ui.scrollToImage(similarityContainer, targetIndex));
-    }
-  }
-
-  function openFrameModal(frame) {
-    if (!frame) return;
-    videoModal.open(frame);
-    view2SelectedImgId = frame.imgId;
-    lastViewedVideoIndex = frame.index ?? 0;
-    logRankedList('openFrame', `index:${lastViewedVideoIndex} imgId:${String(frame?.imgId || '')}`);
-    tick().then(() => ui.scrollToImage(view2Container, frame.imgId));
-  }
-
-  function closeFrameModal() {
-    logRankedList('closeFrame');
-    videoModal.close({ keepSelection: true });
-  }
-
-  function navigateFrame(offset, toFirstOfRow = false) {
-    const items = view2Frames || [];
-    if (items.length === 0) return;
-
-    const currentIndex = $videoModal.selected?.index ?? lastViewedVideoIndex ?? -1;
-    let targetIndex = -1;
-
-    if (toFirstOfRow) {
-      targetIndex = getFirstOfNextRow(Math.max(0, currentIndex), offset);
-    } else {
-      if (currentIndex === -1) {
-        targetIndex = 0;
-      } else {
-        targetIndex = (currentIndex + offset + items.length) % items.length;
-      }
-    }
-
-    if (targetIndex >= 0 && targetIndex < items.length) {
-      const targetFrame = items[targetIndex];
-      videoModal.select(targetFrame);
-      view2SelectedImgId = targetFrame.imgId;
-      lastViewedVideoIndex = targetIndex;
-      logRankedList('navigateFrame', `from:${currentIndex} to:${targetIndex} mode:${toFirstOfRow ? 'row' : 'linear'}`);
-      tick().then(() => ui.scrollToImage(view2Container, targetFrame.imgId));
-    }
-  }
-
   // Quick actions dalla status bar
 function handleViewSubmitted() {
     if (!get(uiStore).dresEnabled) return;
@@ -2534,46 +2379,28 @@ function handleViewSubmitted() {
   }
 
   // ---------------------------
-  // Open by imgId (tab-aware)
+  // Open by imgId
   // ---------------------------
   function openByImgId(imgId) {
     if (!imgId) return;
-    const { layoutTab } = get(uiStore);
-
-    if (layoutTab === "View1") {
-      const idx = ui.indexOfImgId(images, imgId);
-      if (idx >= 0) openModal(idx);
-      return;
-    }
-
-    if (layoutTab === "Similarity") {
-      const item = similarityImages[ui.indexOfImgId(similarityImages, imgId)];
-      if (item) similarityModal.open(item);
-      return;
-    }
-
-    if (layoutTab === "View2") {
-      view2SelectedImgId = String(imgId);
-      tick().then(() => ui.scrollToImage(view2Container, view2SelectedImgId));
-    }
+    const idx = ui.indexOfImgId(images, imgId);
+    if (idx >= 0) openModal(idx);
   }
 
   // ---------------------------
   // RF helpers
   // ---------------------------
   function addRFPositiveByImg(imgId, fallback = null) {
-    const fromSim = similarityImages.find(i => i.imgId === imgId);
     const fromSearch = images.find(i => i.imgId === imgId);
-    const imgObj = fromSim || fromSearch || ui.ensureImgObj(imgId, fallback);
+    const imgObj = fromSearch || ui.ensureImgObj(imgId, fallback);
     if (!imgObj) return;
 
     sessionStore.actions.toggleRFPositive({ imgId, imgObj });
   }
 
   function addRFNegativeByImg(imgId, fallback = null) {
-    const fromSim = similarityImages.find(i => i.imgId === imgId);
     const fromSearch = images.find(i => i.imgId === imgId);
-    const imgObj = fromSim || fromSearch || ui.ensureImgObj(imgId, fallback);
+    const imgObj = fromSearch || ui.ensureImgObj(imgId, fallback);
     if (!imgObj) return;
 
     sessionStore.actions.toggleRFNegative({ imgId, imgObj });
@@ -2608,26 +2435,7 @@ function handleViewSubmitted() {
   }
 
   function getSelectedItemForShortcuts() {
-    const { layoutTab } = get(uiStore);
-
-    if (layoutTab === "View1") {
-      return images[lastViewedSearchIndex] || images[selectedIndex] || null;
-    }
-
-    if (layoutTab === "View2") {
-      if (!Array.isArray(view2Frames) || view2Frames.length === 0) return null;
-      const byId = view2SelectedImgId
-        ? view2Frames.find((f) => f.imgId === view2SelectedImgId)
-        : null;
-      return byId || view2Frames[lastViewedVideoIndex] || view2Frames[0] || null;
-    }
-
-    if (layoutTab === "Similarity") {
-      if (!Array.isArray(similarityImages) || similarityImages.length === 0) return null;
-      return similarityImages[lastViewedSimilarityIndex] || similarityImages[0] || null;
-    }
-
-    return null;
+    return images[lastViewedSearchIndex] || images[selectedIndex] || null;
   }
 
   async function focusSearchBox() {
@@ -2636,8 +2444,6 @@ function handleViewSubmitted() {
     if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
     if (pinnedImageModalOpen) pinnedImageModalOpen = false;
     searchModal.close({ keepSelection: true });
-    similarityModal.close({ keepSelection: true });
-    videoModal.close({ keepSelection: true });
     uiStore.actions.setLayoutTab("View1");
     if (!get(uiStore).isSidebarOpen) uiStore.actions.toggleSidebar();
     await tick();
@@ -2726,8 +2532,6 @@ function handleViewSubmitted() {
       scope: normalizedScope
     };
 
-    if (!highlightImgId) lastViewedVideoIndex = 0;
-
     await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight, normalizedScope);
     interactionLogger.logInteractionEvent({
       category: 'BROWSING',
@@ -2736,30 +2540,9 @@ function handleViewSubmitted() {
     }).then(refreshLogCount).catch(() => {});
   }
 
-
   // ---------------------------
   // Similarity
   // ---------------------------
-  async function runSimilaritySearch(baseImgId) {
-    return similarityController.runSimilaritySearch(baseImgId);
-  }
-
-
-  async function openSimilarity(baseImgId) {
-    similarityBaseImgId = baseImgId;
-    scrollMgr.suppressRestore('Similarity');
-    uiStore.actions.setLayoutTab("Similarity");
-    lastViewedSimilarityIndex = 0;
-
-    await runSimilaritySearch(baseImgId);
-    tick().then(() => similarityContainer?.scrollTo?.({ top: 0 }));
-    interactionLogger.logInteractionEvent({
-      category: 'BROWSING',
-      type: 'exploration',
-      value: `similarity:${String(baseImgId || '')}`
-    }).then(refreshLogCount).catch(() => {});
-  }
-
   function addSimilarityAsSearchStep(baseImgId, frame = null) {
     const imgId = String(baseImgId || "").trim();
     if (!imgId) return;
@@ -2822,7 +2605,6 @@ function handleViewSubmitted() {
     const resolvedFrame =
       frame ||
       images.find((i) => i?.imgId === imgId) ||
-      similarityImages.find((i) => i?.imgId === imgId) ||
       (view2Frames || []).find((i) => i?.imgId === imgId) ||
       null;
 
@@ -2930,36 +2712,12 @@ function handleViewSubmitted() {
   // Row navigation helper (DOM-based)
   // ---------------------------
   function getFirstOfNextRow(currentIndex, direction) {
-    const layoutTab = get(uiStore).layoutTab;
-
-    if (layoutTab === "View1") {
-      return getFirstOfNextRowDOM({
-        currentIndex,
-        direction,
-        container: imagesContainer,
-        items: images
-      });
-    }
-
-    if (layoutTab === "View2") {
-      return getFirstOfNextRowDOM({
-        currentIndex,
-        direction,
-        container: view2Container,
-        items: view2Frames || []
-      });
-    }
-
-    if (layoutTab === "Similarity") {
-      return getFirstOfNextRowDOM({
-        currentIndex,
-        direction,
-        container: similarityContainer,
-        items: flatSimilarityList
-      });
-    }
-
-    return currentIndex;
+    return getFirstOfNextRowDOM({
+      currentIndex,
+      direction,
+      container: imagesContainer,
+      items: images
+    });
   }
 
   // ---------------------------
@@ -2998,15 +2756,7 @@ function handleViewSubmitted() {
     view2Loading = false;
     view2Error = null;
 
-    similarityImages = [];
-    similarityResultSet = null;
-    similarityBaseImgId = null;
-    similarityLoading = false;
-    similarityError = null;
-
     searchModal.close();
-    similarityModal.close();
-    videoModal.close();
     pinnedImageModalOpen = false;
     isVideoPlayerOpen = false;
     isSlideshowOpen = false;
@@ -3014,8 +2764,6 @@ function handleViewSubmitted() {
     activeVideoSummaryContext = { videoId: null, highlightImgId: null, label: '', scope: 'hour' };
 
     lastViewedSearchIndex = 0;
-    lastViewedVideoIndex = 0;
-    lastViewedSimilarityIndex = 0;
     selectedIndex = 0;
 
     scrollMgr.resetAllScrollPositions();
@@ -3035,17 +2783,6 @@ function handleViewSubmitted() {
   // Rows derivation (UI store driven)
   // ---------------------------
   $: displayRows = buildRows(images, {
-    viewMode: $uiStore.viewMode,
-    sortMode: $uiStore.sortMode,
-    resultsPerGroup: $uiStore.resultsPerGroup,
-    resultsAutoFit: true,
-    runtimeProfile,
-    showLocalTimeInTitles: $uiStore.showLocalTimeInTitles,
-    timeBadgeTimezoneOverride: $uiStore.timeBadgeTimezoneOverride
-  });
-
-
-  $: similarityDisplayRows = buildRows(similarityImages, {
     viewMode: $uiStore.viewMode,
     sortMode: $uiStore.sortMode,
     resultsPerGroup: $uiStore.resultsPerGroup,
@@ -3087,12 +2824,9 @@ function handleViewSubmitted() {
 
 <!-- Template invariato -->
 <Keybindings
-  isModalOpen={$searchModal.isOpen || $similarityModal.isOpen || $videoModal.isOpen || isVideoSummaryModalOpen || pinnedImageModalOpen}
+  isModalOpen={$searchModal.isOpen || isVideoSummaryModalOpen || pinnedImageModalOpen}
   isVideoPlayerOpen={isVideoPlayerOpen || isSlideshowOpen}
-  onSwitchTab={(tab) => {
-    if (tab !== 'View1') return;
-    uiStore.actions.setLayoutTab(tab);
-  }}
+  onSwitchTab={() => uiStore.actions.setLayoutTab('View1')}
   onSubmitSelected={() => {
     const item = getSelectedItemForShortcuts();
     if (item?.imgId) submitByImgId(item.imgId, item, 'keyboard-shortcut');
@@ -3121,28 +2855,13 @@ function handleViewSubmitted() {
     openVideoSummary(videoId, item.imgId);
   }}
   onOpenAtSelected={() => {
-    if ($searchModal.isOpen || $videoModal.isOpen || $similarityModal.isOpen) return;
-
-    const { layoutTab } = get(uiStore);
-
-    if (layoutTab === "View1") {
-      openModal(lastViewedSearchIndex);
-    } else if (layoutTab === "View2" && view2Frames?.length > 0) {
-      openFrameModal(view2Frames[lastViewedVideoIndex]);
-    } else if (layoutTab === "Similarity" && similarityImages?.length > 0) {
-      openSimilarityModalByImg(similarityImages[lastViewedSimilarityIndex]);
-    }
+    if ($searchModal.isOpen) return;
+    openModal(lastViewedSearchIndex);
   }}
-  onNavigateImage={(offset, toFirstOfRow = false) => {
-    if ($videoModal.isOpen) navigateFrame(offset, toFirstOfRow);
-    else if ($similarityModal.isOpen) moveSimilarityBy(offset, toFirstOfRow);
-    else navigateImage(offset, toFirstOfRow);
-  }}
+  onNavigateImage={(offset, toFirstOfRow = false) => navigateImage(offset, toFirstOfRow)}
   onCloseModal={() => {
     if (isSlideshowOpen) isSlideshowOpen = false;
     else if (isVideoSummaryModalOpen) isVideoSummaryModalOpen = false;
-    else if ($videoModal.isOpen) closeFrameModal();
-    else if ($similarityModal.isOpen) closeSimilarityModal();
     else closeModal();
   }}
 />
@@ -3396,8 +3115,8 @@ function handleViewSubmitted() {
   isSidebarRightOpen={$uiStore.isSidebarRightOpen}
   viewMode={$uiStore.viewMode}
   sortMode={$uiStore.sortMode}
-  keyframeSize={$uiStore.layoutTab === "View2" ? $uiStore.contextKeyframeSize : $uiStore.keyframeSize}
-  showViewModeRadios={$uiStore.layoutTab === "View1" || $uiStore.layoutTab === "Similarity"}
+  keyframeSize={$uiStore.keyframeSize}
+  showViewModeRadios={true}
   {runtimeProfile}
   dresEnabled={$uiStore.dresEnabled}
   challengeType={$uiStore.dresChallengeType}
@@ -3580,84 +3299,6 @@ function handleViewSubmitted() {
         }}
       />
 
-    {:else if $uiStore.layoutTab === "View2"}
-      <VideoSummaryView
-        registerContainer={registerView2Container}
-        isSidebarOpen={$uiStore.isSidebarOpen}
-        frames={view2Frames}
-        loading={view2Loading}
-        error={view2Error}
-        selectedFrameId={view2SelectedImgId}
-        virtualizationEnabled={$uiStore.virtualizationEnabled}
-        virtualizationThreshold={$uiStore.virtualizationThreshold}
-        justifyResultRows={$uiStore.justifyResultRows}
-        tupleIndicatorMode={$uiStore.tupleIndicatorMode}
-        videoBadgeOrientation={$uiStore.videoBadgeOrientation}
-        showSubmitUI={$uiStore.dresEnabled}
-        challengeType={$uiStore.dresChallengeType}
-        imageModalScale={$uiStore.imageModalScale}
-        {runtimeProfile}
-        showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
-        resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
-
-        onToggleSidebar={() => uiStore.actions.toggleSidebar()}
-
-        onOpenFrame={(frame) => openFrameModal(frame)}
-        onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
-        onPinImage={pinImage}
-        {isImagePinned}
-        addRFPositiveByImg={addRFPositiveByImg}
-        addRFNegativeByImg={addRFNegativeByImg}
-        submitByImgId={submitByImgId}
-        frameIsModalOpen={$videoModal.isOpen}
-        selectedFrame={$videoModal.selected}
-        totalFrames={(view2Frames?.length ?? 0)}
-        onCloseFrameModal={closeFrameModal}
-        onPrevFrame={() => navigateFrame(-1)}
-        onNextFrame={() => navigateFrame(1)}
-        onAdjustImageModalScale={adjustImageModalScale}
-        openVideoPlayerBy={openVideoPlayerBy}
-      />
-
-    {:else if $uiStore.layoutTab === "Similarity"}
-      <SimilarityView
-        registerContainer={registerSimilarityContainer}
-        isSidebarOpen={$uiStore.isSidebarOpen}
-        viewMode={$uiStore.viewMode}
-        rows={similarityDisplayRows}
-        loading={similarityLoading}
-        error={similarityError}
-        simSelected={$similarityModal.selected}
-        simIsModalOpen={$similarityModal.isOpen}
-        virtualizationEnabled={$uiStore.virtualizationEnabled}
-        virtualizationThreshold={$uiStore.virtualizationThreshold}
-        justifyResultRows={$uiStore.justifyResultRows}
-        tupleIndicatorMode={$uiStore.tupleIndicatorMode}
-        videoBadgeOrientation={$uiStore.videoBadgeOrientation}
-        showSubmitUI={$uiStore.dresEnabled}
-        challengeType={$uiStore.dresChallengeType}
-        imageModalScale={$uiStore.imageModalScale}
-        {runtimeProfile}
-        showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
-        resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
-
-        onToggleSidebar={() => uiStore.actions.toggleSidebar()}
-
-        openVideoPlayerBy={openVideoPlayerBy}
-        openByImgId={openByImgId}
-        addRFPositiveByImg={addRFPositiveByImg}
-        addRFNegativeByImg={addRFNegativeByImg}
-        submitByImgId={submitByImgId}
-        onVideoSummary={(vid, imgId) => openVideoSummary(vid, imgId)}
-        onSimilarity={(imgId, img) => addSimilarityAsSearchStep(imgId, img)}
-        onPinImage={pinImage}
-        {isImagePinned}
-        onAddSubmittedToRFPositive={addSubmittedToRFPositive}
-        onCloseSimModal={closeSimilarityModal}
-        onPrevSim={() => moveSimilarityBy(-1)}
-        onNextSim={() => moveSimilarityBy(1)}
-        onAdjustImageModalScale={adjustImageModalScale}
-      />
     {/if}
   </div>
 
@@ -3673,7 +3314,7 @@ function handleViewSubmitted() {
     sortMode={$uiStore.sortMode}
     {runtimeProfile}
     searchTime={searchTime}
-    isLoading={searchLoading || similarityLoading || view2Loading}
+    isLoading={searchLoading || view2Loading}
     showSubmitted={$uiStore.dresEnabled}
     dresEnabled={$uiStore.dresEnabled}
     dresUsername={$uiStore.dresUsername}
