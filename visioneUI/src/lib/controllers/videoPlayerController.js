@@ -9,9 +9,8 @@ import { parseVideoIdFromImgId } from '../videoIdentity.js';
 /**
  * @param {Object} deps
  * @param {() => Array} deps.getImages           – current search results
- * @param {() => Array} deps.getSimilarityImages  – current similarity results
  */
-export function createVideoPlayerController({ getImages, getSimilarityImages }) {
+export function createVideoPlayerController({ getImages }) {
   const normalizeVideoId = (value) => {
     return String(value || '');
   };
@@ -52,7 +51,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
 
 
   /**
-   * Collect imgIds from search + similarity results that belong to `videoId`.
+   * Collect imgIds from search results that belong to `videoId`.
    */
   function getHighlightedKeyframesForVideo(videoId) {
     if (!videoId) return [];
@@ -62,11 +61,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
       .filter(img => img.videoId === vid)
       .map(img => img.imgId);
 
-    const simKf = getSimilarityImages()
-      .filter(img => img.videoId === vid)
-      .map(img => img.imgId);
-
-    return [...new Set([...searchKf, ...simKf])];
+    return [...new Set(searchKf)];
   }
 
   /**
@@ -79,9 +74,7 @@ export function createVideoPlayerController({ getImages, getSimilarityImages }) 
   async function buildPlayerData(imgId, videoId, startAt) {
     const fallbackVid = videoId ?? extractVideoIdFromImageId(imgId);
     const vid = normalizeVideoId(fallbackVid);
-    const matched = getImages().find((img) => img?.imgId === imgId)
-      || getSimilarityImages().find((img) => img?.imgId === imgId)
-      || null;
+    const matched = getImages().find((img) => img?.imgId === imgId) || null;
     const explicitVideoUrl = matched?.videoUrl || matched?.raw?.metadata?.videos || null;
     const resolvedVideoUrl = explicitVideoUrl || visioneAPI.getVideoUrl(vid, 'medium');
     const parsedTimestamp = Number(matched?.timestamp);
