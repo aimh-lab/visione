@@ -8,7 +8,6 @@
 
   // Parent-provided state/props (unchanged)
   export let isSidebarOpen = true;
-  export let contentScale = 1;
   export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";
 
@@ -101,7 +100,7 @@
   <!-- Main column (same structure as SearchView) -->
  <div class="flex flex-col flex-1 min-w-0">
     <div class="content bg-gray-100 flex-1"
-         style="height:100%; zoom:{contentScale};">
+         style="height:100%;">
 
     <div class="h-full flex flex-col">
       {#if loading}

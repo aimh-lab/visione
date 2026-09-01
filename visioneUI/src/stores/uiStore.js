@@ -157,7 +157,6 @@ function createUIStore() {
         theme: s.theme ?? u.theme,
         viewMode: s.viewMode ?? u.viewMode,
         sortMode: s.sortMode ?? u.sortMode,
-        contentScale: s.contentScale ?? u.contentScale,
 
         isSidebarOpen: s.isSidebarOpen ?? u.isSidebarOpen,
         isSidebarRightOpen: s.isSidebarRightOpen ?? u.isSidebarRightOpen,
@@ -255,7 +254,6 @@ function createUIStore() {
         theme: DEFAULT.theme,
         viewMode: DEFAULT.viewMode,
         sortMode: DEFAULT.sortMode,
-        contentScale: DEFAULT.contentScale,
         isSidebarOpen: DEFAULT.isSidebarOpen,
         isSidebarRightOpen: DEFAULT.isSidebarRightOpen,
         sidebarLeftWidth: DEFAULT.sidebarLeftWidth,
@@ -398,11 +396,6 @@ function createUIStore() {
       const safe = Math.min(400, Math.max(80, Number(contextKeyframeSize) || DEFAULT.contextKeyframeSize));
       update(u => ({ ...u, contextKeyframeSize: safe }));
       persist({ contextKeyframeSize: safe });
-    },
-
-    setContentScale(contentScale) {
-      update(u => ({ ...u, contentScale }));
-      persist({ contentScale });
     },
 
     toggleSidebar() {

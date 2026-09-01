@@ -12,7 +12,6 @@ import { DRES_CHALLENGE_TYPES, DEFAULT_DRES_CHALLENGE_TYPE } from './dresConfig.
 
 export const APP_SETTINGS_DEFAULTS = {
   theme: 'default',
-  contentScale: 1,
   viewMode: 'byvideo',
   sortMode: 'relevance',
   isSidebarOpen: true,
