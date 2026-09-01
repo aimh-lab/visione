@@ -1771,16 +1771,6 @@
     scheduleURLSync();
   }
 
-  function handleZoomIn() {
-    const { contentScale } = get(uiStore);
-    uiStore.actions.setContentScale(Math.min(2, +(contentScale + 0.1).toFixed(2)));
-  }
-
-  function handleZoomOut() {
-    const { contentScale } = get(uiStore);
-    uiStore.actions.setContentScale(Math.max(0.5, +(contentScale - 0.1).toFixed(2)));
-  }
-
   $: if (lastDiscoveryPayload) {
     configureSearchMetadataFromDiscovery(lastDiscoveryPayload, runtimeProfile);
   }
@@ -3327,7 +3317,6 @@ function handleViewSubmitted() {
   {discoveryMetadataFields}
   showLocalTimeInTitles={$uiStore.showLocalTimeInTitles}
   resultsetBadgeLabelMode={$uiStore.resultsetBadgeLabelMode}
-  contentScale={$uiStore.contentScale}
   contextKeyframeSize={$uiStore.contextKeyframeSize}
   imageModalScale={$uiStore.imageModalScale}
   videoBadgeOrientation={$uiStore.videoBadgeOrientation}
@@ -3466,7 +3455,6 @@ function handleViewSubmitted() {
         {submittedImages}
         {submittedAnswers}
         viewMode={$uiStore.viewMode}
-        contentScale={$uiStore.contentScale}
         selectedImage={$searchModal.selected}
         isModalOpen={$searchModal.isOpen}
         totalImages={totalImages}
@@ -3596,7 +3584,6 @@ function handleViewSubmitted() {
       <VideoSummaryView
         registerContainer={registerView2Container}
         isSidebarOpen={$uiStore.isSidebarOpen}
-        contentScale={$uiStore.contentScale}
         frames={view2Frames}
         loading={view2Loading}
         error={view2Error}
@@ -3636,7 +3623,6 @@ function handleViewSubmitted() {
       <SimilarityView
         registerContainer={registerSimilarityContainer}
         isSidebarOpen={$uiStore.isSidebarOpen}
-        contentScale={$uiStore.contentScale}
         viewMode={$uiStore.viewMode}
         rows={similarityDisplayRows}
         loading={similarityLoading}

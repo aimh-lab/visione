@@ -7,7 +7,6 @@
   type Frame = { imgId?: string; videoId?: string; [key: string]: unknown };
 
   export let isSidebarOpen = true;
-  export let contentScale = 1;
 
   export let frames: Frame[] | null = null;
   export let loading = false;
@@ -67,7 +66,7 @@
 
   <div class="flex flex-col flex-grow">
     <div class="content bg-gray-100 flex-1"
-         style="height:100%; zoom:{contentScale};">
+         style="height:100%;">
 
     <div class="h-full flex flex-col">
       {#if loading}

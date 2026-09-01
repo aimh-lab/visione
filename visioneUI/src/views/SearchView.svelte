@@ -53,7 +53,6 @@
   export let submittedImages: Img[] = [];
   export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";
-  export let contentScale = 1;
   export let images: Img[] = [];
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
@@ -279,7 +278,7 @@
     {/if}
 
     <div class="content bg-gray-100 flex-1 overflow-x-hidden"
-         style="height:100%; zoom:{contentScale};">
+         style="height:100%;">
 
       <div class="flex-1 h-full" class:overflow-y-auto={isFirstVisit} class:overflow-hidden={!isFirstVisit}>
         {#if isFirstVisit}

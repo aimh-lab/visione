@@ -34,7 +34,6 @@
   export let virtualizationEnabled = true;
   export let virtualizationThreshold = 40;
   export let justifyResultRows = false;
-  export let contentScale = 1;
   export let contextKeyframeSize = 130;
   export let imageModalScale = 100;
   export let rfPositive: Frame[] = [];
@@ -88,7 +87,7 @@
   $: contextSubtitle = safeContextScope === "day"
     ? `Day${contextDayLabel ? ` ${contextDayLabel}` : ""}`
     : (videoId ? `${hourScopeLabel} ${videoId}` : "Quick inspect mode");
-  $: effectiveContextImageSize = Math.round((Number(contextKeyframeSize) || 130) * (Number(contentScale) || 1));
+  $: effectiveContextImageSize = Math.round(Number(contextKeyframeSize) || 130);
 
   const MIN_WIDTH = 820;
   const MIN_HEIGHT = 520;
