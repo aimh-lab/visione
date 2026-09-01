@@ -36,7 +36,7 @@
   import { createVideoPlayerController } from '$lib/controllers/videoPlayerController.js';
   import { resolveVideoId, parseVideoIdFromImgId } from '$lib/videoIdentity.js';
   import { warnFallback } from '$lib/fallbackWarn.js';
-  import { createVbsLogger } from '../services/vbsLogger.js';
+  import { createInteractionLogger } from '../services/interactionLogger.js';
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
   import { resolveGroupByConfig, resolveViewMode, resolveSortMode, isVideoLikeGroupBy } from '$lib/groupByConfig.js';
   import { formatGroupDateLabel, formatGroupHourLabel } from '$lib/titleFormatting.js';
@@ -976,9 +976,9 @@
     });
   }
 
-  const vbsLogger = createVbsLogger();
+  const interactionLogger = createInteractionLogger();
 
-  $: vbsLogger.setOptions({ resultLimit: logResultsLimit });
+  $: interactionLogger.setOptions({ resultLimit: logResultsLimit });
 
   function getLoggerContext() {
     const ui = get(uiStore);
@@ -995,16 +995,16 @@
   }
 
   async function refreshLogCount() {
-    logUserFolder = String(vbsLogger.getUserFolder() || 'unknown-user');
+    logUserFolder = String(interactionLogger.getUserFolder() || 'unknown-user');
     try {
-      logCount = await vbsLogger.countForCurrentUser();
+      logCount = await interactionLogger.countForCurrentUser();
     } catch {
       logCount = 0;
     }
   }
 
   function logBrowsingLight(type, value) {
-    vbsLogger.logInteractionEvent({
+    interactionLogger.logInteractionEvent({
       category: 'BROWSING',
       type,
       value
@@ -1137,7 +1137,7 @@
 
       const settings = get(uiStore);
 
-      vbsLogger.logResultSet({
+      interactionLogger.logResultSet({
         textareas: queryTextareas,
         relevanceFeedback,
         resultSet,
@@ -1281,7 +1281,7 @@
         `reason:${String(reason || '')}`,
         `desc:${String(description || '')}`
       ].join(' | ');
-      vbsLogger.logInteractionEvent({
+      interactionLogger.logInteractionEvent({
         category: 'COOPERATION',
         type: 'submitFrame',
         value: payload
@@ -1296,7 +1296,7 @@
         `desc:${String(description || '')}`,
         `text:${String(text || '')}`
       ].join(' | ');
-      vbsLogger.logInteractionEvent({
+      interactionLogger.logInteractionEvent({
         category: 'COOPERATION',
         type: 'submitText',
         value: payload
@@ -1571,7 +1571,7 @@
       );
       // Strict startup: keep video URLs disabled until discovery resolves a profile.
       visioneAPI.setSupportsVideos(false);
-      await vbsLogger.initSession(getLoggerContext());
+      await interactionLogger.initSession(getLoggerContext());
       await refreshLogCount();
       uiStore.actions.setLayoutTab('View1'); // refresh sempre View1
       await tick();
@@ -1994,8 +1994,18 @@
     return Array.from(out.values());
   }
 
+  function computeSettingsLogKey(settingsLike) {
+    const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
+    return [
+      String(settings?.dresChallengeType || 'KIS'),
+      String(!!settings?.dresEnabled),
+      String(!!settings?.autoTranslateQueries)
+    ].join('|');
+  }
+
   function applySettings(e) {
     const previousDresKey = computeDresEvaluationLoadKey(get(uiStore));
+    const previousLogKey = computeSettingsLogKey(get(uiStore));
     uiStore.actions.applySettings(e.detail);
     const detail = e?.detail || {};
     const nextDresKey = computeDresEvaluationLoadKey({ ...get(uiStore), ...detail });
@@ -2005,11 +2015,19 @@
       scheduleDresEvaluationRefresh();
     }
 
-    vbsLogger.logInteractionEvent({
-      category: 'OTHER',
-      type: 'settingsUpdate',
-      value: `challenge:${String(detail.dresChallengeType || get(uiStore).dresChallengeType || 'KIS')} dresEnabled:${detail.dresEnabled ? 'true' : 'false'} autoTranslate:${detail.autoTranslateQueries ? 'true' : 'false'}`
-    }).then(refreshLogCount).catch(() => {});
+    // Most settings changes (keyframe size, virtualization threshold, ...) have
+    // nothing to do with DRES/translation and fire on every keystroke while typing —
+    // only log (and pay the IndexedDB write + count-refresh cost) when the fields
+    // this event is actually about have changed.
+    const nextState = get(uiStore);
+    const nextLogKey = computeSettingsLogKey(nextState);
+    if (nextLogKey !== previousLogKey) {
+      interactionLogger.logInteractionEvent({
+        category: 'OTHER',
+        type: 'settingsUpdate',
+        value: `challenge:${String(nextState?.dresChallengeType || 'KIS')} dresEnabled:${nextState?.dresEnabled ? 'true' : 'false'} autoTranslate:${nextState?.autoTranslateQueries ? 'true' : 'false'}`
+      }).then(refreshLogCount).catch(() => {});
+    }
   }
 
   function adjustImageModalScale(delta = 0) {
@@ -2079,8 +2097,8 @@
     const nextType = String(e?.detail?.type || 'KIS');
     uiStore.actions.setDresChallengeType(nextType);
     refreshDresEvaluationOptions().catch(() => {});
-    vbsLogger.initSession(getLoggerContext()).then(async () => {
-      await vbsLogger.logInteractionEvent({
+    interactionLogger.initSession(getLoggerContext()).then(async () => {
+      await interactionLogger.logInteractionEvent({
         category: 'OTHER',
         type: 'challengeType',
         value: nextType
@@ -2104,7 +2122,7 @@
 
     toasts.info(next ? 'Auto-translate enabled.' : 'Auto-translate disabled.');
 
-    vbsLogger.logInteractionEvent({
+    interactionLogger.logInteractionEvent({
       category: 'OTHER',
       type: 'autoTranslateToggle',
       value: next ? 'enabled' : 'disabled'
@@ -2119,7 +2137,7 @@
 
     isExportingLogs = true;
     try {
-      const result = await vbsLogger.exportForCurrentUser();
+      const result = await interactionLogger.exportForCurrentUser();
       await refreshLogCount();
       if (!result?.exported) {
         if (result?.mode === 'cancelled') {
@@ -2152,7 +2170,7 @@
       return;
     }
 
-    const userFolder = String(vbsLogger.getUserFolder() || 'unknown-user');
+    const userFolder = String(interactionLogger.getUserFolder() || 'unknown-user');
     const firstConfirm = window.confirm(
       `Delete ${logCount} local logs for user folder "${userFolder}"? This cannot be undone.`
     );
@@ -2169,7 +2187,7 @@
 
     isDeletingLogs = true;
     try {
-      const result = await vbsLogger.deleteForCurrentUser();
+      const result = await interactionLogger.deleteForCurrentUser();
       await refreshLogCount();
       toasts.success(`Deleted ${result?.deleted || 0} local logs.`);
     } catch (error) {
@@ -2721,7 +2739,7 @@ function handleViewSubmitted() {
     if (!highlightImgId) lastViewedVideoIndex = 0;
 
     await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight, normalizedScope);
-    vbsLogger.logInteractionEvent({
+    interactionLogger.logInteractionEvent({
       category: 'BROWSING',
       type: 'contextView',
       value: `${normalizedScope};${normalizedVideoId}${normalizedHighlight ? `;${normalizedHighlight}` : ''}`
@@ -2745,7 +2763,7 @@ function handleViewSubmitted() {
 
     await runSimilaritySearch(baseImgId);
     tick().then(() => similarityContainer?.scrollTo?.({ top: 0 }));
-    vbsLogger.logInteractionEvent({
+    interactionLogger.logInteractionEvent({
       category: 'BROWSING',
       type: 'exploration',
       value: `similarity:${String(baseImgId || '')}`
