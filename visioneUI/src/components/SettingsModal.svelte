@@ -159,6 +159,13 @@
   let hasLocalEdits = false;
   let showDresPassword = false;
   let lastSyncedContextKeyframeSize = contextKeyframeSize;
+  // Debounce the actual 'save' dispatch (store update + localStorage write + DRES
+  // interaction log) so typing/dragging a numeric field doesn't fire it on every
+  // keystroke. Local `bind:value={local.x}` state (and the direct --kf-size CSS
+  // var updates for keyframe size) stay instant — only persisting is delayed.
+  const SAVE_DEBOUNCE_MS = 200;
+  let pendingSettings = null;
+  let saveDebounceTimer = null;
   const settingsTabs = [
     { id: 'search', label: 'Search' },
     { id: 'appearance', label: 'Display' },
@@ -189,8 +196,20 @@
 
   $: wasOpen = isOpen;
 
-  function close() { 
-    dispatch('close'); 
+  function flushSave() {
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = null;
+    }
+    if (pendingSettings) {
+      dispatch('save', pendingSettings);
+      pendingSettings = null;
+    }
+  }
+
+  function close() {
+    flushSave();
+    dispatch('close');
   }
 
   function testDresConnection() {
@@ -321,7 +340,9 @@
       defaultImageModel: safeDefaultImageModel
     };
 
-    dispatch('save', newSettings);
+    pendingSettings = newSettings;
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
   }
 
   function adjustNumber(field, delta, min, max) {

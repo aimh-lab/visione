@@ -1,5 +1,9 @@
 import { findResultsArray } from '../utils/results';
 
+// Kept as-is (not renamed alongside the module/export) so browsers with existing
+// logs from earlier sessions keep finding them — this is the DRES/interactive-
+// retrieval-competition interaction log format (VBS, LSC, ...), not VBS-specific;
+// see createInteractionLogger below.
 const DB_NAME = 'visione-vbs-logs';
 const DB_VERSION = 1;
 const STORE_LOGS = 'logs';
@@ -120,6 +124,22 @@ function readAllByUser(db, userFolder) {
   });
 }
 
+// Cheaper than readAllByUser(...).length: count() doesn't deserialize every
+// matching record, just the count — matters because this runs after every
+// settings change and its cost would otherwise grow with the session's log size.
+function countByUser(db, userFolder) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_LOGS, 'readonly');
+    const store = tx.objectStore(STORE_LOGS);
+    const index = store.index('by_user_ts');
+    const range = IDBKeyRange.bound([userFolder, 0], [userFolder, Number.MAX_SAFE_INTEGER]);
+    const req = index.count(range);
+
+    req.onsuccess = () => resolve(req.result || 0);
+    req.onerror = () => reject(req.error || new Error('Failed to count logs in IndexedDB.'));
+  });
+}
+
 function deleteAllByUser(db, userFolder) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_LOGS, 'readwrite');
@@ -198,7 +218,7 @@ function toCompetitionPayload(rawPayload, filenameTimestamp) {
   return base;
 }
 
-export function createVbsLogger() {
+export function createInteractionLogger() {
   let dbPromise = null;
   let loggerOptions = {
     resultLimit: DEFAULT_RESULT_LOG_LIMIT
@@ -342,8 +362,7 @@ export function createVbsLogger() {
   async function countForCurrentUser() {
     const db = await ensureDb();
     if (!db) return 0;
-    const rows = await readAllByUser(db, sessionContext.userFolder);
-    return rows.length;
+    return countByUser(db, sessionContext.userFolder);
   }
 
   async function exportForCurrentUser() {
