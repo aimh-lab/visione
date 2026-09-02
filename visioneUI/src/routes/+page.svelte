@@ -4,6 +4,7 @@
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
   import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
+  import { getRawMetadata, toIntOrNull, resolveEpochSeconds } from '../lib/epochResolution.js';
   import SearchView from "../views/SearchView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
@@ -2139,43 +2140,8 @@
     return parseVideoIdFromImgId(imgId).videoId;
   }
 
-  function getRawMetadata(item) {
-    if (!item || typeof item !== 'object') return {};
-    const metadata = item?.raw?.metadata;
-    return metadata && typeof metadata === 'object' ? metadata : {};
-  }
-
-  function toFiniteNumber(value) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  function toIntOrNull(value) {
-    if (value == null) return null;
-    if (typeof value === 'string' && value.trim() === '') return null;
-    const parsed = Number.parseInt(String(value), 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
   function getEpochSecondsFromItem(item) {
-    if (!item || typeof item !== 'object') return null;
-    const metadata = getRawMetadata(item);
-    const epochField = String(runtimeProfile?.fieldAliases?.epoch || 'epoch').trim() || 'epoch';
-    const epochUnit = String(runtimeProfile?.timeBadge?.epochUnit || 'auto').trim().toLowerCase();
-    const rawEpoch =
-      metadata?.[epochField]
-      ?? item?.raw?.[epochField]
-      ?? item?.[epochField]
-      ?? metadata?.epoch
-      ?? item?.raw?.epoch
-      ?? item?.epoch
-      ?? item?.timestamp
-      ?? item?.raw?.timestamp;
-    const parsed = toFiniteNumber(rawEpoch);
-    if (parsed == null || parsed < 0) return null;
-    if (epochUnit === 'seconds') return parsed;
-    if (epochUnit === 'milliseconds') return parsed / 1000;
-    return parsed > 1e11 ? parsed / 1000 : parsed;
+    return resolveEpochSeconds(item, runtimeProfile);
   }
 
   function buildDayGroupKeyForItem(item) {
