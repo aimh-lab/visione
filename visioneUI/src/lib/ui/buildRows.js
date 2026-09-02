@@ -1,5 +1,6 @@
 // src/lib/ui/buildRows.js
 import { resolveGroupByConfig, isVideoLikeGroupByMetadata } from '$lib/groupByConfig.js';
+import { resolveEpochMs, toIntOrNull } from '$lib/epochResolution.js';
 
 export function buildRows(items, {
   viewMode,
@@ -29,43 +30,7 @@ export function buildRows(items, {
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
-  const toFiniteNumber = (value) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-
-  const toIntOrNull = (value) => {
-    if (value == null) return null;
-    if (typeof value === 'string' && value.trim() === '') return null;
-    const parsed = Number.parseInt(String(value), 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-
-  const getEpochSortMs = (item) => {
-    if (!item || typeof item !== 'object') return 0;
-
-    const metadata = item?.raw?.metadata;
-    const epochField = String(runtimeProfile?.fieldAliases?.epoch || 'epoch').trim() || 'epoch';
-    const epochUnit = String(runtimeProfile?.timeBadge?.epochUnit || 'auto').trim().toLowerCase();
-
-    const rawEpoch =
-      metadata?.[epochField]
-      ?? item?.raw?.[epochField]
-      ?? item?.[epochField]
-      ?? metadata?.epoch
-      ?? item?.raw?.epoch
-      ?? item?.epoch
-      ?? item?.timestamp
-      ?? item?.raw?.timestamp
-      ?? 0;
-
-    const parsed = toFiniteNumber(rawEpoch);
-    if (parsed == null || parsed < 0) return 0;
-
-    if (epochUnit === 'seconds') return parsed * 1000;
-    if (epochUnit === 'milliseconds') return parsed;
-    return parsed > 1e11 ? parsed : parsed * 1000;
-  };
+  const getEpochSortMs = (item) => resolveEpochMs(item, runtimeProfile) ?? 0;
 
   const sortByDate = (arr, direction = 'asc') =>
     [...arr].sort((a, b) => {
