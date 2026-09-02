@@ -2,7 +2,6 @@
   import * as ui from '../utils/ui';
   import { createModalController } from '../stores/modalController.js';
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
-  import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
   import { getRawMetadata, toIntOrNull, resolveEpochSeconds } from '../lib/epochResolution.js';
   import {
@@ -13,6 +12,13 @@
     extractAvailableModelsFromDiscovery,
     computeSearchMetadataConfig
   } from '../lib/discoveryConfig.js';
+  import {
+    getAnySelectedDresEvaluationId,
+    getSelectedDresEvaluationIdForChallenge,
+    normalizeEvaluationOptions,
+    canLoadDresEvaluations,
+    computeDresEvaluationLoadKey
+  } from '../lib/dresEvaluationOptions.js';
   import SearchView from "../views/SearchView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
@@ -329,18 +335,6 @@
   $: ({ isOpen: isModalOpen, selected: selectedImage } = $searchModal);
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
-  function getAnySelectedDresEvaluationId(mapLike) {
-    const map = mapLike && typeof mapLike === 'object' ? mapLike : {};
-    for (const key of DRES_CHALLENGE_TYPES) {
-      const id = String(map[key] || '').trim();
-      if (id) return id;
-    }
-    return '';
-  }
-  function getSelectedDresEvaluationIdForChallenge(mapLike, challengeType) {
-    const map = mapLike && typeof mapLike === 'object' ? mapLike : {};
-    return String(map[challengeType] || '').trim() || getAnySelectedDresEvaluationId(map);
-  }
   $: {
     const challengeType = String($uiStore.dresChallengeType || 'KIS');
     const selectedId = getSelectedDresEvaluationIdForChallenge($uiStore.dresEvaluationIdByChallenge, challengeType);
@@ -1255,49 +1249,6 @@
   async function handleTestDresConnection(e) {
     const result = await dresCtrl.testConnection(e);
     if (!result?.ok) return;
-  }
-
-  function normalizeEvaluationOptions(entries) {
-    if (!Array.isArray(entries)) return [];
-
-    return entries
-      .map((item) => {
-        const id = String(item?.id ?? '').trim();
-        if (!id) return null;
-
-        return {
-          id,
-          name: String(item?.name ?? '').trim(),
-          displayName: String(item?.name ?? '').trim() || `Evaluation ${String(item?.status ?? '').trim() || String(item?.type ?? '').trim() || ''}`.trim(),
-          status: String(item?.status ?? '').trim(),
-          type: String(item?.type ?? '').trim()
-        };
-      })
-      .filter((item) => !!item)
-      .sort((a, b) => {
-        const aActive = a.status === 'ACTIVE' ? 0 : 1;
-        const bActive = b.status === 'ACTIVE' ? 0 : 1;
-        if (aActive !== bActive) return aActive - bActive;
-        return a.id.localeCompare(b.id);
-      });
-  }
-
-  function canLoadDresEvaluations(settingsLike) {
-    const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
-    return !!settings?.dresEnabled
-      && !!String(settings?.dresSubmitServer || '').trim()
-      && !!String(settings?.dresUsername || '').trim()
-      && !!String(settings?.dresPassword || '').trim();
-  }
-
-  function computeDresEvaluationLoadKey(settingsLike) {
-    const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
-    return [
-      String(!!settings?.dresEnabled),
-      String(settings?.dresSubmitServer || '').trim(),
-      String(settings?.dresUsername || '').trim(),
-      String(settings?.dresPassword || '').trim()
-    ].join('|');
   }
 
   async function refreshDresEvaluationOptions() {
