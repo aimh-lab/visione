@@ -1,6 +1,7 @@
 // src/services/api.js
 import { VISIONE_SERVICES_URL, VISIONE_VIDEOS_URL, VISIONE_SEARCH_URL } from '$lib/urlConfig.js';
 import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL } from '../config/modelDefaults.js';
+import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
 import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
 import { API_CONFIG } from '../config/apiConfig.js';
 import { warnFallback } from '../lib/fallbackWarn.js';
@@ -1444,10 +1445,10 @@ export class VisioneAPI {
     if (positiveIds.length === 0 && negativeIds.length === 0) return null;
 
     const rawMethod = String(config.method || '').trim().toLowerCase();
-    if (rawMethod && rawMethod !== 'rocchio' && rawMethod !== 'svm') {
-      warnFallback('api.buildRelevanceFeedback.method', `Unrecognized relevance feedback method "${config.method}", using "svm".`, { method: config.method });
+    if (rawMethod && !RF_METHODS.includes(rawMethod)) {
+      warnFallback('api.buildRelevanceFeedback.method', `Unrecognized relevance feedback method "${config.method}", using "${DEFAULT_RF_METHOD}".`, { method: config.method });
     }
-    const method = rawMethod === 'rocchio' ? 'rocchio' : 'svm';
+    const method = RF_METHODS.includes(rawMethod) ? rawMethod : DEFAULT_RF_METHOD;
 
     const model = String(config.model || this.defaultRelevanceFeedbackModel).trim()
       || this.defaultRelevanceFeedbackModel;

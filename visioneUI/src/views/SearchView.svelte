@@ -6,6 +6,7 @@
   import ImageModal from "../components/ImageModal.svelte";
   import EmptyState from '../components/EmptyState.svelte';
   import WelcomeHero from '../components/WelcomeHero.svelte';
+  import { DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
 
   type QueryTextarea = { value: string; enabled: boolean; similarityImgId?: string };
   type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
@@ -49,7 +50,7 @@
   export let rfPositive: Img[] = [];
   export let rfNegative: Img[] = [];
   export let rfEnabled = true;
-  export let rfMethod = 'svm';
+  export let rfMethod = DEFAULT_RF_METHOD;
   export let submittedImages: Img[] = [];
   export let viewMode = "byrank";
   export let videoBadgeOrientation = "vertical";

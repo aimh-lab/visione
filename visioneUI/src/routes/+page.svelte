@@ -3,6 +3,7 @@
   import { createModalController } from '../stores/modalController.js';
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
   import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
+  import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
   import SearchView from "../views/SearchView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
@@ -403,7 +404,7 @@
   $: rfPositive = $sessionStore.rfPositive;
   $: rfNegative = $sessionStore.rfNegative;
   let rfEnabled = true;
-  let rfMethod = 'rocchio';
+  let rfMethod = DEFAULT_RF_METHOD;
   let selectedIndex = 0;
 
   // Video summary state (shared by VideoSummaryModal)
@@ -3255,7 +3256,7 @@ function handleViewSubmitted() {
         }}
         on:updateRFMethod={(e) => {
           const next = String(e?.detail?.method || '').trim().toLowerCase();
-          rfMethod = next === 'rocchio' ? 'rocchio' : 'svm';
+          rfMethod = RF_METHODS.includes(next) ? next : DEFAULT_RF_METHOD;
           setTimeout(() => runSearchImmediate(), 0);
         }}
 

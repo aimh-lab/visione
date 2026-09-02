@@ -2,13 +2,14 @@
   import { createEventDispatcher } from "svelte";
   import RFLists from "./RFLists.svelte";
   import SubmittedList from "./SubmittedList.svelte";
+  import { RF_METHODS, DEFAULT_RF_METHOD } from "../config/relevanceFeedbackConfig.js";
 
   export let isOpen = true;
   export let activeTab = "RF";
   export let rfPositive = [];
   export let rfNegative = [];
   export let rfEnabled = true;
-  export let rfMethod = 'svm';
+  export let rfMethod = DEFAULT_RF_METHOD;
   export let submittedImages = [];
   export let submittedAnswers = [];
   export let showSubmittedTab = false;
@@ -188,8 +189,9 @@
               disabled={!rfEnabled}
               on:change={() => dispatch('updateRFMethod', { method: rfMethod })}
             >
-              <option value="svm">svm</option>
-              <option value="rocchio">rocchio</option>
+              {#each RF_METHODS as method}
+                <option value={method}>{method}</option>
+              {/each}
             </select>
           </div>
 
