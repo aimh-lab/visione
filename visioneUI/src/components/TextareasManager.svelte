@@ -3,6 +3,7 @@
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from "../config/modelDefaults.js";
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from "../lib/modelDiscovery.js";
   import {
     getStepColor,
     withAlpha,
@@ -285,37 +286,6 @@
     const legacyModel = String(textarea?.model || '').trim();
     const discoveredDefault = imageModelOptions[0] || DEFAULT_IMAGE_MODEL;
     return String(textarea?.imageModel || legacyModel || discoveredDefault).trim() || discoveredDefault;
-  }
-
-  function normalizeAvailableModelEntry(input: AvailableModelInput): ModelDescriptor | null {
-    if (typeof input === 'string') {
-      const name = input.trim();
-      if (!name) return null;
-      // Backward compatibility: legacy string entries were usable for both text/image.
-      return { name, modalities: ['text', 'image'] };
-    }
-
-    if (!input || typeof input !== 'object') return null;
-
-    const name = String(input?.name || '').trim();
-    if (!name) return null;
-
-    const modalities = Array.isArray(input?.modalities)
-      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
-      : [];
-
-    return {
-      name,
-      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
-    };
-  }
-
-  function supportsTextModel(entry: ModelDescriptor) {
-    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
-  }
-
-  function supportsImageModel(entry: ModelDescriptor) {
-    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
   }
 
   $: normalizedModelEntries = (Array.isArray(availableModels) ? availableModels : [])
