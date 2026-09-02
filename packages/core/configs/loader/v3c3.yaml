@@ -1,0 +1,19 @@
+_target_: loaders.V3C3Loader
+name: v3c3
+v3c_root_folder: "/data2/v3c-2026-data"
+
+extraction:
+  # - model: "omni_embed_nemotron_3B"
+  #   modality: "video"
+  - model: "omni_embed_nemotron_3B"
+    modality: "video+audio"
+  - model: "qwen_embedding_8B"
+    modality: "video"
+  - model: "qwen_embedding_8B"
+    modality: "image"
+  - model: "openclip_clip_vit_l_14"
+    modality: "image"
+  - model: "openclip_clip_vit_h_14"
+    modality: "image"
+  - model: "dinov2_base"
+    modality: "image"

@@ -24,11 +24,19 @@ class V3CLoader:
         self.extraction = extraction or []
         self.metadata_df = self._generate_metadata()
 
+    def _get_scene_files(self):
+        scenes_pattern = os.path.join(self.v3c_root_folder, "**", "*-scenes.csv")
+        return glob.glob(scenes_pattern, recursive=True)
+
+    def _format_shot_id(self, shot_id, pad_to):
+        return f"{shot_id:0{pad_to}d}"
+
+    def _get_media_collection_name(self):
+        return self.name
+
     def _generate_metadata(self):
         # Load all the *.scenes.csv files in the v3c_root_folder/detected_scenes/ searching them recursively and concatenate them into a single DataFrame
-        
-        scenes_pattern = os.path.join(self.v3c_root_folder, "**", "*-scenes.csv")
-        scene_files = glob.glob(scenes_pattern, recursive=True)
+        scene_files = self._get_scene_files()
 
         dfs = []
         for i, file in tqdm(enumerate(scene_files)):
@@ -106,8 +114,10 @@ class V3CLoader:
             path = id_str[:5] + "/" + what + f"?start={start_seconds}&end={end_seconds}"
         elif what == "image":
             video_id, shot_id, pad_to = self.metadata_df.loc[self.metadata_df["id"] == id_str, ["video_id", "scene_number", "pad_to"]].values[0]
-            path = video_id + "/" + f"{shot_id:0{pad_to}d}" + "/" + what
-        return self.data_server_url + "/" + self.name + "/" + path
+            formatted_shot_id = self._format_shot_id(shot_id, pad_to)
+            path = video_id + "/" + formatted_shot_id + "/" + what
+        media_collection_name = self._get_media_collection_name()
+        return self.data_server_url + "/" + media_collection_name + "/" + path
     
     def get_retrieved_metadata_columns(self):
         return ["video_id"]
