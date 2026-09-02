@@ -19,6 +19,7 @@
     canLoadDresEvaluations,
     computeDresEvaluationLoadKey
   } from '../lib/dresEvaluationOptions.js';
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from '../lib/modelDiscovery.js';
   import SearchView from "../views/SearchView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
@@ -501,36 +502,6 @@
     }
 
     return discovered[0] || DEFAULT_IMAGE_MODEL;
-  }
-
-  function normalizeAvailableModelEntry(input) {
-    if (typeof input === 'string') {
-      const name = input.trim();
-      if (!name) return null;
-      return { name, modalities: ['text', 'image'] };
-    }
-
-    if (!input || typeof input !== 'object') return null;
-
-    const name = String(input?.name || '').trim();
-    if (!name) return null;
-
-    const modalities = Array.isArray(input?.modalities)
-      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
-      : [];
-
-    return {
-      name,
-      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
-    };
-  }
-
-  function supportsTextModel(entry) {
-    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
-  }
-
-  function supportsImageModel(entry) {
-    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
   }
 
   function getDiscoveredModelNames(kind = 'text') {
