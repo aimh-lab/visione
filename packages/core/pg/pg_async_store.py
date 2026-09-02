@@ -1516,7 +1516,7 @@ class AsyncPGVectorStore(VectorStore):
                 r_bucket_expr = f"floor(r_inner.start_time / :{wp})::bigint"
 
                 groupby_eq = (
-                    "AND l_inner.groupby_value = r_inner.groupby_value"
+                    "AND lb.groupby_value = rb.groupby_value"
                     if groupby_column else ""
                 )
 
