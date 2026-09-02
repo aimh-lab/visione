@@ -3,7 +3,14 @@
   import InputModal from "./InputModal.svelte";
   import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from "../config/modelDefaults.js";
-  import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
+  import {
+    getStepColor,
+    withAlpha,
+    getShortcutForField,
+    getDefaultComparatorForField,
+    getMetadataFieldHint,
+    toComparatorSymbol
+  } from "../lib/queryStepFormatting.js";
 
   type QueryTextarea = {
     value: string;
@@ -153,7 +160,6 @@
   // Delay before re-triggering search after a step reorder/swap: lets the
   // "swap"/"move" dispatch settle in the parent before we simulate a click.
   const SEARCH_LIKE_TRIGGER_DELAY_MS = 100;
-  const TIMELINE_STOPS = CATEGORICAL_PALETTE;
   let normalizedModelEntries: ModelDescriptor[] = [];
   let textModelOptions: string[] = [];
   let imageModelOptions: string[] = [];
@@ -201,7 +207,6 @@
     heart_rate_bpm: 'hr'
   };
 
-  const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
   const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
   const DATE_RANGE_FIELDS = new Set(['date', 'epoch', 'epoch_from', 'epoch_to']);
   const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour']);
@@ -385,70 +390,6 @@
     const normalized = String(field || '').trim().toLowerCase();
     return normalized && !SPECIAL_METADATA_FIELDS.has(normalized) && hasMetadataField(normalized);
   });
-
-  function getShortcutForField(field: string) {
-    const normalized = String(field || '').trim().toLowerCase();
-    return normalized;
-  }
-
-  function getDefaultComparatorForField(field: string) {
-    return NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase()) ? 'eq' : 'fts';
-  }
-
-  function getMetadataFieldHint(field: string) {
-    const shortcut = getShortcutForField(field);
-    if (NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase())) {
-      return `${shortcut}:42 or ${shortcut}:>42`;
-    }
-    return `${shortcut}:dublin or ${shortcut}:~dublin`;
-  }
-
-  function toComparatorSymbol(comparator: string, fallback: string) {
-    const normalized = String(comparator || '').trim().toLowerCase();
-    if (normalized === 'gte') return '>=';
-    if (normalized === 'lte') return '<=';
-    if (normalized === 'gt') return '>';
-    if (normalized === 'lt') return '<';
-    if (normalized === 'eq') return '=';
-    if (normalized === 'ne') return '!=';
-    if (normalized === 'fts') return '~';
-
-    const normalizedFallback = String(fallback || '').trim().toLowerCase();
-    if (normalizedFallback === 'gte') return '>=';
-    if (normalizedFallback === 'lte') return '<=';
-    if (normalizedFallback === 'gt') return '>';
-    if (normalizedFallback === 'lt') return '<';
-    if (normalizedFallback === 'ne') return '!=';
-    if (normalizedFallback === 'fts') return '~';
-    return '=';
-  }
-
-  function hexToRgb(hex: string) {
-    const clean = hex.replace("#", "");
-    const full = clean.length === 3
-      ? clean.split("").map((c) => c + c).join("")
-      : clean;
-
-    return {
-      r: parseInt(full.slice(0, 2), 16),
-      g: parseInt(full.slice(2, 4), 16),
-      b: parseInt(full.slice(4, 6), 16)
-    };
-  }
-
-  function getStepColor(index: number) {
-    const paletteColor = TIMELINE_STOPS[index % TIMELINE_STOPS.length] || TIMELINE_STOPS[0];
-    const { r, g, b } = hexToRgb(paletteColor);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-
-  function withAlpha(color: string, alpha: number) {
-    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/i);
-    if (!match) return color;
-    const [, r, g, b] = match;
-    const clamped = Math.max(0, Math.min(1, alpha));
-    return `rgba(${r}, ${g}, ${b}, ${clamped})`;
-  }
 
   function getStepPhaseLabel(index: number) {
     const enabledIndexes = textareas
