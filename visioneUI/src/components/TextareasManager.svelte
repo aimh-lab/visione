@@ -11,6 +11,13 @@
     getMetadataFieldHint,
     toComparatorSymbol
   } from "../lib/queryStepFormatting.js";
+  import {
+    FRAME_DRAG_MIME,
+    QUERY_IMAGE_DRAG_MIME,
+    isQueryImageDragEvent,
+    isImageDragEvent,
+    getNearestStepIndex
+  } from "../lib/queryStepDrag.js";
 
   type QueryTextarea = {
     value: string;
@@ -644,24 +651,6 @@
   let dropStepIndex: number | null = null;
   let imageDropIndex: number | null = null;
   let stepRefs: Array<HTMLElement | null> = [];
-  const FRAME_DRAG_MIME = "application/x-visione-frame";
-  const QUERY_IMAGE_DRAG_MIME = "application/x-visione-query-image";
-
-  function isFrameDragEvent(event: DragEvent) {
-    const types = event.dataTransfer?.types;
-    if (!types) return false;
-    return Array.from(types).includes(FRAME_DRAG_MIME);
-  }
-
-  function isQueryImageDragEvent(event: DragEvent) {
-    const types = event.dataTransfer?.types;
-    if (!types) return false;
-    return Array.from(types).includes(QUERY_IMAGE_DRAG_MIME);
-  }
-
-  function isImageDragEvent(event: DragEvent) {
-    return isFrameDragEvent(event) || isQueryImageDragEvent(event);
-  }
 
   function startStepDrag(index: number, event: DragEvent) {
     if (textareas.length <= 1) return;
@@ -684,30 +673,11 @@
     }
   }
 
-  function getNearestStepIndex(clientY: number) {
-    let nearestIndex = -1;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (let i = 0; i < stepRefs.length; i += 1) {
-      const el = stepRefs[i];
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      const centerY = rect.top + rect.height / 2;
-      const distance = Math.abs(clientY - centerY);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = i;
-      }
-    }
-
-    return nearestIndex;
-  }
-
   function handleStepsListDragOver(event: DragEvent) {
     if (draggedStepIndex === null) return;
     event.preventDefault();
 
-    const nearestIndex = getNearestStepIndex(event.clientY);
+    const nearestIndex = getNearestStepIndex(stepRefs, event.clientY);
     if (nearestIndex < 0) return;
 
     dropStepIndex = nearestIndex;
@@ -721,7 +691,7 @@
     if (draggedStepIndex === null) return;
     event.preventDefault();
 
-    const fallbackIndex = getNearestStepIndex(event.clientY);
+    const fallbackIndex = getNearestStepIndex(stepRefs, event.clientY);
     const index = dropStepIndex ?? fallbackIndex;
     if (index < 0) {
       handleStepDragEnd();

@@ -8,6 +8,7 @@
   import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
   import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
   import { resolveVideoId } from "$lib/videoIdentity.js";
+  import { FRAME_DRAG_MIME } from "$lib/queryStepDrag.js";
 
   export let items = [];
   export let selectedId = null;
@@ -677,7 +678,7 @@
     };
 
     event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.setData("application/x-visione-frame", JSON.stringify(payload));
+    event.dataTransfer.setData(FRAME_DRAG_MIME, JSON.stringify(payload));
     event.dataTransfer.setData("text/plain", payload.imgId || payload.title || "frame");
   }
 
