@@ -21,6 +21,11 @@ const freshDefault = () => ({
 
 function createSessionStore() {
   const { subscribe, update } = writable(DEFAULT);
+  // Date.now() alone can collide for two submitAnswer() calls within the same
+  // millisecond, giving submittedAnswers two entries with the same id. Not
+  // currently observed (SidebarRight.svelte's {#each submittedAnswers} isn't
+  // keyed off it), but `id` should actually be unique.
+  let answerIdCounter = 0;
 
   const actions = {
     clearAll() {
@@ -36,7 +41,7 @@ function createSessionStore() {
         ...s,
         submittedAnswers: [
           {
-            id: `answer-${timestamp}`,
+            id: `answer-${timestamp}-${answerIdCounter++}`,
             text: value,
             status,
             verdict,
