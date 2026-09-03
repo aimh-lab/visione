@@ -25,6 +25,7 @@
 		"vite-plugin-mkcert": "^1.17.9"
 	},
 	"dependencies": {
+		"dompurify": "^3.4.14",
 		"marked": "^18.0.3"
 	}
 }

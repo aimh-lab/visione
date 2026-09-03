@@ -8,6 +8,7 @@
   import { recentSearches } from "../stores/recentSearches.js";
   import { queryTemplates } from "../stores/queryTemplates.js";
   import { marked } from 'marked';
+  import DOMPurify from 'dompurify';
   import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
 
   export let isSidebarOpen = true;
@@ -304,7 +305,13 @@
     const cached = _markdownCache.get(text);
     if (cached !== undefined) return cached;
 
-    const html = marked.parse(text, { breaks: true });
+    // Sanitize: this markdown comes from the QA agent stream (backend LLM
+    // output, which may itself echo/quote externally-retrieved document
+    // content) and is rendered via {@html} below — marked doesn't sanitize
+    // its output (no built-in `sanitize` option since v1), so without this
+    // any HTML the agent's response happens to contain would execute as-is
+    // in the page.
+    const html = DOMPurify.sanitize(marked.parse(text, { breaks: true }));
     if (_markdownCache.size >= MARKDOWN_CACHE_MAX) {
       const oldestKey = _markdownCache.keys().next().value;
       _markdownCache.delete(oldestKey);
