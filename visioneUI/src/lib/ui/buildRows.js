@@ -113,7 +113,15 @@ export function buildRows(items, {
   const splitGroupedRows = (rows) =>
     rows.flatMap((row) => {
       const parts = chunk(row, perRow);
-      if (parts.length <= 1) return parts;
+      if (parts.length <= 1) {
+        // chunk() slices the array, which doesn't carry over the
+        // __visioneGroupKey set on `row` by groupByKey() — re-attach it here
+        // too, not just in the (parts.length > 1) split branch below, so a
+        // group's row keeps its key whether or not it ended up needing to
+        // split across multiple rows.
+        if (parts[0]) parts[0].__visioneGroupKey = row.__visioneGroupKey;
+        return parts;
+      }
 
       return parts.map((part) => {
         part.__visioneChunkBoundary = true;
