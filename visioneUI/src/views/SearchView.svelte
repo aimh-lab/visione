@@ -7,6 +7,7 @@
   import EmptyState from '../components/EmptyState.svelte';
   import WelcomeHero from '../components/WelcomeHero.svelte';
   import { DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
 
   type QueryTextarea = { value: string; enabled: boolean; similarityImgId?: string };
   type Img = { imgId?: string; videoId?: string; title?: string; [key: string]: unknown };
@@ -60,7 +61,7 @@
   export let justifyResultRows = false;
   export let tupleIndicatorMode = 'badge+bar';
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let imageModalScale = 100;
   export let runtimeProfile = {};
   export let discoveryMetadataFields: string[] = [];

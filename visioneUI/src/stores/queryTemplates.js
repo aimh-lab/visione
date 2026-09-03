@@ -1,27 +1,15 @@
 import { get, writable } from 'svelte/store';
+import { safeLoadJSON, safeSaveJSON, safeRemoveItem } from './persistentState.js';
 
 const STORAGE_KEY = 'visione_query_templates';
 
 function createTemplatesStore() {
   const safeLoad = () => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = JSON.parse(raw || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+    const parsed = safeLoadJSON(STORAGE_KEY, []);
+    return Array.isArray(parsed) ? parsed : [];
   };
 
-  const persist = (templates) => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-    } catch {
-      // ignore persistence errors to avoid breaking UX
-    }
-  };
+  const persist = (templates) => safeSaveJSON(STORAGE_KEY, templates);
 
   const stored = safeLoad();
   
@@ -120,13 +108,7 @@ function createTemplatesStore() {
     
     // Reset (clear all)
     clear: () => {
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          // ignore remove errors
-        }
-      }
+      safeRemoveItem(STORAGE_KEY);
       set([]);
     }
   };

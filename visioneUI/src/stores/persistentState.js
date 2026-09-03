@@ -2,6 +2,60 @@
 import { writable } from 'svelte/store';
 import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
 
+// Shared localStorage helpers — used by PersistentStore below, and by the
+// other localStorage-backed stores (queryTemplates, recentSearches,
+// tabsPosition) that need a custom store API and can't reuse PersistentStore
+// directly. Previously each of those stores hand-rolled its own try/catch
+// around localStorage; tabsPosition.js in particular had none at all, so an
+// unavailable/throwing localStorage (private browsing, quota) would crash it.
+export function safeGetItem(key, fallback = null) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const value = localStorage.getItem(key);
+    return value == null ? fallback : value;
+  } catch (error) {
+    console.warn(`Failed to read ${key} from localStorage:`, error);
+    return fallback;
+  }
+}
+
+export function safeSetItem(key, value) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Failed to write ${key} to localStorage:`, error);
+  }
+}
+
+export function safeRemoveItem(key) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn(`Failed to remove ${key} from localStorage:`, error);
+  }
+}
+
+export function safeLoadJSON(key, fallback = null) {
+  const raw = safeGetItem(key, null);
+  if (raw == null) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`Failed to parse ${key} from localStorage:`, error);
+    return fallback;
+  }
+}
+
+export function safeSaveJSON(key, value) {
+  try {
+    safeSetItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Failed to stringify ${key} for localStorage:`, error);
+  }
+}
+
 class PersistentStore {
   constructor(key, initialValue = null) {
     this.key = key;
@@ -29,32 +83,16 @@ class PersistentStore {
   }
 
   #loadFromStorage() {
-    if (typeof window === 'undefined') return this.initialValue;
-    
-    try {
-      const stored = localStorage.getItem(this.key);
-      return stored ? JSON.parse(stored) : this.initialValue;
-    } catch (error) {
-      console.warn(`Failed to load ${this.key} from localStorage:`, error);
-      return this.initialValue;
-    }
+    return safeLoadJSON(this.key, this.initialValue);
   }
 
   #saveToStorage(value) {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      localStorage.setItem(this.key, JSON.stringify(value));
-    } catch (error) {
-      console.warn(`Failed to save ${this.key} to localStorage:`, error);
-    }
+    safeSaveJSON(this.key, value);
   }
 
   // Utility methods
   clear() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(this.key);
-    }
+    safeRemoveItem(this.key);
     this.set(this.initialValue);
   }
 }

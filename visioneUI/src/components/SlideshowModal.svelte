@@ -4,6 +4,7 @@
   import { visioneAPI } from "../services/api.js";
   import ImageModal from "./ImageModal.svelte";
   import { formatImageTemporalBadge } from "$lib/titleFormatting.js";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
 
   export let isOpen = false;
   export let videoId = "";
@@ -14,7 +15,7 @@
   export let imageModalScale = 100;
   export let layer = "modal";
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let highlightedKeyframes = [];

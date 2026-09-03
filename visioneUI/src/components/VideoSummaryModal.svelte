@@ -3,6 +3,7 @@
   import { focusTrap } from "../utils/ui";
   import ResultsGrid from "./ResultsGrid.svelte";
   import ImageModal from "./ImageModal.svelte";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
   const ResultsGridAny = ResultsGrid as any;
 
   type Frame = { imgId?: string; videoId?: string; [key: string]: unknown };
@@ -26,7 +27,7 @@
 
   export let videoBadgeOrientation = "vertical";
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let runtimeProfile: any = {};
   export let discoveryMetadataFields: string[] = [];
   export let showLocalTimeInTitles = true;

@@ -3,6 +3,7 @@
   import RFLists from "./RFLists.svelte";
   import SubmittedList from "./SubmittedList.svelte";
   import { RF_METHODS, DEFAULT_RF_METHOD } from "../config/relevanceFeedbackConfig.js";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
 
   export let isOpen = true;
   export let activeTab = "RF";
@@ -13,7 +14,7 @@
   export let submittedImages = [];
   export let submittedAnswers = [];
   export let showSubmittedTab = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let submitTextAnswer = (_text) => {};
   export let width = 18;
 

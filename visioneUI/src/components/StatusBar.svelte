@@ -1,11 +1,12 @@
 <script>
   import { resolveGroupByConfig, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
 
   export let totalImages = 0;
   export let submittedCount = 0;
   export let rfPositiveCount = 0;
   export let rfNegativeCount = 0;
-  export let challengeType = 'KIS';
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let viewMode = 'byrank';
   export let sortMode = 'relevance';
   export let searchTime = 0;

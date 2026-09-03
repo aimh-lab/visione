@@ -1,6 +1,7 @@
 <script>
   import ResultsGrid from "../components/ResultsGrid.svelte";
   import { createEventDispatcher } from "svelte";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
   export let rows = [];
   export let selectedImage = null;
   export let registerContainer = (el) => {};
@@ -12,7 +13,7 @@
   export let justifyResultRows = false;
   export let tupleIndicatorMode = 'badge+bar';
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let rfPositive = [];
   export let rfNegative = [];
   export let runtimeProfile = {};

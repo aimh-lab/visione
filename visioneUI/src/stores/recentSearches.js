@@ -1,4 +1,5 @@
 import { writable, get as getStoreValue } from 'svelte/store';
+import { safeLoadJSON, safeRemoveItem } from './persistentState.js';
 
 const STORAGE_KEY = 'visione_recent_searches';
 const MAX_RECENT = 30;
@@ -41,15 +42,8 @@ function persistToStorage(entries) {
 }
 
 function createRecentSearchesStore() {
-  const loadFromStorage = () => {
-    if (typeof window === 'undefined') return [];
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch {
-      return [];
-    }
-  };
-  
+  const loadFromStorage = () => safeLoadJSON(STORAGE_KEY, []);
+
   const { subscribe, update, set } = writable(loadFromStorage());
 
   return {
@@ -84,13 +78,7 @@ function createRecentSearchesStore() {
     
     clear: () => {
       set([]);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          // ignore remove errors
-        }
-      }
+      safeRemoveItem(STORAGE_KEY);
     },
     
     /** Read from the in-memory Svelte store (not localStorage). */

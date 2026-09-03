@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { focusTrap, tooltip } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
 
   type HighlightedInput = string | { imgId: string; rank?: number };
   type Keyframe = {
@@ -17,7 +18,7 @@
   export let videoId = "";
   export let highlightedKeyframes: HighlightedInput[] = [];
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
 
   const dispatch = createEventDispatcher();
   let videoEl: HTMLVideoElement | null = null;

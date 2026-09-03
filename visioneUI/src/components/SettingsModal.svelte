@@ -6,6 +6,7 @@
   import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from "../config/searchLimits.js";
   import { VISIONE_SERVICES_URL, VISIONE_BASE_URL } from "$lib/urlConfig.js";
   import { warnFallback } from "$lib/fallbackWarn.js";
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from "$lib/modelDiscovery.js";
 
   export let isOpen = false;
   export let theme = D.theme;
@@ -52,35 +53,6 @@
   const dispatch = createEventDispatcher();
   const FALLBACK_TEXT_MODEL = D.defaultTextModel;
   const FALLBACK_IMAGE_MODEL = D.defaultImageModel;
-
-  function normalizeAvailableModelEntry(input) {
-    if (typeof input === 'string') {
-      const name = input.trim();
-      if (!name) return null;
-      return { name, modalities: ['text', 'image'] };
-    }
-
-    if (!input || typeof input !== 'object') return null;
-    const name = String(input?.name || '').trim();
-    if (!name) return null;
-
-    const modalities = Array.isArray(input?.modalities)
-      ? input.modalities.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
-      : [];
-
-    return {
-      name,
-      modalities: modalities.length > 0 ? Array.from(new Set(modalities)) : ['text', 'image']
-    };
-  }
-
-  function supportsTextModel(entry) {
-    return entry.modalities.includes('text') || entry.modalities.includes('image+text');
-  }
-
-  function supportsImageModel(entry) {
-    return entry.modalities.includes('image') || entry.modalities.includes('image+text');
-  }
 
   let normalizedModelEntries = [];
   let textModelOptions = [];

@@ -5,6 +5,7 @@
   import MainToolbar from './MainToolbar.svelte';
   import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
   import { LOGO_SRC } from '../config/branding.js';
+  import { DEFAULT_DRES_CHALLENGE_TYPE, DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   
   export let active;
   export let tabs;
@@ -16,7 +17,7 @@
   export let runtimeProfile = {};
   export let keyframeSize = 130;
   export let dresEnabled = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let evaluationOptions = [];
   export let selectedEvaluationId = '';
   export let loadingEvaluationOptions = false;
@@ -31,7 +32,7 @@
   let isSortDropdownOpen = false;
   let isChallengeDropdownOpen = false;
   let isPinnedDropdownOpen = false;
-  const challengeOptions = ["KIS", "AVS", "Q&A"];
+  const challengeOptions = DRES_CHALLENGE_TYPES;
   
   let sortOptions = [];
   

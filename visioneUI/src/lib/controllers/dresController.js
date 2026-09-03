@@ -8,7 +8,7 @@ import { visioneAPI } from '../../services/api.js';
 import { uiStore } from '../../stores/uiStore.js';
 import { toasts } from '../../stores/toastStore.js';
 import { get } from 'svelte/store';
-import { DRES_CHALLENGE_TYPES } from '../../config/dresConfig.js';
+import { DRES_CHALLENGE_TYPES, normalizeChallengeType as normalizeDresChallengeType } from '../../config/dresConfig.js';
 import { resolveVideoId } from '../videoIdentity.js';
 import { warnFallback } from '../fallbackWarn.js';
 
@@ -76,13 +76,9 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
   }
 
   function normalizeChallengeType(value) {
-    const type = String(value ?? '').toUpperCase();
-    if (type === 'AVS') return 'AVS';
-    if (type === 'Q&A') return 'Q&A';
-    if (type && type !== 'KIS') {
-      warnFallback('dresController.normalizeChallengeType', `Unrecognized challengeType "${value}", using "KIS".`, { value });
-    }
-    return 'KIS';
+    return normalizeDresChallengeType(value, {
+      onFallback: (raw) => warnFallback('dresController.normalizeChallengeType', `Unrecognized challengeType "${raw}", using "KIS".`, { value: raw })
+    });
   }
 
   function normalizeEvaluationMap(value) {

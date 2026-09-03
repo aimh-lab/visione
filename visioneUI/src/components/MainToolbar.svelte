@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
+  import { DEFAULT_DRES_CHALLENGE_TYPE, DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
 
   export let active = "View1";
@@ -14,7 +15,7 @@
   export let runtimeProfile = {};
   export let keyframeSize = 130;
   export let dresEnabled = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let evaluationOptions = [];
   export let selectedEvaluationId = '';
   export let loadingEvaluationOptions = false;
@@ -27,7 +28,7 @@
   let isGroupDropdownOpen = false;
   let isChallengeDropdownOpen = false;
   let isPinnedDropdownOpen = false;
-  const challengeOptions = ["KIS", "AVS", "Q&A"];
+  const challengeOptions = DRES_CHALLENGE_TYPES;
   
   let sortOptions = [];
   

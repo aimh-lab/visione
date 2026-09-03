@@ -3,7 +3,8 @@
   import { createModalController } from '../stores/modalController.js';
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
   import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
-  import { getRawMetadata, toIntOrNull, resolveEpochSeconds } from '../lib/epochResolution.js';
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
+  import { getRawMetadata, toIntOrNull, resolveEpochSeconds, buildHourGroupKey as resolveHourGroupKey } from '../lib/epochResolution.js';
   import {
     extractMetadataFieldsFromDiscovery,
     extractDiscoveryCollectionName,
@@ -335,7 +336,7 @@
   $: runtimeProfile = resolveRuntimeProfile(activeCollectionName, $uiStore.dresChallengeType || 'default');
   $: discoveryMetadataFields = extractMetadataFieldsFromDiscovery(lastDiscoveryPayload, activeCollectionName);
   $: {
-    const challengeType = String($uiStore.dresChallengeType || 'KIS');
+    const challengeType = String($uiStore.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE);
     const selectedId = getSelectedDresEvaluationIdForChallenge($uiStore.dresEvaluationIdByChallenge, challengeType);
     const match = dresEvaluationOptions.find((item) => item.id === selectedId);
     selectedDresEvaluationLabel = String(match?.displayName || match?.name || '').trim();
@@ -929,7 +930,7 @@
       sessionId: `visione-${Date.now()}`,
       username,
       memberId,
-      challengeType: ui?.dresChallengeType || 'KIS',
+      challengeType: ui?.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE,
       teamId: '',
       userFolder: username || memberId || 'unknown-user'
     };
@@ -1182,7 +1183,7 @@
     onFrameSubmitEvent: ({ imgId, challengeType, accepted, verdict, description, reason, evaluationId }) => {
       const payload = [
         `imgId:${String(imgId || '')}`,
-        `challenge:${String(challengeType || get(uiStore).dresChallengeType || 'KIS')}`,
+        `challenge:${String(challengeType || get(uiStore).dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE)}`,
         `evaluationId:${String(evaluationId || '')}`,
         `accepted:${accepted ? 'true' : 'false'}`,
         `verdict:${String(verdict || '')}`,
@@ -1240,7 +1241,7 @@
       dresEvaluationOptions = options;
       dresEvaluationLoadKey = currentKey;
 
-      const challengeType = String(currentSettings.dresChallengeType || 'KIS');
+      const challengeType = String(currentSettings.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE);
       const selectedEvaluationId = getAnySelectedDresEvaluationId(currentSettings.dresEvaluationIdByChallenge);
       const firstAvailable = String(options[0]?.id || '').trim();
       if (firstAvailable && !selectedEvaluationId) {
@@ -1649,7 +1650,7 @@
   function computeSettingsLogKey(settingsLike) {
     const settings = settingsLike && typeof settingsLike === 'object' ? settingsLike : {};
     return [
-      String(settings?.dresChallengeType || 'KIS'),
+      String(settings?.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE),
       String(!!settings?.dresEnabled),
       String(!!settings?.autoTranslateQueries)
     ].join('|');
@@ -1677,7 +1678,7 @@
       interactionLogger.logInteractionEvent({
         category: 'OTHER',
         type: 'settingsUpdate',
-        value: `challenge:${String(nextState?.dresChallengeType || 'KIS')} dresEnabled:${nextState?.dresEnabled ? 'true' : 'false'} autoTranslate:${nextState?.autoTranslateQueries ? 'true' : 'false'}`
+        value: `challenge:${String(nextState?.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE)} dresEnabled:${nextState?.dresEnabled ? 'true' : 'false'} autoTranslate:${nextState?.autoTranslateQueries ? 'true' : 'false'}`
       }).then(refreshLogCount).catch(() => {});
     }
   }
@@ -1742,7 +1743,7 @@
   }
 
   function handleChangeChallengeType(e) {
-    const nextType = String(e?.detail?.type || 'KIS');
+    const nextType = String(e?.detail?.type || DEFAULT_DRES_CHALLENGE_TYPE);
     uiStore.actions.setDresChallengeType(nextType);
     refreshDresEvaluationOptions().catch(() => {});
     interactionLogger.initSession(getLoggerContext()).then(async () => {
@@ -1756,7 +1757,7 @@
   }
 
   function handleSetEvaluationId(e) {
-    const challengeType = String(e?.detail?.challengeType || get(uiStore).dresChallengeType || 'KIS');
+    const challengeType = String(e?.detail?.challengeType || get(uiStore).dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE);
     const evaluationId = String(e?.detail?.evaluationId || '').trim();
     if (!evaluationId) return;
 
@@ -1881,36 +1882,7 @@
   }
 
   function buildHourGroupKeyForItem(item, fallbackVideoId = '') {
-    const epochSeconds = getEpochSecondsFromItem(item);
-    if (epochSeconds != null) {
-      const date = new Date(epochSeconds * 1000);
-      return `${String(date.getUTCFullYear()).padStart(4, '0')}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}_${String(date.getUTCHours()).padStart(2, '0')}`;
-    }
-
-    const metadata = getRawMetadata(item);
-    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
-    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
-    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
-    const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
-
-    if (
-      Number.isFinite(year) && year >= 0
-      && Number.isFinite(month) && month >= 1 && month <= 12
-      && Number.isFinite(day) && day >= 1 && day <= 31
-      && Number.isFinite(hour) && hour >= 0 && hour <= 23
-    ) {
-      return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
-    }
-
-    const rawHourId = String(
-      metadata?.hour_id
-      ?? item?.raw?.hour_id
-      ?? item?.hour_id
-      ?? fallbackVideoId
-      ?? ''
-    ).trim();
-    const match = rawHourId.match(/^(\d{8})_(\d{2})/);
-    return match ? `${match[1]}_${match[2]}` : rawHourId;
+    return resolveHourGroupKey(item, runtimeProfile, fallbackVideoId);
   }
 
   function buildSlideshowTitle(item, videoId) {

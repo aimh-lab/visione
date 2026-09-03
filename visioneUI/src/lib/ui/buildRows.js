@@ -1,6 +1,6 @@
 // src/lib/ui/buildRows.js
 import { resolveGroupByConfig, isVideoLikeGroupByMetadata } from '$lib/groupByConfig.js';
-import { resolveEpochMs, toIntOrNull } from '$lib/epochResolution.js';
+import { resolveEpochMs, toIntOrNull, buildHourGroupKey as resolveHourGroupKey } from '$lib/epochResolution.js';
 
 export function buildRows(items, {
   viewMode,
@@ -87,41 +87,7 @@ export function buildRows(items, {
     return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   };
 
-  const buildHourGroupKey = (item) => {
-    const epochMs = getEpochSortMs(item);
-    if (epochMs) {
-      const date = new Date(epochMs);
-      const y = date.getUTCFullYear();
-      const m = date.getUTCMonth() + 1;
-      const d = date.getUTCDate();
-      const h = date.getUTCHours();
-      return `${String(y).padStart(4, '0')}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}_${String(h).padStart(2, '0')}`;
-    }
-
-    const metadata = item?.raw?.metadata && typeof item.raw.metadata === 'object' ? item.raw.metadata : {};
-    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
-    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
-    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
-    const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
-
-    if (
-      Number.isFinite(year) && year >= 0
-      && Number.isFinite(month) && month >= 1 && month <= 12
-      && Number.isFinite(day) && day >= 1 && day <= 31
-      && Number.isFinite(hour) && hour >= 0 && hour <= 23
-    ) {
-      return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
-    }
-
-    const rawHourId = String(
-      metadata?.hour_id
-      ?? item?.raw?.hour_id
-      ?? item?.hour_id
-      ?? ''
-    ).trim();
-    const match = rawHourId.match(/^(\d{8})_(\d{2})/);
-    return match ? `${match[1]}_${match[2]}` : rawHourId;
-  };
+  const buildHourGroupKey = (item) => resolveHourGroupKey(item, runtimeProfile);
 
   const groupByDateDay = (arr) =>
     groupByKey(arr, (img) => buildDayGroupKey(img), 'date');

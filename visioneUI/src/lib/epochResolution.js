@@ -62,3 +62,47 @@ export function resolveEpochSeconds(item, runtimeProfile = {}) {
   const ms = resolveEpochMs(item, runtimeProfile);
   return ms == null ? null : ms / 1000;
 }
+
+/**
+ * Builds the "YYYYMMDD_HH" hour-bucket group key for an item, preferring its
+ * resolved epoch and falling back to explicit year/month/day/hour metadata
+ * fields, then to a raw hour_id (or fallbackVideoId) string. Previously
+ * duplicated identically across src/routes/+page.svelte, buildRows.js and
+ * ResultsGrid.svelte.
+ */
+export function buildHourGroupKey(item, runtimeProfile = {}, fallbackVideoId = '') {
+  const epochSeconds = resolveEpochSeconds(item, runtimeProfile);
+  if (epochSeconds != null) {
+    const date = new Date(epochSeconds * 1000);
+    const y = date.getUTCFullYear();
+    const m = date.getUTCMonth() + 1;
+    const d = date.getUTCDate();
+    const h = date.getUTCHours();
+    return `${String(y).padStart(4, '0')}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}_${String(h).padStart(2, '0')}`;
+  }
+
+  const metadata = getRawMetadata(item);
+  const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+  const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+  const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+  const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
+
+  if (
+    Number.isFinite(year) && year >= 0
+    && Number.isFinite(month) && month >= 1 && month <= 12
+    && Number.isFinite(day) && day >= 1 && day <= 31
+    && Number.isFinite(hour) && hour >= 0 && hour <= 23
+  ) {
+    return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
+  }
+
+  const rawHourId = String(
+    metadata?.hour_id
+    ?? item?.raw?.hour_id
+    ?? item?.hour_id
+    ?? fallbackVideoId
+    ?? ''
+  ).trim();
+  const match = rawHourId.match(/^(\d{8})_(\d{2})/);
+  return match ? `${match[1]}_${match[2]}` : rawHourId;
+}

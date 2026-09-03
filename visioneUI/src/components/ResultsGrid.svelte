@@ -9,6 +9,8 @@
   import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
   import { resolveVideoId } from "$lib/videoIdentity.js";
   import { FRAME_DRAG_MIME } from "$lib/queryStepDrag.js";
+  import { getRawMetadata, toIntOrNull, resolveEpochSeconds, buildHourGroupKey as resolveHourGroupKey } from "$lib/epochResolution.js";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
 
   export let items = [];
   export let selectedId = null;
@@ -23,7 +25,7 @@
   export let justifyResultRows = false;
   export let tupleIndicatorMode = "badge+bar";
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let rfPositive = [];
   export let rfNegative = [];
   export let runtimeProfile = {};
@@ -284,12 +286,6 @@
     return value;
   }
 
-  function getRawMetadata(item) {
-    if (!item || typeof item !== 'object') return {};
-    const metadata = item?.raw?.metadata;
-    return metadata && typeof metadata === 'object' ? metadata : {};
-  }
-
   function getGroupValueForItem(item) {
     if (!item || typeof item !== 'object') return '';
 
@@ -474,69 +470,11 @@
   }
 
   function getEpochSeconds(item) {
-    if (!item || typeof item !== 'object') return null;
-    const metadata = getRawMetadata(item);
-    const epochField = String(runtimeProfile?.fieldAliases?.epoch || 'epoch').trim() || 'epoch';
-    const epochUnit = String(runtimeProfile?.timeBadge?.epochUnit || 'auto').trim().toLowerCase();
-
-    const rawEpoch =
-      metadata?.[epochField]
-      ?? item?.raw?.[epochField]
-      ?? item?.[epochField]
-      ?? metadata?.epoch
-      ?? item?.raw?.epoch
-      ?? item?.epoch;
-
-    const parsed = toFiniteNumber(rawEpoch);
-    if (parsed == null || parsed < 0) return null;
-
-    if (epochUnit === 'seconds') return parsed;
-    if (epochUnit === 'milliseconds') return parsed / 1000;
-    // auto
-    return parsed > 1e11 ? parsed / 1000 : parsed;
-  }
-
-  function toIntOrNull(value) {
-    if (value == null) return null;
-    if (typeof value === 'string' && value.trim() === '') return null;
-    const parsed = Number.parseInt(String(value), 10);
-    return Number.isFinite(parsed) ? parsed : null;
+    return resolveEpochSeconds(item, runtimeProfile);
   }
 
   function buildHourGroupKey(item) {
-    const epochSeconds = getEpochSeconds(item);
-    if (epochSeconds != null) {
-      const date = new Date(epochSeconds * 1000);
-      const y = date.getUTCFullYear();
-      const m = date.getUTCMonth() + 1;
-      const d = date.getUTCDate();
-      const h = date.getUTCHours();
-      return `${String(y).padStart(4, '0')}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}_${String(h).padStart(2, '0')}`;
-    }
-
-    const metadata = getRawMetadata(item);
-    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
-    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
-    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
-    const hour = toIntOrNull(metadata?.hour ?? item?.raw?.hour ?? item?.hour);
-
-    if (
-      Number.isFinite(year) && year >= 0
-      && Number.isFinite(month) && month >= 1 && month <= 12
-      && Number.isFinite(day) && day >= 1 && day <= 31
-      && Number.isFinite(hour) && hour >= 0 && hour <= 23
-    ) {
-      return `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}`;
-    }
-
-    const rawHourId = String(
-      metadata?.hour_id
-      ?? item?.raw?.hour_id
-      ?? item?.hour_id
-      ?? ''
-    ).trim();
-    const match = rawHourId.match(/^(\d{8})_(\d{2})/);
-    return match ? `${match[1]}_${match[2]}` : rawHourId;
+    return resolveHourGroupKey(item, runtimeProfile);
   }
 
   function getUtcOffsetHours(item) {

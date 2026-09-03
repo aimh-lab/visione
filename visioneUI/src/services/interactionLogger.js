@@ -1,4 +1,5 @@
 import { findResultsArray } from '../utils/results';
+import { normalizeChallengeType } from '../config/dresConfig.js';
 
 // Kept as-is (not renamed alongside the module/export) so browsers with existing
 // logs from earlier sessions keep finding them — this is the DRES/interactive-
@@ -25,13 +26,6 @@ function sanitizeSegment(value, fallback = 'unknown-user') {
   const v = String(value || '').trim();
   if (!v) return fallback;
   return v.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || fallback;
-}
-
-function normalizeChallengeType(value) {
-  const t = String(value || '').toUpperCase();
-  if (t === 'AVS') return 'AVS';
-  if (t === 'Q&A' || t === 'QA') return 'Q&A';
-  return 'KIS';
 }
 
 function modelToTextType(model) {

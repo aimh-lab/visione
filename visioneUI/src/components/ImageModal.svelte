@@ -5,13 +5,14 @@
   import { visioneAPI } from "../services/api";
   import { formatImageDisplayTitle } from "$lib/titleFormatting.js";
   import { resolveVideoId } from "$lib/videoIdentity.js";
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
   
   export let isOpen = false;
   export let image = null;
   export let total = 0;
   export let modalScale = 100;
   export let showSubmitUI = false;
-  export let challengeType = "KIS";
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let runtimeProfile = {};
   export let showLocalTimeInTitles = true;
   export let layer = "modal";

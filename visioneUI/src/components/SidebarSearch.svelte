@@ -8,6 +8,7 @@
   import { recentSearches } from "../stores/recentSearches.js";
   import { queryTemplates } from "../stores/queryTemplates.js";
   import { marked } from 'marked';
+  import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
 
   export let isSidebarOpen = true;
   export let textareas = [];
@@ -25,7 +26,7 @@
   export let width = 18;
   export let images = []; 
   export let textareaImages = {};
-  export let challengeType = 'KIS';
+  export let challengeType = DEFAULT_DRES_CHALLENGE_TYPE;
   export let askQaAgent = (_question) => Promise.resolve({});
   export let stopQaAgent = () => {};
   export let sessionResetKey = 0;
