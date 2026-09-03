@@ -111,3 +111,40 @@ export function swapTextareas(textareas, textareaImages, indexA, indexB, mode = 
 export function loadExampleQuery(queries) {
   return queries.map(q => ({ value: q, enabled: true, textModel: DEFAULT_TEXT_MODEL, imageModel: DEFAULT_IMAGE_MODEL }));
 }
+
+/**
+ * Clears the "disabled by similarity step" bookkeeping on a single textarea
+ * (restoring its previous `enabled` state), leaving other textareas as-is.
+ * Previously duplicated identically in src/routes/+page.svelte as both the
+ * standalone restoreSimilarityDisabledSteps() array mapper (used when closing
+ * a similarity step) and the inline clearSimilarityDisableMarker() used while
+ * (re)adding one (addSimilarityAsSearchStep) — a risk, since the two "similarity
+ * step" flows had to keep this per-item transform in sync by hand.
+ * @returns {Object} The textarea, unchanged or with the markers cleared.
+ */
+export function clearSimilarityDisableMarker(t) {
+  if (t?._disabledBySimilarity) {
+    return {
+      ...t,
+      enabled: t?._wasEnabledBeforeSimilarity === true,
+      _disabledBySimilarity: false,
+      _wasEnabledBeforeSimilarity: false
+    };
+  }
+  if (t?._wasEnabledBeforeSimilarity) {
+    return {
+      ...t,
+      _disabledBySimilarity: false,
+      _wasEnabledBeforeSimilarity: false
+    };
+  }
+  return t;
+}
+
+/**
+ * Applies clearSimilarityDisableMarker() to every textarea in the array.
+ * @returns {Array} Updated textareas array.
+ */
+export function restoreSimilarityDisabledSteps(steps) {
+  return steps.map(clearSimilarityDisableMarker);
+}

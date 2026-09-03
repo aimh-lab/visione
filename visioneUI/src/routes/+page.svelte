@@ -53,7 +53,7 @@
   import { resolveRuntimeProfile } from '$lib/runtimeProfile.js';
   import { resolveGroupByConfig, resolveViewMode, resolveSortMode, isVideoLikeGroupBy } from '$lib/groupByConfig.js';
   import { formatGroupDateLabel, formatGroupHourLabel } from '$lib/titleFormatting.js';
-  import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery } from '$lib/controllers/textareaController.js';
+  import { addTextarea as _addTextarea, removeTextarea as _removeTextarea, toggleTextarea as _toggleTextarea, swapTextareas as _swapTextareas, loadExampleQuery as _loadExampleQuery, clearSimilarityDisableMarker, restoreSimilarityDisabledSteps } from '$lib/controllers/textareaController.js';
   import { buildRows } from '$lib/ui/buildRows.js';
   import { getFirstOfNextRowDOM } from '$lib/ui/domRowNav.js';
 
@@ -354,8 +354,15 @@
   $: if (settingsHydrated && runtimeProfile?.settingsDefaults) {
     uiStore.actions.applyRuntimeSettingsDefaults(runtimeProfile.settingsDefaults);
   }
-  $: visioneAPI.defaultTextModel = getGlobalDefaultTextModel();
-  $: visioneAPI.defaultImageModel = getGlobalDefaultImageModel();
+  // getGlobalDefaultTextModel/ImageModel read $uiStore via get(uiStore) internally
+  // (they're also called imperatively from many other places, so they can't just
+  // take $uiStore as a param) — an imperative get() isn't tracked by Svelte's
+  // reactivity, so without referencing $uiStore.defaultTextModel/defaultImageModel
+  // directly here, these two statements would only re-run when `availableModels`
+  // changes (at discovery time), not when the user changes the default model in
+  // Settings afterwards.
+  $: { void $uiStore.defaultTextModel; visioneAPI.defaultTextModel = getGlobalDefaultTextModel(); }
+  $: { void $uiStore.defaultImageModel; visioneAPI.defaultImageModel = getGlobalDefaultImageModel(); }
   $: visioneAPI.defaultRelevanceFeedbackModel = resolveRelevanceFeedbackModel();
   function syncVisioneApiHosts(uiState = get(uiStore), profile = runtimeProfile) {
     visioneAPI.setServicesHost(uiState.apiServicesHostOverrideEnabled ? uiState.apiServicesHost : (profile?.api?.servicesHost || ''));
@@ -645,6 +652,15 @@
     };
   }
 
+  // `{ url, name, type: 'result', imgId }` textareaImages entry, optionally
+  // spreading an existing entry's other fields first (matches the previous
+  // `{ ...primary, url, name, type: 'result', imgId }` call sites). Repeated
+  // 8 times identically across the similarity/inline-image hydration flows
+  // below before being factored out here.
+  function buildResultImageEntry(url, name, imgId, extra = null) {
+    return extra ? { ...extra, url, name, type: 'result', imgId } : { url, name, type: 'result', imgId };
+  }
+
   async function hydrateSimilarityTextareaImagesFromState() {
     const nextTextareaImages = { ...textareaImages };
     let changed = false;
@@ -663,14 +679,7 @@
       const { videoId } = parseVideoIdFromImgId(rawImgId);
       if (!videoId) return;
 
-      nextTextareaImages[idx] = [
-        {
-          url: '',
-          name: rawImgId,
-          type: 'result',
-          imgId: rawImgId
-        }
-      ];
+      nextTextareaImages[idx] = [buildResultImageEntry('', rawImgId, rawImgId)];
       changed = true;
       pendingResolves.push({ idx, rawImgId });
     });
@@ -695,15 +704,7 @@
 
           textareaImages = {
             ...textareaImages,
-            [idx]: [
-              {
-                ...primary,
-                url: resolvedUrl,
-                name: String(primary?.name || rawImgId),
-                type: 'result',
-                imgId: rawImgId
-              }
-            ]
+            [idx]: [buildResultImageEntry(resolvedUrl, String(primary?.name || rawImgId), rawImgId, primary)]
           };
         } catch {
           // Keep synthesized fallback URL when metadata lookup fails.
@@ -739,15 +740,7 @@
 
       textareaImages = {
         ...textareaImages,
-        [targetIndex]: [
-          {
-            ...primary,
-            url: resolvedUrl,
-            name: String(primary?.name || fallbackName || safeImgId),
-            type: 'result',
-            imgId: safeImgId
-          }
-        ]
+        [targetIndex]: [buildResultImageEntry(resolvedUrl, String(primary?.name || fallbackName || safeImgId), safeImgId, primary)]
       };
     } catch {
       // Keep placeholder when URL resolution fails.
@@ -778,14 +771,7 @@
       );
       if (alreadyThere) continue;
 
-      nextTextareaImages[index] = [
-        {
-          url: '',
-          name: rawImgId,
-          type: 'result',
-          imgId: rawImgId
-        }
-      ];
+      nextTextareaImages[index] = [buildResultImageEntry('', rawImgId, rawImgId)];
       changed = true;
     }
 
@@ -813,15 +799,7 @@
           const primary = currentImages[0] || {};
           textareaImages = {
             ...textareaImages,
-            [index]: [
-              {
-                ...primary,
-                url: resolvedUrl,
-                name: String(primary?.name || rawImgId),
-                type: 'result',
-                imgId: rawImgId
-              }
-            ]
+            [index]: [buildResultImageEntry(resolvedUrl, String(primary?.name || rawImgId), rawImgId, primary)]
           };
         } catch {
           // Keep placeholder metadata if URL resolution fails.
@@ -943,6 +921,12 @@
     } catch {
       logCount = 0;
     }
+  }
+
+  // `interactionLogger.logInteractionEvent(payload).then(refreshLogCount).catch(() => {})`,
+  // repeated identically at every DRES/settings interaction-log call site below.
+  function logAndRefresh(payload) {
+    return interactionLogger.logInteractionEvent(payload).then(refreshLogCount).catch(() => {});
   }
 
   function logBrowsingLight(type, value) {
@@ -1190,11 +1174,11 @@
         `reason:${String(reason || '')}`,
         `desc:${String(description || '')}`
       ].join(' | ');
-      interactionLogger.logInteractionEvent({
+      logAndRefresh({
         category: 'COOPERATION',
         type: 'submitFrame',
         value: payload
-      }).then(refreshLogCount).catch(() => {});
+      });
     },
     onTextSubmitEvent: ({ text, challengeType, accepted, verdict, description, evaluationId }) => {
       const payload = [
@@ -1205,11 +1189,11 @@
         `desc:${String(description || '')}`,
         `text:${String(text || '')}`
       ].join(' | ');
-      interactionLogger.logInteractionEvent({
+      logAndRefresh({
         category: 'COOPERATION',
         type: 'submitText',
         value: payload
-      }).then(refreshLogCount).catch(() => {});
+      });
     }
   });
 
@@ -1457,7 +1441,12 @@
           get(uiStore).dresChallengeType || 'default'
         );
         visioneAPI.setSupportsVideos(profileForMetadata?.media?.hasVideos !== false);
-        configureSearchMetadataFromDiscovery(data, profileForMetadata);
+        // Not calling configureSearchMetadataFromDiscovery(data, profileForMetadata)
+        // here: the `$: if (lastDiscoveryPayload) { ... }` block below already does
+        // it, and will run with `runtimeProfile` recomputed from the
+        // `activeCollectionName` assignment just above (same effective profile as
+        // `profileForMetadata`) once Svelte flushes reactivity — calling it here too
+        // was redundant, doing the same metadata-config work twice on every startup.
       } catch {
         // Keep strict startup behavior when discovery is unavailable.
       }
@@ -1546,14 +1535,7 @@
 
     textareaImages = {
       ...textareaImages,
-      [index]: [
-        {
-          url,
-          name: name || String(imgId || `Similarity ${index + 1}`),
-          type: 'result',
-          imgId: imgId || null
-        }
-      ]
+      [index]: [buildResultImageEntry(url, name || String(imgId || `Similarity ${index + 1}`), imgId || null)]
     };
 
     setTimeout(() => triggerSearchFromQueryChange(), 0);
@@ -1562,29 +1544,6 @@
   function handleCloseSimilarityStep(e) {
     const { index } = e.detail || {};
     if (typeof index !== 'number' || index < 0 || index >= textareas.length) return;
-
-    const restoreSimilarityDisabledSteps = (steps) => {
-      return steps.map((t) => {
-        if (t?._disabledBySimilarity) {
-          return {
-            ...t,
-            enabled: t?._wasEnabledBeforeSimilarity === true,
-            _disabledBySimilarity: false,
-            _wasEnabledBeforeSimilarity: false
-          };
-        }
-
-        if (t?._wasEnabledBeforeSimilarity) {
-          return {
-            ...t,
-            _disabledBySimilarity: false,
-            _wasEnabledBeforeSimilarity: false
-          };
-        }
-
-        return t;
-      });
-    };
 
     const shouldSearchFrom = (steps) => {
       const searchTextareas = getTextareasForSearch(steps);
@@ -1675,11 +1634,11 @@
     const nextState = get(uiStore);
     const nextLogKey = computeSettingsLogKey(nextState);
     if (nextLogKey !== previousLogKey) {
-      interactionLogger.logInteractionEvent({
+      logAndRefresh({
         category: 'OTHER',
         type: 'settingsUpdate',
         value: `challenge:${String(nextState?.dresChallengeType || DEFAULT_DRES_CHALLENGE_TYPE)} dresEnabled:${nextState?.dresEnabled ? 'true' : 'false'} autoTranslate:${nextState?.autoTranslateQueries ? 'true' : 'false'}`
-      }).then(refreshLogCount).catch(() => {});
+      });
     }
   }
 
@@ -1771,11 +1730,11 @@
 
     toasts.info(next ? 'Auto-translate enabled.' : 'Auto-translate disabled.');
 
-    interactionLogger.logInteractionEvent({
+    logAndRefresh({
       category: 'OTHER',
       type: 'autoTranslateToggle',
       value: next ? 'enabled' : 'disabled'
-    }).then(refreshLogCount).catch(() => {});
+    });
   }
 
   async function handleExportLogs() {
@@ -2168,11 +2127,11 @@ function handleViewSubmitted() {
     };
 
     await videoController.openVideoSummary(normalizedVideoId, normalizedHighlight, normalizedScope);
-    interactionLogger.logInteractionEvent({
+    logAndRefresh({
       category: 'BROWSING',
       type: 'contextView',
       value: `${normalizedScope};${normalizedVideoId}${normalizedHighlight ? `;${normalizedHighlight}` : ''}`
-    }).then(refreshLogCount).catch(() => {});
+    });
   }
 
   // ---------------------------
@@ -2188,24 +2147,6 @@ function handleViewSubmitted() {
     const existingSimilarityIndex = textareas.findIndex((t) => String(t?.similarityImgId || "").trim());
     let targetIndex = existingSimilarityIndex;
     let nextTextareas;
-    const clearSimilarityDisableMarker = (t) => {
-      if (t?._disabledBySimilarity) {
-        return {
-          ...t,
-          enabled: t?._wasEnabledBeforeSimilarity === true,
-          _disabledBySimilarity: false,
-          _wasEnabledBeforeSimilarity: false
-        };
-      }
-      if (t?._wasEnabledBeforeSimilarity) {
-        return {
-          ...t,
-          _disabledBySimilarity: false,
-          _wasEnabledBeforeSimilarity: false
-        };
-      }
-      return t;
-    };
 
     if (existingSimilarityIndex >= 0) {
       nextTextareas = textareas.map((t, idx) => {
@@ -2256,27 +2197,13 @@ function handleViewSubmitted() {
     if (resolvedFrameUrl) {
       textareaImages = {
         ...textareaImages,
-        [targetIndex]: [
-          {
-            url: resolvedFrameUrl,
-            name: resolvedFrameName,
-            type: "result",
-            imgId: resolvedFrameImgId
-          }
-        ]
+        [targetIndex]: [buildResultImageEntry(resolvedFrameUrl, resolvedFrameName, resolvedFrameImgId)]
       };
     } else {
       // Keep replacement semantics deterministic: clear stale preview, then resolve by imgId.
       textareaImages = {
         ...textareaImages,
-        [targetIndex]: [
-          {
-            url: '',
-            name: resolvedFrameName,
-            type: 'result',
-            imgId: resolvedFrameImgId || imgId
-          }
-        ]
+        [targetIndex]: [buildResultImageEntry('', resolvedFrameName, resolvedFrameImgId || imgId)]
       };
 
       const pendingImgId = String(resolvedFrameImgId || imgId).trim();
