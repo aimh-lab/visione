@@ -15,7 +15,51 @@ class APIError extends Error {
   }
 }
 
+// The dataserver's /discovery response declares, per collection, which
+// element renditions/media kinds it can serve — and the name it uses for the
+// same kind has changed across dataserver releases (older releases: plural
+// "images"/"thumbnails"; current: singular "image"/"thumbnail"), and is
+// growing to cover new kinds (video, and soon sound/audio). A literal
+// equality check against one hardcoded spelling breaks — silently, since
+// #buildCollectionElementUrl just returns null on no match — every time the
+// backend renames a type again.
+//
+// Fix: resolve by a stable *semantic* kind instead. ELEMENT_TYPE_CANONICAL
+// maps every spelling this frontend has ever used as a request (old or new)
+// to that canonical kind, and ELEMENT_TYPE_ALIASES lists the known
+// dataserver-side spellings to try, live, against whatever the active
+// /discovery response actually declares. This means callers don't need to
+// agree with the backend's current naming, and adapting to a future rename
+// is a one-line addition to these tables instead of hunting down every call
+// site again.
+const ELEMENT_TYPE_CANONICAL = {
+  image: 'image', images: 'image',
+  thumbnail: 'thumbnail', thumbnails: 'thumbnail',
+  video: 'video', videos: 'video',
+  audio: 'audio', sound: 'audio', sounds: 'audio'
+};
 
+const ELEMENT_TYPE_ALIASES = {
+  image: ['image', 'images'],
+  thumbnail: ['thumbnail', 'thumbnails'],
+  video: ['video', 'videos'],
+  audio: ['audio', 'sound', 'sounds']
+};
+
+/**
+ * Resolves `requestedType` (whatever spelling a caller used, old or new) to
+ * whichever matching spelling `availableTypes` (the live /discovery list for
+ * the active collection) actually declares, or null if none of the known
+ * aliases for that kind are present.
+ */
+function resolveElementTypeAlias(requestedType, availableTypes) {
+  const normalized = String(requestedType || '').trim().toLowerCase();
+  if (!normalized) return null;
+  const canonical = ELEMENT_TYPE_CANONICAL[normalized] || normalized;
+  const aliases = ELEMENT_TYPE_ALIASES[canonical] || [normalized];
+  const list = Array.isArray(availableTypes) ? availableTypes : [];
+  return aliases.find((alias) => list.includes(alias)) || null;
+}
 
 // src/services/api.js
 export class VisioneAPI {
@@ -335,10 +379,7 @@ export class VisioneAPI {
     const safeId = String(id || '').trim();
     if (!safeId) return null;
 
-    const normalizedRequested = String(requestedType || '').trim();
-    const list = Array.isArray(availableTypes) ? availableTypes : [];
-
-    const selectedType = list.find((t) => t === normalizedRequested) || null;
+    const selectedType = resolveElementTypeAlias(requestedType, availableTypes);
 
     if (!selectedType) return null;
 
@@ -1492,3 +1533,6 @@ export class VisioneAPI {
 // Export singleton instance
 export const visioneAPI = new VisioneAPI();
 export { APIError };
+// Exported for unit testing (resolveElementTypeAlias.test.js) — not otherwise
+// used outside this module.
+export { resolveElementTypeAlias };
