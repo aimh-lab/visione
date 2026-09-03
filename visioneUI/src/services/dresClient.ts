@@ -388,26 +388,6 @@ export class DresClient {
   }
 }
 
-export function createDresClientFromEnv(): DresClient {
-  const basePath = normalizeBasePath(import.meta.env.VITE_DRES_BASE_URL ?? '');
-  const username = import.meta.env.VITE_DRES_USERNAME;
-  const password = import.meta.env.VITE_DRES_PASSWORD;
-  const memberId = import.meta.env.VITE_DRES_MEMBER_ID;
-
-  if (!basePath || !username || !password) {
-    throw new DresClientError(
-      'Missing DRES config. Set VITE_DRES_BASE_URL, VITE_DRES_USERNAME, VITE_DRES_PASSWORD.'
-    );
-  }
-
-  return new DresClient({
-    basePath,
-    username,
-    password,
-    memberId,
-    persistSessionInfo: true
-  });
-}
 
 export function createDresClientFromSettings(settings: {
   dresSubmitServer?: string;

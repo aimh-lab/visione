@@ -5,8 +5,6 @@
   import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig.js';
   import { getRawMetadata, toIntOrNull, resolveEpochSeconds } from '../lib/epochResolution.js';
   import {
-    normalizeDiscoveryEntries,
-    selectDiscoveryEntry,
     extractMetadataFieldsFromDiscovery,
     extractDiscoveryCollectionName,
     extractAvailableModelsFromDiscovery,
@@ -1847,22 +1845,6 @@
     }
   }
 
-  function handleChangeLogResultsLimit() {
-    if (!get(uiStore).dresEnabled) {
-      toasts.info('Enable DRES submit in Settings to configure logs.');
-      return;
-    }
-
-    if (logResultsLimit === 100) {
-      logResultsLimit = 1000;
-    } else if (logResultsLimit === 1000) {
-      logResultsLimit = 10000;
-    } else {
-      logResultsLimit = 100;
-    }
-    toasts.info(`VBS logging depth set to top ${logResultsLimit} results.`);
-  }
-
   // ---------------------------
   // Video player helpers
   // ---------------------------
@@ -2114,26 +2096,6 @@ function handleViewSubmitted() {
     selectedIndex = 0;
   }
 
-
-  // ---------------------------
-  // Selection navigation (keyboard)
-  // ---------------------------
-  function moveSelection(delta) {
-    if (!images || images.length === 0) return;
-    let next = selectedIndex + delta;
-    if (next < 0) next = 0;
-    if (next > images.length - 1) next = images.length - 1;
-
-    if (next !== selectedIndex) {
-      selectedIndex = next;
-      ui.scrollToImage(imagesContainer, selectedIndex);
-    }
-  }
-
-  function moveSelectionRows(deltaRows) {
-    const cols = get(uiStore).resultsPerGroup || 5;
-    moveSelection(deltaRows * cols);
-  }
 
   function getSelectedItemForShortcuts() {
     return images[lastViewedSearchIndex] || images[selectedIndex] || null;

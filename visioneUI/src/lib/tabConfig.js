@@ -22,11 +22,3 @@ export const tabConfig = {
 
 /** @param {string} view */
 export const getTabConfig = (view) => tabConfig[view] || { label: view, icon: null };
-
-/**
- * Map of tab key → human-readable label (convenience accessor).
- * @type {Record<string, string>}
- */
-export const tabLabels = Object.fromEntries(
-  Object.entries(tabConfig).map(([key, cfg]) => [key, cfg.label])
-);

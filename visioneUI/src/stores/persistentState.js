@@ -97,12 +97,3 @@ class PersistentSet extends PersistentStore {
 
 // App-specific stores
 export const appSettingsStore = new PersistentStore('visione-app-settings', APP_SETTINGS_DEFAULTS);
-
-// Utility functions
-export function createPersistentStore(key, initialValue) {
-  return new PersistentStore(key, initialValue);
-}
-
-export function createPersistentSet(key) {
-  return new PersistentSet(key);
-}
