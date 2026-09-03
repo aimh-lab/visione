@@ -798,6 +798,11 @@
             </label>
             
             {#if field.type === 'textarea'}
+              <!-- svelte-ignore a11y_autofocus -->
+              <!-- Intentional: moves focus to the first field of this modal dialog when it
+                   opens (shouldAutofocus is only true for fieldIndex === 0), which is the
+                   recommended behavior for dialogs, not the "autofocus on page load" anti-pattern
+                   the generic a11y rule guards against. -->
               <textarea
                 id={fieldId}
                 autofocus={shouldAutofocus}
@@ -921,6 +926,8 @@
                 />
               </div>
             {:else}
+              <!-- svelte-ignore a11y_autofocus -->
+              <!-- Intentional: see the textarea branch above. -->
               <input
                 id={fieldId}
                 type={field.type || 'text'}
