@@ -289,10 +289,28 @@
     return div.innerHTML;
   }
 
+  // Memoized by content: the {#each qaAgentStream.events} block calls this
+  // once per already-rendered event on every re-render (new event arriving,
+  // panel resize, ...), and marked.parse() is not cheap to redo for content
+  // that hasn't changed. Bounded FIFO cache so a very long-running stream
+  // doesn't grow this unbounded.
+  const _markdownCache = new Map();
+  const MARKDOWN_CACHE_MAX = 500;
+
   function renderMarkdown(value) {
     const text = String(value || '').trim();
     if (!text) return '';
-    return marked.parse(text, { breaks: true });
+
+    const cached = _markdownCache.get(text);
+    if (cached !== undefined) return cached;
+
+    const html = marked.parse(text, { breaks: true });
+    if (_markdownCache.size >= MARKDOWN_CACHE_MAX) {
+      const oldestKey = _markdownCache.keys().next().value;
+      _markdownCache.delete(oldestKey);
+    }
+    _markdownCache.set(text, html);
+    return html;
   }
 
   function getEventTypeClass(type) {

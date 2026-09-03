@@ -144,9 +144,39 @@ function getFirstSelectedEvaluationId(value) {
 function createUIStore() {
   const { subscribe, update, set } = writable(DEFAULT);
 
-  const persist = (patch) => {
-    appSettingsStore.update(s => ({ ...s, ...patch }));
+  // Debounce the actual localStorage write: persist() is called on every
+  // uiStore action, including high-frequency ones fired on every mousemove
+  // while dragging (sidebar/QA panel resize) — without this, each pixel of
+  // drag synchronously JSON.stringify's and writes the entire settings
+  // object to localStorage. The in-memory store (set/update above) still
+  // updates immediately for a responsive UI; only the disk write is
+  // coalesced. Flushed eagerly on tab hide/unload so a drag ending right
+  // before a navigation/close isn't lost.
+  const PERSIST_DEBOUNCE_MS = 250;
+  let persistTimer = null;
+  let pendingPatch = null;
+
+  const flushPersist = () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    if (!pendingPatch) return;
+    const toSave = pendingPatch;
+    pendingPatch = null;
+    appSettingsStore.update(s => ({ ...s, ...toSave }));
   };
+
+  const persist = (patch) => {
+    pendingPatch = { ...pendingPatch, ...patch };
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(flushPersist, PERSIST_DEBOUNCE_MS);
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', flushPersist);
+    window.addEventListener('pagehide', flushPersist);
+  }
 
   const actions = {
     hydrateFromSettings() {

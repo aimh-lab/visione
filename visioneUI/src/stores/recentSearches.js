@@ -3,6 +3,13 @@ import { safeLoadJSON, safeRemoveItem } from './persistentState.js';
 
 const STORAGE_KEY = 'visione_recent_searches';
 const MAX_RECENT = 30;
+// Only the most recent entries keep their full in-memory `results` payload
+// (used as a client-side search cache by searchController's find()); beyond
+// that, entries keep their lightweight metadata (still shown in the Recent
+// Searches UI) but drop `results`, so repeated searches don't accumulate up
+// to MAX_RECENT full result sets — each potentially thousands of frames —
+// in memory for the whole session.
+const MAX_CACHED_RESULTS = 5;
 
 function normalizeSimilarityPreview(preview) {
   if (!preview || typeof preview !== 'object') return null;
@@ -62,7 +69,10 @@ function createRecentSearchesStore() {
           similarityPreview: normalizeSimilarityPreview(similarityPreview)
         };
         
-        const updated = [newSearch, ...filtered].slice(0, MAX_RECENT);
+        const combined = [newSearch, ...filtered].slice(0, MAX_RECENT);
+        const updated = combined.map((entry, index) =>
+          (index < MAX_CACHED_RESULTS || !entry.results) ? entry : { ...entry, results: null }
+        );
         persistToStorage(updated);
         return updated;
       });

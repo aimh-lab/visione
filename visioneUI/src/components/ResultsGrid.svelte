@@ -737,9 +737,15 @@
 
   $: {
     // Badge labels depend on these settings; clear cache so UI updates immediately.
+    // Also clear on a new `items` dataset: the cache key below doesn't include a
+    // dataset identity, so a stale entry from a previous search could otherwise
+    // be reused for the same (rowIndex, imgId) key in a new result set, giving
+    // wrong group-continuation (sameAsPrev/sameAsNext) info until the 1000-entry
+    // cap happened to clear it.
     void resultsetBadgeLabelMode;
     void showLocalTimeInTitles;
     void timeBadgeTimezoneOverride;
+    void items;
     rowInfoCache.clear();
   }
 

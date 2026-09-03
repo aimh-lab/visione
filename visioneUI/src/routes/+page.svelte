@@ -2417,15 +2417,39 @@ function handleViewSubmitted() {
   // ---------------------------
   // Rows derivation (UI store driven)
   // ---------------------------
-  $: displayRows = buildRows(images, {
-    viewMode: $uiStore.viewMode,
-    sortMode: $uiStore.sortMode,
-    resultsPerGroup: $uiStore.resultsPerGroup,
-    resultsAutoFit: true,
-    runtimeProfile,
-    showLocalTimeInTitles: $uiStore.showLocalTimeInTitles,
-    timeBadgeTimezoneOverride: $uiStore.timeBadgeTimezoneOverride
-  });
+  // buildRows() sorts/groups/chunks the whole result set (can be thousands of
+  // items) so it must not re-run on every uiStore emission — and it would:
+  // uiStore is one monolithic store, so subscribing to $uiStore at all makes
+  // Svelte re-run this block on ANY setting change (theme, sidebar width,
+  // DRES fields, ...), not just the few fields buildRows actually reads.
+  // Guard with an explicit equality check so buildRows only runs when a
+  // field it actually depends on (or `images`/`runtimeProfile`) changed.
+  let displayRows = [];
+  let _displayRowsDeps = null;
+  $: {
+    const nextDeps = [
+      images,
+      $uiStore.viewMode,
+      $uiStore.sortMode,
+      $uiStore.resultsPerGroup,
+      $uiStore.showLocalTimeInTitles,
+      $uiStore.timeBadgeTimezoneOverride,
+      runtimeProfile
+    ];
+    const changed = !_displayRowsDeps || nextDeps.some((v, i) => v !== _displayRowsDeps[i]);
+    if (changed) {
+      _displayRowsDeps = nextDeps;
+      displayRows = buildRows(images, {
+        viewMode: nextDeps[1],
+        sortMode: nextDeps[2],
+        resultsPerGroup: nextDeps[3],
+        resultsAutoFit: true,
+        runtimeProfile,
+        showLocalTimeInTitles: nextDeps[4],
+        timeBadgeTimezoneOverride: nextDeps[5]
+      });
+    }
+  }
 
 
   // Se vuoi auto-run di query esempio

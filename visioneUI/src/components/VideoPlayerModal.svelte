@@ -587,12 +587,15 @@
   );
   $: isQaChallenge = String(challengeType ?? 'KIS').toUpperCase() === 'Q&A';
   $: allowFrameSubmit = showSubmitUI;
+  // Precomputed once per rankMap change instead of inside getRankColor/getRankCategory,
+  // which were each recomputing Math.max(...rankMap.values()) — O(n) — on every call,
+  // and are called once per visible keyframe on every video timeupdate tick (O(n²)/tick).
+  $: maxRank = rankMap.size > 0 ? Math.max(...Array.from(rankMap.values())) : 0;
 
   function getRankColor(imgId: string) {
     if (!rankMap.has(imgId)) return 'rgb(107, 114, 128)';
-    
+
     const rank = rankMap.get(imgId) ?? 0;
-    const maxRank = Math.max(...Array.from(rankMap.values()));
     const normalized = maxRank > 0 ? rank / maxRank : 0;
     
     const position = normalized * (RANK_COLORS.length - 1);
@@ -628,7 +631,6 @@
   function getRankCategory(imgId: string) {
     if (!rankMap.has(imgId)) return '';
     const rank = rankMap.get(imgId) ?? 0;
-    const maxRank = Math.max(...Array.from(rankMap.values()));
     const normalized = maxRank > 0 ? rank / maxRank : 0;
     
     if (normalized < 0.33) return 'TOP';
