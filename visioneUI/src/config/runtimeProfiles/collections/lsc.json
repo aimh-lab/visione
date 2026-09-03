@@ -45,6 +45,9 @@
     "modal": "slideshow"
   },
   "titleFormatting": {
+    "rankBadge": {
+      "source": "date"
+    },
     "videoGroup": {
       "enabled": true,
       "mode": "both",

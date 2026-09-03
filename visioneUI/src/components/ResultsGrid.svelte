@@ -339,23 +339,48 @@
     return value ? `${prefix} ${value}` : prefix;
   }
 
-  function getNoGroupDateBadgeLabel(item) {
-    if (String(activeGroupBy?.kind || '').trim().toLowerCase() !== 'rank') return '';
-    if (!item || typeof item !== 'object') return '';
+  // Per-item badge shown above a thumbnail when there is no group header to carry
+  // it (i.e. in the "byrank"/standard view). What it shows is entirely dataset-driven
+  // via runtimeProfile.titleFormatting.rankBadge.source — no source configured means
+  // no badge, there is no dataset-specific default baked in here:
+  // - "id": the item's own id (e.g. V3C/V3C12, where the item id isn't otherwise
+  //   visible per-item since "byrank" has no group header to show it).
+  // - "videoId": the parent video id (as opposed to the per-item id) instead.
+  // - "date": auto-detected day badge from year/month/day metadata (LSC's setting).
+  function getNoGroupBadge(item) {
+    if (String(activeGroupBy?.kind || '').trim().toLowerCase() !== 'rank') return null;
+    if (!item || typeof item !== 'object') return null;
 
-    const metadata = getRawMetadata(item);
-    const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
-    const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
-    const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
-    const dayKey = (
-      Number.isFinite(year) && year >= 0
-      && Number.isFinite(month) && month >= 1 && month <= 12
-      && Number.isFinite(day) && day >= 1 && day <= 31
-    )
-      ? `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      : '';
+    const badgeSource = String(runtimeProfile?.titleFormatting?.rankBadge?.source || '').trim().toLowerCase();
 
-    return formatGroupDateLabel(dayKey, item, runtimeProfile, showLocalTimeInTitles);
+    if (badgeSource === 'id') {
+      const label = String(item.imgId ?? item.title ?? '').trim();
+      return label ? { label, icon: 'id' } : null;
+    }
+
+    if (badgeSource === 'videoid') {
+      const label = String(getVideoId(item) || '').trim();
+      return label ? { label, icon: 'video' } : null;
+    }
+
+    if (badgeSource === 'date') {
+      const metadata = getRawMetadata(item);
+      const year = toIntOrNull(metadata?.year ?? item?.raw?.year ?? item?.year);
+      const month = toIntOrNull(metadata?.month ?? item?.raw?.month ?? item?.month);
+      const day = toIntOrNull(metadata?.day ?? item?.raw?.day ?? item?.day);
+      const dayKey = (
+        Number.isFinite(year) && year >= 0
+        && Number.isFinite(month) && month >= 1 && month <= 12
+        && Number.isFinite(day) && day >= 1 && day <= 31
+      )
+        ? `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        : '';
+
+      const label = formatGroupDateLabel(dayKey, item, runtimeProfile, showLocalTimeInTitles);
+      return label ? { label, icon: 'date' } : null;
+    }
+
+    return null;
   }
 
   function useSlideshowFromProfile() {
@@ -1331,20 +1356,31 @@
         {/if}
 
         {#each row as item, colIndex (getCardRenderKey(item, rowIndex, colIndex))}
-          {@const noGroupDateBadgeLabel = getNoGroupDateBadgeLabel(item)}
+          {@const noGroupBadge = getNoGroupBadge(item)}
           <div class="flex flex-col gap-1">
-            {#if noGroupDateBadgeLabel}
+            {#if noGroupBadge}
               <div
                 class="inline-flex max-w-full items-center gap-1.5 self-start rounded-md border px-2 py-1 text-[10px] font-semibold leading-none tracking-[0.02em] shadow-sm"
                 style="background: var(--ui-video-badge-bg); border-color: var(--ui-video-badge-border); color: var(--ui-video-badge-text); box-shadow: var(--ui-video-badge-shadow);"
               >
-                <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <span class="truncate">{noGroupDateBadgeLabel}</span>
+                {#if noGroupBadge.icon === 'video'}
+                  <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                  </svg>
+                {:else if noGroupBadge.icon === 'id'}
+                  <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="3" ry="3"/>
+                    <path d="M8 9h8M8 13h8M8 17h5"/>
+                  </svg>
+                {:else}
+                  <svg class="w-3 h-3 shrink-0 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                {/if}
+                <span class="truncate">{noGroupBadge.label}</span>
               </div>
             {/if}
             <div

@@ -17,5 +17,10 @@
   },
   "settingsDefaults": {
     "temporalWindowSeconds": 60
+  },
+  "titleFormatting": {
+    "rankBadge": {
+      "source": "id"
+    }
   }
 }

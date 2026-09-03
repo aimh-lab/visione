@@ -5,6 +5,11 @@ function normalizeMode(mode) {
 }
 
 function toNumberOrNull(value) {
+  // Guard null/undefined/'' explicitly: Number(null) is 0 (not NaN), so without
+  // this a genuinely-missing value (e.g. extractImageInfo's `timestamp: null`
+  // when a dataset has no epoch/timestamp field at all, such as V3C) would be
+  // silently treated as epoch 0 ("01/01/1970") instead of "no epoch available".
+  if (value === null || value === undefined || value === '') return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 }

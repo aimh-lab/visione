@@ -84,6 +84,15 @@ describe('formatGroupHourLabel', () => {
   it('falls back to the raw label when it is not a recognized hour key and no epoch resolves', () => {
     expect(formatGroupHourLabel('not-an-hour-key', {}, {}, false)).toBe('not-an-hour-key');
   });
+
+  it('falls back to the raw label (not "01/01/1970") for a real extractImageInfo-shaped item with no epoch data at all', () => {
+    // Regression test: extractImageInfo() sets `timestamp: null` (an own property,
+    // not undefined) when a dataset has no epoch/timestamp field — e.g. V3C's
+    // "By Video" group value is a plain video id like "19826", not an hour-bucket.
+    // toNumberOrNull(null) must NOT coerce this to epoch 0 (Number(null) === 0).
+    const item = { imgId: '19826_1', videoId: '19826', timestamp: null, raw: { id: '19826_1', metadata: { video_id: '19826' } } };
+    expect(formatGroupHourLabel('19826', item, {}, true)).toBe('19826');
+  });
 });
 
 describe('formatImageDisplayTitle', () => {
