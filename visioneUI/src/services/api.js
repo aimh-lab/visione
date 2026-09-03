@@ -481,6 +481,18 @@ export class VisioneAPI {
     return data;
   }
 
+  /**
+   * @param {string[]|string} ids
+   * @param {string[]|string} what
+   * @returns {Promise<Array<{ id: string } & Record<string, string | null>>>}
+   *   One row per id, each carrying an `id` plus one resolved URL (or null)
+   *   per requested `what` slot (e.g. row.thumbnails, row.images) — the slot
+   *   keys are dynamic (built from `what`), so without this JSDoc annotation
+   *   TypeScript infers the return type as just `{ id: string }` from the
+   *   `const row = { id }` literal below, and callers reading e.g.
+   *   `row.thumbnails` (checkJs is off for this file, but its callers in
+   *   .ts/lang="ts" files still get it type-checked) fail to compile.
+   */
   async getElementUrlsBatch(ids = [], what = ['images']) {
     const normalizedIds = (Array.isArray(ids) ? ids : [ids])
       .map((v) => String(v || '').trim())
