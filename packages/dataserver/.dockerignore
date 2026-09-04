@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+nginx/generated/
+tests/

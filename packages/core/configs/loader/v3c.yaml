@@ -1,6 +1,8 @@
 _target_: loaders.V3CLoader
 name: v3c
-v3c_root_folder: "/data1/v3c-collection/selected-frames"
+v3c12_root_folder: "/data1/v3c-collection/selected-frames"
+v3c12_video_root_folder: "/data1/v3c-common-data"
+v3c3_root_folder: "/data2/v3c-2026-data"
 
 extraction:
   # - model: "omni_embed_nemotron_3B"

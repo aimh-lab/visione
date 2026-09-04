@@ -1,6 +1,7 @@
 _target_: loaders.LSCLoader
 name: lsc
 metadata_file: "/data1/lsc-common-data/lsc25-data/lsc25_metadata_clean_v2.csv"
+images_root: "/data1/lsc-common-data/original"
 
 extraction:
   - model: "qwen_embedding_8B"

@@ -1,10 +1,10 @@
 import glob
 import os
 
-from .v3c import V3CLoader
+from .v3c12 import V3C12Loader
 
 
-class V3C3Loader(V3CLoader):
+class V3C3Loader(V3C12Loader):
     """Load V3C3 metadata while retaining the V3C output contract."""
 
     def _get_scene_files(self):
@@ -19,6 +19,28 @@ class V3C3Loader(V3CLoader):
 
     def _format_shot_id(self, shot_id, pad_to):
         return str(int(shot_id))
+
+    def _video_file_path(self, video_id):
+        path = os.path.join(
+            self.v3c_root_folder,
+            "raw-data",
+            "V3C3",
+            "videos",
+            str(video_id),
+            f"{video_id}.mp4",
+        )
+        return path if os.path.isfile(path) else None
+
+    def _image_file_path(self, video_id, shot_id, pad_to):
+        path = os.path.join(
+            self.v3c_root_folder,
+            "output_data",
+            "V3C3",
+            "keyframes_VISIONE",
+            str(video_id),
+            f"{video_id}_{int(shot_id)}.jpg",
+        )
+        return path if os.path.isfile(path) else None
 
     def _get_media_collection_name(self):
         return "v3c"

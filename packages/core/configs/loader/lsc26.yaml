@@ -1,3 +1,4 @@
 _target_: loaders.LSC26Loader
 name: lsc26
 metadata_file: "/data1/lsc-common-data/lsc26-data/lsc26_metadata.csv"
+images_root: "/data1/lsc-common-data/lsc26-data/LSC26-unzipped"

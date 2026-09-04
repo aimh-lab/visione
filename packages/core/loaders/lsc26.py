@@ -5,12 +5,23 @@ from langchain_core.documents import Document
 from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
 
+from .media import MediaResource
+
 
 class LSC26Loader:
-    def __init__(self, name, data_server_url, metadata_file):
+    def __init__(
+        self,
+        name,
+        data_server_url,
+        metadata_file,
+        images_root=None,
+        extraction=None,
+    ):
         self.name = name
         self.data_server_url = data_server_url
         self.metadata_file = metadata_file
+        self.images_root = images_root
+        self.extraction = extraction or []
 
     def _generate_metadata(self):
         # 1. Read the CSV, keeping only the columns we need
@@ -137,6 +148,42 @@ class LSC26Loader:
         """
         path = id_str + "/" + what 
         return self.data_server_url + "/" + self.name + "/" + path
+
+    def iter_media_resources(self):
+        image_names = pd.read_csv(
+            self.metadata_file,
+            usecols=["image_key"],
+            dtype={"image_key": str},
+        )["image_key"]
+        for image_name in image_names:
+            date = image_name.split("_", 1)[0]
+            path = None
+            if self.images_root:
+                candidate = os.path.join(
+                    self.images_root,
+                    date[:4],
+                    date[4:6],
+                    date[6:8],
+                    image_name,
+                )
+                path = candidate if os.path.isfile(candidate) else None
+            yield MediaResource(
+                collection=self.name,
+                resource_id=image_name,
+                element_type="images",
+                file_key=f"{self.name}:image:{image_name}",
+                file_path=path,
+                media_kind="image",
+            )
+
+    def get_media_resource_count(self):
+        return len(
+            pd.read_csv(
+                self.metadata_file,
+                usecols=["image_key"],
+                dtype={"image_key": str},
+            )
+        )
                 
     def get_retrieved_metadata_columns(self):
         return ["epoch"]
