@@ -45,7 +45,39 @@ class ManifestResolver:
             raise RuntimeError(f"Manifest path is outside allowed roots: {file_path}")
         return resolved
 
-    def resolve(self, collection, resource_id, element_type, tpad=None):
+    @staticmethod
+    def _parse_manual_range(start, end):
+        if start is None and end is None:
+            return None
+        if start is None or end is None:
+            raise ValueError("start and end must be provided together")
+        try:
+            parsed_start = float(start)
+            parsed_end = float(end)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "start and end must be finite, non-negative numbers"
+            ) from exc
+        if (
+            not math.isfinite(parsed_start)
+            or not math.isfinite(parsed_end)
+            or parsed_start < 0
+            or parsed_end <= parsed_start
+        ):
+            raise ValueError(
+                "start and end must be finite and satisfy 0 <= start < end"
+            )
+        return parsed_start, parsed_end
+
+    def resolve(
+        self,
+        collection,
+        resource_id,
+        element_type,
+        tpad=None,
+        start=None,
+        end=None,
+    ):
         row = self._connection().execute(
             "SELECT f.path, f.media_kind, r.start_seconds, r.end_seconds "
             "FROM resources AS r JOIN files AS f USING(file_key) "
@@ -58,6 +90,10 @@ class ManifestResolver:
         file_path = self._validate_path(row["path"])
         encoded_path = quote(file_path.lstrip("/"), safe="/-._~")
         redirect = f"/_media/{row['media_kind']}/{encoded_path}"
+        if row["media_kind"] != "video":
+            return redirect
+
+        manual_range = self._parse_manual_range(start, end)
         if row["start_seconds"] is not None:
             try:
                 padding = 0.0 if tpad is None else float(tpad)
@@ -67,14 +103,25 @@ class ManifestResolver:
                 ) from exc
             if not math.isfinite(padding) or padding < 0:
                 raise ValueError("tpad must be a finite, non-negative number")
-            start = max(0.0, row["start_seconds"] - padding)
-            end = row["end_seconds"] + padding
-            redirect += "?" + urlencode(
-                {
-                    "start": format(start, ".15g"),
-                    "end": format(end, ".15g"),
-                }
-            )
+            selected_start = max(0.0, row["start_seconds"] - padding)
+            if manual_range is None:
+                resolved_start = selected_start
+                resolved_end = row["end_seconds"] + padding
+            else:
+                relative_start, relative_end = manual_range
+                resolved_start = selected_start + relative_start
+                resolved_end = selected_start + relative_end
+        elif manual_range is not None:
+            resolved_start, resolved_end = manual_range
+        else:
+            return redirect
+
+        redirect += "?" + urlencode(
+            {
+                "start": format(resolved_start, ".15g"),
+                "end": format(resolved_end, ".15g"),
+            }
+        )
         return redirect
 
     def discovery(self):
@@ -115,6 +162,8 @@ def create_app(manifest_path=None, allowed_roots=None):
         resource_id: str,
         element_type: str,
         tpad: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
     ):
         try:
             redirect = resolver.resolve(
@@ -122,6 +171,8 @@ def create_app(manifest_path=None, allowed_roots=None):
                 resource_id,
                 element_type,
                 tpad=tpad,
+                start=start,
+                end=end,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

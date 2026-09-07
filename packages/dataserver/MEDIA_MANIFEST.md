@@ -54,3 +54,9 @@ Shot-video requests may include a non-negative `tpad` value to extend both
 manifest boundaries. For example, `?tpad=1.5` changes `[start, end]` to
 `[max(0, start - 1.5), end + 1.5]`. The parameter is ignored for whole videos
 and images; invalid values return HTTP 400.
+
+Video requests may also provide `start` and `end` together. They are absolute
+offsets for whole-video IDs and offsets relative to the selected shot start
+for shot IDs. Relative ranges may extend beyond the shot into adjacent shots.
+When combined with `tpad`, the relative offsets use the padded shot start as
+their origin. Invalid or incomplete ranges return HTTP 400.
