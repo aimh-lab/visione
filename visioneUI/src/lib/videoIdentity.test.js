@@ -30,6 +30,13 @@ describe('parseVideoIdFromImgId', () => {
     });
   });
 
+  it('recognizes a generic "<videoId>_<sceneNumber>" naming pattern (V3C/V3C12)', () => {
+    expect(parseVideoIdFromImgId('14575_3')).toEqual({
+      videoId: '14575',
+      source: 'underscorePair'
+    });
+  });
+
   it('falls back to everything before the first dash when no pattern matches', () => {
     expect(parseVideoIdFromImgId('abc-def-ghi')).toEqual({
       videoId: 'abc',

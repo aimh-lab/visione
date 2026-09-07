@@ -254,6 +254,27 @@ export class VisioneAPI {
     return `${this.videosBase}/${vid}.mp4`;
   }
 
+  // Dataset-driven video URL resolution: some collections (e.g. V3C/V3C12) serve
+  // full videos through the dataserver's per-collection route
+  // (https://<dataserver>/<collection>/<video_id>/video, the same mechanism
+  // already used for images/thumbnails via getElementUrl) rather than the flat
+  // "<videosBase>/<id>[-quality].mp4" scheme getVideoUrl() assumes. Which one to
+  // use is driven entirely by runtimeProfile.videoPlayer.urlSource — no dataset
+  // name is checked here. Unset/anything else keeps the historical getVideoUrl()
+  // behavior, so this is a non-breaking addition.
+  //
+  // No fallback between the two schemes: a dataset opts into exactly one, and
+  // the legacy flat-mp4 scheme is no longer served by any current deployment —
+  // silently falling back to it on a dataserver-lookup failure would just mask
+  // the real error instead of surfacing it.
+  async getPlayableVideoUrl(videoId, { urlSource, quality = 'medium' } = {}) {
+    if (String(urlSource || '').trim().toLowerCase() === 'dataserver') {
+      const row = await this.getElementUrl(videoId, ['video']);
+      return String(row?.video || row?.videos || '').trim() || null;
+    }
+    return this.getVideoUrl(videoId, quality);
+  }
+
   setSupportsVideos(enabled) {
     this.supportsVideos = Boolean(enabled);
   }

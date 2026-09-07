@@ -9,8 +9,9 @@ import { parseVideoIdFromImgId } from '../videoIdentity.js';
 /**
  * @param {Object} deps
  * @param {() => Array} deps.getImages           – current search results
+ * @param {() => Object} [deps.getRuntimeProfile] – current dataset's runtime profile
  */
-export function createVideoPlayerController({ getImages }) {
+export function createVideoPlayerController({ getImages, getRuntimeProfile = () => ({}) }) {
   const normalizeVideoId = (value) => {
     return String(value || '');
   };
@@ -76,7 +77,8 @@ export function createVideoPlayerController({ getImages }) {
     const vid = normalizeVideoId(fallbackVid);
     const matched = getImages().find((img) => img?.imgId === imgId) || null;
     const explicitVideoUrl = matched?.videoUrl || matched?.raw?.metadata?.videos || null;
-    const resolvedVideoUrl = explicitVideoUrl || visioneAPI.getVideoUrl(vid, 'medium');
+    const urlSource = getRuntimeProfile()?.videoPlayer?.urlSource;
+    const resolvedVideoUrl = explicitVideoUrl || await visioneAPI.getPlayableVideoUrl(vid, { urlSource, quality: 'medium' });
     const parsedTimestamp = Number(matched?.timestamp);
     const hasResultsetTimestamp = Number.isFinite(parsedTimestamp) && parsedTimestamp >= 0;
     const highlighted = getHighlightedKeyframesForVideo(vid);

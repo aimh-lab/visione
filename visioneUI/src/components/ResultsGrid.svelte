@@ -752,7 +752,9 @@
       const start = Math.max(0, timestamp - 2);
       const end = timestamp + 2;
       const explicitVideoUrl = item?.videoUrl || item?.raw?.metadata?.videos || null;
-      preview = { imgId, videoUrl: explicitVideoUrl || visioneAPI.getVideoUrl(videoId, "medium"), start, end };
+      const resolvedVideoUrl = explicitVideoUrl
+        || await visioneAPI.getPlayableVideoUrl(videoId, { urlSource: runtimeProfile?.videoPlayer?.urlSource, quality: "medium" });
+      preview = { imgId, videoUrl: resolvedVideoUrl, start, end };
     } catch (err) {
       console.error("Preview error", err);
     }

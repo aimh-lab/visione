@@ -22,5 +22,8 @@
     "rankBadge": {
       "source": "id"
     }
+  },
+  "videoPlayer": {
+    "urlSource": "dataserver"
   }
 }

@@ -1358,6 +1358,7 @@
   // Video player controller
   const videoPlayerCtrl = createVideoPlayerController({
     getImages: () => images,
+    getRuntimeProfile: () => runtimeProfile,
   });
 
   // Aggiorna i dataset nei controller quando cambiano
@@ -1902,7 +1903,13 @@
       return;
     }
 
-    videoPlayer = await videoPlayerCtrl.buildPlayerData(imgId, videoId, startAt);
+    try {
+      videoPlayer = await videoPlayerCtrl.buildPlayerData(imgId, videoId, startAt);
+    } catch (error) {
+      console.error('Failed to open video player', error);
+      toasts.error(`Could not load video: ${error?.message || String(error)}`);
+      return;
+    }
     isVideoPlayerOpen = true;
     logVideoPlayer('open', `imgId:${String(imgId || '')} start:${Number(startAt || 0)}`);
   }

@@ -13,21 +13,26 @@
 //   2. LSC-style photo filename: YYYYMMDD_HH + 4-digit MMSS + "_" + 3-digit
 //      sequence (e.g. "20190101_121948_000.jpg") -> hour bucket "20190101_12".
 //   3. Generic "<prefix>-<n>-<m>" keyframe naming (e.g. shot/frame ids).
-//   4. Last resort: everything before the first "-". This only produces a
+//   4. Generic "<videoId>_<sceneNumber>" naming, both purely numeric (e.g.
+//      V3C/V3C12's "14575_3" -> "14575") — mirrors how the loader itself
+//      derives the id (video_id + "_" + scene number), so this needs no
+//      metadata round-trip to recover.
+//   5. Last resort: everything before the first "-". This only produces a
 //      correct videoId for dash-separated naming conventions — it is NOT a
-//      safe assumption for every dataset's keyframe naming (e.g. an
-//      underscore-based convention), which is exactly why call sites that
-//      matter (DRES submission) should watch the returned `source`.
+//      safe assumption for every dataset's keyframe naming, which is exactly
+//      why call sites that matter (DRES submission) should watch the
+//      returned `source`.
 
 const LSC_HOUR_BUCKET_PATTERN = /^(\d{8}_\d{2})\d{4}_\d{3}(?:\.[^./]+)?$/i;
 const DASH_PAIR_PATTERN = /-(\d+)-(\d+)(?:\.[^./]+)?$/i;
+const UNDERSCORE_ID_SCENE_PATTERN = /^(\d+)_\d+(?:\.[^./]+)?$/i;
 
 /**
  * Parse a videoId out of a raw image/keyframe id string alone (no metadata
  * available). Returns { videoId, source } so callers can decide whether to
  * warn when only the last-resort strategy matched.
  * @param {string} rawImgId
- * @returns {{ videoId: string, source: 'none' | 'lscHourBucket' | 'dashPair' | 'fallbackSplit' }}
+ * @returns {{ videoId: string, source: 'none' | 'lscHourBucket' | 'dashPair' | 'underscorePair' | 'fallbackSplit' }}
  */
 export function parseVideoIdFromImgId(rawImgId) {
   const raw = String(rawImgId || '').trim();
@@ -38,6 +43,9 @@ export function parseVideoIdFromImgId(rawImgId) {
 
   const dashPairMatch = raw.match(DASH_PAIR_PATTERN);
   if (dashPairMatch) return { videoId: dashPairMatch[1], source: 'dashPair' };
+
+  const underscorePairMatch = raw.match(UNDERSCORE_ID_SCENE_PATTERN);
+  if (underscorePairMatch) return { videoId: underscorePairMatch[1], source: 'underscorePair' };
 
   return { videoId: raw.split('-')[0] || '', source: 'fallbackSplit' };
 }
