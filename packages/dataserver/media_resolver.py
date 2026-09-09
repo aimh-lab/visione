@@ -49,23 +49,29 @@ class ManifestResolver:
     def _parse_manual_range(start, end):
         if start is None and end is None:
             return None
-        if start is None or end is None:
-            raise ValueError("start and end must be provided together")
+        if start is None:
+            raise ValueError("start is required when end is provided")
         try:
             parsed_start = float(start)
-            parsed_end = float(end)
+            parsed_end = None if end is None else float(end)
         except (TypeError, ValueError) as exc:
             raise ValueError(
                 "start and end must be finite, non-negative numbers"
             ) from exc
         if (
             not math.isfinite(parsed_start)
-            or not math.isfinite(parsed_end)
             or parsed_start < 0
-            or parsed_end <= parsed_start
+            or (
+                parsed_end is not None
+                and (
+                    not math.isfinite(parsed_end)
+                    or parsed_end <= parsed_start
+                )
+            )
         ):
             raise ValueError(
-                "start and end must be finite and satisfy 0 <= start < end"
+                "start and end must be finite and satisfy "
+                "0 <= start < end when end is provided"
             )
         return parsed_start, parsed_end
 
@@ -110,18 +116,24 @@ class ManifestResolver:
             else:
                 relative_start, relative_end = manual_range
                 resolved_start = selected_start + relative_start
-                resolved_end = selected_start + relative_end
+                if relative_end is None:
+                    resolved_end = row["end_seconds"] + padding
+                    if resolved_start >= resolved_end:
+                        raise ValueError(
+                            "start must precede the selected shot end when end "
+                            "is omitted"
+                        )
+                else:
+                    resolved_end = selected_start + relative_end
         elif manual_range is not None:
             resolved_start, resolved_end = manual_range
         else:
             return redirect
 
-        redirect += "?" + urlencode(
-            {
-                "start": format(resolved_start, ".15g"),
-                "end": format(resolved_end, ".15g"),
-            }
-        )
+        query = {"start": format(resolved_start, ".15g")}
+        if resolved_end is not None:
+            query["end"] = format(resolved_end, ".15g")
+        redirect += "?" + urlencode(query)
         return redirect
 
     def discovery(self):
