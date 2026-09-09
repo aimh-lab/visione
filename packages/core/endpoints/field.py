@@ -45,7 +45,11 @@ def metadata_field(
 
         rows = request.app.state.vector_store.get_by_field_value(
             select_field=select_field,
-            select_value=_coerce_select_value(select_value),
+            select_value=_coerce_select_value(
+                select_value,
+                data_type=_get_select_field_type(request, select_field),
+                field_name=select_field,
+            ),
             retrieve_fields=field,
         )
         return _sanitize_for_json(rows)
@@ -56,23 +60,77 @@ def metadata_field(
         raise HTTPException(status_code=400, detail=error_str)
 
 
-def _coerce_select_value(value: str):
-    lowered = value.lower()
-    if lowered == "true":
-        return True
-    if lowered == "false":
-        return False
-    if lowered == "null":
+def _get_select_field_type(request: Request, select_field: str) -> str | None:
+    """Return the loader-declared type for a selectable database field."""
+    if select_field == "content":
+        return "text"
+
+    loader = getattr(request.app.state, "loader", None)
+    get_column_schema = getattr(loader, "get_column_schema", None)
+    if get_column_schema is None:
         return None
-    # if contains alphabetic or special characters, keep as string
-    if any(c.isalpha() or not c.isalnum() for c in value):
+
+    for column in get_column_schema():
+        if isinstance(column, dict):
+            name = column.get("name")
+            data_type = column.get("data_type")
+        else:
+            name = getattr(column, "name", None)
+            data_type = getattr(column, "data_type", None)
+
+        if name == select_field:
+            return data_type
+
+    return None
+
+
+def _coerce_select_value(
+    value: str,
+    *,
+    data_type: str | None,
+    field_name: str,
+):
+    """Convert a query-string value according to its declared database type."""
+    if data_type is None:
         return value
-    try:
-        if "." in value:
+
+    normalized_type = data_type.strip().lower()
+
+    if normalized_type in {"smallint", "integer", "bigint"}:
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid select_value {value!r} for integer field {field_name!r}."
+            ) from exc
+
+    if normalized_type in {
+        "float",
+        "real",
+        "double precision",
+        "numeric",
+        "decimal",
+    }:
+        try:
             return float(value)
-        return int(value)
-    except ValueError:
-        return value
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid select_value {value!r} for numeric field {field_name!r}."
+            ) from exc
+
+    if normalized_type in {"bool", "boolean"}:
+        lowered = value.lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+        raise ValueError(
+            f"Invalid select_value {value!r} for boolean field {field_name!r}; "
+            "expected 'true' or 'false'."
+        )
+
+    # Text and specialized/unknown loader types are passed through unchanged.
+    return value
 
 
 def _sanitize_for_json(value):

@@ -197,13 +197,10 @@ class V3C12Loader:
         return "video_id"
 
     def get_video_time_reference_columns(self):
-        # Reuse get_temporal_column() (already "start_time_seconds") as the
-        # single best point to start playback at, rather than duplicating it.
-        temporal_column = self.get_temporal_column()
         return {
-            "item_time": temporal_column,
-            "item_start_time": temporal_column,
-            "item_end_time": "end_time_seconds",
+            "item_time": "start_time_seconds",
+            "item_start_time": "start_time_seconds",
+            "item_end_time": "end_time_seconds"
         }
 
     def get_full_text_search_columns(self):
