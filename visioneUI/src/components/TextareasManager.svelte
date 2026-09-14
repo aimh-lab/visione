@@ -540,11 +540,27 @@
   }
 
   function autoResizeAction(node: HTMLTextAreaElement, _value: string) {
-    resizeTextareaNode(node);
+    // Same ordering issue as `update` below applies on initial mount too: for a
+    // textarea created fresh with a non-empty value already set (e.g. a second
+    // query step restored from the URL, which didn't exist in the DOM before),
+    // `use:autoResizeAction` is initialized *before* `bind:value` writes that
+    // value into the node (see markup below), and — unlike an update — there is
+    // no later call to re-measure it once the value is actually applied. Defer
+    // past the current DOM flush so the textarea already has its value.
+    tick().then(() => resizeTextareaNode(node));
     return {
       update(nextValue: string) {
         void nextValue;
-        resizeTextareaNode(node);
+        // This action's `update` runs in template/directive order, which is
+        // *before* the later `bind:value` on the same node applies the new
+        // value to the DOM (see markup below). When the value comes from the
+        // user typing, the browser has already written it to the DOM ahead of
+        // time so it makes no difference — but for a programmatic change (e.g.
+        // restoring a query from the URL on page load) the textarea's `.value`
+        // is still stale at this point, so measuring `scrollHeight` here would
+        // size the box for the old (often empty) content. Defer past the
+        // current DOM flush so the textarea already reflects the new value.
+        tick().then(() => resizeTextareaNode(node));
       }
     };
   }
@@ -924,7 +940,6 @@
     const nextValue = variant === 'original' ? hint.from : hint.to;
     update(index, nextValue);
     closeTranslationHint();
-    setTimeout(() => autoResizeTextarea(index), 0);
   }
 
   async function toggleMenu(index: number) {
