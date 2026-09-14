@@ -715,10 +715,27 @@ export class VisioneAPI {
     const optionalFields = ['epoch', 'year', 'month', 'day', 'hour', 'utc_offset_hours', 'location_country']
       .filter((field) => this.#isKnownMetadataField(field));
 
+    // The dataset's own declared video-time-reference field(s) (e.g. V3C's
+    // /discovery item_time -> "start_time_seconds") — without these, keyframes
+    // returned here (used by VideoSummaryModal's "context view") never carry
+    // the value getVideoPlayerStartFromProfile()/resolveVideoTimeReferenceSeconds()
+    // need to seek the video player to this keyframe's time, unlike a regular
+    // search result item (whose metadata already includes it via
+    // defaultMetadataToRetrieve) — that mismatch is why playing a video from
+    // the context view fell back to starting at 0 while the main results grid
+    // didn't.
+    const videoTimeReferenceFieldNames = Array.from(
+      new Set(Object.values(this.videoTimeReferenceFields || {}))
+    )
+      .map((field) => String(field || '').trim())
+      .filter((field) => field && this.#isKnownMetadataField(field));
+
+    const requestedFields = Array.from(new Set([...optionalFields, ...videoTimeReferenceFieldNames]));
+
     const params = new URLSearchParams();
     params.set('select_field', this.videoGroupField);
     params.set('select_value', normalizedVideoId);
-    [this.itemIdField, ...optionalFields].forEach((field) => params.append('field', field));
+    [this.itemIdField, ...requestedFields].forEach((field) => params.append('field', field));
 
     const response = await this.#makeRequest(`${this.baseUrl}/field?${params.toString()}`, {
       retries: API_CONFIG.FIELD_RETRIES
@@ -734,6 +751,11 @@ export class VisioneAPI {
     return data
       .filter((item) => item?.[itemIdField])
       .map((item) => {
+        const videoTimeReferenceValues = {};
+        videoTimeReferenceFieldNames.forEach((field) => {
+          videoTimeReferenceValues[field] = item?.[field] ?? null;
+        });
+
         return {
           imgId: String(item[itemIdField]),
           timestamp: item?.epoch ?? null,
@@ -744,6 +766,7 @@ export class VisioneAPI {
           hour: item?.hour ?? null,
           utc_offset_hours: item?.utc_offset_hours ?? null,
           location_country: item?.location_country ?? null,
+          ...videoTimeReferenceValues,
           metadata: {
             epoch: item?.epoch ?? null,
             year: item?.year ?? null,
@@ -751,7 +774,8 @@ export class VisioneAPI {
             day: item?.day ?? null,
             hour: item?.hour ?? null,
             utc_offset_hours: item?.utc_offset_hours ?? null,
-            location_country: item?.location_country ?? null
+            location_country: item?.location_country ?? null,
+            ...videoTimeReferenceValues
           }
         };
       });
