@@ -62,7 +62,7 @@ describe('buildRows: byrank / kind "rank" (no grouping)', () => {
 describe('buildRows: byvideo (kind "video")', () => {
   const profile = profileWith(RANK_DATE_VIDEO_MODES);
 
-  it('groups items by their videoId field, capping each group at resultsPerGroup and splitting the rest into extra chunk rows', () => {
+  it('groups items by their videoId field, capping (not splitting) oversized groups at resultsPerGroup', () => {
     const items = [
       item('v1-1', { videoId: 'v1' }),
       item('v1-2', { videoId: 'v1' }),
@@ -71,21 +71,23 @@ describe('buildRows: byvideo (kind "video")', () => {
     ];
     const rows = buildRows(items, { viewMode: 'byvideo', runtimeProfile: profile, resultsPerGroup: 2 });
 
-    // v1's 3 items split into a 2-item row + a 1-item continuation row; v2 gets its own row.
+    // v1's 3 items are capped to its first 2 (the 3rd is dropped, not moved to
+    // a continuation row); v2 gets its own row, same as byhour's hour_id grouping.
     const v1Rows = rows.filter((r) => r.__visioneGroupKey === 'v1');
-    expect(v1Rows.map((r) => r.length)).toEqual([2, 1]);
-    expect(v1Rows[1].__visioneChunkBoundary).toBe(true);
+    expect(v1Rows).toHaveLength(1);
+    expect(v1Rows[0].map((i) => i.imgId)).toEqual(['v1-1', 'v1-2']);
 
     const v2Rows = rows.filter((r) => r.__visioneGroupKey === 'v2');
     expect(v2Rows).toHaveLength(1);
     expect(v2Rows[0]).toHaveLength(1);
   });
 
-  it('gives the same grouped/split result regardless of resultsAutoFit (both branches converge)', () => {
+  it('gives the same capped result regardless of resultsAutoFit (both branches converge)', () => {
     const items = [item('a', { videoId: 'v1' }), item('b', { videoId: 'v1' }), item('c', { videoId: 'v1' })];
     const withAuto = buildRows(items, { viewMode: 'byvideo', runtimeProfile: profile, resultsPerGroup: 2, resultsAutoFit: true });
     const withoutAuto = buildRows(items, { viewMode: 'byvideo', runtimeProfile: profile, resultsPerGroup: 2, resultsAutoFit: false });
     expect(withoutAuto).toEqual(withAuto);
+    expect(withAuto[0].map((i) => i.imgId)).toEqual(['a', 'b']);
   });
 });
 

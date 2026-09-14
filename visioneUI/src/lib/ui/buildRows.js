@@ -1,5 +1,5 @@
 // src/lib/ui/buildRows.js
-import { resolveGroupByConfig, isVideoLikeGroupByMetadata } from '$lib/groupByConfig.js';
+import { resolveGroupByConfig, isVideoLikeGroupBy, isVideoLikeGroupByMetadata } from '$lib/groupByConfig.js';
 import { resolveEpochMs, toIntOrNull, buildHourGroupKey as resolveHourGroupKey } from '$lib/epochResolution.js';
 
 export function buildRows(items, {
@@ -26,7 +26,15 @@ export function buildRows(items, {
   const mode = String(groupBy?.mode || viewMode || 'byrank');
   const kind = String(groupBy?.kind || '').trim().toLowerCase();
   const metadataField = String(groupBy?.metadata || '').trim();
-  const isHourMetadataGrouping = kind === 'metadata' && isVideoLikeGroupByMetadata(metadataField);
+  // "Is this group semantically one video?" — true for real per-video grouping
+  // (kind: 'video', e.g. V3C) *and* for LSC's hour-bucket-as-video-proxy
+  // metadata grouping (kind: 'metadata', metadata: 'hour_id'). Both are
+  // hard-capped at resultsPerGroup (excess dropped), unlike a generic
+  // (non-video) metadata grouping, which is allowed to span multiple rows
+  // uncapped. Reuses the same isVideoLikeGroupBy() helper ResultsGrid.svelte/
+  // +page.svelte already use for this, instead of only covering the hour_id
+  // metadata case here and missing kind: 'video'.
+  const isVideoLikeGrouping = isVideoLikeGroupBy({ kind, metadata: metadataField });
   const perRow = Math.max(1, Number(resultsPerGroup ?? resultsPerRow) || 5);
   const auto = !!resultsAutoFit;
 
@@ -212,7 +220,7 @@ export function buildRows(items, {
 
   if (auto) {
     if (orderedGroupedRows) {
-      if (isHourMetadataGrouping) return cappedGroupedRows || [];
+      if (isVideoLikeGrouping) return cappedGroupedRows || [];
       // One logical group can span multiple visual rows, capped by per-group size.
       return splitGroupedRows(orderedGroupedRows);
     }
@@ -225,7 +233,7 @@ export function buildRows(items, {
   if (mode === "bydate" && orderedDateGroupedRows) return dateCappedRows || [];
 
   // Grouped modes (video or metadata): respect per-group cap.
-  if (isHourMetadataGrouping && cappedGroupedRows) return cappedGroupedRows;
+  if (isVideoLikeGrouping && cappedGroupedRows) return cappedGroupedRows;
   if (orderedGroupedRows) return splitGroupedRows(orderedGroupedRows);
 
   return chunk(items, perRow);
