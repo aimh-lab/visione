@@ -242,38 +242,72 @@ function createUIStore() {
       }));
     },
 
-    applyRuntimeSettingsDefaults(defaults = {}) {
+    // `defaults` is a resolved runtimeProfile.settingsDefaults (defaults.json
+    // deep-merged with the active collection's collections/<name>.json, e.g.
+    // a smaller temporalWindowSeconds for V3C than the generic LSC-scaled
+    // one) and `collectionName` is the collection it was resolved for.
+    applyRuntimeSettingsDefaults(defaults = {}, collectionName = '') {
       const version = String(defaults?.version || '').trim();
       if (!version) return;
 
+      // `version` itself doesn't vary per collection (only individual fields
+      // like temporalWindowSeconds do, across collections/*.json) — gating on
+      // the bare version alone would let whichever collection resolves first
+      // (including the transient 'default' profile used before /discovery
+      // resolves the real one) consume it and permanently block every other
+      // collection's per-dataset override from ever being applied. Fold the
+      // collection into the gate key so each collection gets its own
+      // one-time application.
+      const gateKey = collectionName ? `${version}::${collectionName}` : version;
+
       let nextState = null;
       update((u) => {
-        if (String(u.runtimeSettingsDefaultsVersion || '').trim() === version) return u;
+        if (String(u.runtimeSettingsDefaultsVersion || '').trim() === gateKey) return u;
 
-        const nextQueryResultK = Number.isFinite(Number(defaults?.queryResultK))
-          && !Number.isFinite(Number(u.queryResultK))
-            ? normalizeQueryResultK(defaults.queryResultK, u.queryResultK || DEFAULT.queryResultK)
-            : u.queryResultK;
-        const nextTemporalWindowSeconds = Number.isFinite(Number(defaults?.temporalWindowSeconds))
-          && !Number.isFinite(Number(u.temporalWindowSeconds))
-            ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(defaults.temporalWindowSeconds)))
-            : u.temporalWindowSeconds;
+        // "Has the user customized this?" must be checked against the
+        // persisted setting, not `u.*` — the in-memory store is always
+        // finite from startup (pre-seeded by DEFAULT/appDefaults.js), so it
+        // can never distinguish "user never touched this" from "still at the
+        // built-in default". A persisted value equal to the generic built-in
+        // default doesn't count as customized either, so a stale value
+        // written by an earlier, buggy pass of this same defaulting logic
+        // (before this fix) doesn't keep blocking the real per-dataset value.
+        const persisted = appSettingsStore.get() || {};
+        const persistedQueryResultK = Number(persisted.queryResultK);
+        const persistedTemporalWindowSeconds = Number(persisted.temporalWindowSeconds);
+        const queryResultKCustomized = Number.isFinite(persistedQueryResultK) && persistedQueryResultK !== DEFAULT.queryResultK;
+        const temporalWindowSecondsCustomized = Number.isFinite(persistedTemporalWindowSeconds) && persistedTemporalWindowSeconds !== DEFAULT.temporalWindowSeconds;
+
+        const nextQueryResultK = Number.isFinite(Number(defaults?.queryResultK)) && !queryResultKCustomized
+          ? normalizeQueryResultK(defaults.queryResultK, u.queryResultK || DEFAULT.queryResultK)
+          : u.queryResultK;
+        const nextTemporalWindowSeconds = Number.isFinite(Number(defaults?.temporalWindowSeconds)) && !temporalWindowSecondsCustomized
+          ? Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(defaults.temporalWindowSeconds)))
+          : u.temporalWindowSeconds;
 
         nextState = {
           ...u,
           queryResultK: nextQueryResultK,
           temporalWindowSeconds: nextTemporalWindowSeconds,
-          runtimeSettingsDefaultsVersion: version
+          runtimeSettingsDefaultsVersion: gateKey
         };
         return nextState;
       });
 
       if (nextState) {
-        persist({
-          queryResultK: nextState.queryResultK,
-          temporalWindowSeconds: nextState.temporalWindowSeconds,
-          runtimeSettingsDefaultsVersion: nextState.runtimeSettingsDefaultsVersion
-        });
+        // Only persist a field that this pass actually changed — persisting
+        // it unconditionally (even when left untouched) would write it as if
+        // the user had chosen it, permanently blocking a future per-dataset
+        // default from ever applying (the exact bug this fix corrects).
+        const patch = { runtimeSettingsDefaultsVersion: nextState.runtimeSettingsDefaultsVersion };
+        const previous = appSettingsStore.get() || {};
+        if (nextState.queryResultK !== Number(previous.queryResultK)) {
+          patch.queryResultK = nextState.queryResultK;
+        }
+        if (nextState.temporalWindowSeconds !== Number(previous.temporalWindowSeconds)) {
+          patch.temporalWindowSeconds = nextState.temporalWindowSeconds;
+        }
+        persist(patch);
       }
     },
 

@@ -352,7 +352,7 @@
     }
   }
   $: if (settingsHydrated && runtimeProfile?.settingsDefaults) {
-    uiStore.actions.applyRuntimeSettingsDefaults(runtimeProfile.settingsDefaults);
+    uiStore.actions.applyRuntimeSettingsDefaults(runtimeProfile.settingsDefaults, activeCollectionName);
   }
   // getGlobalDefaultTextModel/ImageModel read $uiStore via get(uiStore) internally
   // (they're also called imperatively from many other places, so they can't just

@@ -110,10 +110,33 @@ describe('applyRuntimeSettingsDefaults', () => {
     expect(state.runtimeSettingsDefaultsVersion).toBe('v1');
   });
 
-  it('does not override an already-finite queryResultK/temporalWindowSeconds', () => {
-    const before = get(uiStore).queryResultK;
-    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', queryResultK: 999999 });
-    expect(get(uiStore).queryResultK).toBe(before);
+  it('does not override a persisted (user-customized) queryResultK/temporalWindowSeconds', () => {
+    // A value equal to the built-in default doesn't count as "customized"
+    // (see the next test) — use values that differ from it so this actually
+    // exercises the "user chose something else" path.
+    appSettingsStore.set({ ...APP_SETTINGS_DEFAULTS, queryResultK: 4242, temporalWindowSeconds: 42 });
+    uiStore.actions.hydrateFromSettings();
+    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', queryResultK: 999999, temporalWindowSeconds: 999999 });
+    const state = get(uiStore);
+    expect(state.queryResultK).toBe(4242);
+    expect(state.temporalWindowSeconds).toBe(42);
+  });
+
+  it('does override when the persisted value is still just the built-in default (not really customized)', () => {
+    // This is the bug this mechanism exists to fix: the in-memory store is
+    // always finite from startup, so "customized" can only be told apart
+    // from "never touched" by checking the persisted setting against the
+    // generic built-in default, not against the live store value.
+    appSettingsStore.set(APP_SETTINGS_DEFAULTS);
+    uiStore.actions.hydrateFromSettings();
+    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', temporalWindowSeconds: 60 });
+    expect(get(uiStore).temporalWindowSeconds).toBe(60);
+  });
+
+  it('gates per (version, collection): a later collection is not blocked by an earlier one under the same version', () => {
+    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', temporalWindowSeconds: 25200 }, 'default');
+    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', temporalWindowSeconds: 60 }, 'v3c');
+    expect(get(uiStore).temporalWindowSeconds).toBe(60);
   });
 
   it('is idempotent: re-applying the same version again is a no-op', () => {

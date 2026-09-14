@@ -198,7 +198,10 @@ class LSC26Loader:
         return None
 
     def get_video_time_reference_columns(self):
-        return []
+        # No video concept for LSC (individual lifelog images, not video
+        # segments) — declare nothing, so frontend callers fall back to their
+        # own LSC-specific heuristics (hour_msb_middletime / video_offset_seconds).
+        return {}
 
     def get_column_schema(self):
         return [
