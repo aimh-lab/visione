@@ -135,12 +135,33 @@ export function extractAvailableModelsFromDiscovery(discoveryPayload) {
 }
 
 /**
+ * Extracts the dataset's own declared mapping of semantic video-time keys
+ * ("item_time", "item_start_time", "item_end_time") to the actual metadata
+ * field name that carries them (e.g. V3C/V3C12 declare
+ * `video_time_reference_attributes: { item_time: "start_time_seconds", ... }`
+ * in /discovery). A dataset that doesn't declare this at all (e.g. LSC, which
+ * has no video concept) yields {} — callers fall back to their own heuristics.
+ */
+export function extractVideoTimeReferenceFields(discoveryPayload, collectionName = '') {
+  const selected = selectDiscoveryEntry(discoveryPayload, collectionName);
+  const raw = selected?.video_time_reference_attributes;
+  if (!raw || typeof raw !== 'object') return {};
+
+  const out = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const field = String(value || '').trim();
+    if (field) out[key] = field;
+  }
+  return out;
+}
+
+/**
  * Pure computation of the search-metadata configuration derived from a
  * /discovery payload + the active runtime profile. Returns a plain
  * descriptor — { knownMetadataFields, itemIdField, videoGroupField,
- * defaultMetadataToRetrieve } — for the caller to apply (e.g. to the
- * visioneAPI singleton). Throws if the profile is missing "media.itemIdField"
- * (see comment at the throw site).
+ * videoTimeReferenceFields, defaultMetadataToRetrieve } — for the caller to
+ * apply (e.g. to the visioneAPI singleton). Throws if the profile is missing
+ * "media.itemIdField" (see comment at the throw site).
  */
 export function computeSearchMetadataConfig(data, profile, activeCollectionName) {
   const selectedDiscovery = selectDiscoveryEntry(data, activeCollectionName);
@@ -198,6 +219,8 @@ export function computeSearchMetadataConfig(data, profile, activeCollectionName)
     String(profile?.titleFormatting?.videoGroup?.utcOffsetField || '').trim()
   ].filter(Boolean);
 
+  const videoTimeReferenceFields = extractVideoTimeReferenceFields(data, activeCollectionName);
+
   const optionalFields = [
     'epoch',
     'year',
@@ -207,7 +230,8 @@ export function computeSearchMetadataConfig(data, profile, activeCollectionName)
     'video_offset_seconds',
     'hour_msb_middletime',
     'location_country',
-    ...configuredTitleFormattingFields
+    ...configuredTitleFormattingFields,
+    ...Object.values(videoTimeReferenceFields)
   ];
   for (const field of optionalFields) {
     if (canRequestField(field)) requested.push(field);
@@ -217,6 +241,7 @@ export function computeSearchMetadataConfig(data, profile, activeCollectionName)
     knownMetadataFields: availableSet,
     itemIdField,
     videoGroupField: groupingField,
+    videoTimeReferenceFields,
     defaultMetadataToRetrieve: Array.from(new Set(requested))
   };
 }

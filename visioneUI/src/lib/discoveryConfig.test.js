@@ -5,6 +5,7 @@ import {
   extractMetadataFieldsFromDiscovery,
   extractDiscoveryCollectionName,
   extractAvailableModelsFromDiscovery,
+  extractVideoTimeReferenceFields,
   computeSearchMetadataConfig
 } from './discoveryConfig.js';
 
@@ -179,5 +180,44 @@ describe('computeSearchMetadataConfig', () => {
     const result = computeSearchMetadataConfig(discovery, profile, 'lsc');
     const asSet = new Set(result.defaultMetadataToRetrieve);
     expect(asSet.size).toBe(result.defaultMetadataToRetrieve.length);
+  });
+
+  it('resolves videoTimeReferenceFields to {} when discovery declares no video_time_reference_attributes (e.g. LSC)', () => {
+    const result = computeSearchMetadataConfig(discovery, profile, 'lsc');
+    expect(result.videoTimeReferenceFields).toEqual({});
+  });
+
+  it('captures video_time_reference_attributes from discovery and requests its fields (e.g. V3C)', () => {
+    const v3cDiscovery = [{
+      name: 'v3c',
+      metadata: ['id', 'video_id', 'start_time_seconds', 'end_time_seconds'],
+      video_time_reference_attributes: {
+        item_time: 'start_time_seconds',
+        item_start_time: 'start_time_seconds',
+        item_end_time: 'end_time_seconds'
+      }
+    }];
+    const v3cProfile = { media: { itemIdField: 'id' } };
+    const result = computeSearchMetadataConfig(v3cDiscovery, v3cProfile, 'v3c');
+
+    expect(result.videoTimeReferenceFields).toEqual({
+      item_time: 'start_time_seconds',
+      item_start_time: 'start_time_seconds',
+      item_end_time: 'end_time_seconds'
+    });
+    expect(result.defaultMetadataToRetrieve).toEqual(expect.arrayContaining(['start_time_seconds', 'end_time_seconds']));
+  });
+});
+
+describe('extractVideoTimeReferenceFields', () => {
+  it('returns {} when the field is absent, not an object, or entries are blank', () => {
+    expect(extractVideoTimeReferenceFields([{ name: 'lsc' }], 'lsc')).toEqual({});
+    expect(extractVideoTimeReferenceFields([{ name: 'lsc', video_time_reference_attributes: 'nope' }], 'lsc')).toEqual({});
+    expect(extractVideoTimeReferenceFields([{ name: 'lsc', video_time_reference_attributes: { item_time: '  ' } }], 'lsc')).toEqual({});
+  });
+
+  it('extracts and trims a declared mapping', () => {
+    const payload = [{ name: 'v3c', video_time_reference_attributes: { item_time: ' start_time_seconds ' } }];
+    expect(extractVideoTimeReferenceFields(payload, 'v3c')).toEqual({ item_time: 'start_time_seconds' });
   });
 });

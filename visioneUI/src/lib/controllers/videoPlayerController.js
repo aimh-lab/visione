@@ -5,6 +5,7 @@
 
 import { visioneAPI } from '../../services/api.js';
 import { parseVideoIdFromImgId } from '../videoIdentity.js';
+import { resolveVideoTimeReferenceSeconds } from '../videoTimeReference.js';
 
 /**
  * @param {Object} deps
@@ -93,6 +94,21 @@ export function createVideoPlayerController({ getImages, getRuntimeProfile = () 
       };
     }
 
+    // Prefer the dataset's own live-declared time reference (e.g. V3C/V3C12's
+    // /discovery "item_time" -> "start_time_seconds") over the LSC-shaped
+    // heuristics below — covers callers that don't pre-resolve startAt
+    // themselves (e.g. opening the player from ImageModal or VideoSummaryModal).
+    const declaredStart = resolveVideoTimeReferenceSeconds(matched, visioneAPI.videoTimeReferenceFields);
+    if (declaredStart != null) {
+      return {
+        url: resolvedVideoUrl,
+        startTime: Math.max(0, declaredStart),
+        title: `${vid} @ ${declaredStart.toFixed(2)}s`,
+        videoId: vid,
+        highlightedKeyframes: highlighted
+      };
+    }
+
     const fromMatchedMiddle = pickMiddleTimeSeconds(matched);
     if (Number.isFinite(fromMatchedMiddle) && fromMatchedMiddle >= 0) {
       return {
@@ -104,25 +120,11 @@ export function createVideoPlayerController({ getImages, getRuntimeProfile = () 
       };
     }
 
-    if (imgId && visioneAPI.supportsVideos) {
-      try {
-        const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
-        const middle = toFiniteNumber(metadata?.hour_msb_middletime);
-        const offset = toFiniteNumber(metadata?.video_offset_seconds);
-        const resolved = middle != null && middle >= 0 ? middle : (offset != null && offset >= 0 ? offset : null);
-        if (resolved != null) {
-          return {
-            url: resolvedVideoUrl,
-            startTime: Math.max(0, resolved),
-            title: `${vid} @ ${resolved.toFixed(2)}s`,
-            videoId: vid,
-            highlightedKeyframes: highlighted
-          };
-        }
-      } catch {
-        // Ignore and continue with fallback chain.
-      }
-    }
+    // visioneAPI.getMiddleTimestamp() (used a few lines below as the final
+    // fallback) already tries the dataset's own declared time reference first,
+    // then LSC-style fields only when the active dataset actually declares
+    // them — no need to duplicate that logic (and its field-name assumptions)
+    // here as a separate hardcoded step.
 
     if (hasResultsetTimestamp) {
       return {

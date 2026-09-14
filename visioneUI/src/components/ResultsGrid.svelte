@@ -8,6 +8,7 @@
   import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
   import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
   import { resolveVideoId } from "$lib/videoIdentity.js";
+  import { resolveVideoTimeReferenceSeconds } from "$lib/videoTimeReference.js";
   import { FRAME_DRAG_MIME } from "$lib/queryStepDrag.js";
   import { getRawMetadata, toIntOrNull, resolveEpochSeconds, buildHourGroupKey as resolveHourGroupKey } from "$lib/epochResolution.js";
   import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
@@ -393,6 +394,15 @@
   function getVideoPlayerStartFromProfile(item) {
     if (!item || typeof item !== 'object') return null;
 
+    // Prefer the dataset's own live-declared time reference (e.g. V3C/V3C12's
+    // /discovery "item_time" -> "start_time_seconds") over any static
+    // runtimeProfile.videoPlayer.startSource config below — it's the most
+    // precise, dataset-authoritative value when the dataset declares one at
+    // all. A dataset that doesn't declare it (e.g. LSC) gets null here and
+    // falls through unaffected.
+    const declaredStart = resolveVideoTimeReferenceSeconds(item, visioneAPI.videoTimeReferenceFields);
+    if (declaredStart != null) return declaredStart;
+
     const metadata = getRawMetadata(item);
     // No explicit config: fall through to the generic "classic frame-time" branch
     // below instead of assuming LSC's hour-bucket semantics.
@@ -725,17 +735,10 @@
       const imgId = getId(item);
       const videoId = getVideoId(item);
       let timestamp = getVideoPlayerStartFromProfile(item);
-      if (timestamp == null && imgId && visioneAPI.supportsVideos) {
-        try {
-          const metadata = await visioneAPI.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
-          const middle = toSecondsValue(metadata?.hour_msb_middletime);
-          const offset = toSecondsValue(metadata?.video_offset_seconds);
-          if (middle != null && middle >= 0) timestamp = middle;
-          else if (offset != null && offset >= 0) timestamp = offset;
-        } catch {
-          // Ignore and keep fallback chain below.
-        }
-      }
+      // visioneAPI.getMiddleTimestamp() already tries the dataset's own declared
+      // time reference first, then falls back to LSC-style fields only when the
+      // active dataset actually declares them — no need to duplicate that logic
+      // (and its field-name assumptions) here.
       if (timestamp == null && imgId && visioneAPI.supportsVideos) {
         try {
           const middle = await visioneAPI.getMiddleTimestamp(imgId);

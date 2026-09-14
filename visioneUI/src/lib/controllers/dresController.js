@@ -10,6 +10,7 @@ import { toasts } from '../../stores/toastStore.js';
 import { get } from 'svelte/store';
 import { DRES_CHALLENGE_TYPES, normalizeChallengeType as normalizeDresChallengeType } from '../../config/dresConfig.js';
 import { resolveVideoId } from '../videoIdentity.js';
+import { resolveVideoTimeReferenceSeconds } from '../videoTimeReference.js';
 import { warnFallback } from '../fallbackWarn.js';
 
 function resolveVideoIdForSubmission(imgId, explicitVideoId) {
@@ -136,8 +137,18 @@ export function createDresController({ sessionStore, findFrame, updateVerdictInV
     const raw = frameObj?.raw && typeof frameObj.raw === 'object' ? frameObj.raw : {};
     const metadata = raw?.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
 
+    // Submitting from an actively playing video: honor the exact frame shown
+    // there, overriding everything below (including the dataset's own
+    // declared time reference — the video may have been scrubbed away from it).
     const fromCurrentTime = toFiniteNumber(raw?.currentTime);
     if (fromCurrentTime != null && fromCurrentTime >= 0) return fromCurrentTime;
+
+    // Otherwise, prefer the dataset's own declared time reference (e.g.
+    // V3C/V3C12's /discovery "item_time" -> "start_time_seconds") — already
+    // present in frameObj.raw.metadata since defaultMetadataToRetrieve
+    // includes it, so this needs no network call.
+    const declaredTime = resolveVideoTimeReferenceSeconds(frameObj, visioneAPI.videoTimeReferenceFields);
+    if (declaredTime != null) return declaredTime;
 
     const fromTimestamp = toFiniteNumber(
       frameObj?.timestamp

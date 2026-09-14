@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import { focusTrap, tooltip } from "../utils/ui";
   import { visioneAPI } from "../services/api.js";
+  import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
 
   type HighlightedInput = string | { imgId: string; rank?: number };
@@ -36,6 +37,47 @@
   let pendingSeekSeconds: number | null = null;
   let pendingTimelineSeekPercent: number | null = null;
   let seekVerifyTimer: ReturnType<typeof setTimeout> | undefined;
+  let loadedVideoUrl: string | null = null;
+
+  // Opening a *different* video while this modal is already open (isOpen stays
+  // true, e.g. clicking another frame's play button without closing first)
+  // reuses the same <video> element and only updates its `src` attribute
+  // reactively — per the HTML spec, changing a media element's src attribute
+  // does NOT itself trigger loading the new resource, only <video>.load() does.
+  // Without this, the element stays stuck on whatever it loaded first, and no
+  // later video ever plays until the page is reloaded (destroying and
+  // recreating the element from scratch resets this by accident).
+  $: if (videoEl && isOpen && videoUrl && videoUrl !== loadedVideoUrl) {
+    loadedVideoUrl = videoUrl;
+    videoEl.load();
+    startLoadTimeoutTimer(videoUrl);
+  }
+
+  // A request that never resolves at all (e.g. queued behind other stuck
+  // connections to an overloaded server) fires neither "loadedmetadata" nor
+  // "error" — the video just silently never appears, with nothing to react
+  // to. This surfaces that case explicitly instead of leaving it silent.
+  const VIDEO_LOAD_TIMEOUT_MS = 30000;
+  let loadTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function clearLoadTimeoutTimer() {
+    if (loadTimeoutTimer) {
+      clearTimeout(loadTimeoutTimer);
+      loadTimeoutTimer = undefined;
+    }
+  }
+
+  function startLoadTimeoutTimer(url: string) {
+    clearLoadTimeoutTimer();
+    loadTimeoutTimer = setTimeout(() => {
+      // Still waiting on this same video, and it never even got metadata (readyState
+      // 0 = HAVE_NOTHING): neither "loadedmetadata" nor "error" ever fired for it.
+      if (videoUrl === url && videoEl && videoEl.readyState === 0) {
+        console.error(`Video did not start loading within ${VIDEO_LOAD_TIMEOUT_MS / 1000}s (no error, no metadata)`, { url });
+        toasts.error("Video is taking too long to load — the server may be overloaded. Try again in a moment.");
+      }
+    }, VIDEO_LOAD_TIMEOUT_MS);
+  }
   const KEYFRAME_ELEMENT_URL_CONCURRENCY = 6;
 
   // Advanced controls state
@@ -147,6 +189,7 @@
       window.removeEventListener("keydown", onKeyDown);
       if (scrollPreviewTimeout) clearTimeout(scrollPreviewTimeout);
       if (seekVerifyTimer) clearTimeout(seekVerifyTimer);
+      clearLoadTimeoutTimer();
       stopFrameStep();
     }
   });
@@ -159,7 +202,8 @@
 
   function onLoaded() {
     if (!videoEl) return;
-    try { 
+    clearLoadTimeoutTimer();
+    try {
       videoDuration = Number.isFinite(videoEl.duration) ? videoEl.duration : 0;
       videoEl.playbackRate = playbackSpeed;
       // Do not override a user click made before metadata was ready.
@@ -171,6 +215,30 @@
     videoEl.play().catch(() => {});
     loadKeyframes();
     applyPendingSeek();
+  }
+
+  // Media element load failures were previously silent: nothing listened to
+  // the <video>'s own "error" event, so a failed load just left the player on
+  // a black screen with no on-screen feedback (the only trace was whatever
+  // the browser itself printed to the console — e.g. Firefox's "Cross-Origin
+  // Request Blocked... CORS request did not succeed" is how it reports a
+  // network-level failure — reset connection, timeout, aborted request —
+  // that happened before any response/CORS headers came back; it does not by
+  // itself mean the server's CORS configuration is wrong, especially when the
+  // very same URL succeeds on a later attempt).
+  const MEDIA_ERROR_MESSAGES: Record<number, string> = {
+    1: "Loading was aborted",
+    2: "Network error while loading the video",
+    3: "The video could not be decoded",
+    4: "This video format/source is not supported"
+  };
+
+  function onVideoError() {
+    clearLoadTimeoutTimer();
+    const code = videoEl?.error?.code;
+    const reason = (code != null ? MEDIA_ERROR_MESSAGES[code] : undefined) || "Unknown error";
+    console.error(`Video failed to load (${reason})`, { url: videoUrl, code, error: videoEl?.error });
+    toasts.error(`Could not load video: ${reason}. The server may be overloaded — try again.`);
   }
 
   function onCanPlay() {
@@ -712,6 +780,7 @@
           on:pause={onVideoTimeUpdate}
           on:timeupdate={onVideoTimeUpdate}
           on:click={togglePlayPause}
+          on:error={onVideoError}
         ></video>
         
         <!-- Overlay scuro (appare solo all'hover) -->

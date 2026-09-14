@@ -1604,6 +1604,10 @@
     // Dataset-declared field used to fetch "all frames in this video/group"
     // (see VisioneAPI#getVideoKeyframes).
     visioneAPI.videoGroupField = config.videoGroupField;
+    // Dataset-declared mapping used to seek a video to its exact start second
+    // (see src/lib/videoTimeReference.js) — empty for a dataset that doesn't
+    // declare it (e.g. LSC).
+    visioneAPI.videoTimeReferenceFields = config.videoTimeReferenceFields;
     visioneAPI.defaultMetadataToRetrieve = config.defaultMetadataToRetrieve;
   }
 

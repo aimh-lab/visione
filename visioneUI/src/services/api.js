@@ -86,6 +86,14 @@ export class VisioneAPI {
     // profile's queryFilters/titleFormatting fields).
     this.defaultMetadataToRetrieve = [];
     this.videoGroupField = 'hour_id';
+    // Dataset's own declared mapping of semantic video-time keys ("item_time",
+    // "item_start_time", "item_end_time") to the metadata field name that
+    // carries them (e.g. V3C/V3C12's /discovery declares
+    // { item_time: "start_time_seconds", ... }). Empty until
+    // configureSearchMetadataFromDiscovery sets it; a dataset that never
+    // declares this (e.g. LSC) just keeps it empty, so consumers fall back to
+    // their own heuristics — see src/lib/videoTimeReference.js.
+    this.videoTimeReferenceFields = {};
     // Field name that uniquely identifies an item/frame row in /field responses
     // (used by getVideoKeyframes). Empty until configureSearchMetadataFromDiscovery
     // (+page.svelte) sets it from runtimeProfiles.json's "media.itemIdField" — there's
@@ -196,18 +204,41 @@ export class VisioneAPI {
     const run = (async () => {
       let num = null;
 
-      // Preferred metadata: hour_msb_middletime, fallback to video_offset_seconds.
-      try {
-        const metadata = await this.getField(imgId, ['hour_msb_middletime', 'video_offset_seconds']);
-        const middle = Number(metadata?.hour_msb_middletime);
-        const offset = Number(metadata?.video_offset_seconds);
-        if (Number.isFinite(middle) && middle >= 0) {
-          num = middle;
-        } else if (Number.isFinite(offset) && offset >= 0) {
-          num = offset;
+      // Prefer the dataset's own declared time reference (e.g. V3C/V3C12's
+      // /discovery "item_time" -> "start_time_seconds") — fetched by whatever
+      // field name that dataset actually declares, instead of a fixed name.
+      const itemTimeField = String(this.videoTimeReferenceFields?.item_time || '').trim();
+      if (itemTimeField) {
+        try {
+          const metadata = await this.getField(imgId, [itemTimeField]);
+          const value = Number(metadata?.[itemTimeField]);
+          if (Number.isFinite(value) && value >= 0) num = value;
+        } catch {
+          // Fall through to the LSC-style fields below.
         }
-      } catch {
-        // Fallback handled below.
+      }
+
+      // LSC-style metadata: hour_msb_middletime, fallback to video_offset_seconds.
+      // Only requested when the active dataset actually declares them
+      // (#isKnownMetadataField) — a dataset without these columns (e.g. V3C)
+      // would otherwise make the backend fail on an undefined-column SQL error.
+      if (!Number.isFinite(num)) {
+        const candidateFields = ['hour_msb_middletime', 'video_offset_seconds']
+          .filter((field) => this.#isKnownMetadataField(field));
+        if (candidateFields.length > 0) {
+          try {
+            const metadata = await this.getField(imgId, candidateFields);
+            const middle = Number(metadata?.hour_msb_middletime);
+            const offset = Number(metadata?.video_offset_seconds);
+            if (Number.isFinite(middle) && middle >= 0) {
+              num = middle;
+            } else if (Number.isFinite(offset) && offset >= 0) {
+              num = offset;
+            }
+          } catch {
+            // Fallback handled below.
+          }
+        }
       }
 
       // Legacy fallback kept for older deployments.
@@ -270,7 +301,19 @@ export class VisioneAPI {
   async getPlayableVideoUrl(videoId, { urlSource, quality = 'medium' } = {}) {
     if (String(urlSource || '').trim().toLowerCase() === 'dataserver') {
       const row = await this.getElementUrl(videoId, ['video']);
-      return String(row?.video || row?.videos || '').trim() || null;
+      const url = String(row?.video || row?.videos || '').trim();
+      if (!url) {
+        // Throw rather than return null: a caller that doesn't check for null
+        // (e.g. handing this straight to a <video src>) would otherwise render
+        // a silent black screen with no error anywhere — exactly the failure
+        // mode this is meant to surface instead of hide.
+        throw new APIError(
+          `No playable "video" URL for id "${videoId}" (dataserver /discovery may not declare a "video"/"videos" ` +
+          `type for the active collection, or the id doesn't exist there).`,
+          502
+        );
+      }
+      return url;
     }
     return this.getVideoUrl(videoId, quality);
   }
