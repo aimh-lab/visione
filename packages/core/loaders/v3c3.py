@@ -46,7 +46,7 @@ class V3C3Loader(V3C12Loader):
         return "v3c"
 
     def get_table_name(self):
-        return "v3c3"
+        return "v3c"
 
 
 if __name__ == "__main__":

@@ -97,6 +97,11 @@ class V3C12Loader:
             column.lower().replace(" ", "_").replace("(", "").replace(")", "")
             for column in metadata_df.columns
         ]
+
+        # Add middle frame and middle time
+        metadata_df["middle_frame"] = (metadata_df["start_frame"] + metadata_df["end_frame"]) / 2
+        metadata_df["middle_time_seconds"] = (metadata_df["start_time_seconds"] + metadata_df["end_time_seconds"]) / 2
+
         return metadata_df
 
     @staticmethod
@@ -188,7 +193,7 @@ class V3C12Loader:
         return ["video_id"]
 
     def get_table_name(self):
-        return "v3c12"
+        return "v3c"
 
     def get_temporal_column(self):
         return "start_time_seconds"
@@ -198,7 +203,7 @@ class V3C12Loader:
 
     def get_video_time_reference_columns(self):
         return {
-            "item_time": "start_time_seconds",
+            "item_time": "middle_time_seconds",
             "item_start_time": "start_time_seconds",
             "item_end_time": "end_time_seconds"
         }
@@ -215,10 +220,12 @@ class V3C12Loader:
             Column(name="end_timecode", data_type="float"),
             Column(name="start_frame", data_type="integer"),
             Column(name="end_frame", data_type="integer"),
+            Column(name="middle_frame", data_type="float"),
             Column(name="length_frames", data_type="integer"),
             Column(name="length_timecode", data_type="float"),
             Column(name="start_time_seconds", data_type="float"),
             Column(name="end_time_seconds", data_type="float"),
+            Column(name="middle_time_seconds", data_type="float"),
             Column(name="length_seconds", data_type="float"),
         ]
 
@@ -235,6 +242,8 @@ class V3C12Loader:
             "length_timecode": "The length of the video segment in timecode.",
             "start_time_seconds": "The start time of the video segment in seconds.",
             "end_time_seconds": "The end time of the video segment in seconds.",
+            "middle_time_seconds": "The middle time of the video segment in seconds.",
+            "middle_frame": "The middle frame of the video segment.",
             "length_seconds": "The length of the video segment in seconds.",
         }
         type_map = {
