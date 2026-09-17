@@ -98,6 +98,13 @@ def _init_sandbox_runner() -> Any:
 # ── Request / Response models ──────────────────────────────────────────────
 class QARequest(BaseModel):
     question: str = Field(..., description="Natural-language question about the collection.")
+    model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional embedding model used by the retrieval tools; defaults to "
+            "the configured qa.default_model."
+        ),
+    )
     max_iterations: Optional[int] = Field(
         default=None,
         ge=1,
@@ -258,6 +265,44 @@ def _get_collection_image_url(loader: Any, item_id: str) -> str:
     return loader.get_collection_element_url_from_id(item_id)
 
 
+def _resolve_qa_embedding_model(
+    request: Request,
+    qa_cfg: Dict[str, Any],
+    requested_model: Optional[str],
+) -> str:
+    """Resolve and validate the embedding model used by both QA search tools."""
+    available_model_infos = getattr(request.app.state, "available_models", [])
+    available_models = [
+        model_info["name"] if isinstance(model_info, dict) else model_info
+        for model_info in available_model_infos
+    ]
+
+    if requested_model is not None:
+        requested_model = requested_model.strip()
+        if not requested_model:
+            raise HTTPException(status_code=400, detail="Model must not be empty.")
+        if requested_model not in available_models:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Unknown model: {requested_model}. "
+                    f"Available models: {available_models}"
+                ),
+            )
+        return requested_model
+
+    configured_default = qa_cfg["default_embedding_model"]
+    if configured_default not in available_models:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Configured qa.default_model '{configured_default}' is not available. "
+                f"Available models: {available_models}"
+            ),
+        )
+    return configured_default
+
+
 def _build_planning_prompt() -> str:
     return """\
 Based on the user's question and the system instructions above, create a brief \
@@ -307,21 +352,14 @@ Examples:
 
 
 # ── Agent builder ───────────────────────────────────────────────────────────
-def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
+def _build_agent(
+    request: Request,
+    qa_cfg: Dict[str, Any],
+    max_iterations: int,
+    retrieval_model: str,
+):
     """Return ``(compiled_graph, system_prompt)``."""
     debug = qa_cfg["debug"]
-
-    # Resolve default embedding model
-    default_model = qa_cfg["default_embedding_model"]
-    available = [m["name"] for m in getattr(request.app.state, "available_models", [])]
-    if default_model not in available:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Configured qa.default_model '{default_model}' is not available. "
-                f"Available models: {available}"
-            ),
-        )
 
     system_prompt = _get_loader_qa_system_prompt(
         request.app.state.loader,
@@ -329,7 +367,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         max_images_per_call=qa_cfg["max_images_per_call"],
     )
 
-    # ── Search tool (closure over *request* and *default_model*) ────────
+    # ── Search tool (closure over *request* and *retrieval_model*) ─────
     @tool
     def search_frames(
         query: str,
@@ -354,7 +392,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         """
         num_img = min(max(num_images, 0), qa_cfg["max_images_per_call"])
 
-        node: Dict[str, Any] = {"item": query, "model": default_model, "k": k}
+        node: Dict[str, Any] = {"item": query, "model": retrieval_model, "k": k}
         if filters:
             node["filters"] = filters
         node_pg = convert_filters_to_pg(node)
@@ -419,7 +457,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         Returns:
             The stdout output of the script (a JSON object summarising the analysis).
         """
-        node: Dict[str, Any] = {"item": query, "model": default_model, "k": k}
+        node: Dict[str, Any] = {"item": query, "model": retrieval_model, "k": k}
         if filters:
             node["filters"] = filters
         node_pg = convert_filters_to_pg(node)
@@ -762,9 +800,15 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
 
     debug = qa_cfg["debug"]
     max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
+    retrieval_model = _resolve_qa_embedding_model(request, qa_cfg, payload.model)
 
     try:
-        agent, system_prompt = _build_agent(request, qa_cfg, max_iter)
+        agent, system_prompt = _build_agent(
+            request,
+            qa_cfg,
+            max_iter,
+            retrieval_model,
+        )
     except HTTPException as exc:
         raise exc
 
@@ -784,6 +828,7 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
         print("=" * 80)
         print(f"[QA DEBUG] Starting QA agent  |  question: {payload.question}")
         print(f"[QA DEBUG] max_iterations={max_iter}")
+        print(f"[QA DEBUG] retrieval_model={retrieval_model}")
         print("=" * 80)
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
@@ -981,7 +1026,13 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
     qa_cfg = _get_qa_config(request)
     debug = qa_cfg["debug"]
     max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
-    agent, system_prompt = _build_agent(request, qa_cfg, max_iter)
+    retrieval_model = _resolve_qa_embedding_model(request, qa_cfg, payload.model)
+    agent, system_prompt = _build_agent(
+        request,
+        qa_cfg,
+        max_iter,
+        retrieval_model,
+    )
 
     initial_state: AgentState = {
         "messages": [
@@ -999,6 +1050,7 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
         print("=" * 80)
         print(f"[QA DEBUG] Starting QA agent  |  question: {payload.question}")
         print(f"[QA DEBUG] max_iterations={max_iter}")
+        print(f"[QA DEBUG] retrieval_model={retrieval_model}")
         print("=" * 80)
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
