@@ -7,6 +7,7 @@ from langchain_classic.chains.query_constructor.schema import AttributeInfo
 from langchain_postgres.v2.engine import Column
 
 from .media import MediaResource
+from .qa_prompt import build_lsc_qa_system_prompt
 
 
 class LSCLoader:
@@ -285,6 +286,17 @@ class LSCLoader:
             )
             for column in self.get_column_schema() if column.name in column_descriptions
         ]
+
+    def get_qa_system_prompt(
+        self,
+        max_total_images: int,
+        max_images_per_call: int,
+    ) -> str:
+        return build_lsc_qa_system_prompt(
+            attribute_info=self.get_attribute_info(),
+            max_total_images=max_total_images,
+            max_images_per_call=max_images_per_call,
+        )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""/qa endpoint – Agentic QA over lifelog data.
+"""/qa endpoint – Agentic QA over collection data.
 
 Uses LangGraph to orchestrate a plan-then-execute loop: the agent first
 creates a plan, then iterates with a ``search_frames`` tool that queries the
@@ -97,7 +97,7 @@ def _init_sandbox_runner() -> Any:
 
 # ── Request / Response models ──────────────────────────────────────────────
 class QARequest(BaseModel):
-    question: str = Field(..., description="Natural-language question about the lifelog.")
+    question: str = Field(..., description="Natural-language question about the collection.")
     max_iterations: Optional[int] = Field(
         default=None,
         ge=1,
@@ -219,172 +219,50 @@ def _debug_print_message(label: str, msg) -> None:
     print("─" * 80)
 
 
-def _build_system_prompt(attribute_info: list, max_total_images: int, max_images_per_call: int) -> str:
-    attrs = "\n".join(
-        f"  - **{a.name}** ({a.type}): {a.description}" for a in attribute_info
+def _get_loader_qa_system_prompt(
+    loader: Any,
+    *,
+    max_total_images: int,
+    max_images_per_call: int,
+) -> str:
+    """Return the active loader's QA prompt or fail with a clear configuration error."""
+    prompt_builder = getattr(loader, "get_qa_system_prompt", None)
+    if not callable(prompt_builder):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Loader '{type(loader).__name__}' does not implement the required "
+                "get_qa_system_prompt(max_total_images, max_images_per_call) contract."
+            ),
+        )
+
+    prompt = prompt_builder(
+        max_total_images=max_total_images,
+        max_images_per_call=max_images_per_call,
     )
-    return f"""\
-You are a helpful assistant that answers questions about a user's lifelog – a continuous, \
-first-person photo stream captured throughout each day, enriched with metadata.
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Loader '{type(loader).__name__}' returned an empty QA system prompt.",
+        )
+    return prompt
 
-You have two tools:
-- **search_frames** – semantic + metadata search returning up to k frames with optional \
-images. Use for exploration, visual verification, and moderate result sets (k ≤ ~150). \
-Image budget: {max_images_per_call} per call, ~{max_total_images} total.
-- **search_and_analyze_frames** – same search, but runs a Python script on the results inside a \
-sandbox instead of returning all records to you. Use when you need to count, group, or \
-aggregate large result sets (k ≥ 200). The script \
-receives results in a ``data`` variable (list of dicts with ``"id"`` and ``"metadata"`` \
-keys) and must ``print`` a JSON object as its last output.
 
-### Filter syntax
-Filters use comparator/operator JSON objects.
-Comparators for numeric fields: eq, ne, gt, gte, lt, lte
-Comparators for string fields: eq, ne, fts (full-text search, with stemming and stop-word removal)
-Operators: and, or, not.
+def _format_reorder_by(reorder_by: Optional[List[str]]) -> Optional[Dict[str, List[str]]]:
+    """Convert the QA tool's list interface to the vector store query shape."""
+    return {"columns": reorder_by} if reorder_by else None
 
-**Single filter:**
-```json
-{{"comparator": "eq", "attribute": "month", "value": 1}}
-```
 
-**Full-text search on text fields:**
-```json
-{{"comparator": "fts", "attribute": "description", "value": "irish coffee"}}
-```
-
-**Search by year, month, day:**
-```json
-{{"operator": "and", "arguments": [
-    {{"comparator": "eq", "attribute": "year", "value": 2019}},
-    {{"comparator": "eq", "attribute": "month", "value": 1}},
-    {{"comparator": "eq", "attribute": "day", "value": 10}}
-]}}
-```
-
-**Search across months (e.g., from 15 Jan to 7 Feb):**
-```json
-{{"operator": "or", "arguments": [
-    {{"operator": "and", "arguments": [
-        {{"comparator": "eq", "attribute": "month", "value": 1}},
-        {{"comparator": "gte", "attribute": "day", "value": 15}}
-    ]}},
-    {{"operator": "and", "arguments": [
-        {{"comparator": "eq", "attribute": "month", "value": 2}},
-        {{"comparator": "lt", "attribute": "day", "value": 7}}
-    ]}}
-]}}
-```
-
-**Combined filters:**
-```json
-{{"operator": "and", "arguments": [
-    {{"comparator": "fts", "attribute": "location", "value": "dublin"}},
-    {{"comparator": "gt", "attribute": "epoch", "value": 1570000000}}
-]}}
-```
-
-**Epoch range (temporal succession):**
-```json
-{{"operator": "and", "arguments": [
-    {{"comparator": "gt", "attribute": "epoch", "value": 1570000000}},
-    {{"comparator": "lt", "attribute": "epoch", "value": 1570003600}}
-]}}
-```
-(Replace `1570000000` / `1570003600` with the actual pre-computed integer epoch values from prior \
-results. IMPORTANT: JSON values must always be literal numbers — never write arithmetic \
-expressions such as `1570000000 + 3600` inside JSON, as that is invalid JSON.)
-
-**Look at a specific image (leave query empty):**
-```json
-{{"comparator": "eq", "attribute": "image_name", "value": "20190110_101531_000.jpg"}}
-```
-
-### Sample analysis scripts (for search_and_analyze_frames)
-
-All scripts receive a ``data`` list and the ``json``, ``pandas`` (as ``pd``) modules.
-
-**Count unique days matching a query:**
-```python
-import pandas as pd
-df = pd.DataFrame([r['metadata'] for r in data])
-days = df[['year', 'month', 'day']].drop_duplicates()
-print(json.dumps({{"unique_days": len(days), "days": days.values.tolist()}}, default=str))
-```
-
-**Group by hour_id (count distinct moments):**
-```python
-import pandas as pd
-df = pd.DataFrame([r['metadata'] for r in data])
-counts = df.groupby('hour_id').size().reset_index(name='frames')
-print(json.dumps({{"n_moments": len(counts), "moments": counts.to_dict(orient='records')}}, default=str))
-```
-
-**Count occurrences grouped by a metadata field:**
-```python
-import pandas as pd
-df = pd.DataFrame([r['metadata'] for r in data])
-counts = df['city'].value_counts().reset_index()
-counts.columns = ['city', 'count']
-print(json.dumps({{"counts": counts.to_dict(orient='records')}}, default=str))
-```
-
-**Temporal aggregation – frames per day:**
-```python
-import pandas as pd
-df = pd.DataFrame([r['metadata'] for r in data])
-df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
-per_day = df.groupby('date').size().reset_index(name='frames')
-per_day['date'] = per_day['date'].astype(str)
-print(json.dumps({{"per_day": per_day.to_dict(orient='records')}}, default=str))
-```
-
-### Available metadata fields
-{attrs}
-
-### Reasoning strategies
-1. **Start broad**: search with a semantic query, moderate k (40-50), 1-2 images.
-2. **Temporal succession**: to find what happened AFTER a result, issue a new search \
-with epoch filters: gt(epoch, prev_epoch) and lt(epoch, prev_epoch + window). \
-Same for BEFORE: lt(epoch, prev_epoch) and gt(epoch, prev_epoch - window). \
-A reasonable window is 60-3600 s depending on context. \
-Compute the bound yourself first (e.g. 1570000000 + 3600 = 1570003600) and put only \
-the resulting integer literal in the JSON — never write arithmetic expressions as JSON values.
-3. **Counting & aggregation**: Most likely you need large result sets (k ≥ 200). In this case, use **search_and_analyze_frames** \
-   with a Python aggregation script instead of loading all records into context. Group by ``hour_id`` or by \
-day (same year+month+day). Consecutive frames within the same hour belong to the same \
-moment. For multi-day events, group contiguous days as ONE event.
-4. **Deduplication**: same ``hour_id`` → same moment. Epoch gap < 3600 s → likely same \
-event.
-5. **Visual verification**: use search_frames with num_images=5-8 to see scenes. You can \
-also request specific images by id (filter on ``image_name``, leave query empty).
-6. **Refinement**: if results are too broad, add metadata filters (city, epoch range, etc.) \
-and start again with a narrower query.
-
-Important:
-- You can use "filters" alone (no semantic query) to apply only metadata conditions.
-- Do not ask questions back to the user. Use the tools, images, and metadata to infer answers.
-- If using only a filter without a semantic query, use reorder_by to get results in a \
-deterministic order (e.g., ["epoch"]). Otherwise results may be returned in random order.
-- If not sure about the answer, do not surrender. Try refined queries/filters or ask for \
-images. Do not hallucinate; find evidence in the data or declare the output unreliable. \
-Do not infer activities from biases – LOOK at images first.
-- Before saying metadata cannot confirm a hypothesis, ask for images to verify.
-- Always use "fts" (full-text search) for string matching. Use eq only for \
-numeric fields.
-- If results are empty, assume that the value used for searching string fields with the fts operator \
-are not present in the database. So either try more generic ones or directly remove them.
-- In semantic queries, write natural language descriptions, not logic operators or keywords.
-- Always give a clear, definitive natural-language answer at the end. Show reasoning briefly.
-- When providing the final answer, DO NOT repeat the full list of results or metadata. \
-Summarise the evidence briefly."""
+def _get_collection_image_url(loader: Any, item_id: str) -> str:
+    """Use the loader's collection-specific default image resource type."""
+    return loader.get_collection_element_url_from_id(item_id)
 
 
 def _build_planning_prompt() -> str:
     return """\
 Based on the user's question and the system instructions above, create a brief \
 step-by-step plan for how you will answer this question. Consider:
-1. What tools you need to call (search_frames for visual inspection and moderate result sets, \ 
+1. What tools you need to call (search_frames for visual inspection and moderate result sets, \
 search_and_analyze_frames for large result sets that require counting or aggregation).
 2. Whether you need images or metadata is sufficient.
 3. How you might refine or verify results.
@@ -445,9 +323,8 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             ),
         )
 
-    attribute_info = request.app.state.loader.get_attribute_info()
-    system_prompt = _build_system_prompt(
-        attribute_info,
+    system_prompt = _get_loader_qa_system_prompt(
+        request.app.state.loader,
         max_total_images=qa_cfg["max_total_images"],
         max_images_per_call=qa_cfg["max_images_per_call"],
     )
@@ -462,7 +339,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         filters: Optional[Dict[str, Any]] = None,
         reorder_by: Optional[List[str]] = None,
     ) -> str:
-        """Search the lifelog for frames matching a semantic query.
+        """Search collection items matching a semantic query.
 
         Args:
             query: Possibly rich semantic description of the visual scene to find, which carefully includes all the details asked in the query.
@@ -470,7 +347,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             k: Number of metadata results to return.
             num_images: How many top results to include images for.
             filters: Optional metadata filter object (comparator/operator).
-            reorder_by: Optional list of metadata fields to reorder results by (e.g., ["epoch", "day"]). To be used with empty semantic queries.
+            reorder_by: Optional metadata fields used to sort filter-only results.
 
         Returns:
             JSON array of results with id, score, and metadata.
@@ -482,7 +359,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             node["filters"] = filters
         node_pg = convert_filters_to_pg(node)
         if reorder_by and (not query or not query.strip()):
-            node_pg["reorder_by"] = reorder_by
+            node_pg["reorder_by"] = _format_reorder_by(reorder_by)
 
         try:
             doc_groups = request.app.state.vector_store.similarity_search(
@@ -502,10 +379,9 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             }
             if idx < num_img:
                 try:
-                    entry["image_url"] = (
-                        request.app.state.loader.get_collection_element_url_from_id(
-                            doc.page_content, "images",
-                        )
+                    entry["image_url"] = _get_collection_image_url(
+                        request.app.state.loader,
+                        doc.page_content,
                     )
                 except Exception:
                     pass
@@ -522,7 +398,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
         filters: Optional[Dict[str, Any]] = None,
         reorder_by: Optional[List[str]] = None,
     ) -> str:
-        """Search lifelog frames and run a Python script to aggregate or count the results.
+        """Search collection items and run a Python script to aggregate or count them.
 
         Use instead of search_frames when you need to count, group, or aggregate large
         result sets (k >= 200) without loading all records into context. The search results
@@ -536,10 +412,9 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             metadata_to_retrieve: Metadata fields to include in each result's 'metadata' dict.
             script: Python code to execute. Has access to ``data`` (list of result dicts) and
                 ``json``. Must print a JSON object to stdout as its final output.
-            k: Number of frames to retrieve for analysis (can be large: 200–600).
+            k: Number of collection items to retrieve for analysis (can be large: 200–600).
             filters: Optional metadata filter object using comparator/operator syntax.
-            reorder_by: Metadata fields to sort results by (e.g. ["epoch"]). Use with empty
-                queries to get results in a deterministic order.
+            reorder_by: Metadata fields used to sort filter-only results deterministically.
 
         Returns:
             The stdout output of the script (a JSON object summarising the analysis).
@@ -549,7 +424,7 @@ def _build_agent(request: Request, qa_cfg: Dict[str, Any], max_iterations: int):
             node["filters"] = filters
         node_pg = convert_filters_to_pg(node)
         if reorder_by and (not query or not query.strip()):
-            node_pg["reorder_by"] = reorder_by
+            node_pg["reorder_by"] = _format_reorder_by(reorder_by)
 
         try:
             doc_groups = request.app.state.vector_store.similarity_search(

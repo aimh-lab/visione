@@ -9,6 +9,7 @@ from langchain_postgres.v2.engine import Column
 from tqdm import tqdm
 
 from .media import MediaResource
+from .qa_prompt import build_v3c_qa_system_prompt
 
 
 class V3C12Loader:
@@ -265,3 +266,14 @@ class V3C12Loader:
             for column in self.get_column_schema()
             if column.name in descriptions
         ]
+
+    def get_qa_system_prompt(
+        self,
+        max_total_images: int,
+        max_images_per_call: int,
+    ) -> str:
+        return build_v3c_qa_system_prompt(
+            attribute_info=self.get_attribute_info(),
+            max_total_images=max_total_images,
+            max_images_per_call=max_images_per_call,
+        )
