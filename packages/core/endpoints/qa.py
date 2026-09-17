@@ -105,6 +105,13 @@ def _init_sandbox_runner() -> Any:
 # ── Request / Response models ──────────────────────────────────────────────
 class QARequest(BaseModel):
     question: str = Field(..., description="Natural-language question about the collection.")
+    orchestrator_model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional Ollama model used to orchestrate the QA agent; defaults to "
+            "the configured qa.model."
+        ),
+    )
     model: Optional[str] = Field(
         default=None,
         description=(
@@ -316,6 +323,20 @@ def _resolve_qa_embedding_model(
     return configured_default
 
 
+def _resolve_qa_orchestrator_model(
+    qa_cfg: Dict[str, Any],
+    requested_model: Optional[str],
+) -> str:
+    """Resolve the Ollama model that drives planning, tool use, and evaluation."""
+    if requested_model is None:
+        return qa_cfg["model"]
+
+    requested_model = requested_model.strip()
+    if not requested_model:
+        raise HTTPException(status_code=400, detail="Orchestrator model must not be empty.")
+    return requested_model
+
+
 def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
     """Return a supported verdict and reasoning, defaulting malformed output to uncertain."""
     verdict = "uncertain"
@@ -483,6 +504,7 @@ def _build_agent(
     qa_cfg: Dict[str, Any],
     max_iterations: int,
     retrieval_model: str,
+    orchestrator_model: str,
 ):
     """Return ``(compiled_graph, system_prompt)``."""
     debug = qa_cfg["debug"]
@@ -638,15 +660,17 @@ def _build_agent(
 
     # ── LLM with and without tool binding ──────────────────────────────
     llm = ChatOllama(
-        model=qa_cfg["model"],
+        model=orchestrator_model,
         base_url=qa_cfg["base_url"],
         temperature=qa_cfg["temperature"],
+        reasoning=False,
     ).bind_tools(tools)
 
     llm_no_tools = ChatOllama(
-        model=qa_cfg["model"],
+        model=orchestrator_model,
         base_url=qa_cfg["base_url"],
         temperature=qa_cfg["temperature"],
+        reasoning=False,
     )
 
     # ── Graph nodes ────────────────────────────────────────────────────
@@ -955,6 +979,7 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
     debug = qa_cfg["debug"]
     max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
     retrieval_model = _resolve_qa_embedding_model(request, qa_cfg, payload.model)
+    orchestrator_model = _resolve_qa_orchestrator_model(qa_cfg, payload.orchestrator_model)
 
     try:
         agent, system_prompt = _build_agent(
@@ -962,6 +987,7 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
             qa_cfg,
             max_iter,
             retrieval_model,
+            orchestrator_model,
         )
     except HTTPException as exc:
         raise exc
@@ -989,6 +1015,7 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
         print(f"[QA DEBUG] Starting QA agent  |  question: {payload.question}")
         print(f"[QA DEBUG] max_iterations={max_iter}")
         print(f"[QA DEBUG] retrieval_model={retrieval_model}")
+        print(f"[QA DEBUG] orchestrator_model={orchestrator_model}")
         print("=" * 80)
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
@@ -1196,11 +1223,13 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
     debug = qa_cfg["debug"]
     max_iter = payload.max_iterations if payload.max_iterations is not None else qa_cfg["max_iterations"]
     retrieval_model = _resolve_qa_embedding_model(request, qa_cfg, payload.model)
+    orchestrator_model = _resolve_qa_orchestrator_model(qa_cfg, payload.orchestrator_model)
     agent, system_prompt = _build_agent(
         request,
         qa_cfg,
         max_iter,
         retrieval_model,
+        orchestrator_model,
     )
 
     initial_state: AgentState = {
@@ -1226,6 +1255,7 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
         print(f"[QA DEBUG] Starting QA agent  |  question: {payload.question}")
         print(f"[QA DEBUG] max_iterations={max_iter}")
         print(f"[QA DEBUG] retrieval_model={retrieval_model}")
+        print(f"[QA DEBUG] orchestrator_model={orchestrator_model}")
         print("=" * 80)
         for msg in initial_state["messages"]:
             _debug_print_message("initial", msg)
