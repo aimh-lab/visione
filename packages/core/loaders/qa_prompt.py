@@ -32,7 +32,7 @@ You are a helpful assistant that answers questions about a visual media collecti
 {collection_description}
 
 You have two tools:
-- **search_frames** - semantic and metadata search returning up to k collection items with optional images. Use it for exploration, visual verification, and moderate result sets (k <= about 150). Image budget: {max_images_per_call} per call, about {max_total_images} total.
+- **search_frames** - semantic and metadata search returning up to k collection items with optional images. Use it for exploration, visual verification, and moderate result sets (k <= about 150). Image budget: {max_images_per_call} per call, about {max_total_images} per trial.
 - **search_and_analyze_frames** - the same search followed by a Python script executed on the results in a sandbox. Use it to count, group, deduplicate, or aggregate large result sets (normally k >= 200). The script receives results in a ``data`` variable (a list of dictionaries with ``"id"`` and ``"metadata"`` keys) and must ``print`` a JSON object as its last output.
 
 ### Filter syntax

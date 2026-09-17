@@ -16,6 +16,7 @@ SSE event types
 - ``evaluation``  – plausibility assessment of current conclusionst to invoke
 - ``tool_result`` – JSON array of search results returned by the tool
 - ``evaluation``  – plausibility assessment of current conclusions
+- ``findings``    – compact lessons retained after a failed trial
 - ``answer``      – the final natural-language answer
 - ``sources``     – deduplicated source list (sent once, after ``answer``)
 - ``error``       – an error message if something goes wrong
@@ -35,11 +36,17 @@ from typing import Any, Dict, List, Literal, Optional, Annotated
 import aiohttp
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    RemoveMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from langgraph.graph import END, START, StateGraph
-from langgraph.graph.message import add_messages
+from langgraph.graph.message import REMOVE_ALL_MESSAGES, add_messages
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
@@ -124,11 +131,17 @@ class QAResponse(BaseModel):
 # ── Agent state ─────────────────────────────────────────────────────────────
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
+    original_question: str
     plan: str
     total_images_sent: int
     iteration_count: int
     plan_count: int
     all_sources: Annotated[list, operator.add]
+    findings: Annotated[list[str], operator.add]
+    latest_finding: str
+    finding_trial: int
+    evaluation_verdict: str
+    evaluation_reasoning: str
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -303,6 +316,115 @@ def _resolve_qa_embedding_model(
     return configured_default
 
 
+def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
+    """Return a supported verdict and reasoning, defaulting malformed output to uncertain."""
+    verdict = "uncertain"
+    reasoning = eval_text.strip() or "The evaluator did not provide usable reasoning."
+    try:
+        parsed = json.loads(eval_text)
+    except json.JSONDecodeError:
+        lower = eval_text.lower()
+        if "implausible" in lower:
+            verdict = "implausible"
+        return verdict, reasoning
+
+    if not isinstance(parsed, dict):
+        return verdict, reasoning
+
+    parsed_verdict = str(parsed.get("verdict", "uncertain")).lower()
+    if parsed_verdict in {"confident", "uncertain", "implausible"}:
+        verdict = parsed_verdict
+    parsed_reasoning = parsed.get("reasoning")
+    if parsed_reasoning is not None and str(parsed_reasoning).strip():
+        reasoning = str(parsed_reasoning).strip()
+    return verdict, reasoning
+
+
+def _limit_words(text: str, max_words: int = 250) -> str:
+    """Keep retained findings predictably small."""
+    words = text.strip().split()
+    if len(words) <= max_words:
+        return " ".join(words)
+    return " ".join(words[:max_words]) + " …"
+
+
+def _fallback_failed_trial_finding(verdict: str, reasoning: str) -> str:
+    return _limit_words(
+        f"Evaluation verdict: {verdict}. The trial was not reliable because: "
+        f"{reasoning}. Avoid repeating the same unsupported conclusion; use a "
+        "different search or verification strategy in the next trial."
+    )
+
+
+def _build_failed_trial_summary_prompt(
+    *,
+    verdict: str,
+    reasoning: str,
+    previous_findings: List[str],
+) -> str:
+    retained = (
+        "\n".join(f"{index}. {finding}" for index, finding in enumerate(previous_findings, 1))
+        if previous_findings
+        else "None."
+    )
+    return f"""\
+The latest answer attempt was evaluated as {verdict} for this reason:
+{reasoning}
+
+Summarize ONLY the useful lessons from the latest failed trial in at most 250 words. Include:
+- the tentative conclusion that was attempted;
+- useful evidence, result IDs, and metadata facts worth retaining;
+- searches, filters, or analysis approaches already tried;
+- why the conclusion was uncertain or implausible, including contradictions;
+- concrete next actions that avoid repeating the same errors.
+
+Use only evidence present in the conversation. Do not invent facts. Do not repeat lessons already captured in these earlier findings:
+{retained}
+
+Return only the compact textual finding, without a preamble or JSON."""
+
+
+def _build_compaction_update(
+    state: AgentState,
+    *,
+    system_prompt: str,
+    finding: str,
+) -> Dict[str, Any]:
+    """Build a state update that replaces all model context with compact findings."""
+    finding = _limit_words(finding)
+    all_findings = [*state.get("findings", []), finding]
+    findings_text = "\n".join(
+        f"{index}. {retained}" for index, retained in enumerate(all_findings, 1)
+    )
+    compact_system_prompt = (
+        f"{system_prompt}\n\n"
+        "### Findings retained from previous unsuccessful trials\n"
+        f"{findings_text}\n\n"
+        "Use these findings to avoid repeating failed searches, reasoning errors, "
+        "or unsupported conclusions."
+    )
+    trial = len(all_findings)
+    return {
+        "messages": [
+            RemoveMessage(id=REMOVE_ALL_MESSAGES),
+            SystemMessage(content=compact_system_prompt),
+            HumanMessage(content=state["original_question"]),
+        ],
+        "findings": [finding],
+        "latest_finding": finding,
+        "finding_trial": trial,
+        "total_images_sent": 0,
+    }
+
+
+def _should_summarize_failed_trial(
+    verdict: str,
+    plan_count: int,
+    max_plan_cycles: int,
+) -> bool:
+    return verdict in {"uncertain", "implausible"} and plan_count < max_plan_cycles
+
+
 def _build_planning_prompt() -> str:
     return """\
 Based on the user's question and the system instructions above, create a brief \
@@ -316,8 +438,11 @@ search_and_analyze_frames for large result sets that require counting or aggrega
 Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
 
 
-def _build_plan_review_prompt() -> str:
-    return """\
+def _build_plan_review_prompt(previous_plan: str) -> str:
+    return f"""\
+Previous plan:
+{previous_plan or "No previous plan was retained."}
+
 Critically review the original plan. Check for:
 1. **Feasibility**: Can each step actually be performed with the search_frames or \
    search_and_analyze_frames tool?
@@ -330,6 +455,7 @@ If the plan is sound, output it unchanged with a brief "Plan approved." prefix.
 If there are problems, output a corrected plan as a numbered list, prefixed with \
 "Revised plan:" and a brief note on what was wrong.
 
+Use the retained failed-trial findings in the system context to correct the plan and avoid repeating unsuccessful work.
 Do NOT execute any tool calls yet."""
 
 
@@ -545,7 +671,7 @@ def _build_agent(
     async def plan_review_node(state: AgentState) -> Dict[str, Any]:
         """Critically review the plan and correct inconsistencies."""
         review_messages = list(state["messages"]) + [
-            HumanMessage(content=_build_plan_review_prompt()),
+            HumanMessage(content=_build_plan_review_prompt(state.get("plan", ""))),
         ]
         response = await llm_no_tools.ainvoke(review_messages)
         review_text = response.content if isinstance(response.content, str) else str(response.content)
@@ -575,27 +701,57 @@ def _build_agent(
         if debug:
             _debug_print_message("evaluate → LLM response", response)
 
-        # Parse the verdict
-        verdict = "confident"
-        reasoning = eval_text
-        try:
-            parsed = json.loads(eval_text)
-            if isinstance(parsed, dict):
-                verdict = parsed.get("verdict", "confident")
-                reasoning = parsed.get("reasoning", eval_text)
-        except json.JSONDecodeError:
-            # If LLM didn't produce valid JSON, treat as uncertain
-            lower = eval_text.lower()
-            if "implausible" in lower:
-                verdict = "implausible"
-            elif "uncertain" in lower:
-                verdict = "uncertain"
+        verdict, reasoning = _parse_evaluation_response(eval_text)
 
         return {
             "messages": [
                 AIMessage(content=f"**Evaluation ({verdict}):** {reasoning}"),
             ],
+            "evaluation_verdict": verdict,
+            "evaluation_reasoning": reasoning,
         }
+
+    async def summarize_failed_trial_node(state: AgentState) -> Dict[str, Any]:
+        """Retain compact lessons, then remove the failed trial's full context."""
+        verdict = state.get("evaluation_verdict", "uncertain")
+        reasoning = state.get(
+            "evaluation_reasoning",
+            "The attempted answer did not have enough reliable evidence.",
+        )
+        summary_messages = list(state["messages"]) + [
+            HumanMessage(
+                content=_build_failed_trial_summary_prompt(
+                    verdict=verdict,
+                    reasoning=reasoning,
+                    previous_findings=state.get("findings", []),
+                )
+            )
+        ]
+        try:
+            response = await llm_no_tools.ainvoke(summary_messages)
+            finding = (
+                response.content
+                if isinstance(response.content, str)
+                else str(response.content)
+            )
+            if not finding.strip():
+                finding = _fallback_failed_trial_finding(verdict, reasoning)
+        except Exception as exc:
+            if debug:
+                print(f"[QA DEBUG] Failed-trial summarization failed: {exc}")
+            finding = _fallback_failed_trial_finding(verdict, reasoning)
+
+        finding = _limit_words(finding)
+        if debug:
+            _debug_print_message(
+                "summarize_failed_trial → retained finding",
+                AIMessage(content=finding),
+            )
+        return _build_compaction_update(
+            state,
+            system_prompt=system_prompt,
+            finding=finding,
+        )
 
     async def custom_tool_node(
         state: AgentState,
@@ -717,18 +873,14 @@ def _build_agent(
         # Agent finished reasoning – go to evaluation
         return "evaluate"
 
-    def should_continue_after_eval(state: AgentState) -> Literal["plan", "__end__"]:
-        """After evaluation, replan if uncertain/implausible (within budget)."""
-        last_msg = state["messages"][-1]
-        text = ""
-        if isinstance(last_msg, AIMessage):
-            text = last_msg.content if isinstance(last_msg.content, str) else str(last_msg.content)
-
-        needs_replan = "(uncertain)" in text.lower() or "(implausible)" in text.lower()
-        can_replan = state.get("plan_count", 1) < MAX_PLAN_CYCLES
-
-        if needs_replan and can_replan:
-            return "plan"
+    def should_continue_after_eval(state: AgentState) -> Literal["summarize", "__end__"]:
+        """Compact failed trials before retrying while the retry budget remains."""
+        if _should_summarize_failed_trial(
+            state.get("evaluation_verdict", "uncertain"),
+            state.get("plan_count", 0),
+            MAX_PLAN_CYCLES,
+        ):
+            return "summarize"
         return "__end__"
 
     # ── Compile graph ──────────────────────────────────────────────────
@@ -738,6 +890,7 @@ def _build_agent(
     graph.add_node("agent", agent_node)
     graph.add_node("tools", custom_tool_node)
     graph.add_node("evaluate", evaluate_node)
+    graph.add_node("summarize_failed_trial", summarize_failed_trial_node)
     graph.add_node("final_answer", final_answer_node)
     graph.add_edge(START, "plan")
     graph.add_edge("plan_review", "agent")
@@ -751,8 +904,9 @@ def _build_agent(
     graph.add_conditional_edges(
         "evaluate",
         should_continue_after_eval,
-        {"plan": "plan_review", "__end__": END},
+        {"summarize": "summarize_failed_trial", "__end__": END},
     )
+    graph.add_edge("summarize_failed_trial", "plan_review")
     graph.add_edge("final_answer", END)
 
     return graph.compile(), system_prompt
@@ -788,9 +942,9 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
     """Stream the QA agent reasoning as Server-Sent Events.
 
     Each SSE carries an ``event`` tag (``plan``, ``plan_review``, ``thinking``,
-    ``tool_call``, ``tool_result``, ``evaluation``, ``answer``, ``sources``,
-    ``error``) and a JSON ``data`` payload so the client can render them
-    separately.
+    ``tool_call``, ``tool_result``, ``evaluation``, ``findings``, ``answer``,
+    ``sources``, or ``error``) and a JSON ``data`` payload so the client can
+    render them separately.
     """
     try:
         qa_cfg = _get_qa_config(request)
@@ -817,11 +971,17 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
             SystemMessage(content=system_prompt),
             HumanMessage(content=payload.question),
         ],
+        "original_question": payload.question,
         "plan": "",
         "total_images_sent": 0,
         "iteration_count": 0,
         "plan_count": 0,
         "all_sources": [],
+        "findings": [],
+        "latest_finding": "",
+        "finding_trial": 0,
+        "evaluation_verdict": "",
+        "evaluation_reasoning": "",
     }
 
     if debug:
@@ -975,6 +1135,15 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
                                 if text_str.strip():
                                     yield _sse_event("evaluation", {"content": text_str})
 
+                    # -- Failed-trial context compaction --------------------------
+                    elif node_name == "summarize_failed_trial":
+                        finding = update.get("latest_finding", "")
+                        if finding:
+                            yield _sse_event("findings", {
+                                "trial": update.get("finding_trial", 0),
+                                "content": finding,
+                            })
+
             # If the agent ended naturally (no final_answer node), the last
             # AIMessage without tool_calls is the answer.
             if final_answer is None and last_agent_text:
@@ -1039,11 +1208,17 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
             SystemMessage(content=system_prompt),
             HumanMessage(content=payload.question),
         ],
+        "original_question": payload.question,
         "plan": "",
         "total_images_sent": 0,
         "iteration_count": 0,
         "plan_count": 0,
         "all_sources": [],
+        "findings": [],
+        "latest_finding": "",
+        "finding_trial": 0,
+        "evaluation_verdict": "",
+        "evaluation_reasoning": "",
     }
 
     if debug:
