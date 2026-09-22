@@ -18,6 +18,12 @@
   "settingsDefaults": {
     "temporalWindowSeconds": 60
   },
+  "queryFilters": {
+    "metadataFields": [
+      "video_id",
+      "start_time_seconds"
+    ]
+  },
   "titleFormatting": {
     "rankBadge": {
       "source": "id"

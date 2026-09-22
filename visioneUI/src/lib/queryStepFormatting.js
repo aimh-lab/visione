@@ -10,7 +10,12 @@ import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
 
 // Metadata fields whose filter value is a number (year, epoch, bpm, ...),
 // as opposed to a free-text/fuzzy-matched field (e.g. location, music).
-const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm']);
+const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'heart_rate_bpm', 'item_time', 'start_time_seconds']);
+
+// Fields matched by exact equality rather than fuzzy free text, but whose
+// value isn't numeric (an opaque id) — affects the default comparator only,
+// not the numeric hint text below.
+const EXACT_MATCH_TEXT_FIELDS = new Set(['video_id']);
 
 export function hexToRgb(hex) {
   const clean = hex.replace("#", "");
@@ -44,13 +49,18 @@ export function getShortcutForField(field) {
 }
 
 export function getDefaultComparatorForField(field) {
-  return NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase()) ? 'eq' : 'fts';
+  const normalized = String(field || '').trim().toLowerCase();
+  return (NUMERIC_FILTER_FIELDS.has(normalized) || EXACT_MATCH_TEXT_FIELDS.has(normalized)) ? 'eq' : 'fts';
 }
 
 export function getMetadataFieldHint(field) {
   const shortcut = getShortcutForField(field);
-  if (NUMERIC_FILTER_FIELDS.has(String(field || '').trim().toLowerCase())) {
+  const normalized = String(field || '').trim().toLowerCase();
+  if (NUMERIC_FILTER_FIELDS.has(normalized)) {
     return `${shortcut}:42 or ${shortcut}:>42`;
+  }
+  if (EXACT_MATCH_TEXT_FIELDS.has(normalized)) {
+    return `${shortcut}:abc123`;
   }
   return `${shortcut}:dublin or ${shortcut}:~dublin`;
 }

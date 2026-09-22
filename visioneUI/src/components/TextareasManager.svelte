@@ -79,7 +79,7 @@
     fields: ModalField[];
     description: string;
     targetIndex: number | null;
-    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "metadataHeartRate" | "metadataMusic" | "";
+    filterType: "imageUrl" | "metadata" | "metadataDateRange" | "metadataDateHour" | "metadataCountry" | "metadataLocation" | "metadataHeartRate" | "metadataMusic" | "metadataItemTimeRange" | "";
   };
 
   type ModalSubmitData = {
@@ -89,6 +89,8 @@
     value?: string;
     minBpm?: string;
     maxBpm?: string;
+    minTime?: string;
+    maxTime?: string;
     dateFrom?: string;
     dateTo?: string;
     dateFromParts?: { day?: string; month?: string; year?: string; hour?: string };
@@ -196,7 +198,8 @@
     'location_country',
     'location',
     'music',
-    'heart_rate_bpm'
+    'heart_rate_bpm',
+    'start_time_seconds'
   ]);
 
   const SHORTCUT_ALIAS_BY_FIELD: Record<string, string> = {
@@ -218,7 +221,7 @@
   const DATE_METADATA_FIELDS = new Set(['date', 'year', 'month', 'day', 'hour', 'epoch', 'epoch_from', 'epoch_to', 'timezone']);
   const DATE_RANGE_FIELDS = new Set(['date', 'epoch', 'epoch_from', 'epoch_to']);
   const DATE_HOUR_METADATA_FIELDS = new Set(['year', 'month', 'day', 'hour']);
-  const MULTI_TOKEN_METADATA_FIELDS = new Set([...DATE_METADATA_FIELDS, 'heart_rate_bpm']);
+  const MULTI_TOKEN_METADATA_FIELDS = new Set([...DATE_METADATA_FIELDS, 'heart_rate_bpm', 'item_time']);
 
   const METADATA_LABEL_BY_FIELD: Record<string, string> = {
     date: 'Date',
@@ -234,7 +237,9 @@
     location: 'Location',
     music: 'Music',
     semantic_name: 'Semantic',
-    heart_rate_bpm: 'Heart Rate'
+    heart_rate_bpm: 'Heart Rate',
+    video_id: 'Video ID',
+    item_time: 'Time Range'
   };
 
   const FIELD_BY_METADATA_KEY: Record<string, string> = (() => {
@@ -263,7 +268,11 @@
       sem: 'semantic_name',
       semantic_name: 'semantic_name',
       hr: 'heart_rate_bpm',
-      heart_rate_bpm: 'heart_rate_bpm'
+      heart_rate_bpm: 'heart_rate_bpm',
+      video_id: 'video_id',
+      vid: 'video_id',
+      item_time: 'item_time',
+      start_time_seconds: 'item_time'
     };
 
     Object.entries(SHORTCUT_ALIAS_BY_FIELD).forEach(([field, shortcut]) => {
@@ -334,38 +343,35 @@
       .filter(Boolean)
   );
 
-  function hasMetadataField(field: string) {
-    const normalized = String(field || '').trim().toLowerCase();
-    if (!normalized) return false;
-
-    if (discoveryMetadataSet.size > 0) {
-      return discoveryMetadataSet.has(normalized);
-    }
-
-    return runtimeMetadataSet.has(normalized);
-  }
-
-  function hasSpecialMetadataField(field: string) {
-    const normalized = String(field || '').trim().toLowerCase();
-    if (!normalized) return false;
-    return discoveryMetadataSet.has(normalized) || runtimeMetadataSet.has(normalized);
-  }
-
-  $: hasDateFilterSupport = ['year', 'month', 'day', 'hour'].some((f) => hasSpecialMetadataField(f));
-  $: hasCountryFilterSupport = hasSpecialMetadataField('location_country');
-  $: hasLocationFilterSupport = hasSpecialMetadataField('location');
-  $: hasMusicFilterSupport = hasSpecialMetadataField('music');
-  $: hasHeartRateFilterSupport = hasSpecialMetadataField('heart_rate_bpm');
+  // NOTE: these must reference discoveryMetadataSet/runtimeMetadataSet
+  // directly inside each `$:` statement (not via a helper function call) —
+  // Svelte determines a reactive statement's dependencies by static analysis
+  // of the identifiers written in that statement, not by tracing into
+  // functions it calls. A `hasSpecialMetadataField(field)`-style helper
+  // call here would make the statement's tracked deps empty, so it would
+  // run exactly once at mount (whatever discoveryMetadataSet/runtimeMetadataSet
+  // held at that instant, often still empty pre-/discovery) and then freeze
+  // forever — which is why the dedicated filter buttons could silently stop
+  // appearing after discovery loaded or after switching the active collection.
+  $: hasDateFilterSupport = ['year', 'month', 'day', 'hour']
+    .some((f) => discoveryMetadataSet.has(f) || runtimeMetadataSet.has(f));
+  $: hasCountryFilterSupport = discoveryMetadataSet.has('location_country') || runtimeMetadataSet.has('location_country');
+  $: hasLocationFilterSupport = discoveryMetadataSet.has('location') || runtimeMetadataSet.has('location');
+  $: hasMusicFilterSupport = discoveryMetadataSet.has('music') || runtimeMetadataSet.has('music');
+  $: hasHeartRateFilterSupport = discoveryMetadataSet.has('heart_rate_bpm') || runtimeMetadataSet.has('heart_rate_bpm');
+  $: hasItemTimeFilterSupport = discoveryMetadataSet.has('start_time_seconds') || runtimeMetadataSet.has('start_time_seconds');
   $: hasAnyCustomMetadataFilter = hasDateFilterSupport
     || hasCountryFilterSupport
     || hasLocationFilterSupport
     || hasMusicFilterSupport
     || hasHeartRateFilterSupport
+    || hasItemTimeFilterSupport
     || displayMetadataFilterFields.length > 0;
 
   $: displayMetadataFilterFields = metadataFilterFields.filter((field) => {
     const normalized = String(field || '').trim().toLowerCase();
-    return normalized && !SPECIAL_METADATA_FIELDS.has(normalized) && hasMetadataField(normalized);
+    if (!normalized || SPECIAL_METADATA_FIELDS.has(normalized)) return false;
+    return discoveryMetadataSet.size > 0 ? discoveryMetadataSet.has(normalized) : runtimeMetadataSet.has(normalized);
   });
 
   function getStepPhaseLabel(index: number) {
@@ -1501,6 +1507,106 @@
     return { minBpm, maxBpm };
   }
 
+  function getItemTimeMetadataPrefill(index: number) {
+    const snapshot = getMetadataTokensSnapshotForIndex(index);
+    let minTime = '';
+    let maxTime = '';
+
+    snapshot
+      .filter((token) => getFieldFromMetadataToken(token) === 'item_time')
+      .forEach((token) => {
+        const parsed = parseComparatorValue(unquoteMetadataValue(getMetadataTokenValuePart(token)), 'eq');
+        const comparator = String(parsed.comparator || 'eq').trim().toLowerCase();
+        const value = String(parsed.value || '').trim();
+        if (!value) return;
+
+        if (comparator === 'gte' || comparator === 'gt') {
+          minTime = value;
+        } else if (comparator === 'lte' || comparator === 'lt') {
+          maxTime = value;
+        } else if (comparator === 'eq') {
+          minTime = value;
+          maxTime = value;
+        }
+      });
+
+    return { minTime, maxTime };
+  }
+
+  function normalizeSecondsInput(value: unknown) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return parsed;
+  }
+
+  function buildItemTimeFilterTokens(data: ModalSubmitData) {
+    const minTime = normalizeSecondsInput(data.minTime);
+    const maxTime = normalizeSecondsInput(data.maxTime);
+    const tokens: string[] = [];
+
+    if (minTime !== null) tokens.push(`item_time:>=${quoteFilterTokenValue(minTime)}`);
+    if (maxTime !== null) tokens.push(`item_time:<=${quoteFilterTokenValue(maxTime)}`);
+
+    return normalizeMetadataTokens(tokens);
+  }
+
+  function upsertItemTimeMetadataTokens(index: number, tokens: string[]) {
+    const incomingTokens = normalizeMetadataTokens(tokens);
+    const existing = Array.isArray(metadataTokensByIndex[index]) ? metadataTokensByIndex[index] : [];
+    const keptTokens = existing.filter((token) => getFieldFromMetadataToken(token) !== 'item_time');
+
+    setMetadataTokens(index, [...keptTokens, ...incomingTokens]);
+  }
+
+  function openItemTimeFilterModal(index: number) {
+    modalMetadataField = 'item_time';
+    modalMetadataShortcut = 'item_time';
+    const prefill = getItemTimeMetadataPrefill(index);
+    setModalAnchorFromIndex(index);
+
+    modalConfig = {
+      isOpen: true,
+      title: 'Time Range',
+      icon: 'filter',
+      description: 'Search within a time interval of the video (in seconds). Use Start, End, or both.',
+      targetIndex: index,
+      filterType: 'metadataItemTimeRange',
+      fields: [
+        {
+          name: 'minTime',
+          label: 'Start Time (s)',
+          type: 'number',
+          value: prefill.minTime,
+          placeholder: 'e.g. 10',
+          min: 0,
+          step: 1
+        },
+        {
+          name: 'maxTime',
+          label: 'End Time (s)',
+          type: 'number',
+          value: prefill.maxTime,
+          placeholder: 'e.g. 120',
+          min: 0,
+          step: 1
+        },
+        {
+          name: 'itemTimePreview',
+          label: 'Query preview',
+          type: 'preview',
+          computePreview: (values: ModalSubmitData) => {
+            const tokens = buildItemTimeFilterTokens(values);
+            return tokens.length > 0 ? tokens.join(' ') : 'No time range yet';
+          }
+        }
+      ]
+    };
+
+    closeMenu();
+  }
+
   function openHeartRateMetadataFilterModal(index: number) {
     modalMetadataField = 'heart_rate_bpm';
     modalMetadataShortcut = 'heart_rate_bpm';
@@ -2548,6 +2654,30 @@
       const tokens = buildHeartRateMetadataFilterTokens(data);
       upsertHeartRateMetadataTokens(targetIndex, tokens);
       shouldTriggerSearch = tokens.length > 0;
+    } else if (filterType === 'metadataItemTimeRange') {
+      const minRaw = String(data.minTime ?? '').trim();
+      const maxRaw = String(data.maxTime ?? '').trim();
+      const minTime = normalizeSecondsInput(minRaw);
+      const maxTime = normalizeSecondsInput(maxRaw);
+
+      if (!minRaw && !maxRaw) {
+        toasts.error('Time Range: provide Start Time, End Time, or both.');
+        return;
+      }
+
+      if ((minRaw && minTime === null) || (maxRaw && maxTime === null)) {
+        toasts.error('Time Range: values must be valid non-negative numbers of seconds.');
+        return;
+      }
+
+      if (minTime !== null && maxTime !== null && minTime > maxTime) {
+        toasts.error('Time Range: Start Time must be less than or equal to End Time.');
+        return;
+      }
+
+      const tokens = buildItemTimeFilterTokens(data);
+      upsertItemTimeMetadataTokens(targetIndex, tokens);
+      shouldTriggerSearch = tokens.length > 0;
     } else if (filterType === 'metadataCountry' || filterType === 'metadataLocation' || filterType === 'metadataMusic') {
       const rawValue = String(data.value ?? '').trim();
       if (rawValue) {
@@ -3253,6 +3383,25 @@
                             <div class="flex-1">
                               <div class="text-xs font-medium text-white">Heart Rate</div>
                               <div class="text-[10px] text-gray-400">Filter by BPM range</div>
+                            </div>
+                          </button>
+                        {/if}
+
+                        {#if hasItemTimeFilterSupport}
+                          <button
+                            type="button"
+                            on:click|stopPropagation={() => openItemTimeFilterModal(i)}
+                            class="w-full px-3 py-2 flex items-center space-x-3 hover:bg-slate-600/20 text-left transition-colors group"
+                          >
+                            <div class="w-8 h-8 rounded-lg bg-gray-700/40 flex items-center justify-center group-hover:bg-gray-600/50 transition-colors">
+                              <svg class="w-4 h-4 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path d="M12 7v5l3 3"/>
+                              </svg>
+                            </div>
+                            <div class="flex-1">
+                              <div class="text-xs font-medium text-white">Time Range</div>
+                              <div class="text-[10px] text-gray-400">Start/end time in the video (s)</div>
                             </div>
                           </button>
                         {/if}

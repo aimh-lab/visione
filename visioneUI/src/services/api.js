@@ -1383,13 +1383,31 @@ export class VisioneAPI {
       location: 'location',
       music: 'music',
       timezone: 'timezone',
-      tz: 'timezone'
+      tz: 'timezone',
+      video_id: 'video_id',
+      vid: 'video_id'
     };
+
+    // Exact-match fields (compared like "type" below, not free-text "fts").
+    const exactMatchTextShortcuts = new Set(['type', 'video_id']);
 
     if (alias === 'date') {
       if (!this.#isKnownMetadataField('epoch')) return null;
       const dateArgs = this.#parseDateFilterArguments(value);
       return dateArgs.length > 0 ? { arguments: dateArgs } : null;
+    }
+
+    // Range filter over the dataset's own declared "item_time" semantic field
+    // (e.g. V3C/V3C12's start_time_seconds — see videoTimeReferenceFields,
+    // populated from /discovery's video_time_reference_attributes). Mirrors
+    // "date" above, but resolves the real column name dynamically instead of
+    // a hardcoded "epoch", so it stays a no-op (falls through to free text)
+    // for a dataset that doesn't declare this mapping (e.g. LSC).
+    if (alias === 'item_time' || alias === 'start_time_seconds') {
+      const attribute = String(this.videoTimeReferenceFields?.item_time || '').trim();
+      if (!attribute || !this.#isKnownMetadataField(attribute)) return null;
+      const timeArgs = this.#parseItemTimeFilterArguments(value, attribute);
+      return timeArgs.length > 0 ? { arguments: timeArgs } : null;
     }
 
     if (Object.prototype.hasOwnProperty.call(numericShortcuts, alias)) {
@@ -1406,7 +1424,7 @@ export class VisioneAPI {
     if (Object.prototype.hasOwnProperty.call(textShortcuts, alias)) {
       const attribute = textShortcuts[alias];
       if (!this.#isKnownMetadataField(attribute)) return null;
-      const parsed = this.#extractComparatorValue(value, attribute === 'type' ? 'eq' : 'fts');
+      const parsed = this.#extractComparatorValue(value, exactMatchTextShortcuts.has(attribute) ? 'eq' : 'fts');
       const normalized = this.#normalizeTextFilterValue(parsed.value);
       if (!normalized) return null;
       return {
@@ -1542,6 +1560,45 @@ export class VisioneAPI {
     }
 
     return [];
+  }
+
+  // Parses "item_time:10..120" (range, inclusive) or "item_time:>=10" /
+  // "item_time:gte:10" (single-bound comparator) against `attribute`, the
+  // dataset's resolved item_time column (e.g. V3C's start_time_seconds).
+  // Numeric analogue of #parseDateFilterArguments — no epsilon fudging since
+  // gte/lte are plain numeric comparators here, not calendar-day boundaries.
+  #parseItemTimeFilterArguments(rawValue, attribute) {
+    const input = String(rawValue || '').trim();
+    if (!input) return [];
+
+    if (input.includes('..')) {
+      const [fromRaw, toRaw] = input.split('..', 2);
+      const fromTrimmed = String(fromRaw || '').trim();
+      const toTrimmed = String(toRaw || '').trim();
+      const from = fromTrimmed ? Number(fromTrimmed) : NaN;
+      const to = toTrimmed ? Number(toTrimmed) : NaN;
+      const out = [];
+      if (Number.isFinite(from)) {
+        out.push({ comparator: 'gte', attribute, value: from });
+      } else if (fromTrimmed) {
+        warnFallback('api.parseItemTimeFilterArguments', `Could not parse item_time range start "${fromRaw}"; dropping that bound.`, { fromRaw });
+      }
+      if (Number.isFinite(to)) {
+        out.push({ comparator: 'lte', attribute, value: to });
+      } else if (toTrimmed) {
+        warnFallback('api.parseItemTimeFilterArguments', `Could not parse item_time range end "${toRaw}"; dropping that bound.`, { toRaw });
+      }
+      return out;
+    }
+
+    const parsed = this.#extractComparatorValue(input, 'eq');
+    const numericValue = Number(parsed.value);
+    if (!Number.isFinite(numericValue)) {
+      warnFallback('api.parseItemTimeFilterArguments', `Could not parse item_time value "${parsed.value}" from token "item_time:${input}"; the whole filter is being silently dropped.`, { input, value: parsed.value });
+      return [];
+    }
+
+    return [{ comparator: parsed.comparator, attribute, value: numericValue }];
   }
 
   #toEpochStart(rawDate) {
