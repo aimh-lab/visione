@@ -338,17 +338,10 @@ def _resolve_qa_orchestrator_model(
 
 
 def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
-    """Return a supported verdict and reasoning, defaulting malformed output to uncertain."""
+    """Return a supported verdict and reasoning, tolerating common Ollama JSON wrappers."""
     verdict = "uncertain"
     reasoning = eval_text.strip() or "The evaluator did not provide usable reasoning."
-    try:
-        parsed = json.loads(eval_text)
-    except json.JSONDecodeError:
-        lower = eval_text.lower()
-        if "implausible" in lower:
-            verdict = "implausible"
-        return verdict, reasoning
-
+    parsed = _extract_evaluation_json(eval_text)
     if not isinstance(parsed, dict):
         return verdict, reasoning
 
@@ -359,6 +352,35 @@ def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
     if parsed_reasoning is not None and str(parsed_reasoning).strip():
         reasoning = str(parsed_reasoning).strip()
     return verdict, reasoning
+
+
+def _extract_evaluation_json(eval_text: str) -> Optional[Dict[str, Any]]:
+    """Extract the first JSON object from common near-JSON evaluator output.
+
+    Some Ollama models wrap JSON in Markdown fences, use a backslash as a
+    line-continuation marker, or append an extra closing brace. ``raw_decode``
+    accepts the first complete object and safely ignores trailing text.
+    """
+    cleaned = eval_text.strip()
+    if cleaned.startswith("```"):
+        first_newline = cleaned.find("\n")
+        if first_newline != -1:
+            cleaned = cleaned[first_newline + 1:]
+        if cleaned.rstrip().endswith("```"):
+            cleaned = cleaned.rstrip()[:-3]
+
+    # Convert an invalid literal backslash followed by a newline into ordinary
+    # whitespace; valid escaped characters inside JSON strings are unaffected.
+    cleaned = cleaned.replace("\\\r\n", "").replace("\\\n", "")
+    object_start = cleaned.find("{")
+    if object_start == -1:
+        return None
+
+    try:
+        parsed, _ = json.JSONDecoder().raw_decode(cleaned[object_start:])
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _limit_words(text: str, max_words: int = 250) -> str:
@@ -673,6 +695,14 @@ def _build_agent(
         reasoning=False,
     )
 
+    evaluation_llm = ChatOllama(
+        model=orchestrator_model,
+        base_url=qa_cfg["base_url"],
+        temperature=qa_cfg["temperature"],
+        reasoning=False,
+        format="json",
+    )
+
     # ── Graph nodes ────────────────────────────────────────────────────
     MAX_PLAN_CYCLES = 3  # hard cap to avoid infinite replanning loops
 
@@ -720,7 +750,7 @@ def _build_agent(
         eval_messages = list(state["messages"]) + [
             HumanMessage(content=_build_evaluation_prompt()),
         ]
-        response = await llm_no_tools.ainvoke(eval_messages)
+        response = await evaluation_llm.ainvoke(eval_messages)
         eval_text = response.content if isinstance(response.content, str) else str(response.content)
         if debug:
             _debug_print_message("evaluate → LLM response", response)
