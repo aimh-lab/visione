@@ -5,6 +5,7 @@ import { RF_METHODS, DEFAULT_RF_METHOD } from '../config/relevanceFeedbackConfig
 import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
 import { API_CONFIG } from '../config/apiConfig.js';
 import { warnFallback } from '../lib/fallbackWarn.js';
+import { resolveVideoTimeReferenceSeconds } from '../lib/videoTimeReference.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -756,9 +757,17 @@ export class VisioneAPI {
           videoTimeReferenceValues[field] = item?.[field] ?? null;
         });
 
+        // Prefer the dataset's own declared item_time field (e.g. V3C's
+        // start_time_seconds) over epoch: datasets without a video concept
+        // (LSC) only have epoch, but datasets with one (V3C) don't have
+        // epoch at all, so falling back to epoch there always resolves to
+        // null and made every keyframe's seek time wrong (see loadKeyframes'
+        // linear index/count fallback in VideoPlayerModal.svelte).
+        const resolvedTimestamp = resolveVideoTimeReferenceSeconds(item, this.videoTimeReferenceFields, 'item_time');
+
         return {
           imgId: String(item[itemIdField]),
-          timestamp: item?.epoch ?? null,
+          timestamp: resolvedTimestamp ?? (item?.epoch ?? null),
           epoch: item?.epoch ?? null,
           year: item?.year ?? null,
           month: item?.month ?? null,
