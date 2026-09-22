@@ -197,7 +197,7 @@ class V3C12Loader:
         return "v3c"
 
     def get_temporal_column(self):
-        return "start_time_seconds"
+        return "middle_time_seconds"
 
     def get_temporal_groupby_column(self):
         return "video_id"
