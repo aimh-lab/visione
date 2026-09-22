@@ -66,8 +66,37 @@ class RelevanceFeedback(BaseModel):
         description="Number of random negatives sampled from the vector store, excluding labeled positive/negative IDs.",
     )
 
+
+class IndexQueryOptionsOverride(BaseModel):
+    """Validated, request-local overrides for pgvector query settings."""
+
+    ef_search: Optional[int] = Field(default=None, ge=1, le=1000)
+    iterative_scan: Optional[Literal["off", "strict_order", "relaxed_order"]] = None
+    max_scan_tuples: Optional[int] = Field(default=None, ge=1, le=10_000_000)
+    random_page_cost: Optional[float] = Field(default=None, gt=0, le=100)
+
+    def to_parameter(self) -> List[str]:
+        parameters: List[str] = []
+        if self.ef_search is not None:
+            parameters.append(f"hnsw.ef_search = {self.ef_search}")
+        if self.iterative_scan is not None:
+            parameters.append(f"hnsw.iterative_scan = {self.iterative_scan}")
+        if self.max_scan_tuples is not None:
+            parameters.append(f"hnsw.max_scan_tuples = {self.max_scan_tuples}")
+        if self.random_page_cost is not None:
+            parameters.append(f"random_page_cost = {self.random_page_cost}")
+        return parameters
+
+
 class SearchRequest(BaseModel):
     query: TemporalQueryNode = Field(..., description="Structured query with 'items' and optional filters.")
+    index_query_options: Optional[IndexQueryOptionsOverride] = Field(
+        default=None,
+        description=(
+            "Request-local overrides for pgvector HNSW query settings. "
+            "Unspecified settings retain their server-configured values."
+        ),
+    )
     metadata_to_retrieve: Optional[List[str]] = Field(
         default=None,
         description="List of metadata fields to include in results (e.g., ['month', 'city']). If None, only default metadata is included.",
@@ -326,6 +355,7 @@ async def search_endpoint(payload: SearchRequest, request: Request):
             k=final_k,
             filter=None,
             metadata_to_retrieve=metadata_to_retrieve,
+            index_query_options=payload.index_query_options,
         )
 
         results = []

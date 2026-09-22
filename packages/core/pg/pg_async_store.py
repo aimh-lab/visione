@@ -1564,8 +1564,18 @@ class AsyncPGVectorStore(VectorStore):
         async def _execute(sql_str: str) -> list[RowMapping]:
             sql_obj = text(sql_str)
             async with self.engine.connect() as conn:
-                if self.index_query_options is not None:
-                    for opt in self.index_query_options.to_parameter():
+                # Apply the server defaults first, followed by validated
+                # request-local overrides. SET LOCAL keeps these settings
+                # scoped to this transaction/connection checkout.
+                query_option_sets = (
+                    self.index_query_options,
+                    kwargs.get("index_query_options"),
+                )
+                for query_options in query_option_sets:
+                    if query_options is None:
+                        continue
+                    for opt in query_options.to_parameter():
+                        # print(f"Setting query option: {opt}")
                         await conn.execute(text(f"SET LOCAL {opt};"))
                 if kwargs.get("explain_analyze", False):
                     ea = (await conn.execute(
