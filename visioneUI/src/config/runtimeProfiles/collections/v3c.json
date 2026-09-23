@@ -29,6 +29,10 @@
       "source": "id"
     }
   },
+  "timeBadge": {
+    "source": "item_time",
+    "format": "mm:ss"
+  },
   "videoPlayer": {
     "urlSource": "dataserver"
   }

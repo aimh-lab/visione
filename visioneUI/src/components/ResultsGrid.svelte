@@ -489,7 +489,7 @@
     if (fetchedTimecodes.has(imgId)) return;
     if (requestedTimecodeIds.has(imgId)) return;
     const badgeSource = String(runtimeProfile?.timeBadge?.source || 'epoch').trim().toLowerCase();
-    if (badgeSource === 'epoch') return;
+    if (badgeSource === 'epoch' || badgeSource === 'item_time') return;
     const inlineSeconds = getFrameSeconds(item);
     if (inlineSeconds != null && inlineSeconds >= 0) return;
 
@@ -585,6 +585,17 @@
       const middle = getMiddleTimeSeconds(item);
       if (middle == null) return null;
       return formatTimecode(middle);
+    }
+
+    if (badgeSource === 'item_time') {
+      // Elapsed time of this keyframe within its own video (e.g. V3C's
+      // start_time_seconds, resolved via the dataset's own declared
+      // video_time_reference_attributes) — a duration, not a wall-clock
+      // time, so it's formatted with the plain mm:ss formatTimecode()
+      // rather than formatEpochHHmm()'s Date/timezone math.
+      const seconds = resolveVideoTimeReferenceSeconds(item, visioneAPI.videoTimeReferenceFields, 'item_time');
+      if (seconds == null) return null;
+      return formatTimecode(seconds);
     }
 
     return getTimecodeLabel(item, tcMap);
