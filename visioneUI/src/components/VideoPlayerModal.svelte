@@ -4,6 +4,9 @@
   import { visioneAPI } from "../services/api.js";
   import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
+  import { safeLoadJSON, safeSaveJSON } from "../stores/persistentState.js";
+
+  const VOLUME_STORAGE_KEY = "visione-video-volume";
 
   type HighlightedInput = string | { imgId: string; rank?: number };
   type Keyframe = {
@@ -92,6 +95,9 @@
   let playbackSpeed = 1;
   let showSpeedMenu = false;
   let isVideoPaused = true;
+  const savedVolumePrefs = safeLoadJSON(VOLUME_STORAGE_KEY, null);
+  let volume = Number.isFinite(savedVolumePrefs?.volume) ? Math.min(1, Math.max(0, savedVolumePrefs.volume)) : 1;
+  let isMuted = savedVolumePrefs?.muted === true;
   let keyframeStripEl: HTMLDivElement | null = null;
   const FRAME_STEP_SECONDS = 1 / 30; // ~1 frame at 30fps
   let frameStepInterval: ReturnType<typeof setInterval> | undefined;
@@ -177,6 +183,12 @@
       e.preventDefault();
       togglePlayPause();
     }
+
+    // Mute toggle
+    if (e.key?.toLowerCase() === "m") {
+      e.preventDefault();
+      toggleMute();
+    }
   }
 
   onMount(() => {
@@ -221,6 +233,8 @@
     try {
       videoDuration = Number.isFinite(videoEl.duration) ? videoEl.duration : 0;
       videoEl.playbackRate = playbackSpeed;
+      videoEl.volume = volume;
+      videoEl.muted = isMuted;
       // Do not override a user click made before metadata was ready.
       if (pendingSeekSeconds == null && pendingTimelineSeekPercent == null) {
         seekVideoTo(startTime ?? 0, true);
@@ -358,6 +372,41 @@
     const currentIdx = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
     const nextIdx = Math.max(0, Math.min(PLAYBACK_SPEEDS.length - 1, currentIdx + direction));
     setPlaybackSpeed(PLAYBACK_SPEEDS[nextIdx]);
+  }
+
+  function persistVolumePrefs() {
+    safeSaveJSON(VOLUME_STORAGE_KEY, { volume, muted: isMuted });
+  }
+
+  function setVolume(value: number) {
+    volume = Math.min(1, Math.max(0, value));
+    isMuted = volume === 0;
+    if (videoEl) {
+      videoEl.volume = volume;
+      videoEl.muted = isMuted;
+    }
+    persistVolumePrefs();
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    if (isMuted && volume === 0) volume = 1;
+    if (videoEl) {
+      videoEl.muted = isMuted;
+      videoEl.volume = volume;
+    }
+    dispatch('playerAction', { action: isMuted ? 'mute' : 'unmute', currentTime: videoEl?.currentTime || 0 });
+    persistVolumePrefs();
+  }
+
+  // Keeps local state in sync when volume/mute changes from outside our own
+  // handlers (e.g. OS media keys), not just to react to our own setVolume/
+  // toggleMute calls (which already update these directly).
+  function onVolumeChange() {
+    if (!videoEl) return;
+    volume = videoEl.volume;
+    isMuted = videoEl.muted;
+    persistVolumePrefs();
   }
 
   function stepFrame(direction: 1 | -1) {
@@ -796,6 +845,7 @@
           on:timeupdate={onVideoTimeUpdate}
           on:click={togglePlayPause}
           on:error={onVideoError}
+          on:volumechange={onVolumeChange}
         ></video>
         
         <!-- Overlay scuro (appare solo all'hover) -->
@@ -905,6 +955,41 @@
           </svg>
           <span>Similarity</span>
         </button>
+
+        <div class="ui-video-player-divider w-px h-5 bg-gray-600"></div>
+
+        <!-- Volume -->
+        <div class="flex items-center gap-1.5 group/volume">
+          <button
+            class="ui-video-player-control-btn text-gray-300 hover:text-white transition-colors p-1 rounded hover:bg-gray-700"
+            on:click={toggleMute}
+            use:tooltip={{ text: isMuted || volume === 0 ? 'Unmute' : 'Mute', shortcut: 'M' }}
+            aria-label={isMuted || volume === 0 ? 'Unmute' : 'Mute'}
+          >
+            {#if isMuted || volume === 0}
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 5 6 9H3v6h3l5 4V5z"/>
+                <path d="M23 9l-6 6M17 9l6 6"/>
+              </svg>
+            {:else}
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 5 6 9H3v6h3l5 4V5z"/>
+                <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/>
+              </svg>
+            {/if}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={isMuted ? 0 : volume}
+            on:input={(e) => setVolume(Number((e.target as HTMLInputElement).value))}
+            class="w-16 h-1 accent-cyan-400 cursor-pointer opacity-70 group-hover/volume:opacity-100 transition-opacity"
+            use:tooltip={{ text: 'Volume' }}
+            aria-label="Volume"
+          />
+        </div>
 
         <!-- Spacer -->
         <div class="flex-1"></div>
