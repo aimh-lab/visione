@@ -47,8 +47,17 @@ export function buildRows(items, {
       return direction === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
+  // Oldest/Newest First only makes sense for a dataset with real wall-clock
+  // epoch semantics (LSC); for a dataset like V3C (timeBadge.source ===
+  // 'item_time', a per-video elapsed duration, not an absolute time) every
+  // item's epoch silently resolves to 0 via getEpochSortMs's `?? 0` fallback,
+  // making the sort a no-op that still looks "applied" in the UI — so a
+  // stale time_asc/time_desc persisted from a previous LSC session must be
+  // ignored here too, not just hidden from the toolbar (see MainToolbar.svelte/
+  // AdaptiveTabLayout.svelte's matching runtimeProfile.timeBadge.source gate).
+  const supportsEpochOrdering = String(runtimeProfile?.timeBadge?.source || 'epoch').trim().toLowerCase() === 'epoch';
   const normalizedSortMode = String(sortMode || '').trim().toLowerCase();
-  const isTimeSortMode = normalizedSortMode === 'time' || normalizedSortMode === 'time_asc' || normalizedSortMode === 'time_desc';
+  const isTimeSortMode = supportsEpochOrdering && (normalizedSortMode === 'time' || normalizedSortMode === 'time_asc' || normalizedSortMode === 'time_desc');
   const timeSortDirection = normalizedSortMode === 'time_desc' ? 'desc' : 'asc';
   const sortedItems = isTimeSortMode ? sortByDate(items, timeSortDirection) : items;
 

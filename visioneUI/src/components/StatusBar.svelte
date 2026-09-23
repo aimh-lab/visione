@@ -1,5 +1,5 @@
 <script>
-  import { resolveGroupByConfig, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
+  import { resolveGroupByConfig, getAvailableSortModeOptions } from '$lib/groupByConfig.js';
   import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
 
   export let totalImages = 0;
@@ -23,7 +23,8 @@
 
   $: challengeLabel = String(challengeType || 'KIS').trim() || 'KIS';
   $: groupLabel = resolveGroupByConfig(viewMode, runtimeProfile)?.label || viewMode;
-  $: sortOption = SORT_MODE_OPTIONS.find((option) => option.value === sortMode) || SORT_MODE_OPTIONS[0];
+  $: availableSortOptions = getAvailableSortModeOptions(runtimeProfile);
+  $: sortOption = availableSortOptions.find((option) => option.value === sortMode) || availableSortOptions[0];
   $: sortLabel = sortOption?.label || 'Relevance';
 </script>
 

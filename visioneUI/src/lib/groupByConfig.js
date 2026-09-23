@@ -186,6 +186,21 @@ export function resolveSortMode(currentMode) {
   return 'relevance';
 }
 
+// "Oldest First"/"Newest First" only make sense for a dataset with real
+// wall-clock epoch semantics (e.g. LSC). A dataset whose timeBadge.source is
+// "item_time" (a per-video elapsed duration, e.g. V3C) has no absolute time
+// to order by across videos, so those two modes are hidden for it — see
+// getEpochSortMs's silent `?? 0` fallback in buildRows.js, which is why this
+// used to look "applied" in the UI without doing anything for such datasets.
+export function supportsEpochSortMode(runtimeProfile = {}) {
+  return toSafeString(runtimeProfile?.timeBadge?.source || 'epoch').toLowerCase() === 'epoch';
+}
+
+export function getAvailableSortModeOptions(runtimeProfile = {}) {
+  if (supportsEpochSortMode(runtimeProfile)) return SORT_MODE_OPTIONS;
+  return SORT_MODE_OPTIONS.filter((option) => option.value === 'relevance');
+}
+
 export function resolveGroupByConfig(viewMode, runtimeProfile = {}) {
   const options = normalizeGroupByOptions(runtimeProfile);
   const fallback = options[0] || getDefaultGroupByOptions()[0];

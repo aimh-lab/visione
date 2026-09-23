@@ -3,7 +3,7 @@
   import { tabsPosition } from '../stores/tabsPosition.js';
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
   import MainToolbar from './MainToolbar.svelte';
-  import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
+  import { normalizeGroupByOptions, getAvailableSortModeOptions } from '$lib/groupByConfig.js';
   import { LOGO_SRC } from '../config/branding.js';
   import { DEFAULT_DRES_CHALLENGE_TYPE, DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
   
@@ -109,7 +109,8 @@
   $: pinnedCount = (pinnedVideoSummaries?.length || 0) + (pinnedImages?.length || 0);
   $: sortOptions = normalizeGroupByOptions(runtimeProfile);
   $: currentSort = sortOptions.find((option) => option.value === viewMode) || sortOptions[0] || { label: 'Standard', icon: '' };
-  $: currentSortMode = SORT_MODE_OPTIONS.find((option) => option.value === sortMode) || SORT_MODE_OPTIONS[0] || { label: 'Relevance', icon: '' };
+  $: availableSortModeOptions = getAvailableSortModeOptions(runtimeProfile);
+  $: currentSortMode = availableSortModeOptions.find((option) => option.value === sortMode) || availableSortModeOptions[0] || { label: 'Relevance', icon: '' };
   $: showImageSizeControls = showViewModeRadios || active === "View2";
   
   function handleClickOutside(event) {
@@ -504,28 +505,30 @@
                   {/if}
                 </button>
               {/each}
-              <div class="my-1 h-px bg-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
-              {#each SORT_MODE_OPTIONS as option}
-                <button
-                  on:click={() => setSortMode(option.value)}
-                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
-                         {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    {@html option.icon}
-                  </svg>
-                  <div class="flex-1">
-                    <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
-                  </div>
-                  {#if sortMode === option.value}
-                    <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
+              {#if availableSortModeOptions.length > 1}
+                <div class="my-1 h-px bg-gray-200"></div>
+                <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
+                {#each availableSortModeOptions as option}
+                  <button
+                    on:click={() => setSortMode(option.value)}
+                    class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
+                           {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                  >
+                    <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      {@html option.icon}
                     </svg>
-                  {/if}
-                </button>
-              {/each}
+                    <div class="flex-1">
+                      <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                      <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                    </div>
+                    {#if sortMode === option.value}
+                      <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
             </div>
           {/if}
         </div>
@@ -883,28 +886,30 @@
                   {/if}
                 </button>
               {/each}
-              <div class="my-1 h-px bg-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
-              {#each SORT_MODE_OPTIONS as option}
-                <button
-                  on:click={() => setSortMode(option.value)}
-                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
-                         {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    {@html option.icon}
-                  </svg>
-                  <div class="flex-1">
-                    <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
-                  </div>
-                  {#if sortMode === option.value}
-                    <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
+              {#if availableSortModeOptions.length > 1}
+                <div class="my-1 h-px bg-gray-200"></div>
+                <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
+                {#each availableSortModeOptions as option}
+                  <button
+                    on:click={() => setSortMode(option.value)}
+                    class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left
+                           {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                  >
+                    <svg class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      {@html option.icon}
                     </svg>
-                  {/if}
-                </button>
-              {/each}
+                    <div class="flex-1">
+                      <div class="text-sm {sortMode === option.value ? 'text-blue-700 font-medium' : 'text-gray-700'}">{option.label}</div>
+                      <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                    </div>
+                    {#if sortMode === option.value}
+                      <svg class="w-3.5 h-3.5 ml-auto text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
             </div>
           {/if}
         </div>

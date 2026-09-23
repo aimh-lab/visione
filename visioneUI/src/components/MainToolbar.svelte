@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { tabConfig, getTabConfig } from '$lib/tabConfig.js';
   import { DEFAULT_DRES_CHALLENGE_TYPE, DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
-  import { normalizeGroupByOptions, SORT_MODE_OPTIONS } from '$lib/groupByConfig.js';
+  import { normalizeGroupByOptions, getAvailableSortModeOptions } from '$lib/groupByConfig.js';
 
   export let active = "View1";
   export let tabs = ["View1", "View2", "Similarity"];
@@ -105,7 +105,8 @@
   $: showImageSizeControls = showViewModeRadios || active === "View2";
   
   $: currentSort = sortOptions.find(opt => opt.value === viewMode) || sortOptions[0] || { label: 'Group', icon: '', description: '' };
-  $: currentSortMode = SORT_MODE_OPTIONS.find(opt => opt.value === sortMode) || SORT_MODE_OPTIONS[0];
+  $: availableSortModeOptions = getAvailableSortModeOptions(runtimeProfile);
+  $: currentSortMode = availableSortModeOptions.find(opt => opt.value === sortMode) || availableSortModeOptions[0];
   
   function handleClickOutside(event) {
     if (isGroupDropdownOpen && !event.target.closest('.group-dropdown-container')) {
@@ -315,16 +316,18 @@
               </svg>
               {currentSort.label}
             </span>
-            <span
-              class="ui-toolbar-sort-chip inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-              title={`Order: ${currentSortMode.label}`}
-              aria-label={`Order: ${currentSortMode.label}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                {@html currentSortMode.icon}
-              </svg>
-              {currentSortMode.label}
-            </span>
+            {#if availableSortModeOptions.length > 1}
+              <span
+                class="ui-toolbar-sort-chip inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                title={`Order: ${currentSortMode.label}`}
+                aria-label={`Order: ${currentSortMode.label}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  {@html currentSortMode.icon}
+                </svg>
+                {currentSortMode.label}
+              </span>
+            {/if}
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-500 transition-transform {isGroupDropdownOpen ? 'rotate-180' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
@@ -358,28 +361,30 @@
                 </button>
               {/each}
 
-              <div class="my-1 border-t border-gray-200"></div>
-              <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
-              {#each SORT_MODE_OPTIONS as option}
-                <button
-                  on:click={() => setSortMode(option.value)}
-                  class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors
-                         {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    {@html option.icon}
-                  </svg>
-                  <div class="flex-1 text-left">
-                    <div class="text-sm font-medium {sortMode === option.value ? 'text-blue-700' : 'text-gray-800'}">{option.label}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
-                  </div>
-                  {#if sortMode === option.value}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"/>
+              {#if availableSortModeOptions.length > 1}
+                <div class="my-1 border-t border-gray-200"></div>
+                <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Order</div>
+                {#each availableSortModeOptions as option}
+                  <button
+                    on:click={() => setSortMode(option.value)}
+                    class="ui-sort-option w-full flex items-start space-x-3 px-3 py-2.5 hover:bg-blue-50 transition-colors
+                           {sortMode === option.value ? 'bg-blue-50 ui-sort-option-active' : ''}"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 flex-shrink-0 {sortMode === option.value ? 'text-blue-600' : 'text-gray-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      {@html option.icon}
                     </svg>
-                  {/if}
-                </button>
-              {/each}
+                    <div class="flex-1 text-left">
+                      <div class="text-sm font-medium {sortMode === option.value ? 'text-blue-700' : 'text-gray-800'}">{option.label}</div>
+                      <div class="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                    </div>
+                    {#if sortMode === option.value}
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
             </div>
           {/if}
         </div>
