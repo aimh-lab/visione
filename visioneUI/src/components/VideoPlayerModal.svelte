@@ -200,6 +200,21 @@
     dragPointerId = null;
   }
 
+  // Auto-focus the timeline scrubber when the modal opens, so ArrowLeft/
+  // ArrowRight (handled by handleTimelineKeydown) work immediately without
+  // requiring the user to click the timeline first. timelineContainer is
+  // only bound once the {#if isOpen} block has mounted it, so this re-fires
+  // (via bind:this triggering reactivity) right after that happens. Delayed
+  // past focusTrap's own 50ms auto-focus (../utils/ui.ts) so this reliably
+  // wins over whatever focusTrap would otherwise focus (its first focusable
+  // descendant, e.g. a close button).
+  $: if (isOpen && timelineContainer) {
+    const container = timelineContainer;
+    setTimeout(() => {
+      if (isOpen) container.focus();
+    }, 60);
+  }
+
   function onLoaded() {
     if (!videoEl) return;
     clearLoadTimeoutTimer();
