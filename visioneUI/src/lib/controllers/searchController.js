@@ -165,6 +165,14 @@ export function createSearchController({
       }
 
       // Input order is rank order, so keep first occurrence (highest rank).
+      // This is a plain cross-tuple/cross-candidate dedup: two entries can
+      // share an imgId by coincidence (the same frame surfaces as a
+      // candidate in two otherwise-unrelated tuples/results), in which case
+      // dropping one is correct and there's nothing to merge. The one case
+      // that DOES need to preserve both step numbers — the same frame
+      // matching two steps of the SAME temporal-tuple sequence — is handled
+      // earlier, per-tuple, in transformers.js's expandTupleAwareItems
+      // (see matchedTupleMemberIndexes), before items ever reach here.
       if (seen.has(id)) {
         removedCount += 1;
         continue;

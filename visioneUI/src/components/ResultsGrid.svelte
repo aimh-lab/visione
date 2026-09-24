@@ -140,6 +140,21 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  // Picks white or near-black text for reliable contrast against a solid
+  // fill of `hexColor`, since the categorical palette spans both dark
+  // (blue/red/purple) and bright (yellow/orange) hues that don't all read
+  // well with the same fixed text color.
+  function getReadableTextColor(hexColor) {
+    const hex = String(hexColor || '').replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#ffffff';
+    const r = Number.parseInt(hex.slice(0, 2), 16) / 255;
+    const g = Number.parseInt(hex.slice(2, 4), 16) / 255;
+    const b = Number.parseInt(hex.slice(4, 6), 16) / 255;
+    const linear = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+    return luminance > 0.55 ? '#111827' : '#ffffff';
+  }
+
   function getTupleAccentStyle(item) {
     const color = getTupleGroupColor(item);
     if (!color) return '';
@@ -149,16 +164,34 @@
   function getTupleBadgeStyle(item) {
     const color = getTupleGroupColor(item);
     if (!color) return '';
+    // A near-transparent background tinted the same hue as the (near-opaque)
+    // text made the label hard to read over busy thumbnail content — same
+    // hue at different alphas still reads as low-contrast. Use a solid-ish
+    // background with white text instead, keeping the group color as the
+    // border/accent so tuple-group color coding is still visible.
     return [
-      `background-color: ${hexToRgba(color, 0.16)};`,
-      `border-color: ${hexToRgba(color, 0.45)};`,
-      `color: ${hexToRgba(color, 0.96)};`
+      `background-color: ${hexToRgba(color, 0.85)};`,
+      `border-color: ${hexToRgba(color, 0.9)};`,
+      `color: ${getReadableTextColor(color)};`
     ].join(' ');
   }
 
   function getTupleA11yLabel(item) {
     const tupleSize = Number(item?.tupleSize || 1);
     if (tupleSize <= 1) return '';
+
+    // A frame that matched more than one step of THIS SAME temporal tuple
+    // carries all of its matched step indexes here (merged per-tuple in
+    // transformers.js's expandTupleAwareItems) — show them all instead of
+    // just one. This must stay scoped to one tuple: a coincidental imgId
+    // match across two unrelated tuples is a different, unrelated result
+    // and is deliberately NOT merged (see dedupeByTopRank in
+    // searchController.js, which just drops that kind of duplicate).
+    const matches = Array.isArray(item?.matchedTupleMemberIndexes) ? item.matchedTupleMemberIndexes : null;
+    if (matches && matches.length > 0) {
+      return `${matches.map((i) => Number(i) + 1).join(',')}/${tupleSize}`;
+    }
+
     const member = Number.isFinite(Number(item?.tupleMemberIndex)) ? Number(item.tupleMemberIndex) + 1 : '?';
     return `${member}/${tupleSize}`;
   }
