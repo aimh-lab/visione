@@ -215,6 +215,16 @@ export function createSearchController({
   }
 
   function runSearch(options = {}) {
+    // Flip loading on synchronously, right at click time — before the
+    // debounce settles and before _doSearch's async auto-translate step.
+    // Previously this only happened inside _doSearch, after `await
+    // maybeTranslateTextareas(...)` resolved, so the Search button stayed
+    // enabled for the whole translator round trip; a slow translator let
+    // the user click Search repeatedly and queue up redundant identical
+    // searches. The button's `disabled` prop reads this same loading flag,
+    // so it now greys out immediately on click instead.
+    setSearchState({ loading: true, error: null });
+
     return new Promise((resolve) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
@@ -233,7 +243,21 @@ export function createSearchController({
   async function _doSearch(options = {}) {
     const overrideTextareas = Array.isArray(options?.textareasOverride) ? options.textareasOverride : null;
     const rawTextareas = overrideTextareas || getTextareas();
-    if (!rawTextareas?.length) return;
+    if (!rawTextareas?.length) {
+      // runSearch() already optimistically flips loading on before this
+      // function even runs (see there), so an empty-query no-op here must
+      // flip it back off — otherwise the Search button would stay disabled
+      // forever after a click with nothing to search.
+      setSearchState({ loading: false });
+      return;
+    }
+
+    // Also set here (not just in runSearch()) so runSearchImmediate() callers
+    // — programmatic searches that bypass the debounce, e.g. history
+    // restore, initial URL query — get the same "loading before translate"
+    // behavior, not just clicks routed through runSearch().
+    setSearchState({ loading: true, error: null });
+
     const preparedTextareas = typeof getSearchTextareas === 'function'
       ? getSearchTextareas(rawTextareas)
       : rawTextareas;
@@ -253,8 +277,6 @@ export function createSearchController({
     }
 
     const req = ++reqId;
-
-    setSearchState({ loading: true, error: null });
 
     const query = textareas
       .filter((t) => {
