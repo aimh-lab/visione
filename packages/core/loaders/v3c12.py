@@ -103,6 +103,9 @@ class V3C12Loader:
         metadata_df["middle_frame"] = (metadata_df["start_frame"] + metadata_df["end_frame"]) / 2
         metadata_df["middle_time_seconds"] = (metadata_df["start_time_seconds"] + metadata_df["end_time_seconds"]) / 2
 
+
+        # Sort by length_frames
+        metadata_df.sort_values(by=["length_frames"], inplace=True)
         return metadata_df
 
     @staticmethod
