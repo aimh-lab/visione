@@ -299,7 +299,7 @@
 
       {#if showViewModeRadios}
         <div class="flex items-center space-x-2">
-        <div class="relative group-dropdown-container">
+        <div class="relative group-dropdown-container" data-tour="view-mode">
           <button
             on:click|stopPropagation={() => isGroupDropdownOpen = !isGroupDropdownOpen}
             class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 bg-white rounded-lg border border-gray-300 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
@@ -334,7 +334,7 @@
           </button>
 
           {#if isGroupDropdownOpen}
-            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+            <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50" data-tour-part="view-mode">
               <div class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Results Layout</div>
               {#each sortOptions as option}
                 <button
@@ -391,7 +391,7 @@
         </div>
       {/if}
 
-      <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'}>
+      <div class="relative challenge-dropdown-container ui-challenge-control" data-dres-enabled={dresEnabled ? 'true' : 'false'} data-tour="challenge">
         <button
           on:click|stopPropagation={toggleChallengeDropdown}
           class="ui-toolbar-btn ui-toolbar-sort flex items-center space-x-2 px-3 py-1.5 rounded-lg shadow-sm hover:shadow-md transition-all"
@@ -406,7 +406,7 @@
         </button>
 
         {#if isChallengeDropdownOpen}
-          <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-72 rounded-lg shadow-xl border py-1 z-50">
+          <div class="ui-sort-dropdown-menu absolute right-0 top-full mt-2 w-72 rounded-lg shadow-xl border py-1 z-50" data-tour-part="challenge">
             {#each challengeOptions as option}
               <button
                 on:click={() => setChallengeType(option)}

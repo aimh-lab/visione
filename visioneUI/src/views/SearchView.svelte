@@ -279,7 +279,7 @@
       </div>
     {/if}
 
-    <div class="content bg-gray-100 flex-1 overflow-x-hidden"
+    <div class="content bg-gray-100 flex-1 overflow-x-hidden" data-tour="results"
          style="height:100%;">
 
       <div class="flex-1 h-full" class:overflow-y-auto={isFirstVisit} class:overflow-hidden={!isFirstVisit}>

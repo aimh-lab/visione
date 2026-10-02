@@ -214,6 +214,7 @@ function toCompetitionPayload(rawPayload, filenameTimestamp) {
 
 export function createInteractionLogger() {
   let dbPromise = null;
+  let paused = false;
   let loggerOptions = {
     resultLimit: DEFAULT_RESULT_LOG_LIMIT
   };
@@ -288,6 +289,7 @@ export function createInteractionLogger() {
     buildSearchPayload = null,
     metadata = {}
   }) {
+    if (paused) return;
     const db = await ensureDb();
     if (!db) return;
 
@@ -322,6 +324,7 @@ export function createInteractionLogger() {
   }
 
   async function logInteractionEvent({ category = 'OTHER', type = 'custom', value = '', timestamp = Date.now(), extra = {} }) {
+    if (paused) return;
     const db = await ensureDb();
     if (!db) return;
 
@@ -439,6 +442,11 @@ export function createInteractionLogger() {
       if (Number.isFinite(parsed)) {
         loggerOptions.resultLimit = Math.min(MAX_RESULT_LOG_LIMIT, Math.max(MIN_RESULT_LOG_LIMIT, Math.floor(parsed)));
       }
+    },
+    // While paused (e.g. during the guided tour) result sets and interaction
+    // events are dropped, so practice actions never end up in exported logs.
+    setPaused: (value) => {
+      paused = !!value;
     },
     initSession,
     logResultSet,

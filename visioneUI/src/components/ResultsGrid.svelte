@@ -1491,13 +1491,14 @@
 
               <div class="image-overlay absolute inset-0 z-10 transition-all duration-200 pointer-events-none"></div>
 
-              <div class="absolute inset-0 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div class="absolute inset-0 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" data-tour="kf-actions">
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <button
                     class="w-12 h-12 rounded-full bg-slate-200/85 text-slate-900 shadow-xl flex items-center justify-center border border-slate-300/80 ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-slate-100 active:scale-95 pointer-events-auto"
                     style="--play-size: clamp(36px, calc(var(--kf-size, 160px) * 0.28), 72px); width: var(--play-size); height: var(--play-size);"
                     title="Play video"
                     aria-label="Play video"
+                    data-tour="kf-play"
                     on:click={(e) => handleOpenVideoPlayer(e, item)}
                   >
                     <svg
@@ -1521,6 +1522,7 @@
                         class="p-1 hover:bg-white/20 rounded transition-colors"
                         title="Context view"
                         aria-label="Open context view"
+                        data-tour="kf-context"
                         on:click={(e) => handleVideoSummary(item, e)}
                       >
                         <img src="/icons/context-view.svg" alt="" class="w-4 h-4" aria-hidden="true" />
@@ -1531,6 +1533,7 @@
                       class="p-1 hover:bg-white/20 rounded transition-colors"
                       title="Image similarity"
                       aria-label="Run image similarity"
+                      data-tour="kf-similarity"
                       on:click={(e) => handleSimilarity(item, e)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1540,7 +1543,7 @@
                   </div>
 
                   <!-- Right group: feedback actions -->
-                  <div class="flex items-center space-x-1">
+                  <div class="flex items-center space-x-1" data-tour="kf-rf">
                     <button
                       class="p-1 rounded transition-colors {rfPositiveIds.has(safeImgId(getId(item))) ? 'bg-emerald-600/70 ring-1 ring-emerald-300/70' : 'hover:bg-green-500/30'}"
                       title={rfPositiveIds.has(safeImgId(getId(item))) ? 'Positive feedback selected' : 'Positive feedback'}
@@ -1573,6 +1576,7 @@
                     class="absolute top-2 right-2 z-40 p-2 bg-green-600/80 hover:bg-green-600 backdrop-blur-sm rounded-lg transition-all shadow-lg cursor-pointer"
                     title={isQaChallenge ? 'Submit answer' : 'Submit'}
                     aria-label={isQaChallenge ? 'Submit answer' : 'Submit frame'}
+                    data-tour="kf-submit"
                     on:click={(e) => handleSubmit(item, e)}
                     on:keydown={(e) => e.key === 'Enter' && handleSubmit(item, e)}
                   >
