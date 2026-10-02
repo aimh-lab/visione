@@ -32,6 +32,13 @@
     advanceTimer = setTimeout(() => tour.next(), 900);
   }
 
+  // `target` and `body` may be functions of (ctx, start), for steps whose
+  // focus moves once the user has acted (e.g. a newly added query box).
+  // The template passes ctx/start explicitly so Svelte re-renders when they change.
+  function resolve(value, c = ctx, s = start) {
+    return typeof value === 'function' ? value(c, s) : value;
+  }
+
   $: docked = !!ctx.modalOpen;
   $: popoverPos = computePopoverPosition(targetRect, popoverHeight, viewport, step?.placement, docked);
 
@@ -50,7 +57,7 @@
     }
     await tick();
     setTimeout(() => {
-      const el = findTarget(current?.target);
+      const el = findTarget(resolve(current?.target));
       if (!el) return;
       const r = el.getBoundingClientRect();
       // Only scroll targets that fit on screen; tall panels would otherwise be
@@ -125,14 +132,14 @@
         actions.setAttribute('data-tour-force', '');
       }
     }
-    const nextRect = anchorRect(step.target);
+    const nextRect = anchorRect(resolve(step.target));
     if (!sameRect(nextRect, targetRect)) targetRect = nextRect;
 
     const nextCallouts = (step.callouts || [])
       .map((c, i) => {
         const spec = typeof c === 'string' ? { target: c, label: String(i + 1) } : c;
         const rect = toRect(findTarget(spec.target));
-        return rect ? { label: spec.label, rect } : null;
+        return rect ? { label: spec.label, side: spec.side || 'corner', rect } : null;
       })
       .filter(Boolean);
     if (
@@ -220,7 +227,14 @@
           class="tour-callout-ring"
           style="top: {c.rect.top - 3}px; left: {c.rect.left - 3}px; width: {c.rect.width + 6}px; height: {c.rect.height + 6}px;"
         ></div>
-        <div class="tour-callout-badge" style="top: {c.rect.top - 12}px; left: {c.rect.left - 12}px;">{c.label}</div>
+        {#if c.side === 'above'}
+          <div
+            class="tour-callout-badge"
+            style="top: {c.rect.top - 26}px; left: {c.rect.left + c.rect.width / 2}px; transform: translateX(-50%);"
+          >{c.label}</div>
+        {:else}
+          <div class="tour-callout-badge" style="top: {c.rect.top - 12}px; left: {c.rect.left - 12}px;">{c.label}</div>
+        {/if}
       {/each}
     {/if}
 
@@ -244,7 +258,7 @@
 
       <h3 class="tour-title">{step.title}</h3>
       <!-- Static, trusted copy from tourSteps.js -->
-      <div class="tour-body">{@html step.body}</div>
+      <div class="tour-body">{@html resolve(step.body, ctx, start)}</div>
 
       <div class="tour-actions">
         <button type="button" class="tour-btn tour-btn-ghost" on:click={() => tour.stop()}>Skip tour</button>

@@ -3093,7 +3093,7 @@
               <div class="relative">
                 <textarea
                   bind:this={textareaRefs[i]}
-                  data-tour={i === 0 ? 'query-input' : undefined}
+                  data-tour={i === 0 ? 'query-input' : i === textareas.length - 1 ? 'new-query-input' : undefined}
                   use:autoResizeAction={textarea.value}
                   class="ui-query-textarea w-full p-1.5 pr-6 pb-1.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"

@@ -6,7 +6,8 @@ import { requestTourUi } from '../../stores/tourStore.js';
 //
 // Step fields:
 // - target: `data-tour` anchor to spotlight; when missing the popover is centered.
-// - title / body: popover content (body is trusted static HTML).
+// - title / body: popover content (body is trusted static HTML; target and body
+//   may also be functions of (ctx, start)).
 // - task: true for "do it" steps; they advance on their own once `done` returns true.
 // - done(ctx, start, memo): completion check against the live tour context
 //   (see `tourContext` in routes/+page.svelte); `start` is the context when the
@@ -46,7 +47,7 @@ export const TOUR_STEPS = [
       '💡 <b>Tip:</b> writing directly in English? Turn the toggle off: the search will be faster!',
     task: true,
     before: prepareFirstQuery,
-    callouts: [{ target: 'translate-toggle', label: 'Translate' }],
+    callouts: [{ target: 'translate-toggle', label: 'Translate', side: 'above' }],
     done: (ctx, start) => ctx.searchCount > start.searchCount && ctx.resultCount > 0
   },
   {
@@ -105,7 +106,7 @@ export const TOUR_STEPS = [
     forceActions: true,
     title: 'Relevance feedback',
     body:
-      'Mark at least one frame as <b>👍 relevant</b> and one as <b>👎 not relevant</b> using the buttons on the frames, ' +
+      'To test <b>relevance feedback</b>, mark some frames as <b>👍 relevant</b> and/or <b>👎 not relevant</b> using the buttons on the frames, ' +
       'then press <b>Search</b>: results move toward what you liked and away from what you did not. Make sure RF is <b>ON</b>.',
     task: true,
     before: () => uiStore.actions.focusRightTab('RF'),
@@ -113,19 +114,23 @@ export const TOUR_STEPS = [
       { target: 'kf-rf', label: '👍 👎' },
       { target: 'search-button', label: 'Search' }
     ],
-    // The search has to run after both a positive and a negative were marked.
-    done: (ctx, _start, memo) => {
-      if (memo.readyAt === undefined && ctx.rfPositiveCount > 0 && ctx.rfNegativeCount > 0) {
-        memo.readyAt = ctx.searchCount;
-      }
+    // The search has to run after at least one frame was marked.
+    done: (ctx, start, memo) => {
+      const marked = ctx.rfPositiveCount + ctx.rfNegativeCount;
+      const markedAtStart = (start.rfPositiveCount || 0) + (start.rfNegativeCount || 0);
+      if (memo.readyAt === undefined && marked > markedAtStart) memo.readyAt = ctx.searchCount;
       return memo.readyAt !== undefined && ctx.searchCount > memo.readyAt;
     }
   },
   {
     id: 'add-step',
-    target: 'add-step',
+    // Once the new step exists, point at its text box instead of the button.
+    target: (ctx, start) => (ctx.stepCount > start.stepCount ? 'new-query-input' : 'add-step'),
     title: 'Search for a sequence',
-    body: 'Remember what happens next? Click <b>Describe Next Scene</b>, describe it in the new box and press <b>Enter</b>: VISIONE finds videos where the scenes appear <b>in this order</b>.',
+    body: (ctx, start) =>
+      ctx.stepCount > start.stepCount
+        ? 'Now <b>type the next scene</b> in the highlighted box and press <b>Enter</b>: VISIONE finds videos where the scenes appear <b>in this order</b>.'
+        : 'Remember what happens next? Click <b>Describe Next Scene</b> to add a new box for the following scene.',
     task: true,
     before: ensureLeftSidebar,
     // Wait for the new step to be filled in and searched, not just added.
@@ -178,8 +183,7 @@ export const TOUR_STEPS = [
     title: 'Submit',
     body:
       'Found it? Hit <b>Submit</b> on the frame (for question tasks you type the answer).<br><br>' +
-      'Not sure about the exact moment? <b>Play the video</b> ▶, find the exact moment and press <b>Submit</b> in the player.<br><br>' +
-      'The button appears during a task: you will try it in the test sessions.',
+      'Not sure about the exact moment? <b>Play the video</b> ▶, find the exact moment and press <b>Submit</b> in the player.',
     callouts: [{ target: 'kf-play', label: '▶ Play' }]
   },
   {

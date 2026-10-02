@@ -62,12 +62,19 @@ describe('tour steps', () => {
     expect(done({ stepCount: 2, filledStepCount: 2, searchCount: 4 }, start, memo)).toBe(true);
   });
 
-  it('completes relevance feedback after a positive, a negative and a new search', () => {
+  it('completes relevance feedback after marking any frame and searching again', () => {
     const { done } = byId('feedback');
+    const start = { rfPositiveCount: 0, rfNegativeCount: 0 };
     const memo = {};
-    expect(done({ rfPositiveCount: 1, rfNegativeCount: 0, searchCount: 5 }, {}, memo)).toBe(false);
-    expect(done({ rfPositiveCount: 1, rfNegativeCount: 1, searchCount: 5 }, {}, memo)).toBe(false);
-    expect(done({ rfPositiveCount: 1, rfNegativeCount: 1, searchCount: 6 }, {}, memo)).toBe(true);
+    expect(done({ rfPositiveCount: 0, rfNegativeCount: 0, searchCount: 5 }, start, memo)).toBe(false);
+    expect(done({ rfPositiveCount: 0, rfNegativeCount: 1, searchCount: 5 }, start, memo)).toBe(false);
+    expect(done({ rfPositiveCount: 0, rfNegativeCount: 1, searchCount: 6 }, start, memo)).toBe(true);
+  });
+
+  it('moves the sequence step focus to the new query box once it is added', () => {
+    const { target } = byId('add-step');
+    expect(target({ stepCount: 1 }, { stepCount: 1 })).toBe('add-step');
+    expect(target({ stepCount: 2 }, { stepCount: 1 })).toBe('new-query-input');
   });
 
   it('completes the layout step when the view mode changes', () => {
