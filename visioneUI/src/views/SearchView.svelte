@@ -285,7 +285,6 @@
       <div class="flex-1 h-full" class:overflow-y-auto={isFirstVisit} class:overflow-hidden={!isFirstVisit}>
         {#if isFirstVisit}
           <WelcomeHero
-            on:getStarted={focusLeftTextarea}
             on:loadExample={(e) => onLoadExample(e.detail)}
           />
           

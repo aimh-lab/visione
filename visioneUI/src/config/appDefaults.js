@@ -44,6 +44,7 @@ export const APP_SETTINGS_DEFAULTS = {
   dresUsername: 'VISIONE',
   dresPassword: '',
   dresMemberId: '',
+  aiServicesToken: '',
   autoTranslateQueries: true,
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 25200,

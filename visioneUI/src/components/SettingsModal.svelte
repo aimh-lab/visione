@@ -38,6 +38,7 @@
   export let logUserFolder = 'unknown-user';
   export let isExportingLogs = false;
   export let isDeletingLogs = false;
+  export let aiServicesToken = D.aiServicesToken;
   export let autoTranslateQueries = D.autoTranslateQueries;
   export let showAutoTranslateToggle = D.showAutoTranslateToggle;
   export let temporalWindowSeconds = D.temporalWindowSeconds;
@@ -112,6 +113,7 @@
       dresUsername,
       dresPassword,
       dresMemberId,
+      aiServicesToken,
       autoTranslateQueries,
       showAutoTranslateToggle,
       temporalWindowSeconds,
@@ -130,6 +132,7 @@
   let themeTouched = false;
   let hasLocalEdits = false;
   let showDresPassword = false;
+  let showAiServicesToken = false;
   let lastSyncedContextKeyframeSize = contextKeyframeSize;
   // Debounce the actual 'save' dispatch (store update + localStorage write + DRES
   // interaction log) so typing/dragging a numeric field doesn't fire it on every
@@ -163,6 +166,7 @@
     themeTouched = false;
     activeSettingsTab = 'search';
     showDresPassword = false;
+    showAiServicesToken = false;
     lastSyncedContextKeyframeSize = contextKeyframeSize;
   }
 
@@ -301,6 +305,7 @@
       dresUsername: (local.dresUsername ?? '').trim(),
       dresPassword: local.dresPassword ?? '',
       dresMemberId: (local.dresMemberId ?? '').trim(),
+      aiServicesToken: String(local.aiServicesToken ?? '').trim(),
       autoTranslateQueries: !!local.autoTranslateQueries,
       showAutoTranslateToggle: !!local.showAutoTranslateToggle,
       temporalWindowSeconds: safeTemporalWindowSeconds,
@@ -842,6 +847,45 @@
               />
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
                 Used for core/search endpoints. Leave empty to use runtime profile or app default.
+              </p>
+            </div>
+
+            <div>
+              <label for="settings-ai-services-token" class="ui-settings-label block text-sm font-medium mb-1">AI services token</label>
+              <div class="relative">
+                <input
+                  id="settings-ai-services-token"
+                  type={showAiServicesToken ? 'text' : 'password'}
+                  autocomplete="off"
+                  spellcheck="false"
+                  class="ui-settings-input w-full pr-10 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.aiServicesToken}
+                  on:input={() => save()}
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+                  on:click={() => (showAiServicesToken = !showAiServicesToken)}
+                  aria-label={showAiServicesToken ? 'Hide AI services token' : 'Show AI services token'}
+                  title={showAiServicesToken ? 'Hide token' : 'Show token'}
+                >
+                  {#if showAiServicesToken}
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3.11-11-7.5a11.8 11.8 0 0 1 5.08-5.94"/>
+                      <path d="M10.58 10.58a2 2 0 1 0 2.83 2.83"/>
+                      <path d="M1 1l22 22"/>
+                      <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 7.5a11.78 11.78 0 0 1-1.67 2.68"/>
+                    </svg>
+                  {:else}
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  {/if}
+                </button>
+              </div>
+              <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
+                Bearer token sent to the translator (/translate) and the QA agent (/qa). Leave empty if not required.
               </p>
             </div>
 

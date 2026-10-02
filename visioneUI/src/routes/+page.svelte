@@ -371,6 +371,7 @@
     visioneAPI.setDataserverHost(uiState.dataserverHostOverrideEnabled ? uiState.dataserverHost : '');
   }
   $: syncVisioneApiHosts($uiStore, runtimeProfile);
+  $: visioneAPI.setAiServicesToken($uiStore.aiServicesToken);
   $: visioneAPI.setActiveCollectionName(activeCollectionName);
 
   // ---------------------------
@@ -2720,6 +2721,7 @@ function handleViewSubmitted() {
   {logUserFolder}
   {isExportingLogs}
   {isDeletingLogs}
+  aiServicesToken={$uiStore.aiServicesToken}
   autoTranslateQueries={$uiStore.autoTranslateQueries}
   showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}

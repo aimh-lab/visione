@@ -118,6 +118,9 @@ export class VisioneAPI {
     this.translationInFlight = new Map();
     this.translationCacheMax = API_CONFIG.TRANSLATION_CACHE_MAX;
     this.translationCacheTtlMs = API_CONFIG.TRANSLATION_CACHE_TTL_MS;
+    // Bearer token required by the translator and QA agent endpoints; set
+    // from Settings (uiStore.aiServicesToken) by +page.svelte.
+    this.aiServicesToken = '';
   }
 
   #normalizeResultK(value, fallback = this.defaultSingleK) {
@@ -332,6 +335,14 @@ export class VisioneAPI {
     this.searchUrl = `${nextBaseUrl}/search`;
     this.discoveryCache = null;
     this.discoveryInFlight = null;
+  }
+
+  setAiServicesToken(token = '') {
+    this.aiServicesToken = String(token || '').trim();
+  }
+
+  #aiServicesAuthHeaders() {
+    return this.aiServicesToken ? { Authorization: `Bearer ${this.aiServicesToken}` } : {};
   }
 
   setDataserverHost(host = '') {
@@ -907,7 +918,8 @@ export class VisioneAPI {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'text/event-stream'
+        'Accept': 'text/event-stream',
+        ...this.#aiServicesAuthHeaders()
       },
       body: JSON.stringify(payload),
       retries: API_CONFIG.QA_STREAM_RETRIES,
@@ -1020,7 +1032,7 @@ export class VisioneAPI {
     try {
       const response = await this.#makeRequest(`${this.baseUrl}/qa/${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', ...this.#aiServicesAuthHeaders() },
         retries: API_CONFIG.QA_CANCEL_RETRIES,
         timeout: API_CONFIG.QA_CANCEL_TIMEOUT_MS
       });
@@ -1038,7 +1050,7 @@ export class VisioneAPI {
 
     const response = await this.#makeRequest(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.#aiServicesAuthHeaders() },
       body: JSON.stringify({
         text: raw,
         source_language: source,
