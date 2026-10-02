@@ -2746,6 +2746,7 @@
     class="relative space-y-1.5 {showSequenceChrome ? 'pl-8' : ''}"
     role="list"
     aria-label="Query steps"
+    data-tour="query-steps"
     on:dragover={handleStepsListDragOver}
     on:drop={handleStepsListDrop}
   >
@@ -2876,7 +2877,7 @@
               {/if}
             </div>
 
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1" data-tour="step-controls">
               {#if showSequenceChrome && i > 0}
                 <button
                   type="button"
@@ -3092,6 +3093,7 @@
               <div class="relative">
                 <textarea
                   bind:this={textareaRefs[i]}
+                  data-tour={i === 0 ? 'query-input' : undefined}
                   use:autoResizeAction={textarea.value}
                   class="ui-query-textarea w-full p-1.5 pr-6 pb-1.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
@@ -3465,6 +3467,7 @@
                     class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
                     value={getTextModelValueForStep(textarea)}
                     title="Text embedding model for this query"
+                    data-tour="model-select"
                     on:change={(e) => {
                       const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
                       handleModelSelectionChange(i, target.value, 'text');
@@ -3489,6 +3492,7 @@
   <div class={showSequenceChrome ? "pl-8" : ""}>
     <button
       on:click={() => add(textareas.length - 1)}
+      data-tour="add-step"
       class="w-full py-2.5 border-2 border-dashed border-gray-700 hover:border-blue-600/50 rounded-lg text-xs text-gray-400 hover:text-blue-400 transition-all flex items-center justify-center space-x-2"
     >
       <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

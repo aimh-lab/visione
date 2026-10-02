@@ -36,6 +36,8 @@
   import { tabsPosition } from '../stores/tabsPosition.js';
   import { toasts } from '../stores/toastStore.js';
   import ToastContainer from '../components/ToastContainer.svelte';
+  import TourOverlay from '../components/TourOverlay.svelte';
+  import { tour } from '../stores/tourStore.js';
   import StatusBar from '../components/StatusBar.svelte';
   import { uiStore } from '../stores/uiStore.js';
   import { get } from 'svelte/store';
@@ -899,6 +901,34 @@
   const interactionLogger = createInteractionLogger();
 
   $: interactionLogger.setOptions({ resultLimit: logResultsLimit });
+  // Practice actions during the guided tour are not logged.
+  $: interactionLogger.setPaused($tour.active);
+
+  // Live state the guided tour checks to know when a "do it" step is done.
+  let tourSearchCount = 0;
+  function countTourSearch(resultSet) {
+    if (resultSet) tourSearchCount += 1;
+  }
+  $: countTourSearch(searchResultSet);
+  $: tourContext = {
+    searchCount: tourSearchCount,
+    resultCount: images.length,
+    stepCount: textareas.length,
+    filledStepCount: textareas.filter((t) => String(t?.value || '').trim()).length,
+    viewMode: $uiStore.viewMode,
+    rfPositiveCount: rfPositive.length,
+    rfNegativeCount: rfNegative.length,
+    isVideoPlayerOpen,
+    isVideoSummaryOpen: isVideoSummaryModalOpen,
+    modalOpen:
+      $searchModal.isOpen ||
+      isVideoPlayerOpen ||
+      isSlideshowOpen ||
+      isVideoSummaryModalOpen ||
+      pinnedImageModalOpen ||
+      isSettingsOpen ||
+      isQaAnswerModalOpen
+  };
 
   function getLoggerContext() {
     const ui = get(uiStore);
@@ -2462,6 +2492,8 @@ function handleViewSubmitted() {
     else closeModal();
   }}
 />
+
+<TourOverlay ctx={tourContext} />
 
 <InputModal
   isOpen={isQaAnswerModalOpen}

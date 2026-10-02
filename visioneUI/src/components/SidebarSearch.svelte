@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { pushState } from "$app/navigation";
   import SearchControls from "../components/SearchControls.svelte";
   import TextareasManager from "./TextareasManager.svelte";
@@ -10,6 +10,7 @@
   import { marked } from 'marked';
   import DOMPurify from 'dompurify';
   import { DEFAULT_DRES_CHALLENGE_TYPE } from '../config/dresConfig.js';
+  import { TOUR_UI_EVENT } from '../stores/tourStore.js';
 
   export let isSidebarOpen = true;
   export let textareas = [];
@@ -104,6 +105,23 @@
   function toggleUtilityPanel(panel) {
     activeUtilityPanel = activeUtilityPanel === panel ? null : panel;
   }
+
+  // Guided tour hooks: open panels this component owns on request.
+  function handleTourUi(e) {
+    const action = e?.detail?.action;
+    if (action === 'openRecent') {
+      if ($recentSearches.length > 0) activeUtilityPanel = 'recent';
+    } else if (action === 'openAgent') {
+      qaAgentPanelOpen = true;
+      const question = String(e?.detail?.question || '');
+      if (question && !String(qaAgentQuestion || '').trim()) qaAgentQuestion = question;
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener(TOUR_UI_EVENT, handleTourUi);
+    return () => window.removeEventListener(TOUR_UI_EVENT, handleTourUi);
+  });
 
   function toggleResetMenu(e) {
     e.stopPropagation();
@@ -459,6 +477,7 @@
                 title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
                 aria-label={autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
                 aria-pressed={autoTranslateEnabled}
+                data-tour="translate-toggle"
                 on:click={onToggleAutoTranslate}
               >
                 <img
@@ -538,6 +557,7 @@
             <button
               on:click={doSearch}
               disabled={searchLoading}
+              data-tour="search-button"
               class="ui-search-run-btn {searchResultSet ? 'flex-1' : 'w-full'} py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
                      text-white font-bold rounded-lg shadow-xl hover:shadow-2xl 
                      transform hover:scale-[1.02] active:scale-[0.98] 
@@ -598,7 +618,7 @@
           </div>
         </div>
 
-        <div class="bg-slate-900/30 rounded-lg border border-slate-700 shadow-lg mt-2 overflow-hidden">
+        <div class="bg-slate-900/30 rounded-lg border border-slate-700 shadow-lg mt-2 overflow-hidden" data-tour="agent">
           <button
             type="button"
             class="w-full px-2.5 py-2 flex items-center justify-between gap-2 text-left hover:bg-slate-800/50 transition-colors"
@@ -723,7 +743,7 @@
 
         <!-- Recent + Templates compact row -->
         {#if !searchLoading}
-          <div class="pt-1.5 border-t border-gray-700/50 space-y-1.5 utility-panel-container">
+          <div class="pt-1.5 border-t border-gray-700/50 space-y-1.5 utility-panel-container" data-tour="recent">
             <div class="grid grid-cols-2 gap-2">
               <button
                 type="button"

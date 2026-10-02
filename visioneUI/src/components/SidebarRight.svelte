@@ -154,7 +154,7 @@
     <!-- Content Area -->
     <div class="flex-1 overflow-y-auto pt-4 pb-4 pl-5 pr-4 space-y-4 custom-scrollbar">
       {#if activeTab === "RF"}
-        <div>
+        <div data-tour="rf-panel">
           <div class="mb-3 p-2 rounded-lg border border-gray-700/80 bg-gray-900/35 flex items-center gap-2">
             <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-300 shrink-0">RF</span>
 

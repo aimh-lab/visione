@@ -1,6 +1,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { LOGO_SRC } from '../config/branding.js';
+  import { tour } from '../stores/tourStore.js';
+  import { TOUR_STEPS } from '../lib/tour/tourSteps.js';
 
   const dispatch = createEventDispatcher();
   
@@ -59,6 +61,12 @@
         class="hero-primary-btn px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95"
       >
         Get Started →
+      </button>
+      <button
+        on:click={() => tour.start(TOUR_STEPS.length)}
+        class="hero-example-btn mt-3 sm:mt-0 sm:ml-3 px-5 sm:px-6 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl border transition-all hover:scale-105 active:scale-95"
+      >
+        Take the 5-min tour
       </button>
     </div>
     
