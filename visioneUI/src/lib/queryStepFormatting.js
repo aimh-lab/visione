@@ -53,6 +53,27 @@ export function getDefaultComparatorForField(field) {
   return (NUMERIC_FILTER_FIELDS.has(normalized) || EXACT_MATCH_TEXT_FIELDS.has(normalized)) ? 'eq' : 'fts';
 }
 
+const COMPARATOR_OPTIONS = [
+  { value: 'eq', label: '= (equal)' },
+  { value: 'ne', label: '!= (not equal)' },
+  { value: 'gte', label: '>= (equal greater than)' },
+  { value: 'lte', label: '<= (equal less than)' },
+  { value: 'lt', label: '< (less than)' },
+  { value: 'gt', label: '> (greater than)' },
+  { value: 'fts', label: '~ (full-text search)' }
+];
+
+// Ordering comparators make no sense on opaque ids such as video_id.
+const EXACT_MATCH_TEXT_COMPARATORS = new Set(['eq', 'ne', 'fts']);
+
+export function getComparatorOptionsForField(field) {
+  const normalized = String(field || '').trim().toLowerCase();
+  if (EXACT_MATCH_TEXT_FIELDS.has(normalized)) {
+    return COMPARATOR_OPTIONS.filter((option) => EXACT_MATCH_TEXT_COMPARATORS.has(option.value));
+  }
+  return COMPARATOR_OPTIONS;
+}
+
 export function getMetadataFieldHint(field) {
   const shortcut = getShortcutForField(field);
   const normalized = String(field || '').trim().toLowerCase();

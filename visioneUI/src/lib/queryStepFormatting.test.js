@@ -5,6 +5,7 @@ import {
   withAlpha,
   getShortcutForField,
   getDefaultComparatorForField,
+  getComparatorOptionsForField,
   getMetadataFieldHint,
   toComparatorSymbol
 } from './queryStepFormatting.js';
@@ -71,6 +72,20 @@ describe('getDefaultComparatorForField', () => {
   it('returns "fts" for any other field', () => {
     expect(getDefaultComparatorForField('location')).toBe('fts');
     expect(getDefaultComparatorForField('')).toBe('fts');
+  });
+});
+
+describe('getComparatorOptionsForField', () => {
+  const values = (field) => getComparatorOptionsForField(field).map((o) => o.value);
+
+  it('limits video_id to equal, not equal and full-text', () => {
+    expect(values('video_id')).toEqual(['eq', 'ne', 'fts']);
+    expect(values(' Video_ID ')).toEqual(['eq', 'ne', 'fts']);
+  });
+
+  it('keeps every comparator for other fields', () => {
+    expect(values('year')).toEqual(['eq', 'ne', 'gte', 'lte', 'lt', 'gt', 'fts']);
+    expect(values('location')).toEqual(['eq', 'ne', 'gte', 'lte', 'lt', 'gt', 'fts']);
   });
 });
 

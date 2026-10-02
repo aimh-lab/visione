@@ -9,6 +9,7 @@
     withAlpha,
     getShortcutForField,
     getDefaultComparatorForField,
+    getComparatorOptionsForField,
     getMetadataFieldHint,
     toComparatorSymbol
   } from "../lib/queryStepFormatting.js";
@@ -1192,6 +1193,12 @@
     modalMetadataShortcut = getShortcutForField(normalizedField);
     setModalAnchorFromIndex(index);
 
+    const comparatorOptions = getComparatorOptionsForField(normalizedField);
+    const prefillComparator = String(prefill?.comparator || '').trim().toLowerCase();
+    const comparator = comparatorOptions.some((option) => option.value === prefillComparator)
+      ? prefillComparator
+      : getDefaultComparatorForField(normalizedField);
+
     modalConfig = {
       isOpen: true,
       title: `Add ${normalizedField} Filter`,
@@ -1204,16 +1211,8 @@
           name: 'comparator',
           label: 'Comparator',
           type: 'select',
-          value: String(prefill?.comparator || getDefaultComparatorForField(normalizedField)).trim().toLowerCase(),
-          options: [
-            { value: 'eq', label: '= (equal)' },
-            { value: 'ne', label: '!= (not equal)' },
-            { value: 'gte', label: '>= (equal greater than)' },
-            { value: 'lte', label: '<= (equal less than)' },
-            { value: 'lt', label: '< (less than)' },
-            { value: 'gt', label: '> (greater than)' },
-            { value: 'fts', label: '~ (full-text search)' }
-          ]
+          value: comparator,
+          options: comparatorOptions
         },
         {
           name: 'value',
