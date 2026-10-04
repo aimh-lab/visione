@@ -16,6 +16,7 @@ from endpoints.llm_query import router as llm_query_router
 from endpoints.qa import router as qa_router
 from endpoints.search import router as search_router
 from endpoints.translate import router as translate_router
+from endpoints.auth import configure_llm_endpoint_auth
 from pg.pg_store import PGVectorStore
 from embeddings import RemoteEmbeddings
 from extraction_config import ExtractionSpec, resolve_extraction_specs
@@ -89,6 +90,7 @@ def build_combined_model_infos(
 async def lifespan(app: FastAPI):
     # Retrieve config
     cfg = app.state.config
+    configure_llm_endpoint_auth(app)
     print(f"--- Initializing Server Resources ---")
 
     # Initialize specific data loader

@@ -34,7 +34,7 @@ import uuid
 from typing import Any, Dict, List, Literal, Optional, Annotated
 
 import aiohttp
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import (
     AIMessage,
@@ -51,6 +51,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from endpoints.search import convert_filters_to_pg
+from endpoints.auth import require_llm_endpoint_auth
 
 router = APIRouter()
 
@@ -59,7 +60,7 @@ router = APIRouter()
 _cancel_events: Dict[str, asyncio.Event] = {}
 
 
-@router.delete("/qa/{request_id}")
+@router.delete("/qa/{request_id}", dependencies=[Depends(require_llm_endpoint_auth)])
 async def qa_cancel_endpoint(request_id: str):
     """Cancel a running /qa stream by its request_id."""
     event = _cancel_events.get(request_id)
@@ -991,7 +992,7 @@ def _extract_tool_result_text(content: Any) -> Any:
 
 
 # ── Streaming endpoint ──────────────────────────────────────────────────────
-@router.post("/qa")
+@router.post("/qa", dependencies=[Depends(require_llm_endpoint_auth)])
 async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
     """Stream the QA agent reasoning as Server-Sent Events.
 
@@ -1246,7 +1247,11 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
 
 
 # ── Non-streaming endpoint (kept for backward compatibility) ────────────────
-@router.post("/qa/sync", response_model=QAResponse)
+@router.post(
+    "/qa/sync",
+    response_model=QAResponse,
+    dependencies=[Depends(require_llm_endpoint_auth)],
+)
 async def qa_sync_endpoint(payload: QARequest, request: Request):
     """Answer a natural-language question (non-streaming, returns full JSON)."""
     qa_cfg = _get_qa_config(request)

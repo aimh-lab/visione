@@ -2,10 +2,12 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
+
+from endpoints.auth import require_llm_endpoint_auth
 
 
 router = APIRouter()
@@ -84,7 +86,11 @@ def _build_translation_prompt(text: str, source_language: str, target_language: 
     return system_prompt, user_prompt
 
 
-@router.post("/translate", response_model=TranslateResponse)
+@router.post(
+    "/translate",
+    response_model=TranslateResponse,
+    dependencies=[Depends(require_llm_endpoint_auth)],
+)
 async def translate(request: Request, body: TranslateRequest) -> TranslateResponse:
     """Translate text using an Ollama model."""
     config = _get_translate_config(request)
