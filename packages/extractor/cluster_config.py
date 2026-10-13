@@ -232,6 +232,7 @@ class NodeSpec:
     num_cpus: int
     num_gpus: int
     models: Tuple[str, ...]
+    model_replicas: Mapping[str, int]
 
     @classmethod
     def from_mapping(cls, node_id: str, raw: Mapping[str, Any]) -> "NodeSpec":
@@ -255,7 +256,26 @@ class NodeSpec:
             raise ClusterConfigError(
                 f"nodes.{node_id}.models cannot contain the same model twice"
             )
-        return cls(node_id, address, num_cpus, num_gpus, models)
+
+        replicas_raw = _mapping(
+            raw.get("model_replicas", {}), f"nodes.{node_id}.model_replicas"
+        )
+        model_replicas = {
+            str(endpoint): _positive_integer(
+                count, f"nodes.{node_id}.model_replicas.{endpoint}"
+            )
+            for endpoint, count in replicas_raw.items()
+        }
+        extra_replica_models = sorted(set(model_replicas) - set(models))
+        if extra_replica_models:
+            raise ClusterConfigError(
+                f"nodes.{node_id}.model_replicas contains models not assigned to "
+                f"the node: {', '.join(extra_replica_models)}"
+            )
+        model_replicas = {
+            endpoint: model_replicas.get(endpoint, 1) for endpoint in models
+        }
+        return cls(node_id, address, num_cpus, num_gpus, models, model_replicas)
 
 
 @dataclass(frozen=True)
@@ -276,8 +296,11 @@ class ClusterSpec:
         return self.nodes[self.head_node]
 
     def assigned_nodes(self, endpoint: str) -> Tuple[str, ...]:
+        """Return one physical-node entry for every desired model replica."""
         return tuple(
-            node_id for node_id, node in self.nodes.items() if endpoint in node.models
+            node_id
+            for node_id, node in self.nodes.items()
+            for _ in range(node.model_replicas.get(endpoint, 0))
         )
 
     def replica_count(self, endpoint: str) -> int:
@@ -286,7 +309,8 @@ class ClusterSpec:
     def node_resources(self, node_id: str) -> Dict[str, float]:
         node = self.nodes[node_id]
         resources = {
-            model_resource_name(endpoint): 1.0 for endpoint in node.models
+            model_resource_name(endpoint): float(node.model_replicas[endpoint])
+            for endpoint in node.models
         }
         if node_id == self.head_node:
             resources[INGRESS_RESOURCE] = 1.0
@@ -308,6 +332,7 @@ class ClusterSpec:
                 node_id: {
                     "address": node.address,
                     "models": list(node.models),
+                    "model_replicas": dict(node.model_replicas),
                     "resources": self.node_resources(node_id),
                 }
                 for node_id, node in self.nodes.items()
@@ -390,10 +415,16 @@ def load_cluster_config(path: str | Path) -> ClusterSpec:
                 f"nodes.{node_id}.models contains unknown models: "
                 f"{', '.join(unknown_models)}"
             )
-        allocated_cpus = sum(models[name].num_cpus for name in node.models)
+        allocated_cpus = sum(
+            models[name].num_cpus * node.model_replicas[name]
+            for name in node.models
+        )
         if node_id == head_node:
             allocated_cpus += 0.1
-        allocated_gpus = sum(models[name].num_gpus for name in node.models)
+        allocated_gpus = sum(
+            models[name].num_gpus * node.model_replicas[name]
+            for name in node.models
+        )
         if allocated_cpus > node.num_cpus:
             raise ClusterConfigError(
                 f"nodes.{node_id} allocates {allocated_cpus:g} CPUs but exposes "

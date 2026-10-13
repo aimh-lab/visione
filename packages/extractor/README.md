@@ -50,6 +50,12 @@ address. Assign models under each node. Repeating a model on several nodes
 creates several warm replicas; assigning several different models to a node
 shares that node's GPU according to their configured fractions.
 
+One physical machine is one Ray node. To run several replicas of the same
+model on its GPUs, set `model_replicas` on that node. The count defaults to one
+per listed model. Ray assigns a GPU exclusively to each replica when that
+model requests `num_gpus: 1`; use a replica count no greater than the machine's
+`num_gpus`.
+
 For example:
 
 ```yaml
@@ -61,15 +67,19 @@ nodes:
     models: [qwen_embedding_8B, dinov2_base]
   spark-02:
     address: 192.168.1.11
-    num_cpus: 20
-    num_gpus: 1
-    models: [qwen_embedding_8B, omni_embed_nemotron_3B]
+    num_cpus: 32
+    num_gpus: 4
+    models: [qwen_embedding_8B]
+    model_replicas:
+      qwen_embedding_8B: 4
 ```
 
-This creates two `qwen_embedding_8B` replicas and one replica of each other
-listed model. Assign or remove the remaining model-catalog entries as needed;
-the validator requires every declared model to have at least one assignment
-and rejects CPU/GPU over-allocation.
+This creates five `qwen_embedding_8B` replicas: one on `head` and four on
+`spark-02`. Set `models.qwen_embedding_8B.resources.num_gpus: 1` for the
+four `spark-02` replicas to occupy separate GPUs. Assign or remove the
+remaining model-catalog entries as needed; the validator requires every
+declared model to have at least one assignment and rejects CPU/GPU
+over-allocation, including replicas.
 
 Run the following from `packages/extractor` in the same checkout path on every
 machine. Start the head on the configured head:
