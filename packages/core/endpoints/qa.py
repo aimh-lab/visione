@@ -44,7 +44,6 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.tools import tool
-from langchain_ollama import ChatOllama
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import REMOVE_ALL_MESSAGES, add_messages
 from pydantic import BaseModel, Field
@@ -52,8 +51,14 @@ from typing_extensions import TypedDict
 
 from endpoints.search import convert_filters_to_pg
 from endpoints.auth import require_llm_endpoint_auth
+from endpoints.openai_compat import build_chat_model
 
 router = APIRouter()
+
+_EXECUTE_PLAN_PROMPT = (
+    "Proceed with the approved plan. Use the available tools when evidence is "
+    "needed; otherwise provide the best supported answer."
+)
 
 # ── Active request cancellation registry ────────────────────────────────────
 # Maps request_id → asyncio.Event; set the event to request cancellation.
@@ -174,6 +179,7 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
         cfg = {
             "model": str(_require("model")),
             "base_url": str(_require("base_url")),
+            "api_key": getattr(qa_cfg, "api_key", "ollama") or "ollama",
             "temperature": float(_require("temperature")),
             "max_iterations": int(_require("max_iterations")),
             "max_total_images": int(_require("max_total_images")),
@@ -328,7 +334,7 @@ def _resolve_qa_orchestrator_model(
     qa_cfg: Dict[str, Any],
     requested_model: Optional[str],
 ) -> str:
-    """Resolve the Ollama model that drives planning, tool use, and evaluation."""
+    """Resolve the OpenAI-compatible model driving planning and tool use."""
     if requested_model is None:
         return qa_cfg["model"]
 
@@ -338,8 +344,80 @@ def _resolve_qa_orchestrator_model(
     return requested_model
 
 
+def _build_qa_models(
+    qa_cfg: Dict[str, Any], orchestrator_model: str, tools: List[Any]
+) -> tuple[Any, Any, Any]:
+    """Build the tool, plain, and JSON-mode OpenAI-compatible QA clients."""
+    llm_config = {**qa_cfg, "model": orchestrator_model}
+    llm = build_chat_model(llm_config).bind_tools(tools)
+    llm_no_tools = build_chat_model(llm_config)
+    evaluation_llm = build_chat_model(llm_config).bind(
+        response_format={"type": "json_object"}
+    )
+    return llm, llm_no_tools, evaluation_llm
+
+
+def _normalize_inline_tool_calls(response: AIMessage) -> AIMessage:
+    """Convert Mistral's raw ``[TOOL_CALLS]`` text into LangChain tool calls.
+
+    A correctly configured vLLM server returns OpenAI ``tool_calls`` directly.
+    This compatibility fallback keeps QA functional if a Mistral model emits its
+    native syntax instead (for example before its vLLM tool parser is enabled).
+    """
+    if getattr(response, "tool_calls", None) or not isinstance(response.content, str):
+        return response
+
+    content = response.content
+    decoder = json.JSONDecoder()
+    parsed_calls: List[Dict[str, Any]] = []
+    cursor = 0
+    marker = "[TOOL_CALLS]"
+    args_marker = "[ARGS]"
+
+    while (start := content.find(marker, cursor)) != -1:
+        args_start = content.find(args_marker, start + len(marker))
+        if args_start == -1:
+            break
+        name = content[start + len(marker):args_start].strip()
+        json_start = content.find("{", args_start + len(args_marker))
+        if not name or json_start == -1:
+            break
+        try:
+            args, consumed = decoder.raw_decode(content[json_start:])
+        except json.JSONDecodeError:
+            break
+        if not isinstance(args, dict):
+            break
+        parsed_calls.append(
+            {
+                "name": name,
+                "args": args,
+                # Mistral chat templates require a nine-digit tool-call ID
+                # when the corresponding ToolMessage is sent back to vLLM.
+                "id": f"{uuid.uuid4().int % 1_000_000_000:09d}",
+                "type": "tool_call",
+            }
+        )
+        cursor = json_start + consumed
+
+    if not parsed_calls:
+        return response
+
+    return AIMessage(
+        content="",
+        tool_calls=parsed_calls,
+        additional_kwargs={
+            **response.additional_kwargs,
+            "raw_tool_call_content": content,
+        },
+        response_metadata=response.response_metadata,
+        id=response.id,
+        usage_metadata=getattr(response, "usage_metadata", None),
+    )
+
+
 def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
-    """Return a supported verdict and reasoning, tolerating common Ollama JSON wrappers."""
+    """Return a supported verdict and reasoning from a JSON-capable chat model."""
     verdict = "uncertain"
     reasoning = eval_text.strip() or "The evaluator did not provide usable reasoning."
     parsed = _extract_evaluation_json(eval_text)
@@ -358,7 +436,7 @@ def _parse_evaluation_response(eval_text: str) -> tuple[str, str]:
 def _extract_evaluation_json(eval_text: str) -> Optional[Dict[str, Any]]:
     """Extract the first JSON object from common near-JSON evaluator output.
 
-    Some Ollama models wrap JSON in Markdown fences, use a backslash as a
+    Some models wrap JSON in Markdown fences, use a backslash as a
     line-continuation marker, or append an extra closing brace. ``raw_decode``
     accepts the first complete object and safely ignores trailing text.
     """
@@ -682,26 +760,8 @@ def _build_agent(
     tools = [search_frames, search_and_analyze_frames]
 
     # ── LLM with and without tool binding ──────────────────────────────
-    llm = ChatOllama(
-        model=orchestrator_model,
-        base_url=qa_cfg["base_url"],
-        temperature=qa_cfg["temperature"],
-        reasoning=False,
-    ).bind_tools(tools)
-
-    llm_no_tools = ChatOllama(
-        model=orchestrator_model,
-        base_url=qa_cfg["base_url"],
-        temperature=qa_cfg["temperature"],
-        reasoning=False,
-    )
-
-    evaluation_llm = ChatOllama(
-        model=orchestrator_model,
-        base_url=qa_cfg["base_url"],
-        temperature=qa_cfg["temperature"],
-        reasoning=False,
-        format="json",
+    llm, llm_no_tools, evaluation_llm = _build_qa_models(
+        qa_cfg, orchestrator_model, tools
     )
 
     # ── Graph nodes ────────────────────────────────────────────────────
@@ -719,6 +779,10 @@ def _build_agent(
         return {
             "messages": [
                 AIMessage(content=f"**Plan:**\n{plan_text}"),
+                # vLLM cannot add a generation prompt after an assistant turn.
+                # Persist an explicit next turn so the tool-enabled agent has a
+                # valid chat-completions history to continue from.
+                HumanMessage(content=_EXECUTE_PLAN_PROMPT),
             ],
             "plan": plan_text,
         }
@@ -735,6 +799,7 @@ def _build_agent(
         return {
             "messages": [
                 AIMessage(content=f"**Plan Review:**\n{review_text}"),
+                HumanMessage(content=_EXECUTE_PLAN_PROMPT),
             ],
             "plan": review_text,
             "plan_count": state.get("plan_count", 0) + 1,
@@ -742,6 +807,7 @@ def _build_agent(
 
     async def agent_node(state: AgentState) -> Dict[str, Any]:
         response = await llm.ainvoke(state["messages"])
+        response = _normalize_inline_tool_calls(response)
         if debug:
             _debug_print_message("agent → LLM response", response)
         return {"messages": [response]}
@@ -817,6 +883,7 @@ def _build_agent(
         total_images = state.get("total_images_sent", 0)
         new_sources: List[Dict[str, Any]] = []
         new_messages: list = []
+        visual_context_parts: list = []
 
         tool_dispatch = {"search_frames": search_frames, "search_and_analyze_frames": search_and_analyze_frames}
 
@@ -853,15 +920,16 @@ def _build_agent(
             if isinstance(results, list):
                 new_sources.extend(results)
 
-            # Fetch images for multimodal context
-            image_parts: list = []
+            # Fetch images for multimodal context. OpenAI-compatible servers
+            # reject image chunks in ``tool`` messages, so these are attached
+            # after all tool results in a follow-up user message below.
             if isinstance(results, list):
                 for r in results:
                     img_url = r.get("image_url")
                     if img_url and total_images < qa_cfg["max_total_images"]:
                         b64 = await _fetch_image_b64(img_url)
                         if b64:
-                            image_parts.append({
+                            visual_context_parts.append({
                                 "type": "image_url",
                                 "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
                             })
@@ -877,16 +945,27 @@ def _build_agent(
             else:
                 text = result_str
 
-            if image_parts:
-                content: Any = [{"type": "text", "text": text}] + image_parts
-            else:
-                content = text
+            new_messages.append(ToolMessage(content=text, tool_call_id=tc["id"]))
 
-            new_messages.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+        if visual_context_parts:
+            new_messages.append(
+                HumanMessage(
+                    content=[
+                        {
+                            "type": "text",
+                            "text": (
+                                "The tool results above have associated frames. "
+                                "Inspect these images before deciding the next step."
+                            ),
+                        },
+                        *visual_context_parts,
+                    ]
+                )
+            )
 
         if debug:
             for tm in new_messages:
-                _debug_print_message("tools → ToolMessage", tm)
+                _debug_print_message("tools → context message", tm)
 
         return {
             "messages": new_messages,

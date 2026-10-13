@@ -16,20 +16,23 @@ index_query_options:
   # jit: "off"
 
 translate:
-  model: "ministral-3:14b"
-  base_url: "localhost:3456"
+  model: "ministral"
+  base_url: "http://localhost:3456/v1"
+  api_key: "ollama"
 
 llm_query:
-  model: "ministral-3:14b" #"qwen3.5:9b"
-  base_url: "localhost:3456"
+  model: "ministral"
+  base_url: "http://localhost:3456/v1"
+  api_key: "ollama"
   temperature: 0
   default_model: "qwen_embedding_8B_image"
   leaf_k: 100000
   final_k: 1000
 
 qa:
-  model: "ministral-3:14b"
-  base_url: "localhost:3456"
+  model: "ministral"
+  base_url: "http://localhost:11545/v1"
+  api_key: "ollama"
   temperature: 0
   max_iterations: 5
   max_total_images: 10

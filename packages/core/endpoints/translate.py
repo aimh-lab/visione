@@ -1,13 +1,13 @@
-"""Translation endpoint using Ollama LLM."""
+"""Translation endpoint using an OpenAI-compatible chat server."""
 
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from endpoints.auth import require_llm_endpoint_auth
+from endpoints.openai_compat import build_chat_model
 
 
 router = APIRouter()
@@ -57,6 +57,7 @@ def _get_translate_config(request: Request) -> dict:
     return {
         "model": str(model),
         "base_url": str(base_url),
+        "api_key": getattr(translate_cfg, "api_key", "ollama") or "ollama",
         "temperature": float(getattr(translate_cfg, "temperature", 0.0)),
     }
 
@@ -92,15 +93,10 @@ def _build_translation_prompt(text: str, source_language: str, target_language: 
     dependencies=[Depends(require_llm_endpoint_auth)],
 )
 async def translate(request: Request, body: TranslateRequest) -> TranslateResponse:
-    """Translate text using an Ollama model."""
+    """Translate text using an OpenAI-compatible chat model."""
     config = _get_translate_config(request)
 
-    llm = ChatOllama(
-        model=config["model"],
-        base_url=config["base_url"],
-        temperature=config["temperature"],
-        format="json",
-    )
+    llm = build_chat_model(config).bind(response_format={"type": "json_object"})
 
     system_prompt, user_prompt = _build_translation_prompt(
         body.text, body.source_language, body.target_language

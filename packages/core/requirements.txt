@@ -8,6 +8,7 @@ pandas
 hydra-core==1.3.2
 fastapi
 uvicorn
+langchain-openai
 langchain-ollama
 langgraph==1.1.10
 lark>=1.1.5
