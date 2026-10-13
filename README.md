@@ -17,6 +17,36 @@
 - :rocket: **Dockerized** and **GPU-enabled** video analysis
 
 
+## LLM endpoint authentication
+
+The LLM-backed endpoints (`POST /translate`, `POST /qa`, `POST /qa/sync`, and
+`DELETE /qa/{request_id}`) require bearer tokens stored one per line in
+`tokens.txt`. Blank lines and lines beginning with `#` are ignored. Override the
+file location with `LLM_ENDPOINTS_TOKEN_FILE`; the token file must exist and
+contain at least one token before the core service starts.
+
+The server checks the file metadata for every protected request, reloading it
+only after a change. Additions and removals therefore take effect without a
+restart. Replace the file atomically to avoid temporary invalid states:
+
+```bash
+umask 077
+printf '%s\n' 'new-token-1' 'new-token-2' > tokens.txt.new
+mv tokens.txt.new tokens.txt
+```
+
+Clients send a listed token in the HTTP `Authorization` header:
+
+```bash
+curl -X POST http://localhost:8000/translate \
+  -H "Authorization: Bearer new-token-1" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"ciao","source_language":"it","target_language":"en"}'
+```
+
+Use HTTPS in production and restrict read access to the token file to the
+service account.
+
 ## Citation
 We kindly ask you to refer to the following paper in publications mentioning or employing VISIONE
 ```
