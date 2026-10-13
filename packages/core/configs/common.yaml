@@ -12,7 +12,7 @@ embedding:
   models:
     - name: "qwen_embedding_8B"
       dim: 4096
-      mrl_dim: 1024
+      mrl_dim: 2048
     - name: "omni_embed_nemotron_3B"
       dim: 2048
       mrl_dim: null

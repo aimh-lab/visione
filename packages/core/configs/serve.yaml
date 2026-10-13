@@ -23,7 +23,7 @@ llm_query:
   model: "ministral-3:14b" #"qwen3.5:9b"
   base_url: "localhost:3456"
   temperature: 0
-  default_model: "openclip_clip_vit_b_32"
+  default_model: "qwen_embedding_8B_image"
   leaf_k: 100000
   final_k: 1000
 
@@ -34,7 +34,7 @@ qa:
   max_iterations: 5
   max_total_images: 10
   max_images_per_call: 5
-  default_model: "qwen_embedding_8B"
+  default_model: "qwen_embedding_8B_image"
   debug: true
 
 combined_retrieval_models:

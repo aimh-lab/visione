@@ -105,7 +105,7 @@ class V3C12Loader:
 
 
         # Sort by length_frames
-        metadata_df.sort_values(by=["length_frames"], inplace=True)
+        metadata_df.sort_values(by=["length_frames"], inplace=True, ascending=False)
         return metadata_df
 
     @staticmethod
