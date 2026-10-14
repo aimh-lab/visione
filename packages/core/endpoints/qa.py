@@ -13,8 +13,6 @@ SSE event types
 - ``thinking``    – chain-of-thought / reasoning text from the LLM
 - ``tool_call``   – JSON with tool name + arguments the agent is about to invoke
 - ``tool_result`` – JSON array of search results returned by the tool
-- ``evaluation``  – plausibility assessment of current conclusionst to invoke
-- ``tool_result`` – JSON array of search results returned by the tool
 - ``evaluation``  – plausibility assessment of current conclusions
 - ``findings``    – compact lessons retained after a failed trial
 - ``answer``      – the final natural-language answer
@@ -27,11 +25,13 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import math
 import operator
 import os
 import tempfile
 import uuid
 from typing import Any, Dict, List, Literal, Optional, Annotated
+from urllib.parse import urlencode
 
 import aiohttp
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -55,9 +55,17 @@ from endpoints.openai_compat import build_chat_model
 
 router = APIRouter()
 
+_V3C_MAX_VIDEOS_PER_SEARCH = 5
+_V3C_MAX_INTERVAL_SECONDS = 30.0
+
 _EXECUTE_PLAN_PROMPT = (
     "Proceed with the approved plan. Use the available tools when evidence is "
     "needed; otherwise provide the best supported answer."
+)
+_FINAL_ANSWER_PROMPT = (
+    "You have reached the maximum number of search iterations. Based on all "
+    "information gathered so far, provide your final, clear natural-language "
+    "answer to the original question now."
 )
 
 # ── Active request cancellation registry ────────────────────────────────────
@@ -114,7 +122,7 @@ class QARequest(BaseModel):
     orchestrator_model: Optional[str] = Field(
         default=None,
         description=(
-            "Optional Ollama model used to orchestrate the QA agent; defaults to "
+            "Optional OpenAI-compatible model used to orchestrate the QA agent; defaults to "
             "the configured qa.model."
         ),
     )
@@ -181,9 +189,17 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
             "base_url": str(_require("base_url")),
             "api_key": getattr(qa_cfg, "api_key", "ollama") or "ollama",
             "temperature": float(_require("temperature")),
+            "reasoning": getattr(qa_cfg, "reasoning", True),
             "max_iterations": int(_require("max_iterations")),
             "max_total_images": int(_require("max_total_images")),
             "max_images_per_call": int(_require("max_images_per_call")),
+            "grouped_frames_per_video": int(
+                getattr(qa_cfg, "grouped_frames_per_video", 3)
+            ),
+            "max_grouped_videos": int(getattr(qa_cfg, "max_grouped_videos", 5)),
+            "max_video_interval_seconds": float(
+                getattr(qa_cfg, "max_video_interval_seconds", 30)
+            ),
             "default_embedding_model": str(_require("default_model")),
             "debug": bool(_require("debug")),
         }
@@ -204,6 +220,30 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail="Invalid 'qa.max_images_per_call': must be >= 0.",
+        )
+    if cfg["grouped_frames_per_video"] < 1:
+        raise HTTPException(
+            status_code=500,
+            detail="Invalid 'qa.grouped_frames_per_video': must be >= 1.",
+        )
+    if not 1 <= cfg["max_grouped_videos"] <= _V3C_MAX_VIDEOS_PER_SEARCH:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Invalid 'qa.max_grouped_videos': must be between 1 and "
+                f"{_V3C_MAX_VIDEOS_PER_SEARCH}."
+            ),
+        )
+    if (
+        not math.isfinite(cfg["max_video_interval_seconds"])
+        or not 0 < cfg["max_video_interval_seconds"] <= _V3C_MAX_INTERVAL_SECONDS
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Invalid 'qa.max_video_interval_seconds': must be greater than 0 and "
+                f"at most {_V3C_MAX_INTERVAL_SECONDS:g}."
+            ),
         )
 
     return cfg
@@ -258,6 +298,9 @@ def _get_loader_qa_system_prompt(
     *,
     max_total_images: int,
     max_images_per_call: int,
+    grouped_frames_per_video: int = 3,
+    max_grouped_videos: int = 5,
+    max_video_interval_seconds: float = 30,
 ) -> str:
     """Return the active loader's QA prompt or fail with a clear configuration error."""
     prompt_builder = getattr(loader, "get_qa_system_prompt", None)
@@ -270,9 +313,18 @@ def _get_loader_qa_system_prompt(
             ),
         )
 
+    prompt_options: Dict[str, Any] = {
+        "max_total_images": max_total_images,
+        "max_images_per_call": max_images_per_call,
+    }
+    if _loader_supports_video_inspection(loader):
+        prompt_options.update(
+            grouped_frames_per_video=grouped_frames_per_video,
+            max_grouped_videos=max_grouped_videos,
+            max_video_interval_seconds=max_video_interval_seconds,
+        )
     prompt = prompt_builder(
-        max_total_images=max_total_images,
-        max_images_per_call=max_images_per_call,
+        **prompt_options
     )
     if not isinstance(prompt, str) or not prompt.strip():
         raise HTTPException(
@@ -290,6 +342,173 @@ def _format_reorder_by(reorder_by: Optional[List[str]]) -> Optional[Dict[str, Li
 def _get_collection_image_url(loader: Any, item_id: str) -> str:
     """Use the loader's collection-specific default image resource type."""
     return loader.get_collection_element_url_from_id(item_id)
+
+
+def _search_frame_documents(
+    request: Request,
+    retrieval_model: str,
+    query: str,
+    metadata_to_retrieve: List[str],
+    k: int,
+    filters: Optional[Dict[str, Any]] = None,
+    reorder_by: Optional[List[str]] = None,
+) -> List[List[Any]] | Dict[str, str]:
+    """Retrieve exactly a ranked ``k``-frame pool, with a larger internal fetch pool."""
+    k = max(int(k), 1)
+    node: Dict[str, Any] = {"item": query, "model": retrieval_model, "k": k}
+    if filters:
+        node["filters"] = filters
+    node_pg = convert_filters_to_pg(node)
+    if reorder_by and (not query or not query.strip()):
+        node_pg["reorder_by"] = _format_reorder_by(reorder_by)
+
+    try:
+        return request.app.state.vector_store.similarity_search(
+            node_pg,
+            k=k,
+            filter=None,
+            fetch_k=min(k * 10, 1000),
+            metadata_to_retrieve=metadata_to_retrieve,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def _document_result(
+    loader: Any,
+    doc: Any,
+    *,
+    include_image: bool,
+    require_image: bool = False,
+) -> Dict[str, Any]:
+    """Convert a vector-store document to the existing flat QA result shape."""
+    meta = {key: value for key, value in doc.metadata.items() if key != "score"}
+    entry: Dict[str, Any] = {"id": doc.page_content, "metadata": meta}
+    if include_image:
+        try:
+            entry["image_url"] = _get_collection_image_url(loader, doc.page_content)
+        except Exception:
+            if require_image:
+                raise
+    return entry
+
+
+def _loader_supports_video_inspection(loader: Any) -> bool:
+    """Return whether the active loader explicitly supports QA video inspection."""
+    return bool(getattr(loader, "supports_qa_video_inspection", False))
+
+
+def _select_grouped_video_documents(
+    doc_groups: List[List[Any]], *, max_videos: int, frames_per_video: int
+) -> List[Any]:
+    """Select ranked documents grouped contiguously by first-seen video ID."""
+    grouped: Dict[str, List[Any]] = {}
+    for group in doc_groups:
+        if not group:
+            continue
+        doc = group[0]
+        video_id = doc.metadata.get("video_id")
+        if video_id is None:
+            continue
+        key = str(video_id)
+        if key not in grouped:
+            if len(grouped) >= max_videos:
+                continue
+            grouped[key] = []
+        if len(grouped[key]) < frames_per_video:
+            grouped[key].append(doc)
+    return [doc for documents in grouped.values() for doc in documents]
+
+
+def _bounded_tool_limit(requested: Optional[int], configured_cap: int) -> int:
+    """Resolve an optional model-selected limit within a configured hard cap."""
+    if requested is None:
+        return configured_cap
+    return min(max(int(requested), 1), configured_cap)
+
+
+def _build_shot_video_url(loader: Any, frame_id: str) -> str:
+    """Build the collection URL for the video segment containing a frame."""
+    normalized_id = str(frame_id).strip()
+    video_id, separator, shot_id = normalized_id.rpartition("_")
+    if not separator or not video_id or not shot_id.isdigit():
+        raise ValueError("frame_id must be a non-empty shot identifier such as '04567_11'.")
+    return loader.get_collection_element_url_from_id(
+        normalized_id,
+        what="video",
+        tpad=None,
+    )
+
+
+def _build_interval_video_url(
+    loader: Any,
+    video_id: str,
+    start_seconds: float,
+    end_seconds: float,
+    *,
+    max_duration_seconds: float,
+) -> str:
+    """Build a validated whole-video interval URL."""
+    start = float(start_seconds)
+    end = float(end_seconds)
+    if not all(math.isfinite(value) and value >= 0 for value in (start, end)):
+        raise ValueError("start_seconds and end_seconds must be finite and non-negative.")
+    if end <= start:
+        raise ValueError("end_seconds must be greater than start_seconds.")
+    if end - start > max_duration_seconds:
+        raise ValueError(
+            f"Video intervals may not exceed {max_duration_seconds:g} seconds."
+        )
+    normalized_id = str(video_id).strip()
+    if not normalized_id:
+        raise ValueError("video_id must not be empty.")
+    base_url = loader.get_collection_element_url_from_id(
+        normalized_id,
+        what="video",
+        tpad=None,
+    )
+    return f"{base_url}?{urlencode({'start': f'{start:g}', 'end': f'{end:g}'})}"
+
+
+def _build_multimedia_context_message(
+    image_parts: List[Dict[str, Any]],
+    video_parts: List[Dict[str, Any]],
+) -> Optional[HumanMessage]:
+    """Put image/video chunks in a user message accepted by OpenAI-compatible APIs."""
+    if not image_parts and not video_parts:
+        return None
+    return HumanMessage(
+        content=[
+            {
+                "type": "text",
+                "text": "Inspect the following visual evidence before deciding the next step.",
+            },
+            *image_parts,
+            *video_parts,
+        ]
+    )
+
+
+def _build_final_answer_messages(messages: List[Any]) -> List[Any]:
+    """Build Qwen-compatible context for forced finalization.
+
+    The final instruction must be a user turn because Qwen requires the sole
+    system message to remain at the beginning of the conversation. If the
+    iteration limit interrupted a requested tool call, replace that assistant
+    turn so the request contains no dangling ``tool_calls`` entry.
+    """
+    final_messages = list(messages)
+    if (
+        final_messages
+        and isinstance(final_messages[-1], AIMessage)
+        and final_messages[-1].tool_calls
+    ):
+        last = final_messages[-1]
+        final_messages[-1] = AIMessage(
+            content=last.content or "I have gathered enough information."
+        )
+    final_messages.append(HumanMessage(content=_FINAL_ANSWER_PROMPT))
+    return final_messages
 
 
 def _resolve_qa_embedding_model(
@@ -552,10 +771,11 @@ def _build_planning_prompt() -> str:
 Based on the user's question and the system instructions above, create a brief \
 step-by-step plan for how you will answer this question. Consider:
 1. What tools you need to call (search_frames for visual inspection and moderate result sets, \
-search_and_analyze_frames for large result sets that require counting or aggregation).
+search_and_analyze_frames for large result sets that require counting or aggregation, and \
+the video inspection tools when they are available and temporal context is needed).
 2. Whether you need images or metadata is sufficient.
 3. How you might refine or verify results.
-5. Any temporal reasoning strategies required.
+4. Any temporal reasoning strategies required.
 
 Output ONLY the plan as a numbered list. Do NOT execute any tool calls yet."""
 
@@ -566,8 +786,8 @@ Previous plan:
 {previous_plan or "No previous plan was retained."}
 
 Critically review the original plan. Check for:
-1. **Feasibility**: Can each step actually be performed with the search_frames or \
-   search_and_analyze_frames tool?
+1. **Feasibility**: Can each step actually be performed with the available search, \
+   analysis, or video inspection tools?
 2. **Completeness**: Are there steps missing that are needed to answer the question?
 3. **Correctness**: Are the proposed filters, queries, strategies, and scripts appropriate?
 4. **Efficiency**: For counting/aggregation over many results, does the plan use \
@@ -614,66 +834,103 @@ def _build_agent(
         request.app.state.loader,
         max_total_images=qa_cfg["max_total_images"],
         max_images_per_call=qa_cfg["max_images_per_call"],
+        grouped_frames_per_video=qa_cfg["grouped_frames_per_video"],
+        max_grouped_videos=qa_cfg["max_grouped_videos"],
+        max_video_interval_seconds=qa_cfg["max_video_interval_seconds"],
     )
+    supports_video = _loader_supports_video_inspection(request.app.state.loader)
 
     # ── Search tool (closure over *request* and *retrieval_model*) ─────
-    @tool
-    def search_frames(
-        query: str,
-        metadata_to_retrieve: List[str],
-        k: int = 50,
-        num_images: int = 0,
-        filters: Optional[Dict[str, Any]] = None,
-        reorder_by: Optional[List[str]] = None,
-    ) -> str:
-        """Search collection items matching a semantic query.
+    if supports_video:
+        @tool
+        def search_frames(
+            query: str,
+            metadata_to_retrieve: List[str],
+            k: int = 50,
+            frames_per_video: Optional[int] = None,
+            max_videos: Optional[int] = None,
+            filters: Optional[Dict[str, Any]] = None,
+            reorder_by: Optional[List[str]] = None,
+        ) -> str:
+            """Search ranked V3C frames and diversify them across videos.
 
-        Args:
-            query: Possibly rich semantic description of the visual scene to find, which carefully includes all the details asked in the query.
-            metadata_to_retrieve: List of metadata fields to include in the results
-            k: Number of metadata results to return.
-            num_images: How many top results to include images for.
-            filters: Optional metadata filter object (comparator/operator).
-            reorder_by: Optional metadata fields used to sort filter-only results.
-
-        Returns:
-            JSON array of results with id, score, and metadata.
-        """
-        num_img = min(max(num_images, 0), qa_cfg["max_images_per_call"])
-
-        node: Dict[str, Any] = {"item": query, "model": retrieval_model, "k": k}
-        if filters:
-            node["filters"] = filters
-        node_pg = convert_filters_to_pg(node)
-        if reorder_by and (not query or not query.strip()):
-            node_pg["reorder_by"] = _format_reorder_by(reorder_by)
-
-        try:
-            doc_groups = request.app.state.vector_store.similarity_search(
-                node_pg, k=k, filter=None, fetch_k=min(k * 10, 1000),
-                metadata_to_retrieve=metadata_to_retrieve,
+            ``k`` is the total ranked frame pool searched. Results are grouped by
+            first-seen ``video_id``. Choose ``frames_per_video`` and ``max_videos``
+            for the task; both are restricted by configured caps. Omitting either
+            uses its configured maximum. Every returned frame includes an image.
+            """
+            requested_metadata = list(dict.fromkeys([*metadata_to_retrieve, "video_id"]))
+            doc_groups = _search_frame_documents(
+                request,
+                retrieval_model,
+                query,
+                requested_metadata,
+                k,
+                filters,
+                reorder_by,
             )
-        except Exception as exc:
-            return json.dumps({"error": str(exc)})
-
-        results: List[Dict[str, Any]] = []
-        for idx, group in enumerate(doc_groups):
-            doc = group[0]
-            meta = {mk: mv for mk, mv in doc.metadata.items() if mk != "score"}
-            entry: Dict[str, Any] = {
-                "id": doc.page_content,
-                "metadata": meta,
-            }
-            if idx < num_img:
-                try:
-                    entry["image_url"] = _get_collection_image_url(
+            if isinstance(doc_groups, dict):
+                return json.dumps(doc_groups)
+            selected_docs = _select_grouped_video_documents(
+                doc_groups,
+                max_videos=_bounded_tool_limit(
+                    max_videos, qa_cfg["max_grouped_videos"]
+                ),
+                frames_per_video=_bounded_tool_limit(
+                    frames_per_video, qa_cfg["grouped_frames_per_video"]
+                ),
+            )
+            return json.dumps(
+                [
+                    _document_result(
                         request.app.state.loader,
-                        doc.page_content,
+                        doc,
+                        include_image=True,
+                        require_image=True,
                     )
-                except Exception:
-                    pass
-            results.append(entry)
-        return json.dumps(results, default=str)
+                    for doc in selected_docs
+                ],
+                default=str,
+            )
+    else:
+        @tool
+        def search_frames(
+            query: str,
+            metadata_to_retrieve: List[str],
+            k: int = 50,
+            num_images: int = 0,
+            filters: Optional[Dict[str, Any]] = None,
+            reorder_by: Optional[List[str]] = None,
+        ) -> str:
+            """Search collection items matching a semantic query.
+
+            ``k`` controls the number of metadata results and ``num_images`` the
+            number of leading results supplied for visual inspection.
+            """
+            doc_groups = _search_frame_documents(
+                request,
+                retrieval_model,
+                query,
+                metadata_to_retrieve,
+                k,
+                filters,
+                reorder_by,
+            )
+            if isinstance(doc_groups, dict):
+                return json.dumps(doc_groups)
+            num_images = min(max(int(num_images), 0), qa_cfg["max_images_per_call"])
+            documents = [group[0] for group in doc_groups if group]
+            return json.dumps(
+                [
+                    _document_result(
+                        request.app.state.loader,
+                        doc,
+                        include_image=index < num_images,
+                    )
+                    for index, doc in enumerate(documents)
+                ],
+                default=str,
+            )
 
     # ── Analyze tool (search + sandbox script execution) ────────────────
     @tool
@@ -758,6 +1015,55 @@ def _build_agent(
         return output if output else json.dumps({"error": "Script produced no output"})
 
     tools = [search_frames, search_and_analyze_frames]
+    video_tool_names: set[str] = set()
+
+    if supports_video:
+        @tool
+        def inspect_shot_video(frame_id: str, question: str) -> str:
+            """Inspect the short video segment associated with a promising frame.
+
+            Args:
+                frame_id: Exact search-result frame ID, for example ``04567_11``.
+                question: Focused question to answer by watching this segment.
+            """
+            video_url = _build_shot_video_url(request.app.state.loader, frame_id)
+            return json.dumps(
+                {
+                    "kind": "shot",
+                    "frame_id": frame_id,
+                    "question": question,
+                    "video_url": video_url,
+                }
+            )
+
+        @tool
+        def inspect_video_interval(
+            video_id: str,
+            start_seconds: float,
+            end_seconds: float,
+            question: str,
+        ) -> str:
+            """Inspect a bounded interval from a known V3C video."""
+            video_url = _build_interval_video_url(
+                request.app.state.loader,
+                video_id,
+                start_seconds,
+                end_seconds,
+                max_duration_seconds=qa_cfg["max_video_interval_seconds"],
+            )
+            return json.dumps(
+                {
+                    "kind": "interval",
+                    "video_id": video_id,
+                    "start_seconds": start_seconds,
+                    "end_seconds": end_seconds,
+                    "question": question,
+                    "video_url": video_url,
+                }
+            )
+
+        tools.extend([inspect_shot_video, inspect_video_interval])
+        video_tool_names = {inspect_shot_video.name, inspect_video_interval.name}
 
     # ── LLM with and without tool binding ──────────────────────────────
     llm, llm_no_tools, evaluation_llm = _build_qa_models(
@@ -884,8 +1190,9 @@ def _build_agent(
         new_sources: List[Dict[str, Any]] = []
         new_messages: list = []
         visual_context_parts: list = []
+        video_context_parts: list = []
 
-        tool_dispatch = {"search_frames": search_frames, "search_and_analyze_frames": search_and_analyze_frames}
+        tool_dispatch = {tool_instance.name: tool_instance for tool_instance in tools}
 
         for tc in last_msg.tool_calls:
             tool_name = tc.get("name", "search_frames")
@@ -904,6 +1211,28 @@ def _build_agent(
                     raise
                 error_text = f"{type(exc).__name__}: {exc}"
                 new_messages.append(ToolMessage(content=error_text, tool_call_id=tc["id"]))
+                continue
+
+            if tool_name in video_tool_names:
+                new_messages.append(ToolMessage(content=result_str, tool_call_id=tc["id"]))
+                try:
+                    video_result = json.loads(result_str)
+                    video_url = video_result["video_url"]
+                    question = video_result["question"]
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    continue
+                video_context_parts.extend(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"Inspect this video to answer: {question}",
+                        },
+                        {
+                            "type": "video_url",
+                            "video_url": {"url": video_url},
+                        },
+                    ]
+                )
                 continue
 
             if tool_name == "search_and_analyze_frames":
@@ -926,7 +1255,9 @@ def _build_agent(
             if isinstance(results, list):
                 for r in results:
                     img_url = r.get("image_url")
-                    if img_url and total_images < qa_cfg["max_total_images"]:
+                    if img_url and (
+                        supports_video or total_images < qa_cfg["max_total_images"]
+                    ):
                         b64 = await _fetch_image_b64(img_url)
                         if b64:
                             visual_context_parts.append({
@@ -947,21 +1278,11 @@ def _build_agent(
 
             new_messages.append(ToolMessage(content=text, tool_call_id=tc["id"]))
 
-        if visual_context_parts:
-            new_messages.append(
-                HumanMessage(
-                    content=[
-                        {
-                            "type": "text",
-                            "text": (
-                                "The tool results above have associated frames. "
-                                "Inspect these images before deciding the next step."
-                            ),
-                        },
-                        *visual_context_parts,
-                    ]
-                )
-            )
+        multimedia_message = _build_multimedia_context_message(
+            visual_context_parts, video_context_parts
+        )
+        if multimedia_message is not None:
+            new_messages.append(multimedia_message)
 
         if debug:
             for tm in new_messages:
@@ -976,23 +1297,7 @@ def _build_agent(
 
     async def final_answer_node(state: AgentState) -> Dict[str, Any]:
         """When the iteration budget is exhausted, ask the LLM to summarise."""
-        messages = list(state["messages"])
-        # Replace the last tool-calling AI message with a clean one so the
-        # conversation history is valid for the LLM (no dangling tool calls).
-        if messages and hasattr(messages[-1], "tool_calls") and messages[-1].tool_calls:
-            last = messages[-1]
-            messages[-1] = AIMessage(
-                content=last.content or "I have gathered enough information.",
-            )
-        messages.append(
-            SystemMessage(
-                content=(
-                    "You have reached the maximum number of search iterations. "
-                    "Based on ALL information gathered so far, provide your final, "
-                    "clear natural-language answer to the user's question now."
-                ),
-            )
-        )
+        messages = _build_final_answer_messages(state["messages"])
         response = await llm_no_tools.ainvoke(messages)
         if debug:
             _debug_print_message("final_answer → LLM response", response)

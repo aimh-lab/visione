@@ -22,18 +22,27 @@ def build_qa_system_prompt(
     analysis_examples: str,
     reasoning_strategies: str,
     collection_rules: str,
+    additional_tools: str = "",
+    search_frames_description: str | None = None,
 ) -> str:
     """Build a complete QA prompt from common guidance and a collection profile."""
     attributes = _format_attributes(attribute_info)
+    search_frames_description = search_frames_description or (
+        "semantic and metadata search returning up to k collection items with "
+        "optional images. Use it for exploration, visual verification, and moderate "
+        f"result sets (k <= about 150). Image budget: {max_images_per_call} per call, "
+        f"about {max_total_images} per trial."
+    )
     return f"""\
 You are a helpful assistant that answers questions about a visual media collection.
 
 ### Collection
 {collection_description}
 
-You have two tools:
-- **search_frames** - semantic and metadata search returning up to k collection items with optional images. Use it for exploration, visual verification, and moderate result sets (k <= about 150). Image budget: {max_images_per_call} per call, about {max_total_images} per trial.
+You have these core search tools:
+- **search_frames** - {search_frames_description}
 - **search_and_analyze_frames** - the same search followed by a Python script executed on the results in a sandbox. Use it to count, group, deduplicate, or aggregate large result sets (normally k >= 200). The script receives results in a ``data`` variable (a list of dictionaries with ``"id"`` and ``"metadata"`` keys) and must ``print`` a JSON object as its last output.
+{additional_tools}
 
 ### Filter syntax
 Filters use comparator/operator JSON objects.
@@ -165,6 +174,9 @@ def build_v3c_qa_system_prompt(
     attribute_info: Iterable[Any],
     max_total_images: int,
     max_images_per_call: int,
+    grouped_frames_per_video: int = 3,
+    max_grouped_videos: int = 5,
+    max_video_interval_seconds: float = 30,
 ) -> str:
     """Build the prompt used by the V3C video collections."""
     filter_examples = """\
@@ -209,14 +221,16 @@ counts = df.groupby("video_id").size().reset_index(name="matching_segments")
 print(json.dumps({"per_video": counts.to_dict(orient="records")}, default=str))
 ```"""
 
-    reasoning_strategies = """\
-1. Start with a broad semantic search across the collection to identify candidate videos and retrieve ``video_id`` plus relevant timing fields.
+    max_grouped_images = grouped_frames_per_video * max_grouped_videos
+    reasoning_strategies = f"""\
+1. Start with a broad semantic search across the collection. ``k`` is the ranked frame pool size. Choose ``frames_per_video`` and ``max_videos`` for the evidence needed by the task. Their configured caps are {grouped_frames_per_video} frames per video and {max_grouped_videos} videos, for at most {max_grouped_images} images per call. Omitting either argument uses its cap.
 2. Once a likely video is identified, repeat the semantic search with an exact ``video_id`` filter to find details only inside that video.
 3. For chronological inspection of a known video, use a filter-only search constrained by ``video_id`` and set ``reorder_by`` to ``["start_time_seconds"]``.
-4. For before/after questions, keep the same ``video_id`` and use the segment timing fields to define the search window. Never use temporal proximity to connect different videos.
-5. For questions asking how many videos contain something, use a broad result set and count distinct ``video_id`` values. Never report the number of matching segments as the number of videos.
-6. For cross-video aggregation, group by ``video_id`` first, then aggregate or compare the per-video evidence.
-7. Visually verify representative segments, especially when several nearby segments from one video describe the same occurrence."""
+4. When a returned frame is promising but ambiguous, use ``inspect_shot_video`` to watch its short segment. Use ``inspect_video_interval`` for a targeted interval of at most {max_video_interval_seconds:g} seconds when broader temporal context is needed.
+5. For before/after questions, keep the same ``video_id`` and use the segment timing fields to define the search window. Never use temporal proximity to connect different videos.
+6. For questions asking how many videos contain something, use a broad result set and count distinct ``video_id`` values. Never report the number of matching segments as the number of videos.
+7. For cross-video aggregation, group by ``video_id`` first, then aggregate or compare the per-video evidence.
+8. Visually verify representative segments, especially when several nearby segments from one video describe the same occurrence."""
 
     collection_rules = """\
 - V3C consists of independent videos. Different ``video_id`` values have no temporal or narrative relationship unless the user explicitly asks for a cross-video aggregate.
@@ -224,6 +238,18 @@ print(json.dumps({"per_video": counts.to_dict(orient="records")}, default=str))
 - Use ``eq`` for ``video_id`` and ``id``. This collection has no full-text metadata fields, so do not use ``fts``.
 - Deduplicate by ``video_id`` for video-level counts. Nearby matching segments within one video may describe a single occurrence.
 - Semantic search returns a ranked top-k sample. If the result cap may omit matching videos, describe the count as based on the retrieved evidence rather than claiming exhaustive coverage."""
+
+    additional_tools = f"""\
+- **inspect_shot_video** - watch the short video segment for an exact returned frame ID. Supply a focused question about the temporal context.
+- **inspect_video_interval** - watch a selected interval in one video. Intervals must satisfy ``0 <= start < end`` and may be at most {max_video_interval_seconds:g} seconds long.
+- V3C grouped visual searches automatically include every selected frame image. The image limit is per call; there is no trial-wide image cap."""
+
+    search_frames_description = (
+        "semantic and metadata search over a ranked pool of k frames. It groups the "
+        "pool by video; choose frames_per_video and max_videos for each call. Their "
+        f"configured caps are {grouped_frames_per_video} frames from each of the "
+        f"first {max_grouped_videos} videos (at most {max_grouped_images} frames)."
+    )
 
     return build_qa_system_prompt(
         collection_description=(
@@ -237,4 +263,6 @@ print(json.dumps({"per_video": counts.to_dict(orient="records")}, default=str))
         analysis_examples=analysis_examples,
         reasoning_strategies=reasoning_strategies,
         collection_rules=collection_rules,
+        additional_tools=additional_tools,
+        search_frames_description=search_frames_description,
     )

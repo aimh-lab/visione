@@ -59,6 +59,7 @@ def _get_translate_config(request: Request) -> dict:
         "base_url": str(base_url),
         "api_key": getattr(translate_cfg, "api_key", "ollama") or "ollama",
         "temperature": float(getattr(translate_cfg, "temperature", 0.0)),
+        "reasoning": getattr(translate_cfg, "reasoning", True),
     }
 
 

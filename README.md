@@ -47,6 +47,48 @@ curl -X POST http://localhost:8000/translate \
 Use HTTPS in production and restrict read access to the token file to the
 service account.
 
+## OpenAI-compatible LLM serving
+
+The QA, translation, and natural-language query endpoints use the OpenAI Chat
+Completions protocol at the configured `base_url` (including `/v1`). This works
+with vLLM and with Ollama's OpenAI-compatible API; local Ollama ignores the
+placeholder `api_key: ollama` value.
+
+Each LLM-backed endpoint has an independent `reasoning: true|false` setting in
+`packages/core/configs/serve.yaml`. For Qwen models served by vLLM, this is sent
+as `chat_template_kwargs.enable_thinking`; omitted settings default to `true`
+to preserve the model's normal thinking behavior.
+
+The current vLLM service is started as follows:
+
+```bash
+VLLM_USE_FLASHINFER_SAMPLER=0 CUDA_VISIBLE_DEVICES=2 \
+vllm serve Qwen/Qwen3.8-27B \
+  --tensor-parallel-size 1 \
+  --dtype bfloat16 \
+  --max-model-len 262144 \
+  --kv-cache-dtype auto \
+  --reasoning-parser qwen3 \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_coder \
+  --port 11545
+```
+
+QA requires automatic OpenAI tool calling for its retrieval tools. Before
+deployment, configure the vLLM version/model with its supported automatic
+tool-choice parser and verify that a `tool_choice: "auto"` request returns
+structured tool calls. Run the opt-in backend smoke test described in
+`packages/core/tests/test_openai_backend_smoke.py` against the deployment.
+
+For V3C QA, `search_frames.k` is the ranked frame-pool size. Results are grouped
+by video, and the model chooses `frames_per_video` and `max_videos` for each
+call. `qa.grouped_frames_per_video` and `qa.max_grouped_videos` are hard caps;
+omitting a tool argument uses its cap. All selected frames are sent to the model
+for visual inspection. The V3C agent can also inspect a returned shot or a
+whole-video interval bounded by
+`qa.max_video_interval_seconds`. Media URLs come from the active loader's
+data-server configuration and must be reachable by the vLLM process.
+
 ## Citation
 We kindly ask you to refer to the following paper in publications mentioning or employing VISIONE
 ```
