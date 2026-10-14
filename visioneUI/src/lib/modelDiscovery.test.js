@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from './modelDiscovery.js';
+import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel, parseModelList, formatModelList } from './modelDiscovery.js';
 
 describe('normalizeAvailableModelEntry', () => {
   it('normalizes a plain string entry, defaulting modalities to text+image (legacy compat)', () => {
@@ -51,5 +51,20 @@ describe('supportsTextModel / supportsImageModel', () => {
   it('returns false when neither the specific nor the combined modality is present', () => {
     expect(supportsTextModel({ modalities: ['audio'] })).toBe(false);
     expect(supportsImageModel({ modalities: ['audio'] })).toBe(false);
+  });
+});
+
+describe('parseModelList / formatModelList', () => {
+  it('reads a comma-separated selection, legacy single models and arrays', () => {
+    expect(parseModelList('a, b,,a')).toEqual(['a', 'b']);
+    expect(parseModelList('a')).toEqual(['a']);
+    expect(parseModelList(['a', ' b '])).toEqual(['a', 'b']);
+    expect(parseModelList('')).toEqual([]);
+    expect(parseModelList(undefined)).toEqual([]);
+  });
+
+  it('round-trips a selection', () => {
+    expect(formatModelList(['a', 'b', 'a'])).toBe('a,b');
+    expect(parseModelList(formatModelList(['x', 'y']))).toEqual(['x', 'y']);
   });
 });

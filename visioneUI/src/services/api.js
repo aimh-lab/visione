@@ -6,6 +6,7 @@ import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MA
 import { API_CONFIG } from '../config/apiConfig.js';
 import { warnFallback } from '../lib/fallbackWarn.js';
 import { resolveVideoTimeReferenceSeconds } from '../lib/videoTimeReference.js';
+import { parseModelList } from '../lib/modelDiscovery.js';
 
 class APIError extends Error {
   constructor(message, status, response) {
@@ -1137,7 +1138,7 @@ export class VisioneAPI {
       };
 
       if (this.#isFilterOnlyQueryNode(singleTextareaNode)) {
-        payload.reorder_by = { columns: ['epoch'] };
+        payload.reorder_by = { columns: [this.#filterOnlyReorderColumn()] };
       }
 
       return payload;
@@ -1171,10 +1172,19 @@ export class VisioneAPI {
     };
 
     if (this.#isFilterOnlyQueryNode(temporalQuery.query)) {
-      payload.reorder_by = { columns: ['epoch'] };
+      payload.reorder_by = { columns: [this.#filterOnlyReorderColumn()] };
     }
 
     return payload;
+  }
+
+  // Column that orders filter-only results chronologically: the dataset's own
+  // declared "item_time" field (e.g. V3C's start_time_seconds, from /discovery),
+  // falling back to LSC's "epoch" for datasets that don't declare one.
+  #filterOnlyReorderColumn() {
+    const itemTimeField = String(this.videoTimeReferenceFields?.item_time || '').trim();
+    if (itemTimeField && this.#isKnownMetadataField(itemTimeField)) return itemTimeField;
+    return 'epoch';
   }
 
   #isFilterOnlyQueryNode(node) {
@@ -1226,12 +1236,17 @@ export class VisioneAPI {
     const { cleanText, filters } = this.#extractFiltersFromRawQuery(raw);
     const similarityImgId = String(textarea?.similarityImgId || '').trim();
     const legacyModel = String(textarea?.model || '').trim();
-    const textModel = String(textarea?.textModel || legacyModel || '').trim();
-    const imageModel = String(textarea?.imageModel || legacyModel || '').trim();
+    // A step may select several models (comma-separated, see parseModelList):
+    // each one becomes its own subquery, fused with RRF by #buildTextareaQueryNode.
+    const textModels = parseModelList(textarea?.textModel || legacyModel);
+    const imageModels = parseModelList(textarea?.imageModel || legacyModel);
+    if (textModels.length === 0) textModels.push('');
+    if (imageModels.length === 0) imageModels.push('');
     const out = [];
+    const pushImage = (value) => imageModels.forEach((model) => out.push({ type: 'image', value, model, filters }));
 
     if (similarityImgId) {
-      out.push({ type: 'image', value: `image:${similarityImgId}`, model: imageModel, filters });
+      pushImage(`image:${similarityImgId}`);
     }
 
     if (cleanText) {
@@ -1239,19 +1254,20 @@ export class VisioneAPI {
       if (lowerRaw.startsWith('similarity:')) {
         const legacyId = cleanText.slice('similarity:'.length).trim();
         if (legacyId) {
-          out.push({ type: 'image', value: `image:${legacyId}`, model: imageModel, filters });
+          pushImage(`image:${legacyId}`);
         }
       } else if (lowerRaw.startsWith('image:')) {
-        out.push({ type: 'image', value: cleanText, model: imageModel, filters });
+        pushImage(cleanText);
       } else {
-        out.push({ type: 'text', value: cleanText, model: textModel, filters });
+        textModels.forEach((model) => out.push({ type: 'text', value: cleanText, model, filters }));
       }
     }
 
     // Allow API requests with filter-only queries (e.g. "hour:10 day:12").
     // Emit an empty item and rely on filters + reorder_by for deterministic ordering.
     if (out.length === 0 && filters && Array.isArray(filters.arguments) && filters.arguments.length > 0) {
-      out.push({ type: 'text', value: '', model: textModel, filters });
+      // Filters only: the model doesn't affect the result, so one subquery is enough.
+      out.push({ type: 'text', value: '', model: textModels[0], filters });
     }
 
     return out;
@@ -1397,11 +1413,15 @@ export class VisioneAPI {
       timezone: 'timezone',
       tz: 'timezone',
       video_id: 'video_id',
-      vid: 'video_id'
+      vid: 'video_id',
+      id: 'id',
+      shot_id: 'id'
     };
 
     // Exact-match fields (compared like "type" below, not free-text "fts").
-    const exactMatchTextShortcuts = new Set(['type', 'video_id']);
+    const exactMatchTextShortcuts = new Set(['type', 'video_id', 'id']);
+    // Fields that only support equality, whatever comparator the token carries.
+    const equalOnlyTextShortcuts = new Set(['id']);
 
     if (alias === 'date') {
       if (!this.#isKnownMetadataField('epoch')) return null;
@@ -1439,8 +1459,9 @@ export class VisioneAPI {
       const parsed = this.#extractComparatorValue(value, exactMatchTextShortcuts.has(attribute) ? 'eq' : 'fts');
       const normalized = this.#normalizeTextFilterValue(parsed.value);
       if (!normalized) return null;
+      const comparator = equalOnlyTextShortcuts.has(attribute) ? 'eq' : this.#normalizeComparator(parsed.comparator);
       return {
-        arguments: [{ comparator: this.#normalizeComparator(parsed.comparator), attribute, value: normalized }]
+        arguments: [{ comparator, attribute, value: normalized }]
       };
     }
 

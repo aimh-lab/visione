@@ -78,6 +78,10 @@ describe('getDefaultComparatorForField', () => {
 describe('getComparatorOptionsForField', () => {
   const values = (field) => getComparatorOptionsForField(field).map((o) => o.value);
 
+  it('offers only equality for the shot id', () => {
+    expect(values('id')).toEqual(['eq']);
+  });
+
   it('limits video_id to equal, not equal and full-text', () => {
     expect(values('video_id')).toEqual(['eq', 'ne', 'fts']);
     expect(values(' Video_ID ')).toEqual(['eq', 'ne', 'fts']);

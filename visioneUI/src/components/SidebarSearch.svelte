@@ -19,6 +19,8 @@
   export let modelSelectionPerStepEnabled = true;
   export let showAutoTranslateToggle = true;
   export let autoTranslateEnabled = true;
+  // False when the AI services token is missing: translator and agent are disabled.
+  export let aiServicesAvailable = true;
   export let onToggleAutoTranslate = () => {};
   export let runtimeProfile = {};
   export let discoveryMetadataFields = [];
@@ -422,7 +424,7 @@
   function handleQaQuestionKeydown(e) {
     if (e.key !== 'Enter' || e.shiftKey) return;
     e.preventDefault();
-    if (qaAgentStream?.isStreaming) return;
+    if (qaAgentStream?.isStreaming || !aiServicesAvailable) return;
     runQaAgent();
   }
 
@@ -473,10 +475,15 @@
             {#if showAutoTranslateToggle}
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-slate-700/35"
-                title={autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
-                aria-label={autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
+                class="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors {aiServicesAvailable ? 'hover:bg-slate-700/35' : 'opacity-50 cursor-not-allowed'}"
+                title={!aiServicesAvailable
+                  ? 'Auto-translate unavailable: set the AI services token in Settings'
+                  : autoTranslateEnabled ? 'Auto-translate ON (click to disable)' : 'Auto-translate OFF (click to enable)'}
+                aria-label={!aiServicesAvailable
+                  ? 'Auto-translate unavailable: AI services token missing'
+                  : autoTranslateEnabled ? 'Disable auto-translate' : 'Enable auto-translate'}
                 aria-pressed={autoTranslateEnabled}
+                aria-disabled={!aiServicesAvailable}
                 data-tour="translate-toggle"
                 on:click={onToggleAutoTranslate}
               >
@@ -628,7 +635,9 @@
             <span class="min-w-0">
               <span class="block text-xs font-bold text-slate-100 uppercase tracking-wide">Agent</span>
               <span class="block text-[11px] text-slate-400 truncate">
-                {qaAgentPanelOpen ? `Available in ${challengeType} · Collapse panel` : `Available in ${challengeType} · Expand panel`}
+                {!aiServicesAvailable
+                  ? 'Requires the AI services token'
+                  : qaAgentPanelOpen ? `Available in ${challengeType} · Collapse panel` : `Available in ${challengeType} · Expand panel`}
               </span>
             </span>
             <span class="inline-flex items-center gap-2">
@@ -645,7 +654,13 @@
 
           {#if qaAgentPanelOpen}
             <div class="p-2 border-t border-slate-700">
+              {#if !aiServicesAvailable}
+                <div class="mb-2 p-2 rounded border border-amber-600/50 bg-amber-900/20 text-xs text-amber-200">
+                  The agent is disabled: set the <b>AI services token</b> in Settings to use it.
+                </div>
+              {/if}
               <textarea
+                disabled={!aiServicesAvailable}
                 class="w-full min-h-[64px] p-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ask a question about the collection..."
                 bind:value={qaAgentQuestion}
@@ -655,7 +670,7 @@
               <div class="mt-2 flex items-center gap-2">
                 <button
                   class="flex-1 px-3 py-2 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  disabled={!qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
+                  disabled={!aiServicesAvailable || !qaAgentQuestion?.trim() || qaAgentStream?.isStreaming}
                   on:click={runQaAgent}
                 >
                   Ask agent

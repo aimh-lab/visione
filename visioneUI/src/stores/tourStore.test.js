@@ -83,7 +83,47 @@ describe('tour steps', () => {
     expect(done({ viewMode: 'byvideo' }, { viewMode: 'byrank' }, {})).toBe(true);
   });
 
-  it('ends with recent searches', () => {
-    expect(TOUR_STEPS[TOUR_STEPS.length - 1].id).toBe('recent');
+  it('completes the reorder step when the steps are reordered', () => {
+    const { done } = byId('reorder');
+    expect(done({ reorderCount: 0 }, { reorderCount: 0 }, {})).toBe(false);
+    expect(done({ reorderCount: 1 }, { reorderCount: 0 }, {})).toBe(true);
+  });
+
+  it('completes the skip step when a step is disabled', () => {
+    const { done } = byId('skip-step');
+    expect(done({ enabledStepCount: 2 }, { enabledStepCount: 2 }, {})).toBe(false);
+    expect(done({ enabledStepCount: 1 }, { enabledStepCount: 2 }, {})).toBe(true);
+  });
+
+  it('completes the delete step when a step is removed', () => {
+    const { done } = byId('delete-step');
+    expect(done({ stepCount: 2 }, { stepCount: 2 }, {})).toBe(false);
+    expect(done({ stepCount: 1 }, { stepCount: 2 }, {})).toBe(true);
+  });
+
+  it('completes the agent step once a run starts and finishes', () => {
+    const { done } = byId('agent');
+    const memo = {};
+    expect(done({ agentStreaming: false }, {}, memo)).toBe(false);
+    expect(done({ agentStreaming: true }, {}, memo)).toBe(false);
+    expect(done({ agentStreaming: false }, {}, memo)).toBe(true);
+  });
+
+  it('skips the agent steps and the translator tip without the AI services token', () => {
+    expect(byId('agent').skip({ aiServicesAvailable: false })).toBe(true);
+    expect(byId('agent-check').skip({ aiServicesAvailable: false })).toBe(true);
+    expect(byId('agent').skip({ aiServicesAvailable: true })).toBe(false);
+    const query = byId('query');
+    expect(query.callouts({ aiServicesAvailable: false })).toEqual([]);
+    expect(query.body({ aiServicesAvailable: false })).not.toContain('Translate');
+    expect(query.callouts({ aiServicesAvailable: true })).toHaveLength(1);
+  });
+
+  it('starts with the challenge and ends with the reset', () => {
+    expect(TOUR_STEPS[0].id).toBe('challenge');
+    const last = TOUR_STEPS[TOUR_STEPS.length - 1];
+    expect(last.id).toBe('reset');
+    expect(last.done({ resetCount: 0 }, { resetCount: 0 }, {})).toBe(false);
+    expect(last.done({ resetCount: 1 }, { resetCount: 0 }, {})).toBe(true);
   });
 });

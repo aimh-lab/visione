@@ -1528,7 +1528,10 @@
                         <img src="/icons/context-view.svg" alt="" class="w-4 h-4" aria-hidden="true" />
                       </button>
                     {/if}
+                  </div>
 
+                  <!-- Right group: similarity + feedback actions -->
+                  <div class="flex items-center space-x-1">
                     <button
                       class="p-1 hover:bg-white/20 rounded transition-colors"
                       title="Image similarity"
@@ -1540,10 +1543,8 @@
                         <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                       </svg>
                     </button>
-                  </div>
 
-                  <!-- Right group: feedback actions -->
-                  <div class="flex items-center space-x-1" data-tour="kf-rf">
+                    <div class="flex items-center space-x-1" data-tour="kf-rf">
                     <button
                       class="p-1 rounded transition-colors {rfPositiveIds.has(safeImgId(getId(item))) ? 'bg-emerald-600/70 ring-1 ring-emerald-300/70' : 'hover:bg-green-500/30'}"
                       title={rfPositiveIds.has(safeImgId(getId(item))) ? 'Positive feedback selected' : 'Positive feedback'}
@@ -1565,6 +1566,7 @@
                         <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
                       </svg>
                     </button>
+                    </div>
                   </div>
                 </div>
 

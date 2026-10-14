@@ -47,3 +47,26 @@ export function supportsTextModel(entry) {
 export function supportsImageModel(entry) {
   return entry.modalities.includes('image') || entry.modalities.includes('image+text');
 }
+
+// A query step can search with several models at once (their results are
+// fused with RRF). The selection is stored in the step's existing
+// textModel/imageModel string as a comma-separated list, so URL state,
+// recent searches and cache keys keep working unchanged; a single model is
+// just a one-element list.
+
+/**
+ * @param {unknown} value comma-separated model names (or an array of them)
+ * @returns {string[]} unique, trimmed model names
+ */
+export function parseModelList(value) {
+  const parts = Array.isArray(value) ? value : String(value ?? '').split(',');
+  return Array.from(new Set(parts.map((m) => String(m ?? '').trim()).filter(Boolean)));
+}
+
+/**
+ * @param {string[]} models
+ * @returns {string}
+ */
+export function formatModelList(models) {
+  return parseModelList(models).join(',');
+}

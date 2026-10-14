@@ -21,6 +21,7 @@
   "queryFilters": {
     "metadataFields": [
       "video_id",
+      "id",
       "start_time_seconds"
     ]
   },

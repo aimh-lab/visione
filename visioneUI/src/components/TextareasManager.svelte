@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from "svelte";
   import InputModal from "./InputModal.svelte";
+  import ModelMultiSelect from "./ModelMultiSelect.svelte";
   import { toasts } from "../stores/toastStore.js";
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL } from "../config/modelDefaults.js";
-  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from "../lib/modelDiscovery.js";
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel, parseModelList, formatModelList } from "../lib/modelDiscovery.js";
   import {
     getStepColor,
     withAlpha,
@@ -240,6 +241,7 @@
     semantic_name: 'Semantic',
     heart_rate_bpm: 'Heart Rate',
     video_id: 'Video ID',
+    id: 'Shot ID',
     item_time: 'Time Range'
   };
 
@@ -272,6 +274,8 @@
       heart_rate_bpm: 'heart_rate_bpm',
       video_id: 'video_id',
       vid: 'video_id',
+      id: 'id',
+      shot_id: 'id',
       item_time: 'item_time',
       start_time_seconds: 'item_time'
     };
@@ -1199,21 +1203,26 @@
       ? prefillComparator
       : getDefaultComparatorForField(normalizedField);
 
-    modalConfig = {
-      isOpen: true,
-      title: `Add ${normalizedField} Filter`,
-      icon: 'filter',
-      description: `Insert ${modalMetadataShortcut}:... for metadata filtering`,
-      targetIndex: index,
-      filterType: 'metadata',
-      fields: [
-        {
+    // Single-comparator fields (e.g. shot id: equality only) get no comparator choice.
+    const comparatorFields = comparatorOptions.length > 1
+      ? [{
           name: 'comparator',
           label: 'Comparator',
           type: 'select',
           value: comparator,
           options: comparatorOptions
-        },
+        }]
+      : [];
+
+    modalConfig = {
+      isOpen: true,
+      title: `Add ${METADATA_LABEL_BY_FIELD[normalizedField] || normalizedField} Filter`,
+      icon: 'filter',
+      description: `Insert ${modalMetadataShortcut}:... for metadata filtering`,
+      targetIndex: index,
+      filterType: 'metadata',
+      fields: [
+        ...comparatorFields,
         {
           name: 'value',
           label: 'Value',
@@ -2788,6 +2797,7 @@
           </div>
         {/if}
         <div
+          data-tour={i === 0 ? 'query-input' : i === textareas.length - 1 ? 'new-query-input' : undefined}
           class="ui-query-step-card relative rounded-xl border transition-all overflow-visible {isStepDisabled ? 'ui-query-step-card--disabled' : ''} {isDisabledBySimilarity
             ? 'bg-slate-950/80 border-amber-600/60 ring-1 ring-amber-500/35'
             : textarea.enabled
@@ -3006,19 +3016,13 @@
                       {#if modelSelectionPerStepEnabled && textarea.enabled && imageModelOptions.length > 0}
                         <div class="w-[9.5rem] shrink-0 pt-0.5">
                           <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
-                          <select
-                            class="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
-                            value={getImageModelValueForStep(textarea)}
-                            title="Image embedding model for this similarity step"
-                            on:change={(e) => {
-                              const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                              handleModelSelectionChange(i, target.value, 'image');
-                            }}
-                          >
-                            {#each imageModelOptions as m}
-                              <option value={m}>{m}</option>
-                            {/each}
-                          </select>
+                          <ModelMultiSelect
+                            buttonClass="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
+                            options={imageModelOptions}
+                            selected={parseModelList(getImageModelValueForStep(textarea))}
+                            title="Image embedding models for this similarity step (pick several to fuse them)"
+                            on:change={(e) => handleModelSelectionChange(i, formatModelList(e.detail.models), 'image')}
+                          />
                         </div>
                       {/if}
                     </div>
@@ -3068,19 +3072,13 @@
                     {#if modelSelectionPerStepEnabled && textarea.enabled && !isVisualQueryStep && hasImageQueryForStep(i) && imageModelOptions.length > 0}
                       <div class="w-[9.5rem] shrink-0 pt-0.5">
                         <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">IMG</div>
-                        <select
-                          class="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
-                          value={getImageModelValueForStep(textarea)}
-                          title="Image embedding model for this query"
-                          on:change={(e) => {
-                            const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                            handleModelSelectionChange(i, target.value, 'image');
-                          }}
-                        >
-                          {#each imageModelOptions as m}
-                            <option value={m}>{m}</option>
-                          {/each}
-                        </select>
+                        <ModelMultiSelect
+                          buttonClass="w-full text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer"
+                          options={imageModelOptions}
+                          selected={parseModelList(getImageModelValueForStep(textarea))}
+                          title="Image embedding models for this query (pick several to fuse them)"
+                          on:change={(e) => handleModelSelectionChange(i, formatModelList(e.detail.models), 'image')}
+                        />
                       </div>
                     {/if}
                   </div>
@@ -3092,7 +3090,6 @@
               <div class="relative">
                 <textarea
                   bind:this={textareaRefs[i]}
-                  data-tour={i === 0 ? 'query-input' : i === textareas.length - 1 ? 'new-query-input' : undefined}
                   use:autoResizeAction={textarea.value}
                   class="ui-query-textarea w-full p-1.5 pr-6 pb-1.5 resize-none transition-all duration-200 font-sans text-sm bg-transparent border-0
                          {textarea.enabled ? 'text-slate-100 placeholder-slate-400' : 'text-slate-300 placeholder-slate-500 cursor-not-allowed'}"
@@ -3163,6 +3160,7 @@
                   bind:this={menuTriggerRefs[i]}
                   type="button"
                   on:click|stopPropagation={() => toggleMenu(i)}
+                  data-tour={i === 0 ? 'step-filters' : undefined}
                   title="Add attachment or filter"
                   aria-label="Add attachment or filter"
                     class="ui-query-plus-btn w-6 h-6 rounded-full border border-slate-500/45 bg-slate-900/80 text-slate-200
@@ -3424,7 +3422,7 @@
                               </svg>
                             </div>
                             <div class="flex-1">
-                              <div class="text-xs font-medium text-white">{field}</div>
+                              <div class="text-xs font-medium text-white">{field === 'id' ? METADATA_LABEL_BY_FIELD.id : field}</div>
                               <div class="text-[10px] text-gray-400 font-mono">{shortcut}:...</div>
                             </div>
                           </button>
@@ -3462,20 +3460,14 @@
               <div class="ml-2 flex items-center gap-1">
                 {#if modelSelectionPerStepEnabled && textModelOptions.length > 0}
                   <span class="text-[9px] font-semibold uppercase tracking-wide text-slate-400">TXT</span>
-                  <select
-                    class="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem] truncate"
-                    value={getTextModelValueForStep(textarea)}
-                    title="Text embedding model for this query"
+                  <ModelMultiSelect
+                    buttonClass="text-[9px] font-mono bg-slate-900/80 border border-slate-600/50 rounded px-1 py-0.5 text-slate-300 hover:border-slate-500 focus:border-blue-500 focus:outline-none cursor-pointer min-w-[9rem] max-w-[13.5rem]"
+                    options={textModelOptions}
+                    selected={parseModelList(getTextModelValueForStep(textarea))}
+                    title="Text embedding models for this query (pick several to fuse them)"
                     data-tour="model-select"
-                    on:change={(e) => {
-                      const target = /** @type {HTMLSelectElement} */ (e.currentTarget);
-                      handleModelSelectionChange(i, target.value, 'text');
-                    }}
-                  >
-                    {#each textModelOptions as m}
-                      <option value={m}>{m}</option>
-                    {/each}
-                  </select>
+                    on:change={(e) => handleModelSelectionChange(i, formatModelList(e.detail.models), 'text')}
+                  />
 
                 {/if}
               </div>
@@ -3557,7 +3549,6 @@
   }
 
   .ui-query-step-card--disabled textarea,
-  .ui-query-step-card--disabled select,
   .ui-query-step-card--disabled button,
   .ui-query-step-card--disabled .ui-query-plus-btn {
     opacity: 0.78;

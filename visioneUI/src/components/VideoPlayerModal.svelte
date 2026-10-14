@@ -16,6 +16,7 @@
   };
   
   export let isOpen = false;
+  export let layer = "modal";
   export let videoUrl = "";
   export let startTime = 0;
   export let title = "";
@@ -190,6 +191,9 @@
       toggleMute();
     }
   }
+
+  $: overlayZClass = layer === "dialog" ? "z-[var(--z-dialog-overlay)]" : "z-[var(--z-modal-overlay)]";
+  $: contentZClass = layer === "dialog" ? "z-[var(--z-dialog-content)]" : "z-[var(--z-modal-content)]";
 
   onMount(() => {
     if (typeof window !== "undefined")
@@ -791,14 +795,14 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div use:focusTrap class="ui-video-player-overlay fixed inset-0 z-[var(--z-modal-overlay)] bg-black/80 flex items-center justify-center">
+  <div use:focusTrap class="ui-video-player-overlay fixed inset-0 {overlayZClass} bg-black/80 flex items-center justify-center">
     <button
       type="button"
       class="absolute inset-0"
       on:click={() => dispatch("close")}
       aria-label="Close video player modal"
     ></button>
-    <div class="ui-video-player-modal relative z-[var(--z-modal-content)] bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
+    <div class="ui-video-player-modal relative {contentZClass} bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
       
       <!-- Header -->
       <div

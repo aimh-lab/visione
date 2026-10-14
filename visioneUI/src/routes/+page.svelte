@@ -18,7 +18,7 @@
     canLoadDresEvaluations,
     computeDresEvaluationLoadKey
   } from '../lib/dresEvaluationOptions.js';
-  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from '../lib/modelDiscovery.js';
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel, parseModelList, formatModelList } from '../lib/modelDiscovery.js';
   import SearchView from "../views/SearchView.svelte";
   import AdaptiveTabLayout from "../components/AdaptiveTabLayout.svelte";
 
@@ -372,6 +372,10 @@
   }
   $: syncVisioneApiHosts($uiStore, runtimeProfile);
   $: visioneAPI.setAiServicesToken($uiStore.aiServicesToken);
+  // The translator and the QA agent need the AI services token: without it
+  // both are disabled (the user's auto-translate preference is kept).
+  $: aiServicesAvailable = !!String($uiStore.aiServicesToken || '').trim();
+  const AI_SERVICES_TOKEN_REQUIRED = 'Set the AI services token in Settings to use the translator and the agent.';
   $: visioneAPI.setActiveCollectionName(activeCollectionName);
 
   // ---------------------------
@@ -558,13 +562,14 @@
     const discoveredText = getDiscoveredModelNames('text');
     const discoveredImage = getDiscoveredModelNames('image');
 
-    const textModel = rawTextModel && (discoveredText.length === 0 || discoveredText.includes(rawTextModel))
-      ? rawTextModel
-      : getGlobalDefaultTextModel();
-
-    const imageModel = rawImageModel && (discoveredImage.length === 0 || discoveredImage.includes(rawImageModel))
-      ? rawImageModel
-      : getGlobalDefaultImageModel();
+    // A step may select several models (comma-separated): keep those the
+    // active dataset offers, falling back to the default when none is left.
+    const keepAvailable = (raw, discovered, fallback) => {
+      const models = parseModelList(raw).filter((m) => discovered.length === 0 || discovered.includes(m));
+      return models.length > 0 ? formatModelList(models) : fallback;
+    };
+    const textModel = keepAvailable(rawTextModel, discoveredText, getGlobalDefaultTextModel());
+    const imageModel = keepAvailable(rawImageModel, discoveredImage, getGlobalDefaultImageModel());
 
     return {
       ...textarea,
@@ -907,6 +912,8 @@
 
   // Live state the guided tour checks to know when a "do it" step is done.
   let tourSearchCount = 0;
+  let tourResetCount = 0;
+  let tourReorderCount = 0;
   function countTourSearch(resultSet) {
     if (resultSet) tourSearchCount += 1;
   }
@@ -915,12 +922,17 @@
     searchCount: tourSearchCount,
     resultCount: images.length,
     stepCount: textareas.length,
+    enabledStepCount: textareas.filter((t) => t?.enabled !== false).length,
     filledStepCount: textareas.filter((t) => String(t?.value || '').trim()).length,
     viewMode: $uiStore.viewMode,
     rfPositiveCount: rfPositive.length,
     rfNegativeCount: rfNegative.length,
     isVideoPlayerOpen,
     isVideoSummaryOpen: isVideoSummaryModalOpen,
+    agentStreaming: !!qaAgentStream?.isStreaming,
+    aiServicesAvailable,
+    resetCount: tourResetCount,
+    reorderCount: tourReorderCount,
     modalOpen:
       $searchModal.isOpen ||
       isVideoPlayerOpen ||
@@ -1004,7 +1016,7 @@
     getFramesPerRow: () => get(uiStore).resultsPerGroup,
     getCacheEnabled: () => get(uiStore).cacheEnabled,
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
-    getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries,
+    getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries && !!String(get(uiStore).aiServicesToken || '').trim(),
     getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 25200,
     getQueryResultK: () => Number(get(uiStore).queryResultK) || 7200,
     getSubmittedIds: getSubmittedLookup,
@@ -1305,6 +1317,10 @@
   async function askQaAgent(question) {
     const value = String(question || '').trim();
     if (!value) {
+      return { answer: '', sources: [] };
+    }
+    if (!aiServicesAvailable) {
+      toasts.warning(AI_SERVICES_TOKEN_REQUIRED);
       return { answer: '', sources: [] };
     }
 
@@ -1760,6 +1776,10 @@
   }
 
   function handleToggleAutoTranslate() {
+    if (!aiServicesAvailable) {
+      toasts.warning(AI_SERVICES_TOKEN_REQUIRED);
+      return;
+    }
     const current = !!get(uiStore).autoTranslateQueries;
     const next = !current;
     uiStore.actions.setAutoTranslateQueries(next);
@@ -1917,9 +1937,10 @@
     const normalizedImgId = String(imgId || '');
     const sourceItem = item && typeof item === 'object' ? item : { imgId: normalizedImgId, videoId: normalizedVideoId };
     const shouldUseSlideshow = useSlideshowModal();
-    const shouldKeepVideoSummaryOpen = shouldUseSlideshow && options?.closeVideoSummary === false;
+    const shouldKeepVideoSummaryOpen = options?.closeVideoSummary === false;
 
-    // Ensure the dedicated player modal is never layered behind the summary modal.
+    // Callers outside the summary close it; callers inside it keep it open and the
+    // player is stacked above it (dialog layer), preserving the summary's scroll state.
     if (isVideoSummaryModalOpen && !shouldKeepVideoSummaryOpen) {
       isVideoSummaryModalOpen = false;
       await tick();
@@ -2309,6 +2330,7 @@ function handleViewSubmitted() {
     if (!result) return;
     textareas = result.textareas;
     textareaImages = result.textareaImages;
+    tourReorderCount += 1;
     toasts.info("Queries reordered, updating results...");
   }
 
@@ -2332,6 +2354,7 @@ function handleViewSubmitted() {
       "Reset current search session? This will clear queries, results, RF and submitted items, but keep your app settings."
     );
     if (!ok) return;
+    tourResetCount += 1;
 
     try {
       await stopQaAgent();
@@ -2524,6 +2547,7 @@ function handleViewSubmitted() {
 
 <VideoPlayerModal
   isOpen={isVideoPlayerOpen}
+  layer={isVideoSummaryModalOpen ? 'dialog' : 'modal'}
   videoUrl={videoPlayer.url}
   startTime={videoPlayer.startTime}
   title={videoPlayer.title}
@@ -2606,7 +2630,7 @@ function handleViewSubmitted() {
   on:pinImage={(e) => pinImage(e.detail.img)}
   on:openVideoPlayer={(e) => {
     isSlideshowOpen = false;
-    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null);
+    openVideoPlayerBy(e.detail.imgId, e.detail.videoId, e.detail.startAt, e.detail.img ?? null, { closeVideoSummary: false });
   }}
   on:adjustScale={(e) => adjustSlideshowModalScale(e?.detail?.delta)}
   on:adjustImageScale={(e) => adjustImageModalScale(e?.detail?.delta)}
@@ -2672,6 +2696,7 @@ function handleViewSubmitted() {
   virtualizationEnabled={$uiStore.virtualizationEnabled}
   virtualizationThreshold={$uiStore.virtualizationThreshold}
   justifyResultRows={$uiStore.justifyResultRows}
+  keyboardSuspended={isVideoPlayerOpen}
   onClose={() => { isVideoSummaryModalOpen = false; }}
   onPinCurrent={pinCurrentVideoSummary}
   onScopeChange={(scope, imgId, videoId) => openVideoSummary(videoId || activeVideoSummaryContext.videoId || view2VideoId, imgId || view2SelectedImgId, scope)}
@@ -2792,7 +2817,8 @@ function handleViewSubmitted() {
         {availableModels}
         modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
         showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
-        autoTranslateEnabled={$uiStore.autoTranslateQueries}
+        autoTranslateEnabled={$uiStore.autoTranslateQueries && aiServicesAvailable}
+        {aiServicesAvailable}
         onToggleAutoTranslate={handleToggleAutoTranslate}
         {textareaImages}
         {searchLoading}

@@ -55,6 +55,8 @@
   export let addRFPositiveByImg = (_imgId: string, _img?: Frame | null) => {};
   export let addRFNegativeByImg = (_imgId: string, _img?: Frame | null) => {};
   export let submitByImgId = (_imgId: string, _img?: Frame | null) => {};
+  // True while another modal (e.g. the video player) is stacked above this one.
+  export let keyboardSuspended = false;
   export let openVideoPlayerBy = (_imgId: string, _videoId: string, _startAt?: number, _img?: unknown, _options?: unknown) => {};
   export let onAdjustContextKeyframeSize = (_delta: number) => {};
   export let onAdjustImageModalScale = (_delta: number) => {};
@@ -169,7 +171,7 @@
   }
 
   function handleSummaryWindowKeydown(event: KeyboardEvent) {
-    if (!isOpen || isTypingTarget(event.target)) return;
+    if (!isOpen || keyboardSuspended || isTypingTarget(event.target)) return;
 
     if (isIncreaseKey(event) || isDecreaseKey(event)) {
       event.preventDefault();
@@ -585,6 +587,15 @@
 {/if}
 
 <style>
+  /* Red selection box for the current keyframe: the theme's default (light
+     blue) is hard to spot among the context frames. */
+  :global(.video-summary-modal) {
+    --ui-context-selected-border: #dc2626;
+    --ui-context-selected-ring: rgba(239, 68, 68, 0.9);
+    --ui-context-selected-glow: rgba(220, 38, 38, 0.4);
+    --ui-context-selected-overlay: rgba(220, 38, 38, 0.1);
+  }
+
   :global(.video-summary-modal .custom-scrollbar) {
     overflow-y: scroll !important;
     scrollbar-gutter: stable;

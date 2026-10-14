@@ -42,6 +42,7 @@
   export let modelSelectionPerStepEnabled = true;
   export let showAutoTranslateToggle = true;
   export let autoTranslateEnabled = true;
+  export let aiServicesAvailable = true;
   export let onToggleAutoTranslate = () => {};
   export let textareaImages: Record<number, unknown[]> = {};
 
@@ -207,6 +208,7 @@
   {modelSelectionPerStepEnabled}
   {showAutoTranslateToggle}
   {autoTranslateEnabled}
+  {aiServicesAvailable}
   {onToggleAutoTranslate}
   {runtimeProfile}
   {discoveryMetadataFields}

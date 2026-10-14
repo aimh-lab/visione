@@ -15,7 +15,11 @@ const NUMERIC_FILTER_FIELDS = new Set(['year', 'month', 'day', 'hour', 'epoch', 
 // Fields matched by exact equality rather than fuzzy free text, but whose
 // value isn't numeric (an opaque id) — affects the default comparator only,
 // not the numeric hint text below.
-const EXACT_MATCH_TEXT_FIELDS = new Set(['video_id']);
+const EXACT_MATCH_TEXT_FIELDS = new Set(['video_id', 'id']);
+
+// Fields that only support equality (e.g. the shot "id"): the filter modal
+// shows no comparator choice for them.
+const EQUAL_ONLY_FIELDS = new Set(['id']);
 
 export function hexToRgb(hex) {
   const clean = hex.replace("#", "");
@@ -68,6 +72,9 @@ const EXACT_MATCH_TEXT_COMPARATORS = new Set(['eq', 'ne', 'fts']);
 
 export function getComparatorOptionsForField(field) {
   const normalized = String(field || '').trim().toLowerCase();
+  if (EQUAL_ONLY_FIELDS.has(normalized)) {
+    return COMPARATOR_OPTIONS.filter((option) => option.value === 'eq');
+  }
   if (EXACT_MATCH_TEXT_FIELDS.has(normalized)) {
     return COMPARATOR_OPTIONS.filter((option) => EXACT_MATCH_TEXT_COMPARATORS.has(option.value));
   }

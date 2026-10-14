@@ -199,6 +199,7 @@
       <button
         class="top-toolbar-logo absolute top-2 left-12 z-[220] p-1 rounded-lg bg-white/80 hover:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
         on:click={() => dispatch('reset')}
+        data-tour="logo"
         title="Clear current search session"
         aria-label="Clear current search session"
       >
@@ -285,6 +286,7 @@
       <button
         class="p-1 rounded-lg bg-white/80 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
         on:click={() => dispatch('reset')}
+        data-tour="logo"
         title="Clear current search session"
         aria-label="Clear current search session"
       >
@@ -669,6 +671,7 @@
       <button
         class="p-1 rounded-lg bg-white/80 hover:bg-white border border-gray-300 hover:border-blue-400 transition-all shadow-sm"
         on:click={() => dispatch('reset')}
+        data-tour="logo"
         title="Clear current search session"
         aria-label="Clear current search session"
       >

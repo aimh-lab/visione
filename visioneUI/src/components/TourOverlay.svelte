@@ -44,6 +44,16 @@
 
   async function enterStep(index) {
     clearTimeout(advanceTimer);
+    const forward = index >= stepIndex;
+    // Steps that don't apply right now (e.g. the agent without the AI services
+    // token) are passed over in the direction the user is moving.
+    if (TOUR_STEPS[index]?.skip?.(ctx)) {
+      stepIndex = index;
+      if (forward) tour.next();
+      else if (index > 0) tour.prev();
+      else tour.next();
+      return;
+    }
     stepIndex = index;
     completed = false;
     memo = {};
@@ -135,7 +145,7 @@
     const nextRect = anchorRect(resolve(step.target));
     if (!sameRect(nextRect, targetRect)) targetRect = nextRect;
 
-    const nextCallouts = (step.callouts || [])
+    const nextCallouts = (resolve(step.callouts) || [])
       .map((c, i) => {
         const spec = typeof c === 'string' ? { target: c, label: String(i + 1) } : c;
         const rect = toRect(findTarget(spec.target));
@@ -213,13 +223,35 @@
 {#if step}
   <div class="tour-root" aria-live="polite">
     {#if !docked}
+      <!-- Dim everything except the target and the callouts, which stay fully visible. -->
+      <svg class="tour-dim" width={viewport.w} height={viewport.h} aria-hidden="true">
+        <defs>
+          <mask id="tour-dim-mask">
+            <rect width="100%" height="100%" fill="white" />
+            {#if targetRect}
+              <rect
+                x={targetRect.left - PAD} y={targetRect.top - PAD}
+                width={targetRect.width + PAD * 2} height={targetRect.height + PAD * 2}
+                rx="10" fill="black"
+              />
+            {/if}
+            {#each calloutRects as c (c.label)}
+              <rect
+                x={c.rect.left - 3} y={c.rect.top - 3}
+                width={c.rect.width + 6} height={c.rect.height + 6}
+                rx="6" fill="black"
+              />
+            {/each}
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgba(2, 6, 23, 0.55)" mask="url(#tour-dim-mask)" />
+      </svg>
+
       {#if targetRect}
         <div
           class="tour-spotlight"
           style="top: {targetRect.top - PAD}px; left: {targetRect.left - PAD}px; width: {targetRect.width + PAD * 2}px; height: {targetRect.height + PAD * 2}px;"
         ></div>
-      {:else}
-        <div class="tour-dim"></div>
       {/if}
 
       {#each calloutRects as c (c.label)}
@@ -294,14 +326,13 @@
   .tour-spotlight {
     position: fixed;
     border-radius: 10px;
-    box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.55), 0 0 0 2px rgba(96, 165, 250, 0.95), 0 0 18px 4px rgba(96, 165, 250, 0.45);
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.95), 0 0 18px 4px rgba(96, 165, 250, 0.45);
     transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
   }
 
   .tour-dim {
     position: fixed;
     inset: 0;
-    background: rgba(2, 6, 23, 0.55);
   }
 
   .tour-callout-ring {

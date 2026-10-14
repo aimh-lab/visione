@@ -504,7 +504,10 @@
                   >
                     <img src="/icons/context-view.svg" alt="" class="w-4 h-4" aria-hidden="true" />
                   </button>
+                </div>
 
+                <!-- Right group: similarity + feedback actions -->
+                <div class="flex items-center space-x-1.5">
                   <button
                     class="ui-image-modal-action-btn p-1.5 rounded-md transition-colors"
                     title="Image similarity"
@@ -515,10 +518,6 @@
                       <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                   </button>
-                </div>
-
-                <!-- Right group: feedback actions -->
-                <div class="flex items-center space-x-1.5">
                   <button
                     class="ui-image-modal-action-btn ui-image-modal-action-btn-positive p-1.5 rounded-md transition-colors"
                     title="Positive feedback"

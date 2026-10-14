@@ -885,7 +885,7 @@
                 </button>
               </div>
               <p class="ui-settings-hint mt-1 text-[11px] text-gray-500">
-                Bearer token sent to the translator (/translate) and the QA agent (/qa). Leave empty if not required.
+                Bearer token sent to the translator (/translate) and the QA agent (/qa). Without it, auto-translate and the agent are disabled.
               </p>
             </div>
 
