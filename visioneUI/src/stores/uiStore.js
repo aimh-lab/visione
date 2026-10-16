@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 import { appSettingsStore } from './persistentState.js';
 import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
 import { DRES_CHALLENGE_TYPES } from '../config/dresConfig.js';
-import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from '../config/searchLimits.js';
+import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS, MIN_TEMPORAL_CANDIDATE_K, MAX_TEMPORAL_CANDIDATE_K } from '../config/searchLimits.js';
 import { warnFallback } from '../lib/fallbackWarn.js';
 
 const DEFAULT = {
@@ -43,7 +43,9 @@ function normalizeQaStreamPanelHeight(value, fallback = 288) {
   return Math.max(160, Math.min(720, Math.round(numeric)));
 }
 
-function normalizeQueryResultK(value, fallback = 7200) {
+const LEGACY_DEFAULT_QUERY_RESULT_K = 7200;
+
+function normalizeQueryResultK(value, fallback = 10000) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
     if (value !== undefined) {
@@ -52,6 +54,17 @@ function normalizeQueryResultK(value, fallback = 7200) {
     return fallback;
   }
   return Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(numeric)));
+}
+
+function normalizeTemporalCandidateK(value, fallback = 10000) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    if (value !== undefined) {
+      warnFallback('uiStore.normalizeTemporalCandidateK', `Non-numeric temporalCandidateK "${value}", using fallback ${fallback}.`, { value, fallback });
+    }
+    return fallback;
+  }
+  return Math.min(MAX_TEMPORAL_CANDIDATE_K, Math.max(MIN_TEMPORAL_CANDIDATE_K, Math.floor(numeric)));
 }
 
 function normalizeSidebarWidth(value, fallback = 18) {
@@ -198,6 +211,7 @@ function createUIStore() {
         contextKeyframeSize: s.contextKeyframeSize ?? s.keyframeSize ?? u.contextKeyframeSize,
         resultsPerGroup: (s.resultsPerGroup ?? s.resultsPerRow) ?? u.resultsPerGroup,
         queryResultK: normalizeQueryResultK(s.queryResultK, u.queryResultK),
+        temporalCandidateK: normalizeTemporalCandidateK(s.temporalCandidateK, u.temporalCandidateK),
         resultsAutoFit: true,
         cacheEnabled: s.cacheEnabled ?? u.cacheEnabled,
         dedupeResults: s.dedupeResults ?? u.dedupeResults,
@@ -276,7 +290,10 @@ function createUIStore() {
         const persisted = appSettingsStore.get() || {};
         const persistedQueryResultK = Number(persisted.queryResultK);
         const persistedTemporalWindowSeconds = Number(persisted.temporalWindowSeconds);
-        const queryResultKCustomized = Number.isFinite(persistedQueryResultK) && persistedQueryResultK !== DEFAULT.queryResultK;
+        // 7200 was the built-in default before 10000: a persisted 7200 is not a user choice.
+        const queryResultKCustomized = Number.isFinite(persistedQueryResultK)
+          && persistedQueryResultK !== DEFAULT.queryResultK
+          && persistedQueryResultK !== LEGACY_DEFAULT_QUERY_RESULT_K;
         const temporalWindowSecondsCustomized = Number.isFinite(persistedTemporalWindowSeconds) && persistedTemporalWindowSeconds !== DEFAULT.temporalWindowSeconds;
 
         const nextQueryResultK = Number.isFinite(Number(defaults?.queryResultK)) && !queryResultKCustomized
@@ -328,6 +345,7 @@ function createUIStore() {
         contextKeyframeSize: DEFAULT.contextKeyframeSize,
         resultsPerGroup: DEFAULT.resultsPerGroup,
         queryResultK: DEFAULT.queryResultK,
+        temporalCandidateK: DEFAULT.temporalCandidateK,
         resultsAutoFit: DEFAULT.resultsAutoFit,
         cacheEnabled: DEFAULT.cacheEnabled,
         dedupeResults: DEFAULT.dedupeResults,
@@ -542,6 +560,9 @@ function createUIStore() {
         const safeQueryResultK = patch.queryResultK == null
           ? u.queryResultK
           : normalizeQueryResultK(patch.queryResultK, u.queryResultK || DEFAULT.queryResultK);
+        const safeTemporalCandidateK = patch.temporalCandidateK == null
+          ? u.temporalCandidateK
+          : normalizeTemporalCandidateK(patch.temporalCandidateK, u.temporalCandidateK || DEFAULT.temporalCandidateK);
         const safeContextKeyframeSize = patch.contextKeyframeSize == null
           ? u.contextKeyframeSize
           : Math.min(400, Math.max(80, Number(patch.contextKeyframeSize) || u.contextKeyframeSize || DEFAULT.contextKeyframeSize));
@@ -570,6 +591,7 @@ function createUIStore() {
           contextKeyframeSize: safeContextKeyframeSize,
           resultsPerGroup: patch.resultsPerGroup ?? patch.resultsPerRow ?? u.resultsPerGroup,
           queryResultK: safeQueryResultK,
+          temporalCandidateK: safeTemporalCandidateK,
           resultsAutoFit: true,
           cacheEnabled: patch.cacheEnabled ?? u.cacheEnabled,
           dedupeResults: patch.dedupeResults ?? u.dedupeResults,
@@ -616,6 +638,7 @@ function createUIStore() {
           contextKeyframeSize: nextState.contextKeyframeSize,
           resultsPerGroup: nextState.resultsPerGroup,
           queryResultK: nextState.queryResultK,
+          temporalCandidateK: nextState.temporalCandidateK,
           resultsAutoFit: nextState.resultsAutoFit,
           cacheEnabled: nextState.cacheEnabled,
           dedupeResults: nextState.dedupeResults,

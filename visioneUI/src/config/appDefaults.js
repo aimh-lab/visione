@@ -21,7 +21,7 @@ export const APP_SETTINGS_DEFAULTS = {
   keyframeSize: 170,
   contextKeyframeSize: 170,
   resultsPerGroup: 5,
-  queryResultK: 7200,
+  queryResultK: 10000,
   resultsAutoFit: true,
   cacheEnabled: false,
   dedupeResults: true,
@@ -48,6 +48,8 @@ export const APP_SETTINGS_DEFAULTS = {
   autoTranslateQueries: true,
   showAutoTranslateToggle: true,
   temporalWindowSeconds: 25200,
+  // Size of each step's result set before the steps are matched in time.
+  temporalCandidateK: 10000,
   videoPlayerModalMode: 'profile',
   imageModalScale: 500,
   slideshowModalScale: 500,

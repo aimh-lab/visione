@@ -78,6 +78,10 @@ export class VisioneAPI {
     this.defaultTextModel = DEFAULT_TEXT_MODEL;
     this.defaultImageModel = DEFAULT_IMAGE_MODEL;
     this.defaultSubqueryK = 10000;
+    // k of each model's subquery when a step fuses several models with RRF.
+    // Set per collection from the runtime profile ("search.modelFusionK", e.g.
+    // 10000 for V3C); null keeps the step's own k.
+    this.modelFusionK = null;
     this.defaultSingleK = 1000;
     this.defaultAggregatedK = 1000;
     this.defaultTemporalWindowSeconds = 50;
@@ -515,7 +519,7 @@ export class VisioneAPI {
   }
 
   // Search API
-  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5, temporalWindowSeconds = undefined, resultK = undefined }) {
+  async search({ textareas, relevanceFeedback = null, simReorder = false, framesPerRow = 5, temporalWindowSeconds = undefined, resultK = undefined, temporalCandidateK = undefined }) {
     void simReorder;
     void framesPerRow;
 
@@ -529,7 +533,7 @@ export class VisioneAPI {
       throw new APIError('At least one textarea must be enabled and contain text or image similarity', 400);
     }
 
-    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK);
+    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK, temporalCandidateK);
     const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
     if (normalizedRF) {
       payload.relevance_feedback = normalizedRF;
@@ -551,7 +555,7 @@ export class VisioneAPI {
     return data;
   }
 
-  buildSearchPayloadForLogging(textareas = [], relevanceFeedback = null, temporalWindowSeconds = undefined, resultK = undefined) {
+  buildSearchPayloadForLogging(textareas = [], relevanceFeedback = null, temporalWindowSeconds = undefined, resultK = undefined, temporalCandidateK = undefined) {
     const activeTextareas = (Array.isArray(textareas) ? textareas : []).filter((t) => {
       const text = String(t?.value || "").trim();
       const simId = String(t?.similarityImgId || "").trim();
@@ -560,7 +564,7 @@ export class VisioneAPI {
 
     if (activeTextareas.length === 0) return null;
 
-    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK);
+    const payload = this.#buildSearchPayload(activeTextareas, temporalWindowSeconds, resultK, temporalCandidateK);
     const normalizedRF = this.#buildRelevanceFeedback(relevanceFeedback);
     if (normalizedRF) {
       payload.relevance_feedback = normalizedRF;
@@ -1109,10 +1113,14 @@ export class VisioneAPI {
     return fallbackRaw;
   }
 
-  #buildSearchPayload(activeTextareas, temporalWindowSeconds = undefined, resultK = undefined) {
+  #buildSearchPayload(activeTextareas, temporalWindowSeconds = undefined, resultK = undefined, temporalCandidateK = undefined) {
     const safeResultK = this.#normalizeResultK(resultK, this.defaultSingleK);
+    // k of each step's result set before the steps are matched in time.
+    const candidateK = Number.isFinite(Number(temporalCandidateK)) && Number(temporalCandidateK) > 0
+      ? Math.floor(Number(temporalCandidateK))
+      : this.defaultSubqueryK;
     const textareaNodes = activeTextareas
-      .map((t) => this.#buildTextareaQueryNode(t, this.defaultSubqueryK, this.defaultSubqueryK))
+      .map((t) => this.#buildTextareaQueryNode(t, candidateK, candidateK))
       .filter(Boolean);
 
     if (textareaNodes.length === 0) {
@@ -1205,12 +1213,13 @@ export class VisioneAPI {
     const queryItems = this.#expandTextareaToItems(textarea);
     if (queryItems.length === 0) return null;
 
+    const fusionK = Number(this.modelFusionK) > 0 ? Math.floor(Number(this.modelFusionK)) : null;
     const subqueries = queryItems.map((item) => {
       const defaultModel = item.type === 'image' ? this.defaultImageModel : this.defaultTextModel;
       const node = {
         item: item.value,
         model: item.model || defaultModel,
-        k: leafK
+        k: item.multiModel && fusionK ? fusionK : leafK
       };
 
       if (item.filters && Array.isArray(item.filters.arguments) && item.filters.arguments.length > 0) {
@@ -1243,7 +1252,7 @@ export class VisioneAPI {
     if (textModels.length === 0) textModels.push('');
     if (imageModels.length === 0) imageModels.push('');
     const out = [];
-    const pushImage = (value) => imageModels.forEach((model) => out.push({ type: 'image', value, model, filters }));
+    const pushImage = (value) => imageModels.forEach((model) => out.push({ type: 'image', value, model, filters, multiModel: imageModels.length > 1 }));
 
     if (similarityImgId) {
       pushImage(`image:${similarityImgId}`);
@@ -1259,7 +1268,7 @@ export class VisioneAPI {
       } else if (lowerRaw.startsWith('image:')) {
         pushImage(cleanText);
       } else {
-        textModels.forEach((model) => out.push({ type: 'text', value: cleanText, model, filters }));
+        textModels.forEach((model) => out.push({ type: 'text', value: cleanText, model, filters, multiModel: textModels.length > 1 }));
       }
     }
 

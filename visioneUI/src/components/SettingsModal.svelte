@@ -1,12 +1,13 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { focusTrap } from "../utils/ui";
+  import ModelMultiSelect from "./ModelMultiSelect.svelte";
   import { APP_SETTINGS_DEFAULTS as D } from "../config/appDefaults.js";
   import { DRES_CHALLENGE_TYPES } from "../config/dresConfig.js";
-  import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS } from "../config/searchLimits.js";
+  import { MIN_QUERY_RESULT_K, MAX_QUERY_RESULT_K, MIN_TEMPORAL_WINDOW_SECONDS, MAX_TEMPORAL_WINDOW_SECONDS, MIN_TEMPORAL_CANDIDATE_K, MAX_TEMPORAL_CANDIDATE_K } from "../config/searchLimits.js";
   import { VISIONE_SERVICES_URL, VISIONE_BASE_URL } from "$lib/urlConfig.js";
   import { warnFallback } from "$lib/fallbackWarn.js";
-  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel } from "$lib/modelDiscovery.js";
+  import { normalizeAvailableModelEntry, supportsTextModel, supportsImageModel, parseModelList, formatModelList } from "$lib/modelDiscovery.js";
 
   export let isOpen = false;
   export let theme = D.theme;
@@ -42,6 +43,7 @@
   export let autoTranslateQueries = D.autoTranslateQueries;
   export let showAutoTranslateToggle = D.showAutoTranslateToggle;
   export let temporalWindowSeconds = D.temporalWindowSeconds;
+  export let temporalCandidateK = D.temporalCandidateK;
   export let videoPlayerModalMode = D.videoPlayerModalMode;
   export let imageModalScale = D.imageModalScale;
   export let slideshowModalScale = D.slideshowModalScale;
@@ -117,6 +119,7 @@
       autoTranslateQueries,
       showAutoTranslateToggle,
       temporalWindowSeconds,
+      temporalCandidateK,
       videoPlayerModalMode,
       imageModalScale,
       slideshowModalScale,
@@ -214,6 +217,7 @@
     const perGroup = Math.max(1, Number(local.resultsPerGroup) || D.resultsPerGroup);
     const safeQueryResultK = Math.min(MAX_QUERY_RESULT_K, Math.max(MIN_QUERY_RESULT_K, Math.floor(Number(local.queryResultK) || D.queryResultK)));
     const virtThreshold = Math.min(300, Math.max(10, Number(local.virtualizationThreshold) || D.virtualizationThreshold));
+    const safeTemporalCandidateK = Math.min(MAX_TEMPORAL_CANDIDATE_K, Math.max(MIN_TEMPORAL_CANDIDATE_K, Math.floor(Number(local.temporalCandidateK) || D.temporalCandidateK)));
     const safeTemporalWindowSeconds = Math.min(MAX_TEMPORAL_WINDOW_SECONDS, Math.max(MIN_TEMPORAL_WINDOW_SECONDS, Number(local.temporalWindowSeconds) || D.temporalWindowSeconds));
     if (local.videoPlayerModalMode && !['profile', 'video', 'slideshow'].includes(local.videoPlayerModalMode)) {
       warnFallback('SettingsModal.save.videoPlayerModalMode', `Unrecognized videoPlayerModalMode "${local.videoPlayerModalMode}", using "profile".`, { value: local.videoPlayerModalMode });
@@ -223,26 +227,30 @@
       : 'profile';
     const safeImageModalScale = Math.max(80, Math.round(Number(local.imageModalScale) || D.imageModalScale));
     const safeSlideshowModalScale = Math.max(80, Math.round(Number(local.slideshowModalScale) || D.slideshowModalScale));
-    const safeDefaultTextModelRaw = String(local.defaultTextModel || '').trim();
-    const safeDefaultImageModelRaw = String(local.defaultImageModel || '').trim();
-    if (safeDefaultTextModelRaw && discoveredTextModels.length > 0 && !textModelOptions.includes(safeDefaultTextModelRaw)) {
+    // Default models may be a combination (comma-separated): keep the ones the
+    // active dataset offers, falling back as before when none is left.
+    const safeDefaultTextModelRaw = formatModelList(parseModelList(local.defaultTextModel));
+    const safeDefaultImageModelRaw = formatModelList(parseModelList(local.defaultImageModel));
+    const availableTextDefaults = parseModelList(safeDefaultTextModelRaw).filter((m) => textModelOptions.includes(m));
+    const availableImageDefaults = parseModelList(safeDefaultImageModelRaw).filter((m) => imageModelOptions.includes(m));
+    if (safeDefaultTextModelRaw && discoveredTextModels.length > 0 && availableTextDefaults.length === 0) {
       warnFallback('SettingsModal.save.defaultTextModel', `Selected text model "${safeDefaultTextModelRaw}" is not available for the active dataset; falling back to a discovered model.`, { value: safeDefaultTextModelRaw, available: textModelOptions });
     }
-    if (safeDefaultImageModelRaw && discoveredImageModels.length > 0 && !imageModelOptions.includes(safeDefaultImageModelRaw)) {
+    if (safeDefaultImageModelRaw && discoveredImageModels.length > 0 && availableImageDefaults.length === 0) {
       warnFallback('SettingsModal.save.defaultImageModel', `Selected image model "${safeDefaultImageModelRaw}" is not available for the active dataset; falling back to a discovered model.`, { value: safeDefaultImageModelRaw, available: imageModelOptions });
     }
     const smartTextModelOption = resolveSmartTextModelOption(textModelOptions);
     const safeDefaultTextModel = discoveredTextModels.length === 0
       ? (safeDefaultTextModelRaw || FALLBACK_TEXT_MODEL)
-      : textModelOptions.includes(safeDefaultTextModelRaw)
-      ? safeDefaultTextModelRaw
       : (safeDefaultTextModelRaw.toLowerCase() === FALLBACK_TEXT_MODEL && smartTextModelOption)
       ? smartTextModelOption
+      : availableTextDefaults.length > 0
+      ? formatModelList(availableTextDefaults)
       : (smartTextModelOption || textModelOptions[0] || FALLBACK_TEXT_MODEL);
     const safeDefaultImageModel = discoveredImageModels.length === 0
       ? (safeDefaultImageModelRaw || FALLBACK_IMAGE_MODEL)
-      : imageModelOptions.includes(safeDefaultImageModelRaw)
-      ? safeDefaultImageModelRaw
+      : availableImageDefaults.length > 0
+      ? formatModelList(availableImageDefaults)
       : (imageModelOptions[0] || FALLBACK_IMAGE_MODEL);
     if (local.tupleIndicatorMode && !['badge+bar', 'badge', 'none'].includes(local.tupleIndicatorMode)) {
       warnFallback('SettingsModal.save.tupleIndicatorMode', `Unrecognized tupleIndicatorMode "${local.tupleIndicatorMode}", using "badge+bar".`, { value: local.tupleIndicatorMode });
@@ -309,6 +317,7 @@
       autoTranslateQueries: !!local.autoTranslateQueries,
       showAutoTranslateToggle: !!local.showAutoTranslateToggle,
       temporalWindowSeconds: safeTemporalWindowSeconds,
+      temporalCandidateK: safeTemporalCandidateK,
       videoPlayerModalMode: safeVideoPlayerModalMode,
       imageModalScale: safeImageModalScale,
       slideshowModalScale: safeSlideshowModalScale,
@@ -755,7 +764,44 @@
             </div>
 
             <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
-              Controls the final <code>k</code> sent to search. Default is 7200.
+              Number of results returned to the interface and written to the logs. The higher it is, the slower the search. Default: 10,000.
+            </p>
+
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Temporal search</h4>
+            <p class="ui-settings-hint -mt-2 text-[11px] text-gray-500">
+              Used by queries with more than one step (<b>Describe Next Scene</b>): each step is searched on its own, then the results are matched in time to find videos where the scenes appear in order.
+            </p>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-temporal-candidate-k" class="ui-settings-label text-sm font-medium text-gray-700">Candidate results per step</label>
+              <div class="relative">
+                <input
+                  id="settings-temporal-candidate-k"
+                  type="number"
+                  min={MIN_TEMPORAL_CANDIDATE_K}
+                  max={MAX_TEMPORAL_CANDIDATE_K}
+                  step="1000"
+                  class="ui-settings-input w-28 pr-7 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                  bind:value={local.temporalCandidateK}
+                  on:input={(e) => {
+                    const n = Math.min(MAX_TEMPORAL_CANDIDATE_K, Math.max(MIN_TEMPORAL_CANDIDATE_K, Math.floor(Number(e.currentTarget.value) || D.temporalCandidateK)));
+                    local.temporalCandidateK = n;
+                    save();
+                  }}
+                />
+                <div class="ui-settings-stepper">
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase candidate results per step" on:click={() => adjustNumber('temporalCandidateK', 1000, MIN_TEMPORAL_CANDIDATE_K, MAX_TEMPORAL_CANDIDATE_K)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
+                  </button>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease candidate results per step" on:click={() => adjustNumber('temporalCandidateK', -1000, MIN_TEMPORAL_CANDIDATE_K, MAX_TEMPORAL_CANDIDATE_K)}>
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              How many results each step keeps before the steps are matched in time. Larger sets lower the risk of missing a match, but make the search slower. Default: 10,000.
             </p>
 
             <div class="flex items-center justify-between py-2">
@@ -782,6 +828,12 @@
                 </div>
               </div>
             </div>
+
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              Maximum time between two consecutive steps for them to count as the same sequence: a short window finds scenes close together, a long one also allows scenes far apart. The default depends on the collection.
+            </p>
+
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider pt-2">Translation</h4>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-auto-translate-toggle" class="ui-settings-label text-sm font-medium text-gray-700">Enable auto-translate</label>
@@ -977,30 +1029,26 @@
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-default-text-model" class="ui-settings-label text-sm font-medium text-gray-700">Default text model</label>
-              <select
+              <ModelMultiSelect
                 id="settings-default-text-model"
-                class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                bind:value={local.defaultTextModel}
-                on:change={() => save()}
-              >
-                {#each textModelOptions as m}
-                  <option value={m}>{m}</option>
-                {/each}
-              </select>
+                buttonClass="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                options={textModelOptions}
+                selected={parseModelList(local.defaultTextModel)}
+                title="Default text models for new query steps (pick several to fuse them with RRF)"
+                on:change={(e) => { local.defaultTextModel = formatModelList(e.detail.models); save(); }}
+              />
             </div>
 
             <div class="flex items-center justify-between py-2">
               <label for="settings-default-image-model" class="ui-settings-label text-sm font-medium text-gray-700">Default image model</label>
-              <select
+              <ModelMultiSelect
                 id="settings-default-image-model"
-                class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
-                bind:value={local.defaultImageModel}
-                on:change={() => save()}
-              >
-                {#each imageModelOptions as m}
-                  <option value={m}>{m}</option>
-                {/each}
-              </select>
+                buttonClass="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                options={imageModelOptions}
+                selected={parseModelList(local.defaultImageModel)}
+                title="Default image models for new query steps (pick several to fuse them with RRF)"
+                on:change={(e) => { local.defaultImageModel = formatModelList(e.detail.models); save(); }}
+              />
             </div>
           </div>
         {/if}

@@ -15,6 +15,7 @@ export function createSearchController({
   getDedupeResultsEnabled,// () => boolean
   getAutoTranslateEnabled,// () => boolean
   getTemporalWindowSeconds, // () => number
+  getTemporalCandidateK,    // () => number
   getQueryResultK,       // () => number
   getSubmittedIds,        // () => Set<string>
   getSimilarityPreview,   // (textareas) => { imgId?, url?, name? } | null
@@ -313,10 +314,16 @@ export function createSearchController({
       ? Number(getQueryResultK())
       : undefined;
     const queryKFingerprint = Number.isFinite(queryResultK) ? ` k:${Math.floor(queryResultK)}` : '';
+    // Temporal parameters change multi-step results, so they are part of the cache key too.
+    const temporalCandidateK = typeof getTemporalCandidateK === 'function' ? Number(getTemporalCandidateK()) : undefined;
+    const temporalWindowForKey = typeof getTemporalWindowSeconds === 'function' ? Number(getTemporalWindowSeconds()) : undefined;
+    const temporalFingerprint = textareas.filter((t) => t?.enabled).length > 1
+      ? ` tk:${Number.isFinite(temporalCandidateK) ? Math.floor(temporalCandidateK) : ''} tw:${Number.isFinite(temporalWindowForKey) ? temporalWindowForKey : ''}`
+      : '';
     const metadataFingerprint = Array.isArray(api?.defaultMetadataToRetrieve)
       ? ` meta:${api.defaultMetadataToRetrieve.map((field) => String(field || '').trim()).filter(Boolean).sort().join(',')}`
       : '';
-    const cacheKey = `${query}${rfFingerprint}${queryKFingerprint}${metadataFingerprint}`;
+    const cacheKey = `${query}${rfFingerprint}${queryKFingerprint}${temporalFingerprint}${metadataFingerprint}`;
     const cacheEnabled = typeof getCacheEnabled === 'function' ? !!getCacheEnabled() : true;
 
     const start = Date.now();
@@ -388,7 +395,8 @@ export function createSearchController({
         simReorder: false,
         framesPerRow,
         temporalWindowSeconds,
-        resultK: queryResultK
+        resultK: queryResultK,
+        temporalCandidateK
       });
 
       if (req !== reqId) return;
@@ -427,11 +435,13 @@ export function createSearchController({
       if (!isRestoringFromHistory()) syncURL(textareas);
 
       if (hydratedItems.length > 0) {
-        if (cacheEnabled && cacheKey) {
+        // Recent searches are always kept; the result set itself (the cache)
+        // only when caching is enabled.
+        if (cacheKey) {
           const similarityPreview = typeof getSimilarityPreview === 'function'
             ? getSimilarityPreview(rawTextareas)
             : null;
-          recentSearches.add(cacheKey, hydratedItems.length, resultSet, textareas, similarityPreview);
+          recentSearches.add(cacheKey, hydratedItems.length, cacheEnabled ? resultSet : null, textareas, similarityPreview);
         }
         if (removedCount > 0) {
           toasts.info(`Removed ${removedCount} duplicate result${removedCount > 1 ? 's' : ''} (kept top-ranked).`);

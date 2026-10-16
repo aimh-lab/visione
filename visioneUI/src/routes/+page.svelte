@@ -1,4 +1,5 @@
 <script>
+  import { APP_SETTINGS_DEFAULTS } from '../config/appDefaults.js';
   import * as ui from '../utils/ui';
   import { createModalController } from '../stores/modalController.js';
   import { DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_RELEVANCE_FEEDBACK_MODEL as DEFAULT_RF_MODEL } from '../config/modelDefaults.js';
@@ -363,9 +364,39 @@
   // directly here, these two statements would only re-run when `availableModels`
   // changes (at discovery time), not when the user changes the default model in
   // Settings afterwards.
-  $: { void $uiStore.defaultTextModel; visioneAPI.defaultTextModel = getGlobalDefaultTextModel(); }
-  $: { void $uiStore.defaultImageModel; visioneAPI.defaultImageModel = getGlobalDefaultImageModel(); }
+  // The defaults may be a combination of models (comma-separated); the API's
+  // fallback model (used e.g. by plain similarity search) is the first one.
+  $: { void $uiStore.defaultTextModel; visioneAPI.defaultTextModel = parseModelList(getGlobalDefaultTextModel())[0]; }
+  $: { void $uiStore.defaultImageModel; visioneAPI.defaultImageModel = parseModelList(getGlobalDefaultImageModel())[0]; }
+
+  // When the default models change in Settings, steps still using the previous
+  // default follow the new one; steps with their own model selection are kept.
+  let lastDefaultTextModel = null;
+  let lastDefaultImageModel = null;
+  $: syncStepsToDefaultModels($uiStore.defaultTextModel, $uiStore.defaultImageModel);
+
+  function syncStepsToDefaultModels(_text, _image) {
+    const nextText = getGlobalDefaultTextModel();
+    const nextImage = getGlobalDefaultImageModel();
+    const prevText = lastDefaultTextModel;
+    const prevImage = lastDefaultImageModel;
+    lastDefaultTextModel = nextText;
+    lastDefaultImageModel = nextImage;
+    if (prevText === null || (prevText === nextText && prevImage === nextImage)) return;
+
+    const follow = (value, prev, next) => (formatModelList(parseModelList(value)) === prev ? next : value);
+    const updated = textareas.map((t) => ({
+      ...t,
+      textModel: follow(t?.textModel, prevText, nextText),
+      imageModel: follow(t?.imageModel, prevImage, nextImage)
+    }));
+    if (updated.some((t, i) => t.textModel !== textareas[i]?.textModel || t.imageModel !== textareas[i]?.imageModel)) {
+      textareas = updated;
+    }
+  }
   $: visioneAPI.defaultRelevanceFeedbackModel = resolveRelevanceFeedbackModel();
+  // Fixed per collection (runtime profile), not a user setting.
+  $: visioneAPI.modelFusionK = Number(runtimeProfile?.search?.modelFusionK) || null;
   function syncVisioneApiHosts(uiState = get(uiStore), profile = runtimeProfile) {
     visioneAPI.setServicesHost(uiState.apiServicesHostOverrideEnabled ? uiState.apiServicesHost : (profile?.api?.servicesHost || ''));
     visioneAPI.setDataserverHost(uiState.dataserverHostOverrideEnabled ? uiState.dataserverHost : '');
@@ -490,29 +521,29 @@
     return String(similarityStep?.similarityImgId || '').trim() || null;
   }
 
+  // Default models from Settings: one model or a combination (comma-separated),
+  // restricted to the models the active dataset offers.
   function getGlobalDefaultTextModel() {
-    const configured = String(get(uiStore).defaultTextModel || '').trim();
+    const configured = parseModelList(get(uiStore).defaultTextModel);
     const discovered = getDiscoveredModelNames('text');
     const smartText = resolveSmartTextModel(discovered);
 
-    if (configured.toLowerCase() === DEFAULT_TEXT_MODEL && smartText) {
+    if (configured.length === 1 && configured[0].toLowerCase() === DEFAULT_TEXT_MODEL && smartText) {
       return smartText;
     }
 
-    if (configured && (discovered.length === 0 || discovered.includes(configured))) {
-      return configured;
-    }
+    const available = configured.filter((m) => discovered.length === 0 || discovered.includes(m));
+    if (available.length > 0) return formatModelList(available);
 
     return smartText || discovered[0] || DEFAULT_TEXT_MODEL;
   }
 
   function getGlobalDefaultImageModel() {
-    const configured = String(get(uiStore).defaultImageModel || '').trim();
+    const configured = parseModelList(get(uiStore).defaultImageModel);
     const discovered = getDiscoveredModelNames('image');
 
-    if (configured && (discovered.length === 0 || discovered.includes(configured))) {
-      return configured;
-    }
+    const available = configured.filter((m) => discovered.length === 0 || discovered.includes(m));
+    if (available.length > 0) return formatModelList(available);
 
     return discovered[0] || DEFAULT_IMAGE_MODEL;
   }
@@ -1018,7 +1049,8 @@
     getDedupeResultsEnabled: () => get(uiStore).dedupeResults,
     getAutoTranslateEnabled: () => !!get(uiStore).autoTranslateQueries && !!String(get(uiStore).aiServicesToken || '').trim(),
     getTemporalWindowSeconds: () => Number(get(uiStore).temporalWindowSeconds) || 25200,
-    getQueryResultK: () => Number(get(uiStore).queryResultK) || 7200,
+    getQueryResultK: () => Number(get(uiStore).queryResultK) || APP_SETTINGS_DEFAULTS.queryResultK,
+    getTemporalCandidateK: () => Number(get(uiStore).temporalCandidateK) || APP_SETTINGS_DEFAULTS.temporalCandidateK,
     getSubmittedIds: getSubmittedLookup,
     getSimilarityPreview: getRecentSimilarityPreview,
     getRelevanceFeedback: () => {
@@ -1115,7 +1147,11 @@
         resultSetAvailability: 'all',
         maxResults: logResultsLimit,
         temporalWindowSeconds: Number(settings.temporalWindowSeconds) || 25200,
-        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(items, rf, windowSeconds, Number(settings.queryResultK) || 7200),
+        buildSearchPayload: (items, rf, windowSeconds) => visioneAPI.buildSearchPayloadForLogging(
+          items, rf, windowSeconds,
+          Number(settings.queryResultK) || APP_SETTINGS_DEFAULTS.queryResultK,
+          Number(settings.temporalCandidateK) || APP_SETTINGS_DEFAULTS.temporalCandidateK
+        ),
         metadata: {
           elapsedMs: Number(elapsed) || 0,
           activeTab: settings.layoutTab,
@@ -1138,7 +1174,7 @@
     tick,
 
     getSubmittedIds: getSubmittedLookup,
-    getResultK: () => Number(get(uiStore).queryResultK) || 7200,
+    getResultK: () => Number(get(uiStore).queryResultK) || APP_SETTINGS_DEFAULTS.queryResultK,
 
     setVideoState: ({ loading, error, frames, videoId, selectedImgId, contextScope, contextDay }) => {
       if (loading !== undefined) view2Loading = loading;
@@ -2750,6 +2786,7 @@ function handleViewSubmitted() {
   autoTranslateQueries={$uiStore.autoTranslateQueries}
   showAutoTranslateToggle={$uiStore.showAutoTranslateToggle}
   temporalWindowSeconds={$uiStore.temporalWindowSeconds}
+  temporalCandidateK={$uiStore.temporalCandidateK}
   videoPlayerModalMode={$uiStore.videoPlayerModalMode}
   imageModalScale={$uiStore.imageModalScale}
   slideshowModalScale={$uiStore.slideshowModalScale}

@@ -752,6 +752,7 @@
     <!-- Modal -->
     <div 
       bind:this={contentEl}
+      data-tour-part="step-filters"
       style={presentation === 'dropdown' ? dropdownStyle : ''}
       class={`ui-input-modal z-[var(--z-dialog-content)] bg-gray-900 rounded-xl shadow-2xl border border-gray-700 pointer-events-auto ${presentation === 'modal' ? 'relative w-full max-w-md' : ''}`}
     >

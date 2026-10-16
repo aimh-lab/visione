@@ -127,3 +127,43 @@ describe('multi-model steps', () => {
     expect(payload.query).toMatchObject({ item: 'a dog', model: 'm1' });
   });
 });
+
+describe('temporal candidate k', () => {
+  it('uses the candidate k for each step of a multi-step query', async () => {
+    const { VisioneAPI } = await import('./api.js');
+    const api = new VisioneAPI();
+    const steps = [{ value: 'a dog', enabled: true, textModel: 'm1' }, { value: 'a cat', enabled: true, textModel: 'm1' }];
+    const payload = api.buildSearchPayloadForLogging(steps, null, 60, 500, 20000);
+    expect(payload.query.aggregation_type).toBe('temporal');
+    expect(payload.query.k).toBe(500);
+    expect(payload.query.item.map((n) => n.k)).toEqual([20000, 20000]);
+  });
+});
+
+describe('model fusion k', () => {
+  const step = { value: 'a dog', enabled: true, textModel: 'm1,m2' };
+
+  it('uses the collection\'s fixed k for each fused model (V3C)', async () => {
+    const { VisioneAPI } = await import('./api.js');
+    const api = new VisioneAPI();
+    api.modelFusionK = 10000;
+    const payload = api.buildSearchPayloadForLogging([step], null, undefined, 500);
+    expect(payload.query.k).toBe(500);
+    expect(payload.query.item.map((n) => n.k)).toEqual([10000, 10000]);
+  });
+
+  it('keeps the step k when the collection sets none', async () => {
+    const { VisioneAPI } = await import('./api.js');
+    const api = new VisioneAPI();
+    const payload = api.buildSearchPayloadForLogging([step], null, undefined, 500);
+    expect(payload.query.item.map((n) => n.k)).toEqual([500, 500]);
+  });
+
+  it('does not touch single-model steps', async () => {
+    const { VisioneAPI } = await import('./api.js');
+    const api = new VisioneAPI();
+    api.modelFusionK = 10000;
+    const payload = api.buildSearchPayloadForLogging([{ value: 'a dog', enabled: true, textModel: 'm1' }], null, undefined, 500);
+    expect(payload.query.k).toBe(500);
+  });
+});

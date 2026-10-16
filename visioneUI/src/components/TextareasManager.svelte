@@ -3177,6 +3177,7 @@
                 {#if openMenuIndex === i}
                   <div
                     bind:this={menuPanelRefs[i]}
+                    data-tour-part={i === 0 ? 'step-filters' : undefined}
                     class="absolute left-0 w-56 max-h-[calc(100vh-6rem)] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-[160] animate-slide-up {menuPlacementByIndex[i] === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2'}"
                   >
                     <div class="px-3 py-2 bg-gray-900/50 border-b border-gray-700">

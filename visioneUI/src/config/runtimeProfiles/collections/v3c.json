@@ -18,6 +18,9 @@
   "settingsDefaults": {
     "temporalWindowSeconds": 60
   },
+  "search": {
+    "modelFusionK": 10000
+  },
   "queryFilters": {
     "metadataFields": [
       "video_id",

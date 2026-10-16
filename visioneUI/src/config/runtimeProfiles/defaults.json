@@ -3,8 +3,8 @@
     "servicesHost": ""
   },
   "settingsDefaults": {
-    "version": "search-defaults-7200-25200",
-    "queryResultK": 7200,
+    "version": "search-defaults-10000-25200",
+    "queryResultK": 10000,
     "temporalWindowSeconds": 25200
   },
   "media": {

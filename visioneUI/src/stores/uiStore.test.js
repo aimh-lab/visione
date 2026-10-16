@@ -122,6 +122,21 @@ describe('applyRuntimeSettingsDefaults', () => {
     expect(state.temporalWindowSeconds).toBe(42);
   });
 
+  it('treats a persisted 7200 (the old built-in default) as not customized', () => {
+    appSettingsStore.set({ ...APP_SETTINGS_DEFAULTS, queryResultK: 7200 });
+    uiStore.actions.hydrateFromSettings();
+    uiStore.actions.applyRuntimeSettingsDefaults({ version: 'v1', queryResultK: 10000 });
+    expect(get(uiStore).queryResultK).toBe(10000);
+  });
+
+  it('defaults and clamps the temporal candidate k', () => {
+    expect(APP_SETTINGS_DEFAULTS.temporalCandidateK).toBe(10000);
+    uiStore.actions.applySettings({ temporalCandidateK: 5 });
+    expect(get(uiStore).temporalCandidateK).toBe(100);
+    uiStore.actions.applySettings({ temporalCandidateK: 20000 });
+    expect(get(uiStore).temporalCandidateK).toBe(20000);
+  });
+
   it('does override when the persisted value is still just the built-in default (not really customized)', () => {
     // This is the bug this mechanism exists to fix: the in-memory store is
     // always finite from startup, so "customized" can only be told apart
