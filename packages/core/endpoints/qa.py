@@ -55,7 +55,6 @@ from endpoints.openai_compat import build_chat_model
 
 router = APIRouter()
 
-_V3C_MAX_VIDEOS_PER_SEARCH = 5
 _V3C_MAX_INTERVAL_SECONDS = 30.0
 
 _EXECUTE_PLAN_PROMPT = (
@@ -154,7 +153,6 @@ class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     original_question: str
     plan: str
-    total_images_sent: int
     iteration_count: int
     plan_count: int
     all_sources: Annotated[list, operator.add]
@@ -191,7 +189,6 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
             "temperature": float(_require("temperature")),
             "reasoning": getattr(qa_cfg, "reasoning", True),
             "max_iterations": int(_require("max_iterations")),
-            "max_total_images": int(_require("max_total_images")),
             "max_images_per_call": int(_require("max_images_per_call")),
             "grouped_frames_per_video": int(
                 getattr(qa_cfg, "grouped_frames_per_video", 3)
@@ -211,11 +208,6 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
             status_code=500,
             detail="Invalid 'qa.max_iterations': must be between 1 and 10.",
         )
-    if cfg["max_total_images"] < 0:
-        raise HTTPException(
-            status_code=500,
-            detail="Invalid 'qa.max_total_images': must be >= 0.",
-        )
     if cfg["max_images_per_call"] < 0:
         raise HTTPException(
             status_code=500,
@@ -226,13 +218,10 @@ def _get_qa_config(request: Request) -> Dict[str, Any]:
             status_code=500,
             detail="Invalid 'qa.grouped_frames_per_video': must be >= 1.",
         )
-    if not 1 <= cfg["max_grouped_videos"] <= _V3C_MAX_VIDEOS_PER_SEARCH:
+    if cfg["max_grouped_videos"] < 1:
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Invalid 'qa.max_grouped_videos': must be between 1 and "
-                f"{_V3C_MAX_VIDEOS_PER_SEARCH}."
-            ),
+            detail="Invalid 'qa.max_grouped_videos': must be >= 1.",
         )
     if (
         not math.isfinite(cfg["max_video_interval_seconds"])
@@ -296,7 +285,6 @@ def _debug_print_message(label: str, msg) -> None:
 def _get_loader_qa_system_prompt(
     loader: Any,
     *,
-    max_total_images: int,
     max_images_per_call: int,
     grouped_frames_per_video: int = 3,
     max_grouped_videos: int = 5,
@@ -309,12 +297,11 @@ def _get_loader_qa_system_prompt(
             status_code=500,
             detail=(
                 f"Loader '{type(loader).__name__}' does not implement the required "
-                "get_qa_system_prompt(max_total_images, max_images_per_call) contract."
+                "get_qa_system_prompt(max_images_per_call) contract."
             ),
         )
 
     prompt_options: Dict[str, Any] = {
-        "max_total_images": max_total_images,
         "max_images_per_call": max_images_per_call,
     }
     if _loader_supports_video_inspection(loader):
@@ -398,6 +385,11 @@ def _loader_supports_video_inspection(loader: Any) -> bool:
     return bool(getattr(loader, "supports_qa_video_inspection", False))
 
 
+def _loader_returns_metadata_only_results(loader: Any) -> bool:
+    """Return whether QA search should retain results without attached images."""
+    return bool(getattr(loader, "qa_return_metadata_only_results", True))
+
+
 def _select_grouped_video_documents(
     doc_groups: List[List[Any]], *, max_videos: int, frames_per_video: int
 ) -> List[Any]:
@@ -420,11 +412,59 @@ def _select_grouped_video_documents(
     return [doc for documents in grouped.values() for doc in documents]
 
 
+def _ranked_documents(doc_groups: List[List[Any]]) -> List[Any]:
+    """Flatten vector-store groups to their first document in ranked order."""
+    return [group[0] for group in doc_groups if group]
+
+
+def _build_search_results(
+    loader: Any,
+    documents: List[Any],
+    *,
+    image_count: int,
+    retain_metadata_only: bool,
+) -> List[Dict[str, Any]]:
+    """Build flat results using the loader's metadata-only retention policy."""
+    image_count = min(max(int(image_count), 0), len(documents))
+    returned_documents = documents if retain_metadata_only else documents[:image_count]
+    return [
+        _document_result(
+            loader,
+            doc,
+            include_image=index < image_count,
+            require_image=not retain_metadata_only and index < image_count,
+        )
+        for index, doc in enumerate(returned_documents)
+    ]
+
+
 def _bounded_tool_limit(requested: Optional[int], configured_cap: int) -> int:
     """Resolve an optional model-selected limit within a configured hard cap."""
     if requested is None:
         return configured_cap
     return min(max(int(requested), 1), configured_cap)
+
+
+def _select_v3c_documents(
+    doc_groups: List[List[Any]],
+    *,
+    max_images_per_call: int,
+    frames_per_video_cap: int,
+    max_videos_cap: int,
+    group_by_video: bool = False,
+    frames_per_video: Optional[int] = None,
+    max_videos: Optional[int] = None,
+) -> List[Any]:
+    """Select V3C frames using global rank by default or grouped diversity."""
+    if not group_by_video:
+        return _ranked_documents(doc_groups)[:max_images_per_call]
+    return _select_grouped_video_documents(
+        doc_groups,
+        max_videos=_bounded_tool_limit(max_videos, max_videos_cap),
+        frames_per_video=_bounded_tool_limit(
+            frames_per_video, frames_per_video_cap
+        ),
+    )
 
 
 def _build_shot_video_url(loader: Any, frame_id: str) -> str:
@@ -754,7 +794,6 @@ def _build_compaction_update(
         "findings": [finding],
         "latest_finding": finding,
         "finding_trial": trial,
-        "total_images_sent": 0,
     }
 
 
@@ -832,13 +871,15 @@ def _build_agent(
 
     system_prompt = _get_loader_qa_system_prompt(
         request.app.state.loader,
-        max_total_images=qa_cfg["max_total_images"],
         max_images_per_call=qa_cfg["max_images_per_call"],
         grouped_frames_per_video=qa_cfg["grouped_frames_per_video"],
         max_grouped_videos=qa_cfg["max_grouped_videos"],
         max_video_interval_seconds=qa_cfg["max_video_interval_seconds"],
     )
     supports_video = _loader_supports_video_inspection(request.app.state.loader)
+    retain_metadata_only = _loader_returns_metadata_only_results(
+        request.app.state.loader
+    )
 
     # ── Search tool (closure over *request* and *retrieval_model*) ─────
     if supports_video:
@@ -847,17 +888,18 @@ def _build_agent(
             query: str,
             metadata_to_retrieve: List[str],
             k: int = 50,
+            group_by_video: bool = False,
             frames_per_video: Optional[int] = None,
             max_videos: Optional[int] = None,
             filters: Optional[Dict[str, Any]] = None,
             reorder_by: Optional[List[str]] = None,
         ) -> str:
-            """Search ranked V3C frames and diversify them across videos.
+            """Search ranked V3C frames with optional video diversification.
 
-            ``k`` is the total ranked frame pool searched. Results are grouped by
-            first-seen ``video_id``. Choose ``frames_per_video`` and ``max_videos``
-            for the task; both are restricted by configured caps. Omitting either
-            uses its configured maximum. Every returned frame includes an image.
+            ``k`` is the total ranked frame pool searched. With ``group_by_video``
+            false, return the most relevant frames in global rank order. With it
+            true, group by first-seen ``video_id`` and use ``frames_per_video`` and
+            ``max_videos`` within configured caps. Every returned frame has an image.
             """
             requested_metadata = list(dict.fromkeys([*metadata_to_retrieve, "video_id"]))
             doc_groups = _search_frame_documents(
@@ -871,25 +913,22 @@ def _build_agent(
             )
             if isinstance(doc_groups, dict):
                 return json.dumps(doc_groups)
-            selected_docs = _select_grouped_video_documents(
+            selected_docs = _select_v3c_documents(
                 doc_groups,
-                max_videos=_bounded_tool_limit(
-                    max_videos, qa_cfg["max_grouped_videos"]
-                ),
-                frames_per_video=_bounded_tool_limit(
-                    frames_per_video, qa_cfg["grouped_frames_per_video"]
-                ),
+                group_by_video=group_by_video,
+                frames_per_video=frames_per_video,
+                max_videos=max_videos,
+                max_images_per_call=qa_cfg["max_images_per_call"],
+                frames_per_video_cap=qa_cfg["grouped_frames_per_video"],
+                max_videos_cap=qa_cfg["max_grouped_videos"],
             )
             return json.dumps(
-                [
-                    _document_result(
-                        request.app.state.loader,
-                        doc,
-                        include_image=True,
-                        require_image=True,
-                    )
-                    for doc in selected_docs
-                ],
+                _build_search_results(
+                    request.app.state.loader,
+                    selected_docs,
+                    image_count=len(selected_docs),
+                    retain_metadata_only=retain_metadata_only,
+                ),
                 default=str,
             )
     else:
@@ -919,16 +958,14 @@ def _build_agent(
             if isinstance(doc_groups, dict):
                 return json.dumps(doc_groups)
             num_images = min(max(int(num_images), 0), qa_cfg["max_images_per_call"])
-            documents = [group[0] for group in doc_groups if group]
+            documents = _ranked_documents(doc_groups)
             return json.dumps(
-                [
-                    _document_result(
-                        request.app.state.loader,
-                        doc,
-                        include_image=index < num_images,
-                    )
-                    for index, doc in enumerate(documents)
-                ],
+                _build_search_results(
+                    request.app.state.loader,
+                    documents,
+                    image_count=num_images,
+                    retain_metadata_only=retain_metadata_only,
+                ),
                 default=str,
             )
 
@@ -1186,7 +1223,6 @@ def _build_agent(
     ) -> Dict[str, Any]:
         """Execute tool calls, optionally fetch images, return ToolMessages."""
         last_msg = state["messages"][-1]
-        total_images = state.get("total_images_sent", 0)
         new_sources: List[Dict[str, Any]] = []
         new_messages: list = []
         visual_context_parts: list = []
@@ -1255,16 +1291,13 @@ def _build_agent(
             if isinstance(results, list):
                 for r in results:
                     img_url = r.get("image_url")
-                    if img_url and (
-                        supports_video or total_images < qa_cfg["max_total_images"]
-                    ):
+                    if img_url:
                         b64 = await _fetch_image_b64(img_url)
                         if b64:
                             visual_context_parts.append({
                                 "type": "image_url",
                                 "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
                             })
-                            total_images += 1
 
             # Compact text for LLM (strip image URLs to save context)
             if isinstance(results, list):
@@ -1290,7 +1323,6 @@ def _build_agent(
 
         return {
             "messages": new_messages,
-            "total_images_sent": total_images,
             "iteration_count": state.get("iteration_count", 0) + 1,
             "all_sources": new_sources,
         }
@@ -1414,7 +1446,6 @@ async def qa_endpoint(payload: QARequest, request: Request):  # noqa: C901
         ],
         "original_question": payload.question,
         "plan": "",
-        "total_images_sent": 0,
         "iteration_count": 0,
         "plan_count": 0,
         "all_sources": [],
@@ -1658,7 +1689,6 @@ async def qa_sync_endpoint(payload: QARequest, request: Request):
         ],
         "original_question": payload.question,
         "plan": "",
-        "total_images_sent": 0,
         "iteration_count": 0,
         "plan_count": 0,
         "all_sources": [],

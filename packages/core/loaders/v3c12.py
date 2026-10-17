@@ -14,6 +14,7 @@ from .qa_prompt import build_v3c_qa_system_prompt
 
 class V3C12Loader:
     supports_qa_video_inspection = True
+    qa_return_metadata_only_results = False
 
     def __init__(
         self,
@@ -274,7 +275,6 @@ class V3C12Loader:
 
     def get_qa_system_prompt(
         self,
-        max_total_images: int,
         max_images_per_call: int,
         grouped_frames_per_video: int = 3,
         max_grouped_videos: int = 5,
@@ -282,7 +282,6 @@ class V3C12Loader:
     ) -> str:
         return build_v3c_qa_system_prompt(
             attribute_info=self.get_attribute_info(),
-            max_total_images=max_total_images,
             max_images_per_call=max_images_per_call,
             grouped_frames_per_video=grouped_frames_per_video,
             max_grouped_videos=max_grouped_videos,

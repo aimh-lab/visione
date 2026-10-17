@@ -10,6 +10,8 @@ from .qa_prompt import build_lsc_qa_system_prompt
 
 
 class LSC26Loader:
+    qa_return_metadata_only_results = True
+
     def __init__(
         self,
         name,
@@ -260,12 +262,10 @@ class LSC26Loader:
 
     def get_qa_system_prompt(
         self,
-        max_total_images: int,
         max_images_per_call: int,
     ) -> str:
         return build_lsc_qa_system_prompt(
             attribute_info=self.get_attribute_info(),
-            max_total_images=max_total_images,
             max_images_per_call=max_images_per_call,
         )
 

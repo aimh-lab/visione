@@ -38,10 +38,9 @@ qa:
   temperature: 0
   reasoning: false
   max_iterations: 5
-  max_total_images: 20
-  max_images_per_call: 5
-  grouped_frames_per_video: 5
-  max_grouped_videos: 3
+  max_images_per_call: 18
+  grouped_frames_per_video: 3
+  max_grouped_videos: 6
   max_video_interval_seconds: 30
   default_model: "qwen_embedding_8B_video"
   debug: true
