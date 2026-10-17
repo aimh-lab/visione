@@ -203,6 +203,7 @@ class AsyncPGVectorStore(VectorStore):
         temporal_column: str = "epoch",
         model_column_map: Optional[Dict[str, str]] = None,
         fts_language: str = "simple",
+        table_columns: Optional[Iterable[str]] = None,
     ):
         """AsyncPGVectorStore constructor.
         Args:
@@ -237,6 +238,8 @@ class AsyncPGVectorStore(VectorStore):
         self.table_name = table_name
         self.schema_name = schema_name
         self.content_column = content_column
+        # All table columns (if known); query-time column names must be among them
+        self._table_columns = frozenset(table_columns) if table_columns is not None else None
         # Handle embedding_column: can be None, empty list, single string, or list of strings
         if embedding_column is None or (isinstance(embedding_column, list) and len(embedding_column) == 0):
             self.embedding_columns = []
@@ -339,6 +342,7 @@ class AsyncPGVectorStore(VectorStore):
         columns = {}
         for field in results:
             columns[field["column_name"]] = field["data_type"]
+        table_columns = frozenset(columns)
 
         # Check columns
         if id_column not in columns:
@@ -414,7 +418,23 @@ class AsyncPGVectorStore(VectorStore):
             temporal_column=temporal_column,
             model_column_map=model_column_map,
             fts_language=fts_language,
+            table_columns=table_columns,
         )
+
+    def _validate_columns(self, cols: Iterable[Any]) -> list[str]:
+        """Validate column names that will be interpolated into SQL.
+
+        Every name must be a plain identifier and, when the table schema is
+        known, an existing column of the table.
+        """
+        validated = []
+        for col in cols:
+            if not isinstance(col, str) or not col.isidentifier():
+                raise ValueError(f"Invalid column: {col!r}")
+            if self._table_columns is not None and col not in self._table_columns:
+                raise ValueError(f"Invalid column: {col!r}")
+            validated.append(col)
+        return validated
 
     @property
     def embeddings(self) -> Union[Embeddings, Dict[str, Embeddings]]:
@@ -1106,7 +1126,9 @@ class AsyncPGVectorStore(VectorStore):
             embedding_column=kwargs.get("embedding_column"),
         )
 
-        additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
+        additional_metadata_columns = self._validate_columns(
+            kwargs.get("metadata_to_retrieve") or []
+        )
         metadata_columns = list(set(self.metadata_columns + additional_metadata_columns))
 
         columns = [
@@ -1263,7 +1285,9 @@ class AsyncPGVectorStore(VectorStore):
         search_function = self.distance_strategy.search_function
         full_table_name = f'"{self.schema_name}"."{self.table_name}"'
 
-        additional_metadata_columns = kwargs.get("metadata_to_retrieve", [])
+        additional_metadata_columns = self._validate_columns(
+            kwargs.get("metadata_to_retrieve") or []
+        )
         metadata_columns = list(set(self.metadata_columns + additional_metadata_columns))
 
         base_columns = [
@@ -2083,7 +2107,7 @@ class AsyncPGVectorStore(VectorStore):
         """Get documents by ids."""
 
         if columns_override is not None:
-            columns = columns_override + [
+            columns = self._validate_columns(columns_override) + [
                 self.id_column,
                 self.content_column,
             ]
@@ -2143,7 +2167,7 @@ class AsyncPGVectorStore(VectorStore):
             return []
 
         if columns_override is not None:
-            columns = columns_override + [
+            columns = self._validate_columns(columns_override) + [
                 self.id_column,
                 self.content_column,
             ]
@@ -2209,6 +2233,8 @@ class AsyncPGVectorStore(VectorStore):
 
         if not retrieve_fields:
             raise ValueError("retrieve_fields must contain at least one field.")
+        retrieve_fields = self._validate_columns(retrieve_fields)
+        self._validate_columns([select_field])
 
         safe_filter, filter_dict = self._create_filter_clause(
             {select_field: {"$eq": select_value}}
