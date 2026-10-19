@@ -394,7 +394,7 @@
       textareas = updated;
     }
   }
-  $: visioneAPI.defaultRelevanceFeedbackModel = resolveRelevanceFeedbackModel();
+  $: { void $uiStore.relevanceFeedbackModel; void availableModels; visioneAPI.defaultRelevanceFeedbackModel = resolveRelevanceFeedbackModel(); }
   // Fixed per collection (runtime profile), not a user setting.
   $: visioneAPI.modelFusionK = Number(runtimeProfile?.search?.modelFusionK) || null;
   function syncVisioneApiHosts(uiState = get(uiStore), profile = runtimeProfile) {
@@ -566,23 +566,22 @@
       .find((name) => name.toLowerCase().startsWith(DEFAULT_TEXT_MODEL)) || '';
   }
 
-  // Relevance feedback needs a model that actually exists for the active dataset —
-  // DEFAULT_RF_MODEL ('qwen_embedding_8B') is an LSC-only model name and the backend
-  // rejects unknown model names outright (see packages/core/endpoints/search.py), so an
-  // RF search would otherwise just fail on any dataset that doesn't happen to have it.
+  // Relevance feedback model: the one chosen in Settings when the active dataset
+  // has it, otherwise the first discovered model (same list as in Settings). The
+  // backend rejects unknown model names, so the choice is always checked against
+  // the dataset's models.
   function resolveRelevanceFeedbackModel() {
-    const discoveredImage = getDiscoveredModelNames('image');
-    if (discoveredImage.length === 0 || discoveredImage.includes(DEFAULT_RF_MODEL)) {
-      return DEFAULT_RF_MODEL;
+    const discovered = Array.from(new Set([...getDiscoveredModelNames('text'), ...getDiscoveredModelNames('image')]));
+    const configured = String(get(uiStore).relevanceFeedbackModel || '').trim();
+    if (configured && (discovered.length === 0 || discovered.includes(configured))) return configured;
+    if (configured) {
+      warnFallback(
+        'page.resolveRelevanceFeedbackModel',
+        `Relevance feedback model "${configured}" is not available for the active dataset; using "${discovered[0]}" instead.`,
+        { configured, available: discovered }
+      );
     }
-
-    const chosen = discoveredImage[0];
-    warnFallback(
-      'page.resolveRelevanceFeedbackModel',
-      `Default relevance feedback model "${DEFAULT_RF_MODEL}" is not available for the active dataset (available: ${discoveredImage.join(', ')}); using "${chosen}" instead.`,
-      { defaultModel: DEFAULT_RF_MODEL, chosen, available: discoveredImage }
-    );
-    return chosen;
+    return discovered[0] || DEFAULT_RF_MODEL;
   }
 
   function normalizeTextareaModels(textarea) {
@@ -1770,12 +1769,10 @@
     const step = Number(delta) || 0;
     if (!step) return false;
 
-    if (isSlideshowOpen) {
+    if (isSlideshowOpen || isVideoPlayerOpen) {
       adjustSlideshowModalScale(step);
       return true;
     }
-
-    if (isVideoPlayerOpen) return false;
 
     if (isVideoSummaryModalOpen) {
       return adjustContextKeyframeSize(step);
@@ -2584,6 +2581,7 @@ function handleViewSubmitted() {
 <VideoPlayerModal
   isOpen={isVideoPlayerOpen}
   layer={isVideoSummaryModalOpen ? 'dialog' : 'modal'}
+  modalScale={$uiStore.slideshowModalScale}
   videoUrl={videoPlayer.url}
   startTime={videoPlayer.startTime}
   title={videoPlayer.title}
@@ -2793,6 +2791,7 @@ function handleViewSubmitted() {
   modelSelectionPerStepEnabled={$uiStore.modelSelectionPerStepEnabled}
   defaultTextModel={$uiStore.defaultTextModel}
   defaultImageModel={$uiStore.defaultImageModel}
+  relevanceFeedbackModel={$uiStore.relevanceFeedbackModel}
   {availableModels}
   on:close={() => (isSettingsOpen = false)}
   on:save={applySettings}

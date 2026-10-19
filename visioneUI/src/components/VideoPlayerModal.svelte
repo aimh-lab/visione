@@ -17,6 +17,8 @@
   
   export let isOpen = false;
   export let layer = "modal";
+  // Video height in px, shared with the slideshow ("Slideshow / video size" in Settings).
+  export let modalScale = 500;
   export let videoUrl = "";
   export let startTime = 0;
   export let title = "";
@@ -192,6 +194,10 @@
     }
   }
 
+  // Same proportions as SlideshowModal: the window is twice as wide as the video is tall.
+  $: safeModalScale = Math.max(80, Math.round(Number(modalScale) || 500));
+  $: modalWidth = `min(98vw, ${Math.max(760, safeModalScale * 2)}px)`;
+  $: videoMaxHeight = `min(80vh, ${safeModalScale}px)`;
   $: overlayZClass = layer === "dialog" ? "z-[var(--z-dialog-overlay)]" : "z-[var(--z-modal-overlay)]";
   $: contentZClass = layer === "dialog" ? "z-[var(--z-dialog-content)]" : "z-[var(--z-modal-content)]";
 
@@ -802,7 +808,7 @@
       on:click={() => dispatch("close")}
       aria-label="Close video player modal"
     ></button>
-    <div class="ui-video-player-modal relative {contentZClass} bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-[90vw]" style="transform: translate({dragOffsetX}px, {dragOffsetY}px);">
+    <div class="ui-video-player-modal relative {contentZClass} bg-gray-900 rounded-xl shadow-2xl" style="width: {modalWidth}; transform: translate({dragOffsetX}px, {dragOffsetY}px);">
       
       <!-- Header -->
       <div
@@ -836,7 +842,8 @@
         <video
           bind:this={videoEl}
           src={videoUrl}
-          class="w-full h-auto max-h-[65vh] cursor-pointer"
+          class="w-full h-auto cursor-pointer"
+          style="max-height: {videoMaxHeight};"
           autoplay
           playsinline
           preload="metadata"

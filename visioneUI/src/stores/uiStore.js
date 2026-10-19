@@ -253,6 +253,7 @@ function createUIStore() {
         modelSelectionPerStepEnabled: s.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
         defaultTextModel: String(s.defaultTextModel || '').trim() || u.defaultTextModel,
         defaultImageModel: String(s.defaultImageModel || '').trim() || u.defaultImageModel,
+        relevanceFeedbackModel: String(s.relevanceFeedbackModel ?? u.relevanceFeedbackModel ?? '').trim(),
         runtimeSettingsDefaultsVersion: String(s.runtimeSettingsDefaultsVersion || '').trim()
       }));
     },
@@ -379,6 +380,7 @@ function createUIStore() {
         modelSelectionPerStepEnabled: DEFAULT.modelSelectionPerStepEnabled,
         defaultTextModel: DEFAULT.defaultTextModel,
         defaultImageModel: DEFAULT.defaultImageModel,
+        relevanceFeedbackModel: DEFAULT.relevanceFeedbackModel,
         runtimeSettingsDefaultsVersion: DEFAULT.runtimeSettingsDefaultsVersion
       });
     },
@@ -625,6 +627,8 @@ function createUIStore() {
           modelSelectionPerStepEnabled: patch.modelSelectionPerStepEnabled ?? u.modelSelectionPerStepEnabled,
           defaultTextModel: safeDefaultTextModel,
           defaultImageModel: safeDefaultImageModel,
+          // '' means "not chosen yet", so only a missing field keeps the current value.
+          relevanceFeedbackModel: patch.relevanceFeedbackModel == null ? u.relevanceFeedbackModel : String(patch.relevanceFeedbackModel).trim(),
           runtimeSettingsDefaultsVersion: u.runtimeSettingsDefaultsVersion
         };
 
@@ -672,6 +676,7 @@ function createUIStore() {
           modelSelectionPerStepEnabled: nextState.modelSelectionPerStepEnabled,
           defaultTextModel: nextState.defaultTextModel,
           defaultImageModel: nextState.defaultImageModel,
+          relevanceFeedbackModel: nextState.relevanceFeedbackModel,
           runtimeSettingsDefaultsVersion: nextState.runtimeSettingsDefaultsVersion
         });
       }

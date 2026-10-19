@@ -50,6 +50,7 @@
   export let modelSelectionPerStepEnabled = D.modelSelectionPerStepEnabled;
   export let defaultTextModel = D.defaultTextModel;
   export let defaultImageModel = D.defaultImageModel;
+  export let relevanceFeedbackModel = D.relevanceFeedbackModel;
   export let availableModels = [];
   export let videoBadgeOrientation = D.videoBadgeOrientation;
 
@@ -72,6 +73,13 @@
   $: discoveredImageModels = Array.from(new Set(
     normalizedModelEntries.filter(supportsImageModel).map((m) => m.name).filter(Boolean)
   ));
+
+  // Relevance feedback works in one model's embedding space: any discovered model.
+  // Until the user picks one, the first of the list is used.
+  $: relevanceFeedbackModelOptions = Array.from(new Set([...discoveredTextModels, ...discoveredImageModels]));
+  $: effectiveRelevanceFeedbackModel = relevanceFeedbackModelOptions.includes(String(local.relevanceFeedbackModel || '').trim())
+    ? String(local.relevanceFeedbackModel).trim()
+    : (relevanceFeedbackModelOptions[0] || '');
 
   $: textModelOptions = discoveredTextModels.length > 0
     ? discoveredTextModels
@@ -125,7 +133,8 @@
       slideshowModalScale,
       modelSelectionPerStepEnabled,
       defaultTextModel,
-      defaultImageModel
+      defaultImageModel,
+      relevanceFeedbackModel
     };
   }
 
@@ -323,7 +332,8 @@
       slideshowModalScale: safeSlideshowModalScale,
       modelSelectionPerStepEnabled: !!local.modelSelectionPerStepEnabled,
       defaultTextModel: safeDefaultTextModel,
-      defaultImageModel: safeDefaultImageModel
+      defaultImageModel: safeDefaultImageModel,
+      relevanceFeedbackModel: String(local.relevanceFeedbackModel || '').trim()
     };
 
     pendingSettings = newSettings;
@@ -707,7 +717,7 @@
             </div>
 
             <div class="flex items-center justify-between py-2">
-              <label for="settings-slideshow-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Slideshow preview size (px)</label>
+              <label for="settings-slideshow-modal-scale" class="ui-settings-label text-sm font-medium text-gray-700">Slideshow / video size (px)</label>
               <div class="relative">
                 <input
                   id="settings-slideshow-modal-scale"
@@ -719,10 +729,10 @@
                   on:input={() => save()}
                 />
                 <div class="ui-settings-stepper">
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Increase slideshow and video size" on:click={() => adjustNumber('slideshowModalScale', 10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 14l6-6 6 6"/></svg>
                   </button>
-                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
+                  <button type="button" class="ui-settings-stepper-btn" aria-label="Decrease slideshow and video size" on:click={() => adjustNumber('slideshowModalScale', -10, 80, Number.MAX_SAFE_INTEGER)}>
                     <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 10l6 6 6-6"/></svg>
                   </button>
                 </div>
@@ -1050,6 +1060,23 @@
                 on:change={(e) => { local.defaultImageModel = formatModelList(e.detail.models); save(); }}
               />
             </div>
+
+            <div class="flex items-center justify-between py-2">
+              <label for="settings-relevance-feedback-model" class="ui-settings-label text-sm font-medium text-gray-700">Relevance feedback model</label>
+              <select
+                id="settings-relevance-feedback-model"
+                class="ui-settings-input ui-settings-select w-56 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-gray-900"
+                value={effectiveRelevanceFeedbackModel}
+                on:change={(e) => { local.relevanceFeedbackModel = e.currentTarget.value; save(); }}
+              >
+                {#each relevanceFeedbackModelOptions as m}
+                  <option value={m}>{m}</option>
+                {/each}
+              </select>
+            </div>
+            <p class="ui-settings-hint -mt-1 mb-1 text-[11px] text-gray-500">
+              Embedding model used to move results toward 👍 and away from 👎 frames. One model only.
+            </p>
           </div>
         {/if}
 

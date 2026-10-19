@@ -57,5 +57,7 @@ export const APP_SETTINGS_DEFAULTS = {
   modelSelectionPerStepEnabled: true,
   defaultTextModel: DEFAULT_TEXT_MODEL,
   defaultImageModel: DEFAULT_IMAGE_MODEL,
+  // Relevance feedback model; '' until the user picks one (the first discovered model is used).
+  relevanceFeedbackModel: '',
   runtimeSettingsDefaultsVersion: ''
 };
