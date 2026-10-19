@@ -36,3 +36,27 @@ export function resolveVideoTimeReferenceSeconds(item, videoTimeReferenceFields 
   const seconds = toFiniteNumber(value);
   return seconds != null && seconds >= 0 ? seconds : null;
 }
+
+/**
+ * Start and end (seconds) of the shot an item belongs to, from the dataset's
+ * declared "item_start_time"/"item_end_time" fields (e.g. V3C's
+ * start_time_seconds/end_time_seconds).
+ *
+ * @returns {{ start: number, end: number } | null} null when the dataset
+ *   doesn't declare both or the range is empty.
+ */
+export function resolveShotRangeSeconds(item, videoTimeReferenceFields = {}) {
+  const start = resolveVideoTimeReferenceSeconds(item, videoTimeReferenceFields, 'item_start_time');
+  const end = resolveVideoTimeReferenceSeconds(item, videoTimeReferenceFields, 'item_end_time');
+  if (start == null || end == null || end <= start) return null;
+  return { start, end };
+}
+
+/**
+ * Where to start playing an item's video: the start of its shot when the
+ * dataset declares it, otherwise its declared "item_time".
+ */
+export function resolvePlaybackStartSeconds(item, videoTimeReferenceFields = {}) {
+  return resolveVideoTimeReferenceSeconds(item, videoTimeReferenceFields, 'item_start_time')
+    ?? resolveVideoTimeReferenceSeconds(item, videoTimeReferenceFields, 'item_time');
+}

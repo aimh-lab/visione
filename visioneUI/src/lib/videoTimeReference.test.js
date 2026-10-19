@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveVideoTimeReferenceSeconds } from './videoTimeReference.js';
+import { resolveVideoTimeReferenceSeconds, resolveShotRangeSeconds, resolvePlaybackStartSeconds } from './videoTimeReference.js';
 
 describe('resolveVideoTimeReferenceSeconds', () => {
   const fields = { item_time: 'start_time_seconds', item_start_time: 'start_time_seconds', item_end_time: 'end_time_seconds' };
@@ -36,5 +36,26 @@ describe('resolveVideoTimeReferenceSeconds', () => {
   it('returns null for a missing/non-object item', () => {
     expect(resolveVideoTimeReferenceSeconds(null, fields)).toBeNull();
     expect(resolveVideoTimeReferenceSeconds(undefined, fields)).toBeNull();
+  });
+});
+
+describe('shot range and playback start', () => {
+  const fields = { item_time: 'start_time_seconds', item_start_time: 'start_time_seconds', item_end_time: 'end_time_seconds' };
+  const item = { raw: { metadata: { start_time_seconds: 12.5, end_time_seconds: 18, middle_time_seconds: 15 } } };
+
+  it('returns the shot bounds when the dataset declares them', () => {
+    expect(resolveShotRangeSeconds(item, fields)).toEqual({ start: 12.5, end: 18 });
+  });
+
+  it('returns null without declared bounds (e.g. LSC) or with an empty range', () => {
+    expect(resolveShotRangeSeconds(item, {})).toBeNull();
+    const empty = { raw: { metadata: { start_time_seconds: 5, end_time_seconds: 5 } } };
+    expect(resolveShotRangeSeconds(empty, fields)).toBeNull();
+  });
+
+  it('starts playback at the shot start, falling back to item_time', () => {
+    expect(resolvePlaybackStartSeconds(item, fields)).toBe(12.5);
+    expect(resolvePlaybackStartSeconds(item, { item_time: 'middle_time_seconds' })).toBe(15);
+    expect(resolvePlaybackStartSeconds(item, {})).toBeNull();
   });
 });

@@ -5,7 +5,7 @@
 
 import { visioneAPI } from '../../services/api.js';
 import { parseVideoIdFromImgId } from '../videoIdentity.js';
-import { resolveVideoTimeReferenceSeconds } from '../videoTimeReference.js';
+import { resolvePlaybackStartSeconds } from '../videoTimeReference.js';
 
 /**
  * @param {Object} deps
@@ -98,7 +98,8 @@ export function createVideoPlayerController({ getImages, getRuntimeProfile = () 
     // /discovery "item_time" -> "start_time_seconds") over the LSC-shaped
     // heuristics below — covers callers that don't pre-resolve startAt
     // themselves (e.g. opening the player from ImageModal or VideoSummaryModal).
-    const declaredStart = resolveVideoTimeReferenceSeconds(matched, visioneAPI.videoTimeReferenceFields);
+    // Start of the shot when declared, otherwise the declared item time.
+    const declaredStart = resolvePlaybackStartSeconds(matched, visioneAPI.videoTimeReferenceFields);
     if (declaredStart != null) {
       return {
         url: resolvedVideoUrl,

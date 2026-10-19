@@ -8,7 +8,7 @@
   import { formatGroupDateLabel, formatGroupHourLabel, formatImageDisplayTitle, formatVideoGroupLabel } from "$lib/titleFormatting.js";
   import { CATEGORICAL_PALETTE } from "../config/categoricalPalette.js";
   import { resolveVideoId } from "$lib/videoIdentity.js";
-  import { resolveVideoTimeReferenceSeconds } from "$lib/videoTimeReference.js";
+  import { resolveVideoTimeReferenceSeconds, resolveShotRangeSeconds, resolvePlaybackStartSeconds } from '$lib/videoTimeReference.js';
   import { FRAME_DRAG_MIME } from "$lib/queryStepDrag.js";
   import { getRawMetadata, toIntOrNull, resolveEpochSeconds, buildHourGroupKey as resolveHourGroupKey } from "$lib/epochResolution.js";
   import { DEFAULT_DRES_CHALLENGE_TYPE } from "../config/dresConfig.js";
@@ -433,7 +433,7 @@
     // precise, dataset-authoritative value when the dataset declares one at
     // all. A dataset that doesn't declare it (e.g. LSC) gets null here and
     // falls through unaffected.
-    const declaredStart = resolveVideoTimeReferenceSeconds(item, visioneAPI.videoTimeReferenceFields);
+    const declaredStart = resolvePlaybackStartSeconds(item, visioneAPI.videoTimeReferenceFields);
     if (declaredStart != null) return declaredStart;
 
     const metadata = getRawMetadata(item);
@@ -771,6 +771,9 @@
     recomputeVirtualWindow();
   }
 
+  // Context shown before and after the shot in the right-click preview.
+  const SHOT_PREVIEW_MARGIN_SECONDS = 1.5;
+
   async function handleContextPreview(e, item) {
     if (!hasCollectionVideos) return;
     e.preventDefault();
@@ -778,6 +781,20 @@
     try {
       const imgId = getId(item);
       const videoId = getVideoId(item);
+      // Datasets that declare the shot bounds (e.g. V3C) preview the whole shot.
+      const shot = resolveShotRangeSeconds(item, visioneAPI.videoTimeReferenceFields);
+      if (shot) {
+        const explicitUrl = item?.videoUrl || item?.raw?.metadata?.videos || null;
+        const url = explicitUrl
+          || await visioneAPI.getPlayableVideoUrl(videoId, { urlSource: runtimeProfile?.videoPlayer?.urlSource, quality: "medium" });
+        preview = {
+          imgId,
+          videoUrl: url,
+          start: Math.max(0, shot.start - SHOT_PREVIEW_MARGIN_SECONDS),
+          end: shot.end + SHOT_PREVIEW_MARGIN_SECONDS
+        };
+        return;
+      }
       let timestamp = getVideoPlayerStartFromProfile(item);
       // visioneAPI.getMiddleTimestamp() already tries the dataset's own declared
       // time reference first, then falls back to LSC-style fields only when the
